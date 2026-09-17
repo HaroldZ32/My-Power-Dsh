@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wm-dsh-3kD4GI",
+  "wmHome": "/tmp/mpd-wm-home-FSRsU7",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "attempts": 1,
+      "retryNotes": []
+    },
+    "flow": {
+      "ok": true,
+      "calls": {
+        "mpd_workmate_init": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_list": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_spawn": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_reflect": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_match": {
+          "called": true,
+          "succeeded": true
+        }
+      },
+      "unproven": [],
+      "availableTools": 103,
+      "source": "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+      "sample": ": mpd_workmate_match {task:\"implement a verilog counter and verify\"}. | dsh: reasoning: | Step 5 done, matched=true. Now I need to end with the word DONE and then the contents of the note card ~/.mpd/workmate/alice/note.md. |  | Note: the note is outside the workspace (/tmp/mpd-wm-home-FSRsU7/ws is the workspace). The sandbox is workspace-write, so reading ~/.mpd/workmate/alice/note.md might be denied? Reading is usually allowed in workspace-write mode... Actually workspace-write typically allows reads broadly but writes restricted to workspace. Let me try reading it with the read tool. The re"
+    },
+    "files": {
+      "ok": true,
+      "uses": 2,
+      "noteChars": 264,
+      "memoryChars": 361,
+      "note": "Deep Worker-based workmate \"alice\". Verilog counter specialist; this workspace README is a trivial 2-line e2e fixture (\"my-power-dsh / workmate e2e workspace\") ",
+      "wmRoot": "/tmp/mpd-wm-home-FSRsU7/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-FSRsU7",
+      "sandboxRoot": "/tmp/mpd-wm-home-FSRsU7/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

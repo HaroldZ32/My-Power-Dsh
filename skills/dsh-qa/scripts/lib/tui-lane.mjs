@@ -281,7 +281,8 @@ export function runInSandbox(root, command, args, { cwd, timeoutMs = 900_000, ex
 
 /** `dsh --profile dsh-tui --dump-config` (COMPOSITION only — never a load proof). */
 export function dumpConfig(root, extraArgs = []) {
-  return runInSandbox(root, "dsh", ["--profile", "dsh-tui", "--dump-config", ...extraArgs], { timeoutMs: 180_000 })
+  // T-69: compose through the wrapper (absolute path, so a sandbox cwd still resolves it).
+  return runInSandbox(root, process.execPath, [join(REPO, "scripts", "dump-config.mjs"), "--profile", "dsh-tui", "--json", ...extraArgs], { timeoutMs: 180_000 })
 }
 
 /** The `dsh.profile.bundles` list out of a dump-config text. */
@@ -535,6 +536,7 @@ export function readSessionHeaders(root, { limit = 1000, projectKey: onlyKey } =
  * returns only the first frame (the header), so the frames are located with the
  * same structure-only scan the harness uses.
  */
+const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 function decompressAllFrames(file) {
   const buffer = readFileSync(file)
   const frames = []

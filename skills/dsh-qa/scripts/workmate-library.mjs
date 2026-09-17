@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 import { findToolCall, readSessionEvents, recordedToolNames } from "./lib/session-evidence.mjs"
 
+const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PROMPT = `Use the workmate tools in this exact order and report each result:
 1) mpd_workmate_init {base:"hephaestus", name:"alice", note:"Verilog counter specialist"}
@@ -129,14 +130,16 @@ function runReal() {
   const steps = {}
   function runSync(cmd, args, opts = {}) {
     const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
-    return { status: r.status, out: (r.stdout || "") + (r.stderr || "") }
+    return { status: r.status, out: (r.stdout || "") + (r.stderr || ""), stdout: r.stdout || "" }
   }
 
   const inst = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", dshHome, "--profile", "mpd-headless", "--skip-toolchain"], { timeout: 600000 })
   steps.install = { ok: inst.status === 0, exit: inst.status }
 
-  const dump = runSync("dsh", ["--profile", "mpd-headless", "--dump-config"], { timeout: 120000 })
-  steps.dump = { ok: dump.status === 0 && dump.out.includes("id: mpd-workmate") && dump.out.includes("id: mpd-roles") && dump.out.includes("id: mpd-bootstrap"), exit: dump.status }
+  // T-69: composition goes through the wrapper; the tree comes from the --json child output.
+  const dump = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "mpd-headless", "--json"], { timeout: 120000 })
+  const dumpText = dumpJsonText(dump.stdout)
+  steps.dump = { ok: dump.status === 0 && dumpText.includes("id: mpd-workmate") && dumpText.includes("id: mpd-roles") && dumpText.includes("id: mpd-bootstrap"), exit: dump.status }
 
   // The flow assertion comes from the HARNESS session log, never from the model's prose (AGENTS.md
   // §7): the five workmate tools must have been CALLED. Measured flakiness the prose form carried:
@@ -216,7 +219,7 @@ function runReal() {
 
   const allOk = Object.values(steps).every((s) => s.ok)
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: allOk, dshHome, wmHome, steps }, null, 2))
-  writeFileSync(join(outDir, "output.log"), out.slice(0, 40000) + "\n\n--- dump ---\n" + dump.out.slice(0, 20000))
+  writeFileSync(join(outDir, "output.log"), out.slice(0, 40000) + "\n\n--- dump (raw capture, banner included) ---\n" + dump.out.slice(0, 20000) + "\n\n--- composed tree (stdout, banner-free — what the assertions read) ---\n" + dumpText.slice(0, 40000))
   console.log("[workmate-library] ok=" + allOk + " -> " + outDir)
   for (const [k, v] of Object.entries(steps)) console.log("  " + k + ": " + JSON.stringify(v).slice(0, 260))
   if (!allOk) process.exit(1)

@@ -1,3 +1,4 @@
+<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->
 # Track A report (P0–P5 first round)
 
 ## DoD status (S1–S7)

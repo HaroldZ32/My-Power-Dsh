@@ -1,0 +1,1 @@
+[docs-claims] refusing to overwrite the existing retained revision (the running checker): /root/dshProj/my-power-dsh/evidence/review/wave2b-laneB2/20260917T1445Z/run-verbatim/revisions/checker.mjs — evidence is immutable by default (T-53); pass an explicit new target

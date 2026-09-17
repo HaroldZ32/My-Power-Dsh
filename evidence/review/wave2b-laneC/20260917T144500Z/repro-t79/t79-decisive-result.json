@@ -1,0 +1,162 @@
+{
+  "schema": "t79/decisive-host-restart/1",
+  "leg": "wave-2b lane C (t17)",
+  "question": "does a fresh load of the current tree still wake a member for an already-TERMINAL task on a ticket-composing path?",
+  "restart": {
+    "moment": "2026-09-17T14:41:04.387Z",
+    "meaning": "a NEW PROCESS importing the current tree fresh — under T-21 the loaded revision is a process property, so this is the operative sense of 'restart' for this question",
+    "pid": 4,
+    "cwd": "/root/dshProj/my-power-dsh",
+    "dshHome": "/root/.dsh",
+    "home": "/root",
+    "probeBound": "mpd-bg reload-check compares a module mtime to the NEWEST SESSION's directory mtime and cannot see a long-lived host PROCESS; a FRESH reading is NOT load evidence for a running host",
+    "notRun": "a full booted-dsh team lifecycle (the idle edge / approval-time dispatch / memberSelections routes) — named as the residual, NOT claimed as covered"
+  },
+  "schedulerSha256": "4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68",
+  "legs": {
+    "control_pending_current_tree": {
+      "label": "control-pending",
+      "fixture": {
+        "taskStatus": "pending",
+        "attemptId": null
+      },
+      "regionStripped": false,
+      "hookInstalled": {
+        "anchor": "const stale = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {",
+        "regionWasPresent": true
+      },
+      "hookRecords": [
+        {
+          "anchor": "region",
+          "taskId": "t14",
+          "ticketAttemptId": "8093b651-b22b-43a5-9e47-905280f038db",
+          "memberId": "session-member-decisive"
+        }
+      ],
+      "ticketAttemptId": "8093b651-b22b-43a5-9e47-905280f038db",
+      "forcedTerminal": [],
+      "deliveries": 1,
+      "deliveredToMemberSession": 1,
+      "namedDecline": [],
+      "teamBytesUnchanged": false,
+      "taskStatusAfter": "claimed",
+      "taskAttemptIdAfter": "8093b651-b22b-43a5-9e47-905280f038db",
+      "warnings": []
+    },
+    "pure_terminal_current_tree": {
+      "label": "pure-terminal",
+      "fixture": {
+        "taskStatus": "completed",
+        "attemptId": "7c133ef3-5e5b-4d95-a3d7-86d0d5661efb"
+      },
+      "regionStripped": false,
+      "hookInstalled": {
+        "anchor": "const stale = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {",
+        "regionWasPresent": true
+      },
+      "hookRecords": [],
+      "ticketAttemptId": null,
+      "forcedTerminal": [],
+      "deliveries": 0,
+      "deliveredToMemberSession": 0,
+      "namedDecline": [],
+      "teamBytesUnchanged": true,
+      "taskStatusAfter": "completed",
+      "taskAttemptIdAfter": "7c133ef3-5e5b-4d95-a3d7-86d0d5661efb",
+      "warnings": []
+    },
+    "recorded_race_current_tree": {
+      "label": "race-current",
+      "fixture": {
+        "taskStatus": "in_progress",
+        "attemptId": "7c133ef3-5e5b-4d95-a3d7-86d0d5661efb"
+      },
+      "regionStripped": false,
+      "hookInstalled": {
+        "anchor": "const stale = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {",
+        "regionWasPresent": true
+      },
+      "hookRecords": [
+        {
+          "anchor": "region",
+          "taskId": "t14",
+          "ticketAttemptId": "298fe18c-09d8-4143-afc4-101c9efc3e1a",
+          "memberId": "session-member-decisive",
+          "forceTerminal": "task-t14-now-completed"
+        }
+      ],
+      "ticketAttemptId": "298fe18c-09d8-4143-afc4-101c9efc3e1a",
+      "forcedTerminal": [
+        "task-t14-now-completed"
+      ],
+      "deliveries": 0,
+      "deliveredToMemberSession": 0,
+      "namedDecline": [
+        "agent-teams: dispatch declined for decisive-probe/Architect: task t14 became completed before its assignment could be delivered — the member was NOT woken for it, and the task's own status was left exactly as it is"
+      ],
+      "teamBytesUnchanged": false,
+      "taskStatusAfter": "completed",
+      "taskAttemptIdAfter": "298fe18c-09d8-4143-afc4-101c9efc3e1a",
+      "warnings": [
+        "agent-teams: dispatch declined for decisive-probe/Architect: task t14 became completed before its assignment could be delivered — the member was NOT woken for it, and the task's own status was left exactly as it is"
+      ]
+    },
+    "recorded_race_region_stripped": {
+      "label": "race-stripped",
+      "fixture": {
+        "taskStatus": "in_progress",
+        "attemptId": "7c133ef3-5e5b-4d95-a3d7-86d0d5661efb"
+      },
+      "regionStripped": true,
+      "hookInstalled": {
+        "anchor": "const accepted = await deliverToMember(ctx, captain, ticket.memberId,",
+        "regionWasPresent": true
+      },
+      "hookRecords": [
+        {
+          "anchor": "deliver",
+          "taskId": "t14",
+          "ticketAttemptId": "ccc5dc81-96fb-48aa-969c-4751c266306c",
+          "memberId": "session-member-decisive",
+          "forceTerminal": "task-t14-now-completed"
+        }
+      ],
+      "ticketAttemptId": "ccc5dc81-96fb-48aa-969c-4751c266306c",
+      "forcedTerminal": [
+        "task-t14-now-completed"
+      ],
+      "deliveries": 1,
+      "deliveredToMemberSession": 1,
+      "namedDecline": [],
+      "teamBytesUnchanged": false,
+      "taskStatusAfter": "completed",
+      "taskAttemptIdAfter": "ccc5dc81-96fb-48aa-969c-4751c266306c",
+      "warnings": []
+    }
+  },
+  "outcome": "NOT WOKEN — on the kick route a fresh process loading the current tree refuses the wake for terminal work (0 deliveries + the NAMED decline). The restart reading does not reproduce the MEASURED EVENTS; the mechanism claim stays REFUTED-for-a-fresh-process; the residual stays UNRESOLVED with the named probe cited on scheduler.js (that probe cannot see a long-lived host process).",
+  "outcomeReadings": {
+    "control": "the same kick with a PENDING task and the same fixture COMPOSED A TICKET and DELIVERED -> this harness CAN wake, so a 0 below is a reading and not a dead path",
+    "pureTerminal": "0 deliveries and 0 tickets composed (the injected recorder at the pre-wake anchor never fired): the terminal status is filtered out at SELECTION, before the re-check is reached",
+    "recordedRaceCurrent": "0 deliveries, 1 ticket composed, task forced terminal inside the window (task-t14-now-completed), the NAMED decline from the delivery-boundary re-check",
+    "redSide": "with the re-check region STRIPPED the same race, forced the same way, DOES deliver -> the guard, not the fixture, is what refuses"
+  },
+  "discriminator": {
+    "predicate": "delivery.attempt_id == completion.attempt_id AND task terminal",
+    "completionAttemptId": "7c133ef3-5e5b-4d95-a3d7-86d0d5661efb",
+    "ticketAttemptIdReadInRaceLegs": [
+      "298fe18c-09d8-4143-afc4-101c9efc3e1a",
+      "ccc5dc81-96fb-48aa-969c-4751c266306c"
+    ],
+    "forcedTerminalReadings": [
+      "task-t14-now-completed",
+      "task-t14-now-completed"
+    ],
+    "equalityHalfHolds": false,
+    "reading": "MEASURED: the compose MINTED A FRESH attempt id in both race legs (the fixture's stored id 7c133ef3-5e5b-4d95-a3d7-86d0d5661efb is not what the ticket carried), so the equality half of the predicate is NOT reproduced by this construction while the terminality half IS (the task was terminal at the wake boundary, task-t14-now-completed). The refusal this instrument observes is carried by the TERMINALITY half; a fix keyed only on `attempt_id equal AND terminal` would not have reddened on this construction, and the equality half remains unmeasured here (it needs a route that delivers an UNROTATED stored attempt id — none is available on the kick compose of the current tree)."
+  },
+  "fixtureConstraint": "terminal task + idle member + a ticket-composing kick; the two wrong-reason fixtures (a bare status read, an idle-edge-only probe) are forbidden and were not used",
+  "redSide": "leg (3) is the red side: the record's SEVENTH measured event (the `t14` review re-dispatched after completion, attempt id 7c133ef3-5e5b-4d95-a3d7-86d0d5661efb) is reproduced mechanically, so its absence in legs (1)/(2) is a real refusal",
+  "replayCountNote": "the recorded/measured replay count MOVES — take the count from the record at the moment of writing, never from this driver",
+  "finishedAt": "2026-09-17T14:41:04.862Z"
+}

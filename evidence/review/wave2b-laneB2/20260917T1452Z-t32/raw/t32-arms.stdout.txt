@@ -1,0 +1,36 @@
+== t32 arm falsification ==
+moment_utc 2026-09-17T14:52:05Z
+checker 53ae5cbc387c95566fadaf6697cff6b31f9e759f6cdefb9e519d99f33bc8b41f
+round-1 retained sha: fbdc02569a8be827745c13dadaec63eb2353ab1380d245ac6a275a2381779f28
+W diff exit=1 (1 = differences, expected)
+W deleted lines (incl. replaced): 9
+-// (immutable evidence: T-53, T-74).
+-  return { claims, references, claimLines }
+-  const { claims, references, claimLines } = parseHeaderClaims(text, { naive })
+-  const naive = process.argv.includes("--naive")
+-    mode: naive ? "driver-headers (naive matcher)" : "driver-headers",
+-  const files = walkFiles(root, () => true).filter((file) => /\.(md|json|mjs|js|ts|txt|log|out|yaml|yml)$/.test(file))
+-      if (line.includes(patternArg)) hits.push({ path: relative(REPO, file), line: index + 1, phrase: line.trim().slice(0, 200) })
+-  const report = { task: "T-90 anchor scan", run_at: runAt, pattern: patternArg, scope: dirArg, files_scanned: files.length, matches: hits }
+-  log(`[anchor-scan] ${matches(hits)} match(es) in ${files.length} file(s) under ${dirArg}`)
+/root/.pyenv/versions/3.12.13/bin/python3: can't open file '/root/dshProj/my-power-dsh/evidence/review/wave2b-laneB2/20260917T1452Z-t32/raw/strip_rules_block.py': [Errno 2] No such file or directory
+E1 strip did not remove the rules block — using the round-1 python from the review dir
+FU-1 strip: removed 1198 bytes
+FU-1 strip: 'rules: {' still in source: False
+FU-1 strip: 'doc_rewrite: {' still in source: False
+stripped record: bytes 2986 | has 'rules' key: False | rule string present: False
+E1 stripped self-test exit=1
+  FAIL negative-control:t78-record-carries-the-rule
+      1   FAIL negative-control:t78-record-carries-the-rule
+E2: retention disabled in the copy
+E2 retention-disabled self-test exit=1
+  ok   negative-control:t78-record-carries-the-rule
+  FAIL negative-control:t82-retention-diffable
+      1   FAIL negative-control:t82-retention-diffable
+E3 seeds written
+E3a claimed-but-unasserted exit=0 (expect 1)
+E3b asserted-but-unclaimed exit=1 (expect 1)
+FAIL driver:../../../tmp/t32-arms/e3b/underclaim-seed.mjs — ASSERTED-BUT-UNCLAIMED A4, A5
+E4 seeded mailbox-id scan exit=1 (expect 1)
+E4b absent-pattern control exit=0 (expect 0)
+scratch deleted: YES

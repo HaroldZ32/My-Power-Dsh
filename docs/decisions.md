@@ -1,3 +1,4 @@
+<!-- docs-parity: exempt process record (AGENTS.md §3) -->
 # Decision ledger (P1–P3 finalized)
 
 | Decision point | Conclusion | Basis |

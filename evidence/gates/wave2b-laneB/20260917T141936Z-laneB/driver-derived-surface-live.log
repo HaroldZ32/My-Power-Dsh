@@ -1,0 +1,29 @@
+[derived-surface-audit] tasks read: 26
+[derived-surface-audit]   t1    work           completed   Planner                inScope=(none)
+[derived-surface-audit]   t2    review         cancelled   captain                inScope=evidence/review/wave2b-plan/**
+[derived-surface-audit]   t3    repair         cancelled   captain                inScope=evidence/planning/friction-p2-wave-2b-plan/20260917T0945Z-wave-2b-plan.md
+[derived-surface-audit]   t4    review         cancelled   captain                inScope=(none)
+[derived-surface-audit]   t5    repair         cancelled   captain                inScope=evidence/planning/friction-p2-wave-2b-plan/20260917T0945Z-wave-2b-plan.md, .mpd/plans/friction-p2-wave-2b.md
+[derived-surface-audit]   t6    review         completed   Plan Reviewer          inScope=(none)
+[derived-surface-audit]   t7    requirements   completed   Architect              inScope=evidence/requirements/wave2b-laneA/**
+[derived-surface-audit]   t8    requirements   completed   Architect              inScope=evidence/requirements/wave2b-laneB/**
+[derived-surface-audit]   t9    requirements   completed   Architect              inScope=evidence/requirements/wave2b-laneB2/**
+[derived-surface-audit]   t10   requirements   completed   Architect              inScope=evidence/requirements/wave2b-laneB3/**
+[derived-surface-audit]   t11   requirements   completed   Architect              inScope=evidence/requirements/wave2b-laneC/**
+[derived-surface-audit]   t12   requirements   completed   Architect              inScope=evidence/requirements/wave2b-laneD/**
+[derived-surface-audit]   t13   implementation failed      agent-teams-engineer   inScope=packages/mpd-agent-teams-plugin/lib/**, packages/mpd-agent-teams-plugin/self-fix-tests/**, agent-references/agent-teams-deltas.md, scripts/patch-agent-teams-fixes.mjs, evidence/agent-teams/wave2b-laneA/**
+[derived-surface-audit]   t14   implementation in_progress packaging-engineer     inScope=scripts/verify-rows-parity.mjs, scripts/verify-manual-paths.mjs, scripts/verify-gates.mjs, scripts/repin-vendor.mjs, scripts/run-qa-lanes.mjs, scripts/mpd-doctor.mjs, scripts/install-git-hooks.mjs, scripts/verify-pack-closure.mjs, .gitignore, package.json, evidence/gates/wave2b-laneB/**
+[derived-surface-audit]   t15   implementation completed   citation-checker-engineer inScope=scripts/check-citations.mjs, evidence/extensions/**, evidence/gates/wave2b-laneB2/**
+[derived-surface-audit]   t16   implementation completed   docs-parity-engineer   inScope=scripts/verify-docs-parity.mjs, AGENTS.md, agent-references/index.md, templates/**, docs/**, extensions/**/README.md, extensions/**/README.zh-CN.md, packages/*/README.md, packages/*/README.zh-CN.md, evidence/docs/wave2b-laneB3/**
+[derived-surface-audit]   t17   implementation in_progress watchdog-engineer      inScope=packages/mpd-team-watchdog-plugin/src/**, packages/mpd-team-watchdog-plugin/test/**, agent-references/troubleshooting.md, evidence/team-watchdog/wave2b-laneC/**
+[derived-surface-audit]   t18   implementation pending     qa-lane-engineer       inScope=skills/**, evidence/dsh-qa/wave2b-laneD/**
+[derived-surface-audit]   t19   review         in_progress code-reviewer          inScope=evidence/review/wave2b-laneA/**
+[derived-surface-audit]   t20   review         pending     docs-parity-engineer   inScope=evidence/review/wave2b-laneB/**
+[derived-surface-audit]   t21   review         in_progress agent-teams-engineer   inScope=evidence/review/wave2b-laneB2/**
+[derived-surface-audit]   t22   review         in_progress citation-checker-engineer inScope=evidence/review/wave2b-laneB3/**
+[derived-surface-audit]   t23   review         pending     code-reviewer          inScope=evidence/review/wave2b-laneC/**
+[derived-surface-audit]   t24   review         pending     packaging-engineer     inScope=evidence/review/wave2b-laneD/**
+[derived-surface-audit]   t25   integration    pending     -                      inScope=VENDOR_LOCK.json, dist/mpd-package/**, packages/*/dist/**, evidence/gates/wave2b-integration/**, evidence/wave2b-integration/**, evidence/dsh-qa/**, .mpd/TODO.md, .mpd/plans/**
+[derived-surface-audit]   t26   work           claimed     Architect              inScope=(none)
+[derived-surface-audit] integration task(s) declaring derived surfaces: t25 [packages/*/dist/**, dist/mpd-package/**, VENDOR_LOCK.json, .mpd/plans/**]
+[derived-surface-audit] ok: no lane covers a derived surface (packages/*/dist/**, dist/mpd-package/**, VENDOR_LOCK.json, .mpd/plans/**); the integration task declares them

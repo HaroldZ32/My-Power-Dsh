@@ -1,0 +1,38 @@
+bun test v1.3.14 (0d9b296a)
+
+self-fix-tests/t51-reoffer-routing.test.mjs:
+(pass) T-93 (1/4): the GENERATOR routes the repair to a seat that can EXECUTE it (never the read-only author) [5.93ms]
+(pass) T-93 (2/4): NEG CONTROL — a team whose ONLY seat is read-only produces a CAPTAIN ROUTE, never an unexecutable repair [0.32ms]
+92 |     const open = { id: "t9", status: "claimed", attempt: 3, attemptId: "7c133ef3-completion", reassigning: false }
+93 |     const tasks = [completed, open]
+94 | 
+95 |     // THE MEASURED SHAPE: a TERMINAL task delivered with the SAME attempt id its completion recorded.
+96 |     // The stale-attempt guard never fires on it (the id is not stale), so the class is what refuses it.
+97 |     expect(deliveryRoutingClass(tasks, { taskId: "t9", attemptId: "7c133ef3-completion" })).toBe("reoffer-terminal-same-attempt")
+                                                                                                 ^
+error: expect(received).toBe(expected)
+
+Expected: "reoffer-terminal-same-attempt"
+Received: undefined
+
+      at <anonymous> (/tmp/t51-red2-aV7b/M1/self-fix-tests/t51-reoffer-routing.test.mjs:97:93)
+(fail) T-93 (3/4): the DELIVERY routing class — keyed on BOTH halves, reproducing this wave's nine-instance shape [0.34ms]
+127 |     // A refusal NEVER writes: the predicate only reads, proven on a real record file.
+128 |     const file = join(mkdtempSync(join(tmpdir(), "mpd-t51-")), "team.json")
+129 |     const record = { id: "t51-team", tasks: [{ id: "t9", status: "completed", attemptId: "7c133ef3-completion" }] }
+130 |     writeFileSync(file, JSON.stringify(record, null, 2))
+131 |     const before = readFileSync(file, "utf8")
+132 |     expect(deliveryRoutingClass(record.tasks, { taskId: "t9", attemptId: "7c133ef3-completion" })).toBe("reoffer-terminal-same-attempt")
+                                                                                                         ^
+error: expect(received).toBe(expected)
+
+Expected: "reoffer-terminal-same-attempt"
+Received: undefined
+
+      at <anonymous> (/tmp/t51-red2-aV7b/M1/self-fix-tests/t51-reoffer-routing.test.mjs:132:100)
+(fail) T-93 (4/4): the predicate is a PURE READER and the dispatch boundary CONSULTS it (wiring assert) [0.78ms]
+
+ 2 pass
+ 2 fail
+ 21 expect() calls
+Ran 4 tests across 1 file. [105.00ms]

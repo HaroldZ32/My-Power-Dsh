@@ -1,0 +1,140 @@
+{
+  "schema": "t35/census-equivalence/1",
+  "why": "the instrument is UNTRACKED (no byte diff exists) and no pre-edit copy was archived, so the non-loosening claim is measured from censuses rather than diffed",
+  "inputs": {
+    "before": "/root/dshProj/my-power-dsh/evidence/docs/wave2b-laneB3-manual-paths/20260917T1455Z-t28/raw/verify-manual-paths-after2.log",
+    "removal": "/root/dshProj/my-power-dsh/evidence/docs/wave2b-laneB3-manual-paths/20260917T1500Z-t35/raw/removal-arm.log",
+    "after": "/root/dshProj/my-power-dsh/evidence/docs/wave2b-laneB3-manual-paths/20260917T1500Z-t35/raw/after-in-place.log"
+  },
+  "censuses": {
+    "before": {
+      "file": "/root/dshProj/my-power-dsh/evidence/docs/wave2b-laneB3-manual-paths/20260917T1455Z-t28/raw/verify-manual-paths-after2.log",
+      "buckets": {
+        "audited": 111,
+        "resolved": 109,
+        "unresolved": 2,
+        "over-report:url": 0,
+        "over-report:fragment": 34,
+        "over-report:trailing": 1,
+        "over-report:npm": 6,
+        "over-report:notRoot": 11,
+        "over-report:bare": 13,
+        "under-report:glob": 39,
+        "under-report:home": 10,
+        "under-report:absolute": 2,
+        "under-report:outside": 1,
+        "under-report:placeholder": 23,
+        "under-report:elided": 4,
+        "under-report:prose": 0
+      },
+      "families": {
+        "over-report": 65,
+        "under-report": 79
+      },
+      "failUnresolved": 2,
+      "pass": null
+    },
+    "removal": {
+      "file": "/root/dshProj/my-power-dsh/evidence/docs/wave2b-laneB3-manual-paths/20260917T1500Z-t35/raw/removal-arm.log",
+      "buckets": {
+        "audited": 111,
+        "resolved": 109,
+        "unresolved": 2,
+        "anticipatory": 0,
+        "declared-unreferenced": 0,
+        "over-report:url": 0,
+        "over-report:fragment": 34,
+        "over-report:trailing": 1,
+        "over-report:npm": 6,
+        "over-report:notRoot": 11,
+        "over-report:bare": 13,
+        "under-report:glob": 39,
+        "under-report:home": 10,
+        "under-report:absolute": 2,
+        "under-report:outside": 1,
+        "under-report:placeholder": 23,
+        "under-report:elided": 4,
+        "under-report:prose": 0
+      },
+      "families": {
+        "over-report": 65,
+        "under-report": 79,
+        "declared": 0
+      },
+      "failUnresolved": 2,
+      "pass": null
+    },
+    "after": {
+      "file": "/root/dshProj/my-power-dsh/evidence/docs/wave2b-laneB3-manual-paths/20260917T1500Z-t35/raw/after-in-place.log",
+      "buckets": {
+        "audited": 109,
+        "resolved": 109,
+        "unresolved": 0,
+        "anticipatory": 2,
+        "declared-unreferenced": 0,
+        "over-report:url": 0,
+        "over-report:fragment": 34,
+        "over-report:trailing": 1,
+        "over-report:npm": 6,
+        "over-report:notRoot": 11,
+        "over-report:bare": 13,
+        "under-report:glob": 39,
+        "under-report:home": 10,
+        "under-report:absolute": 2,
+        "under-report:outside": 1,
+        "under-report:placeholder": 23,
+        "under-report:elided": 4,
+        "under-report:prose": 0
+      },
+      "families": {
+        "over-report": 65,
+        "under-report": 79,
+        "declared": 2
+      },
+      "failUnresolved": null,
+      "pass": {
+        "resolved": 109,
+        "over": 65,
+        "under": 79,
+        "declared": 2
+      }
+    }
+  },
+  "checks": {
+    "class-emptied run is census-identical to the old instrument on every bucket it printed": {
+      "ok": true,
+      "reading": "all 16 shared buckets equal (audited=111, over-report:bare=13, over-report:fragment=34, over-report:notRoot=11, over-report:npm=6, over-report:trailing=1, over-report:url=0, resolved=109, under-report:absolute=2, under-report:elided=4, under-report:glob=39, under-report:home=10, under-report:outside=1, under-report:placeholder=23, under-report:prose=0, unresolved=2)"
+    },
+    "the buckets this change ADDS are empty when the class is emptied": {
+      "ok": true,
+      "reading": "added buckets anticipatory=0, declared-unreferenced=0"
+    },
+    "class-emptied run: both matcher-error families equal (the families the old instrument printed)": {
+      "ok": true,
+      "reading": "over-report=65 under-report=79; declared=0 (the family this change adds, empty with the class emptied)"
+    },
+    "class-emptied run still FAILS on the same two names": {
+      "ok": true,
+      "reading": "before=2 removal=2 (unresolved 2)"
+    },
+    "class-active run is GREEN with no unresolved path": {
+      "ok": true,
+      "reading": "unresolved=0 PASS={\"resolved\":109,\"over\":65,\"under\":79,\"declared\":2}"
+    },
+    "the movement is fully accounted for": {
+      "ok": true,
+      "reading": "after(0 unresolved + 2 anticipatory + 0 unreferenced) = 2 = before.unresolved 2"
+    },
+    "the class touches nothing outside itself": {
+      "ok": true,
+      "reading": "resolved 109 -> 109; over 65 -> 65; under 79 -> 79; audited 111 -> 109"
+    },
+    "both declared entries are named with their reason": {
+      "ok": true,
+      "reading": "anticipatory=2 declared-unreferenced=0 family declared=2"
+    }
+  },
+  "verdict": "PASS",
+  "failedChecks": [],
+  "finishedAt": "2026-09-17T15:01:39.272Z"
+}

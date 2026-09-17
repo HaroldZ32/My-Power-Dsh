@@ -1,0 +1,9 @@
+[2026-09-17T17:01:15Z HEAD ca78033]
+[registry sha] f8f64be9d045e19efa128fce
+[gate sha] 2bbe584a5906537460138adb
+verify:docs exit=0
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS
+selftest exit=0
+[verify-docs-parity self-test] 28/28 checks passed — PASS
+tools.js: registry 63 id(s), live 63 id(s) — agree
+[templates untouched] 8e1fbb893fcb428b 832ad62f8099b20a 

@@ -1,0 +1,28 @@
+{
+  "task": "T-90 anchor scan",
+  "run_at": "2026-09-17T14:46:19.009Z",
+  "pattern": "ee9ec16",
+  "scope": "./evidence/gates/wave2b-laneB2/20260917T144602Z",
+  "files_scanned": 4,
+  "self_reference": {
+    "excluded_output_root": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-re",
+    "excluded_files": [],
+    "reason": "the scan's own record carries the literal, so its output subtree is excluded from the walk — that is what makes the 0 re-takeable (t31/B2-F5)"
+  },
+  "policy": {
+    "out_of_family": "a POSITION citation (no literal string) and a BASENAME-ONLY citation (no `/`) are OUT OF FAMILY and pass silently, by design: this scanner judges a repo-relative literal only, so a green scan says nothing about those shapes (t31/B2-F3).",
+    "scope_note": "a plain-substring scan reports every file under the scope that contains the literal; it is a DISCOVERY heuristic, not a class rule (T-90's calibration bound)."
+  },
+  "matches": [
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-id/output.log",
+      "line": 2,
+      "phrase": "parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/2026091"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-id/result.json",
+      "line": 4,
+      "phrase": "\"pattern\": \"ee9ec16\","
+    }
+  ]
+}

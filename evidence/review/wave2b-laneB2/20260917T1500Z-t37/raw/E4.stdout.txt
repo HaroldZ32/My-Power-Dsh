@@ -1,0 +1,6 @@
+anchor scan (T-90 / ADDENDUM A: no mailbox-record-id-shaped anchors in this lane's records)
+parameters: literal string "ee9ec16" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under /tmp/t32-arms/e4 · scope 1 text file(s) · moment 2026-09-17T15:01:19.850Z
+self-reference: the scan's OWN output under evidence/review/wave2b-laneB2/20260917T1500Z-t37/E4-anchor-seeded is EXCLUDED from the walk (0 file(s)), so this reading is re-takeable with the same command (t31/B2-F5)
+  MATCH ../../../tmp/t32-arms/e4/note.md:1 — seeded: inbox message ee9ec16-4a2b-4c8d-9f01-2de3f4a5b6c7
+
+[anchor-scan] 1 anchor match(es) in 1 file(s) under /tmp/t32-arms/e4; 0 self-reference match(es) classified and named (not anchors)

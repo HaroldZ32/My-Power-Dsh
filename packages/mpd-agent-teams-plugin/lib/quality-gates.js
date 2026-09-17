@@ -663,26 +663,109 @@ const STATUS_TRANSITIONS = {
 function openHighFindings(findings) {
     return (findings ?? []).filter((finding) => (finding.resolved !== true && (finding.severity === 'high' || finding.severity === 'blocker')));
 }
+//#region mpd-delta coverage-name-match (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * T-29 (review R5/R6, the captain's NAME ruling): a coverage fallback compares NAMES, never counts.
+ * The normalisation is deliberately lenient — whitespace collapsed, case folded, trailing punctuation
+ * dropped — which is the paraphrase tolerance the count-only fallback existed for; the hole the ruling
+ * closes is a WRONG name of the RIGHT count, which used to be accepted.
+ */
+function normalizeCoverageName(text) {
+    return String(text ?? '').replace(/\s+/gu, ' ').trim().toLowerCase().replace(/[.;:,!?\u2026]+$/u, '');
+}
+/** True when `provided` names `expected` one-for-one (any order) under the normalised comparison. */
+function coverageNamesMatch(expected, provided) {
+    if (expected.length !== provided.length)
+        return false;
+    const pool = [...provided];
+    for (const name of expected) {
+        const at = pool.indexOf(name);
+        if (at === -1)
+            return false;
+        pool.splice(at, 1);
+    }
+    return true;
+}
+//#endregion mpd-delta coverage-name-match
+//#region mpd-delta acceptance-name-match (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-29 (review R6, the captain's NAME ruling): the fallback requires the NAMES to match one-for-one
+// under a normalised comparison (whitespace / case / trailing punctuation tolerant), so a paraphrased
+// but recognisable criterion still passes while a WRONG-named item of the right COUNT is refused; the
+// count-only reading is withdrawn. The WHOLE function sits inside this ONE region on purpose — a
+// region that SPLITS a function leaves the stripped skeleton with a mangled body, and the strip/heal
+// cycle then cannot reproduce the canonical bytes (measured on the first attempt: two deltas became
+// unplaceable).
 function acceptanceCovered(required, results) {
     if (results === undefined)
         return false;
     const byCriterion = new Map(results.map((item) => [item.criterion, item]));
     if ((required ?? []).every((criterion) => byCriterion.get(criterion)?.status === 'passed'))
         return true;
-    // Structured result arrays naturally preserve the contract order. Accept a
-    // same-length all-pass report even when a model paraphrases punctuation or
-    // whitespace in `criterion`; verification evidence remains independently
-    // required below. This avoids turning display text into an opaque id.
-    return results.length === (required ?? []).length && results.every((item) => item.status === 'passed');
+    // Structured result arrays naturally preserve the contract order, and a model may paraphrase
+    // punctuation/whitespace in `criterion` — so the fallback normalises the names. T-29 (review R6,
+    // the captain's NAME ruling): it requires the NAMES to match one-for-one, not merely the COUNT, so
+    // a wrong-named item of the right count is refused (the count-only reading is withdrawn).
+    // Verification evidence remains independently required below.
+    return results.every((item) => item.status === 'passed')
+        && coverageNamesMatch((required ?? []).map(normalizeCoverageName), results.map((item) => normalizeCoverageName(item.criterion)));
 }
+//#endregion mpd-delta acceptance-name-match
+//#region mpd-delta reported-red-coverage (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-84 (wave 2b, lane A): a RED the contract requires to be REPORTED has no ledger surface today,
+// so a seat must either mislabel it (`passed`) or fail the task (`failed`). The third status
+// `reported` carries a LABELLED red and DOES cover its command — while `failed` keeps its full
+// force (this row's negative control: a genuinely failed command must still fail the task).
 function verifyCovered(required, results) {
     if (results === undefined)
         return false;
     const byCommand = new Map(results.map((item) => [item.command, item]));
-    if ((required ?? []).every((command) => byCommand.get(command)?.status === 'passed'))
+    const covers = (entry) => entry?.status === 'passed' || entry?.status === 'reported';
+    if ((required ?? []).every((command) => covers(byCommand.get(command))))
         return true;
-    return results.length === (required ?? []).length && results.every((item) => item.status === 'passed');
+    // T-29 (review R5, the captain's NAME ruling): the fallback names, never counts — a `reported`
+    // entry whose `command` is a DIFFERENT COMMAND no longer covers the required command, which is what
+    // the gate's own refusal text ("no entry for <command>") always claimed.
+    return results.length === (required ?? []).length && results.every((item) => covers(item))
+        && coverageNamesMatch((required ?? []).map(normalizeCoverageName), results.map((item) => normalizeCoverageName(item.command)));
 }
+//#endregion mpd-delta reported-red-coverage
+//#region mpd-delta coverage-gap-text (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * T-87 (wave 2b, lane A): WHAT IS MISSING, NAMED — the unmatched required items and the count,
+ * appended to a completion refusal. `absent` = not present in the payload at all (the shape an
+ * amended contract produces); `unpaid` = present but not in an accepted status. Both are named,
+ * so a seat can repair the payload without a round trip.
+ */
+function coverageGapText(required, results, key, accepted) {
+    const named = required ?? [];
+    if (named.length === 0)
+        return ' — the contract declares no such item, so any payload is acceptable';
+    const provided = new Map((results ?? []).map((item) => [item[key], item]));
+    const absent = [];
+    const unpaid = [];
+    for (const name of named) {
+        const entry = provided.get(name);
+        if (entry === undefined)
+            absent.push(name);
+        else if (!accepted.includes(entry.status))
+            unpaid.push(name);
+    }
+    if (absent.length === 0 && unpaid.length === 0)
+        return '';
+    const parts = [];
+    if (absent.length > 0)
+        parts.push(`no entry for ${absent.join(', ')}`);
+    // T-29 (review R5/R6, the captain's NAME ruling): when an item is missing but the payload DID
+    // carry unmatched entries, the refusal names the near-miss, so the seat sees what the payload
+    // actually said instead of only what was expected.
+    const unmatched = [...provided.keys()].filter((name) => !named.includes(name));
+    if (absent.length > 0 && unmatched.length > 0)
+        parts.push(`nearest provided: ${unmatched.slice(0, 3).map((name) => JSON.stringify(name)).join(', ')}`);
+    if (unpaid.length > 0)
+        parts.push(`not ${accepted.join('/')}: ${unpaid.join(', ')}`);
+    return ` — ${parts.join('; ')} (matched ${named.length - absent.length - unpaid.length} of ${named.length})`;
+}
+//#endregion mpd-delta coverage-gap-text
 export function evaluateQualityCompletion(task, update) {
     const nextStatus = update.status;
     if (nextStatus !== undefined && nextStatus !== task.status) {
@@ -721,13 +804,18 @@ export function evaluateQualityCompletion(task, update) {
         }
         if (nextStatus !== 'completed')
             return { ok: true };
+        //#region mpd-delta completion-coverage-refusals (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        // T-87 (wave 2b, lane A): the claim-time payload template is invalidated by an AMENDED
+        // acceptance, and the refusal used to name nothing. BOTH refusals now name the unmatched
+        // item(s) AND the count; a payload with a genuinely wrong item is still refused.
         const acceptanceResults = update.acceptanceResults ?? task.acceptanceResults;
         if (acceptanceResults === undefined || !acceptanceCovered(task.acceptance, acceptanceResults)) {
-            return { ok: false, error: `${kind} completion requires passed acceptanceResults for every acceptance item` };
+            return { ok: false, error: `${kind} completion requires passed acceptanceResults for every acceptance item${coverageGapText(task.acceptance, acceptanceResults, 'criterion', ['passed'])}` };
         }
         if (commands === undefined || !verifyCovered(task.verify, commands)) {
-            return { ok: false, error: `${kind} completion requires a passed commandsRun entry for every verify command` };
+            return { ok: false, error: `${kind} completion requires a passed commandsRun entry for every verify command${coverageGapText(task.verify, commands, 'command', ['passed', 'reported'])}` };
         }
+        //#endregion mpd-delta completion-coverage-refusals
         if (kind === 'implementation' || kind === 'repair') {
             const changed = update.changedPaths ?? task.changedPaths;
             if (changed === undefined) {
@@ -761,16 +849,63 @@ function findingKey(ids) {
 }
 const CAPTAIN_ASSIGNEE = 'captain';
 const OPEN_FOLLOW_UP_STATUSES = ['pending', 'claimed', 'in_progress'];
-function schedulableAssignee(preferred, team, forbidden) {
+//#region mpd-delta repair-seat-capability (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * T-93 (wave 2b, lane A): can this seat EXECUTE the task the generator is about to create?
+ *
+ * The row: "the auto-generated repair routes to a seat that can execute it — write-kind tasks to a
+ * writer, or to the reviewed artifact's author; the generator reads the seat's deny list the way the
+ * spawn surface does." MEASURED at t51: `schedulableAssignee` read only the member's NAME, so a review
+ * completed by a read-only seat generated a repair assigned to a reference-only owner — and the pool
+ * guard dispatches an EXPLICIT assignment even to a restricted member (`nextCapableTask`'s own
+ * documented rule), so the repair went to a seat whose `toolDeny` makes it unsatisfiable.
+ *
+ * The read is the dispatch's OWN model (`lib/scheduler.js`, `taskCapabilityGap`): a WRITE half when
+ * the task is `implementation`/`repair` or declares any `inScope`, an EXECUTION half when it declares
+ * `verify` commands, and only the tool names that make those halves possible take part. It is
+ * DUPLICATED rather than imported because `lib/state.js` imports this module and `lib/scheduler.js`
+ * imports `state.js`, so importing the scheduler here would close a cycle; the arm asserts the two
+ * reads AGREE on a fixture matrix (the equivalence the row's DECISIVE clause names).
+ * @param task - the task about to be created (its own fields decide, never a caller's claim).
+ * @param member - the candidate seat.
+ * @returns the withheld tool names (empty = this seat can run it).
+ */
+export function generatedTaskCapabilityGap(task, member) {
+    const denied = new Set(member?.toolDeny ?? []);
+    const writes = task?.kind === 'implementation' || task?.kind === 'repair' || (task?.inScope ?? []).length > 0;
+    const exec = (task?.verify ?? []).length > 0;
+    const missing = [];
+    if (writes)
+        for (const tool of ['write', 'edit', 'mpd_hashline_edit'])
+            if (denied.has(tool))
+                missing.push(tool);
+    if (exec && denied.has('bash'))
+        missing.push('bash');
+    return missing;
+}
+//#endregion mpd-delta repair-seat-capability
+//#region mpd-delta repair-seat-selection (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * Pick the seat for a generated task.
+ *
+ * T-93 (wave 2b, lane A): with `need` supplied, a candidate whose deny list withholds what the task
+ * needs is SKIPPED — the reviewed artifact's author is still preferred, but only while the author can
+ * execute the repair; otherwise the first capable member is chosen. With `need` omitted the selection
+ * is unchanged (the read-only-writer exclusion is the repair's problem, not a review's).
+ */
+function schedulableAssignee(preferred, team, forbidden, need) {
+    const capable = (member) => need === undefined || generatedTaskCapabilityGap(need, member).length === 0;
     if (preferred !== undefined && preferred !== CAPTAIN_ASSIGNEE && preferred !== forbidden) {
         const live = team.members.find((member) => member.name === preferred && member.status !== 'removed');
-        if (live !== undefined)
+        if (live !== undefined && capable(live))
             return live.name;
     }
     return team.members.find((member) => (member.status !== 'removed'
         && member.name !== CAPTAIN_ASSIGNEE
-        && member.name !== forbidden))?.name;
+        && member.name !== forbidden
+        && capable(member)))?.name;
 }
+//#endregion mpd-delta repair-seat-selection
 function countRepairAttempts(team, sourceTaskId, findingIds) {
     const key = findingKey(findingIds);
     return team.tasks.filter((item) => (taskKindOf(item) === 'repair'
@@ -838,7 +973,23 @@ export function planQualityFollowUp(team, closed) {
         return { ...empty, escalated: true, status: 'escalated' };
     }
     const files = findings.map((finding) => finding.file).filter((file) => nonemptyString(file));
-    const implementer = schedulableAssignee(source?.assignee, team);
+    //#region mpd-delta repair-seat-required (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // T-93 (wave 2b, lane A): NO capable seat = NO repair. The generator used to fall back to ANY
+    // member, so a team whose only seats are read-only got a repair that could never complete; the
+    // row's negative control asks for a loud refusal or a captain route instead, and this is BOTH —
+    // the repair is not created and the reason names what each seat withholds.
+    const repairNeed = { kind: 'repair', verify: source?.verify };
+    const implementer = schedulableAssignee(source?.assignee, team, undefined, repairNeed);
+    if (implementer === undefined) {
+        const gaps = team.members
+            .filter((member) => member.status !== 'removed' && member.name !== CAPTAIN_ASSIGNEE)
+            .map((member) => `${member.name} withholds ${generatedTaskCapabilityGap(repairNeed, member).join(', ') || 'nothing'}`);
+        return {
+            ...empty,
+            notifyCaptain: `Review ${closed.id} needs a repair for ${sourceId}, but NO seat in this team can execute it — ${gaps.join('; ') || 'the team has no assignable member'}. The repair was NOT created: assign a write-capable seat (or widen the deny list) and re-run the review.`,
+        };
+    }
+    //#endregion mpd-delta repair-seat-required
     //#region mpd-delta repair-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
     // The generated scope never lists a path in both lists: a finding's file is
     // carved out of outOfScope by repairScopeFromFindings instead of being added
@@ -973,14 +1124,21 @@ export function isAcceptanceResult(value) {
         && (value['status'] === 'passed' || value['status'] === 'failed')
         && (value['evidence'] === undefined || typeof value['evidence'] === 'string');
 }
+//#region mpd-delta reported-red-status (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-84 (wave 2b, lane A): `reported` is the third command status — a red the contract requires to
+// be REPORTED. It must be LABELLED (`reason`), so the record carries why the red is acceptable;
+// an unlabelled `reported` entry is refused, and `failed` keeps its meaning.
+export const COMMAND_RESULT_STATUSES = ['passed', 'failed', 'reported'];
 export function isCommandResult(value) {
     if (!isRecord(value))
         return false;
     return nonemptyString(value['command'])
-        && (value['status'] === 'passed' || value['status'] === 'failed')
+        && COMMAND_RESULT_STATUSES.includes(value['status'])
+        && (value['status'] !== 'reported' || nonemptyString(value['reason']))
         && (value['exitCode'] === undefined || (Number.isSafeInteger(value['exitCode'])))
         && (value['evidence'] === undefined || typeof value['evidence'] === 'string');
 }
+//#endregion mpd-delta reported-red-status
 // Optional fields whose persisted values must be non-empty when present
 // (mirrors the checks in hasValidQualityTaskFields). Some models materialize
 // optional tool parameters as "" instead of omitting them (e.g. sending

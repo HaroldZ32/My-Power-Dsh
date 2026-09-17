@@ -14,6 +14,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { MPD_DELTAS } from "../lib/mpd-deltas.js"
+import { codeOf } from "./lib-absence.mjs"
 import { applyAgentTeamsFixes } from "../../../scripts/patch-agent-teams-fixes.mjs"
 import * as scheduler from "../lib/scheduler.js"
 
@@ -124,7 +125,9 @@ test("the guard is region-registered and its replacement is REFUSED after a re-m
     const materialized = readFileSync(target, "utf8").replace(
       /[ ]*\/\/#region mpd-delta pool-capability-select[\s\S]*?\/\/#endregion mpd-delta pool-capability-select\n/,
       "                    const task = recoverOwned ? owned : owned === undefined\n                        ? nextReadyTask(fresh.tasks, currentMember.name)\n                        : undefined;\n")
-    expect(materialized).not.toContain("mpd-delta pool-capability-select")
+    // T-92 (t43): the absence is a statement about the REGION, so it is asserted against the
+    // comment-stripped text — a comment naming the region id must not redden it.
+    expect(codeOf(materialized)).not.toContain("mpd-delta pool-capability-select")
     writeFileSync(target, materialized)
     expect(() => applyAgentTeamsFixes({ root, write: true })).toThrow(/pool-capability-select/)
   } finally {

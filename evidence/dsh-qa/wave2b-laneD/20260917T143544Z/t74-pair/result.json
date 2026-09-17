@@ -1,0 +1,32 @@
+{
+  "slug": "wave2b-lane-d",
+  "suite": "wave2b lane D corpus arms",
+  "moment": "2026-09-17T14:42:03.960Z",
+  "only": "t74",
+  "checks": [
+    {
+      "id": "T-74.out-discipline",
+      "ok": true,
+      "detail": "SKILL.md rule sentence present=true; foreign dir digest 68f1b1c11d29 → 68f1b1c11d29 identical=true (the pinned dir received the run: true)"
+    }
+  ],
+  "readings": [
+    {
+      "id": "T-74.out-discipline",
+      "check": {
+        "id": "T-74.out-discipline",
+        "ok": true,
+        "detail": "SKILL.md rule sentence present=true; foreign dir digest 68f1b1c11d29 → 68f1b1c11d29 identical=true (the pinned dir received the run: true)"
+      },
+      "pair": {
+        "before": "68f1b1c11d2980b6b80f63ed0404c0e5d225255418388b3bc1f1051796727344 files=1",
+        "after": "68f1b1c11d2980b6b80f63ed0404c0e5d225255418388b3bc1f1051796727344 files=1",
+        "identical": true,
+        "pinnedWrote": true,
+        "exit": 0
+      },
+      "rulePresent": true
+    }
+  ],
+  "ok": true
+}

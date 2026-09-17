@@ -1,0 +1,123 @@
+{
+  "recursive_key_producers_in_scope": [
+    "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "skills/dsh-qa/scripts/tui-team-surface.mjs"
+  ],
+  "non_recursive_glob_key_producers": [
+    "skills/dsh-qa/scripts/tui-team-surface.mjs"
+  ],
+  "js_assumption_key_producers": [],
+  "repo_wide_mjs_key_producers_count": 25,
+  "repo_wide_mjs_key_producers": [
+    ".mpd/red-baseline/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    ".mpd/scratch/t70-proof/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    ".mpd/scratch/t70-proof/skills/dsh-qa/scripts/tui-team-surface.mjs",
+    ".qa-reloc/mpd-pkg-relocated/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    ".qa-reloc/mpd-pkg-relocated/skills/dsh-qa/scripts/tui-team-surface.mjs",
+    "dist/mpd-package/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "dist/mpd-package/skills/dsh-qa/scripts/tui-team-surface.mjs",
+    "evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/scratch-pack/mpd-package/skills/dsh-qa/scripts/tui-team-surface.mjs",
+    "evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "evidence/extensions/extension-lifecycle/2026-09-17T07-39-32.206Z/scratch-pack/mpd-package/skills/dsh-qa/scripts/tui-team-surface.mjs",
+    "evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/scratch-pack/mpd-package/skills/dsh-qa/scripts/tui-team-surface.mjs",
+    "evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/skills/dsh-qa/scripts/tui-team-surface.mjs",
+    "evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/skills/dsh-qa/scripts/tui-team-surface.mjs",
+    "evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact/skills/dsh-qa/scripts/tui-team-surface.mjs",
+    "evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact-repro/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact-repro/skills/dsh-qa/scripts/tui-team-surface.mjs",
+    "evidence/review/t15-lane-d/20260917T075015Z/t83-fixture/skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "evidence/review/t15-lane-d/20260917T075015Z/t83-fixture/skills/dsh-qa/scripts/tui-team-surface.mjs",
+    "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "skills/dsh-qa/scripts/tui-team-surface.mjs"
+  ],
+  "naive_files_flagged": [
+    "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+    "skills/dsh-qa/scripts/tui-team-surface.mjs"
+  ],
+  "naive_keys_reported": 2,
+  "precise_violations": 1,
+  "rows": [
+    {
+      "path": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+      "keys": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "claims": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "naive_claims": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "claimed_but_unasserted": [],
+      "asserted_but_unclaimed": [],
+      "naive_claimed_but_unasserted": [
+        6
+      ],
+      "naive_asserted_but_unclaimed": []
+    },
+    {
+      "path": "skills/dsh-qa/scripts/tui-team-surface.mjs",
+      "keys": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        10
+      ],
+      "claims": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "naive_claims": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "claimed_but_unasserted": [
+        9
+      ],
+      "asserted_but_unclaimed": [],
+      "naive_claimed_but_unasserted": [
+        9
+      ],
+      "naive_asserted_but_unclaimed": []
+    }
+  ]
+}

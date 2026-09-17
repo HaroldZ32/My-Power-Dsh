@@ -1,0 +1,7 @@
+anchor scan (T-90 / ADDENDUM A: no mailbox-record-id-shaped anchors in this lane's records)
+parameters: literal string "ee9ec16" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/20260917T144602Z · scope 4 text file(s) · moment 2026-09-17T14:46:19.009Z
+self-reference: the scan's OWN output under evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-re is EXCLUDED from the walk (0 file(s)), so this reading is re-takeable with the same command (t31/B2-F5)
+  MATCH evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-id/output.log:2 — parameters: literal string "ee9ec16" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/2026091
+  MATCH evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-scan-id/result.json:4 — "pattern": "ee9ec16",
+
+[anchor-scan] 2 match(es) in 4 file(s) under ./evidence/gates/wave2b-laneB2/20260917T144602Z

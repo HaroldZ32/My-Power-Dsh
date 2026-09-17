@@ -1,0 +1,7 @@
+driver-header claim check — self-test (T-80 fixture arms)
+  ok   t80-matching — exit 0 (expected 0)
+  ok   t80-claimed-but-unasserted — exit 1 (expected 1); the key and the driver PATH must both be named
+  ok   t80-extra-key-near-miss — exit 1 (expected 1); the key and the driver PATH must both be named
+  ok   t80-directory-scope-dedup — keys=2 claims=3 violations=1 key_producers=3 (DEDUPED at directory scope: expected 2 / 3 / 1 / 3 — the summing computation printed 6 / 8 / 2; the child MUST exit 1 on the seeded mismatch)
+
+[driver-headers self-test] 4/4 arms passed (3 fixture arms + the seeded directory-scope counterexample)

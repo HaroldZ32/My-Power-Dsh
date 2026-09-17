@@ -1,0 +1,35 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/wave2b-laneA-product-rows.test.mjs:
+121 |     ]))
+122 |     const { tools } = registerTools(workspace, captain, member)
+123 |     const record = readRecord(teamFile)
+124 | 
+125 |     // (0) the enum and the quality predicates agree with the row
+126 |     expect(TASK_KINDS).toContain("deferred")
+                             ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "deferred"
+Received: [ "requirements", "implementation", "verification", "review", "repair", "integration",
+  "work"
+]
+
+      at <anonymous> (/tmp/t27-before/packages/mpd-agent-teams-plugin/self-fix-tests/wave2b-laneA-product-rows.test.mjs:126:24)
+(fail) T-13 deferred kind: never offered, never claimed, rendered as itself, and it never consumes the allowance [53.92ms]
+2594 |                 throw new Error('task_id is required');
+2595 |             const { team } = await withTeamLock(teamLockKey(stateRoot, located.id), () => requireFreshParticipant(stateRoot, located.id, caller.id));
+2596 |             const task = team.tasks.find((item) => item.id === taskId);
+2597 |             if (task === undefined) {
+2598 |                 const known = team.tasks.map((item) => item.id).join(', ');
+2599 |                 throw new Error(`task "${taskId}" does not exist in team "${team.name}" (known tasks: ${known || 'none'})`);
+                                 ^
+error: task "t1,t2,t3" does not exist in team "w2b product-row probe" (known tasks: t1, t2, t3)
+      at execute (/tmp/t27-before/packages/mpd-agent-teams-plugin/lib/tools.js:2599:27)
+(fail) T-27 batch contract read: N contracts in one call, a missing id as itself, batch-of-one == single, empty refused [53.65ms]
+(pass) T-44 text-surface approval: the same transition the panel path runs, and a member is refused [69.04ms]
+
+ 1 pass
+ 2 fail
+ 9 expect() calls
+Ran 3 tests across 1 file. [523.00ms]

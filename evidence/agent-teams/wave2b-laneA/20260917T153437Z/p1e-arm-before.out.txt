@@ -1,0 +1,24 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/t47-mailbox-window.test.mjs:
+15 | }
+16 | const message = (over = {}) => ({ id: "m1", from: "Engineer", to: "captain", content: "same payload", ts: 1_000_000, ...over })
+17 | 
+18 | test("P1e: the default window is 30 min, and a repeat at ~10 min FOLDS", async () => {
+19 |     const stateRoot = fixture()
+20 |     expect(MAILBOX_DEDUP_WINDOW_DEFAULT_MS).toBe(30 * 60 * 1000)
+                                                 ^
+error: expect(received).toBe(expected)
+
+Expected: 1800000
+Received: 60000
+
+      at <anonymous> (/tmp/t47-red/packages/mpd-agent-teams-plugin/self-fix-tests/t47-mailbox-window.test.mjs:20:45)
+(fail) P1e: the default window is 30 min, and a repeat at ~10 min FOLDS [0.83ms]
+(pass) P1e: a configured window of 0 folds NOTHING — the disabled value, proven by an arm [4.02ms]
+(pass) P1e: genuinely different content NEVER folds, whatever the window [0.94ms]
+
+ 2 pass
+ 1 fail
+ 5 expect() calls
+Ran 3 tests across 1 file. [43.00ms]

@@ -1,0 +1,19 @@
+=== ROUND-2 runtime pins ===
+405d4e364c289299d5074226
+6915cd8ba924ea3daa9c20ab
+4fd1ef5ccde94957aa3ecf0a
+b10d4ac7b3f397524f40c3f5
+
+=== 1. decisive driver at the CURRENT revision (own --out) ===
+exit=0
+=== 2. watchdog suite (was RED 138/1 at t33) ===
+exit=0
+=== 3. mpd-bg + mpd-doctor self-tests ===
+bg exit=0
+doctor exit=0
+=== 4. Addendum A both directions ===
+live exit=0
+mutant exit=0
+=== 5. T-25 + T-41 ===
+t25 exit=0
+doctor-absent exit=2

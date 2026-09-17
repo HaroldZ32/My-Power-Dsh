@@ -46,6 +46,7 @@ const USAGE = [
   "  --lock <p> lock file to read (and to write with --write); defaults to <repo>/VENDOR_LOCK.json",
   "  --json     emit one JSON document instead of the human report",
   "  --self-test  every arm in temp fixtures; exits non-zero if any arm fails",
+  "  assets this helper cannot derive are reported under a POLICY label (not a failure) - see plan T-71",
 ].join("\n")
 
 /** A refusal is a loud, non-mutating abort: the helper never guesses where a value belongs. */
@@ -125,8 +126,10 @@ function fingerprint(dir) {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Decide per asset: re-pin it (treeSha-bearing, derived from the working tree) or report it as NOT
- * REPINNED with the reason. Single-file `sha256` and count-only assets are never rewritten.
+ * Decide per asset: re-pin it (treeSha-bearing, derived from the working tree) or report it as a
+ * POLICY exclusion. T-71: the skipped assets used to print "NOT REPINNED …", which reads like a
+ * failure in a wave log even though it is deliberate policy; the label now says POLICY and the
+ * reason says what to do instead. Single-file `sha256` and count-only assets are never rewritten.
  */
 function planAssets(lock) {
   const assets = lock.assets && typeof lock.assets === "object" ? lock.assets : {}
@@ -135,7 +138,7 @@ function planAssets(lock) {
   const problems = []
   for (const [asset, meta] of Object.entries(assets)) {
     if (asset.startsWith("_")) {
-      skipped.push({ asset, reason: "NOT REPINNED - underscore-prefixed metadata key (the gate skips these too)" })
+      skipped.push({ asset, reason: "POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it" })
       continue
     }
     if (meta === null || typeof meta !== "object") {
@@ -146,7 +149,7 @@ function planAssets(lock) {
       const kind = typeof meta.sha256 === "string"
         ? "single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.mjs), never by rewriting the lock"
         : "count-only asset - carries no fingerprint this helper can derive"
-      skipped.push({ asset, reason: `NOT REPINNED - ${kind}` })
+      skipped.push({ asset, reason: `POLICY (not a failure) - ${kind}` })
       continue
     }
     const path = join(REPO_ROOT, asset)
@@ -475,9 +478,9 @@ function selfTest() {
       const r = run(fixtureScript, ["--check", "--lock", good])
       expect(r.code === 0, `exit ${r.code}, stderr=${r.err.trim()}`)
       expect(r.out.includes("CHECK     : GREEN"), `no GREEN line: ${r.out.trim()}`)
-      expect(r.out.includes("NOT REPINNED - single-file sha256 asset"), "sha256 asset was not reported as NOT REPINNED")
-      expect(r.out.includes("NOT REPINNED - count-only asset"), "count-only asset was not reported as NOT REPINNED")
-      return `exit 0; ${expected.fileCount}-file corpus in sync; non-treeSha assets reported NOT REPINNED`
+      expect(r.out.includes("POLICY (not a failure) - single-file sha256 asset"), "sha256 asset was not reported under the POLICY label")
+      expect(r.out.includes("POLICY (not a failure) - count-only asset"), "count-only asset was not reported under the POLICY label")
+      return `exit 0; ${expected.fileCount}-file corpus in sync; non-treeSha assets reported under the POLICY (not a failure) label`
     })
 
     arm("(b) drifted scratch lock -> --check exits 1 and prints the delta", () => {

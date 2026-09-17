@@ -1,0 +1,16 @@
+### SHAPE 2 — the shape the repair measured: the region wraps ONLY the fallback return, markers INSIDE the function body
+  region now wraps ONLY the fallback return, both markers inside acceptanceCovered
+--write-registry:
+[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (96 regions)
+--check AFTER regeneration (expect GREEN — the trap's first half):
+[patch-agent-teams-fixes] already applied: 96 mpd delta region(s) across 10 adopted file(s)
+exit=0
+### the heal suite under SHAPE 2 (the repair says SIX RED / 263 pass):
+(pass) t9: all four states of the ONLY shared seam heal byte-identically [627.73ms]
+(pass) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [25.20ms]
+(pass) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [43.06ms]
+
+ 18 pass
+ 3 fail
+ 953 expect() calls
+Ran 21 tests across 1 file. [5.03s]

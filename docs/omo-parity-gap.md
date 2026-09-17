@@ -1,3 +1,4 @@
+<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->
 # OMO Parity Audit — my-power-dsh vs upstream (om-opencode src/agents)
 
 Audit date: 2026-08-27. Upstream base: oh-my-openagent @ 8c57e46 (v5.0.0-beta.20), prompts under

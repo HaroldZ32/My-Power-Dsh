@@ -1,0 +1,23 @@
+[self-test] ok   healthy-observation: 15 checks passed on the healthy observation
+[self-test] ok   negative:non-stale-case-failed: the mutated observation FAILED its own check(s) ["F2"] — a fixture case that is NOT declared stale failing
+[self-test] ok   negative:stale-case-passes: the mutated observation FAILED its own check(s) ["F2b"] — a declared-stale case that now PASSES (the declaration must be re-checked)
+[self-test] ok   negative:stale-signature-lost: the mutated observation FAILED its own check(s) ["F2b"] — a stale case whose reading no longer matches its declared signature
+[self-test] ok   negative:warn-boundary: the mutated observation FAILED its own check(s) ["F3"] — a WARN below the 90 s threshold
+[self-test] ok   negative:label-regressed: the mutated observation FAILED its own check(s) ["F13"] — the pre-redesign tuple re-advertised as the product's frozen defaults (t65/S2)
+[self-test] ok   negative:product-defaults-wrong: the mutated observation FAILED its own check(s) ["F13"] — a lane that reports the injected tuple as the §3 product default
+[self-test] ok   negative:no-escalation-arm: the mutated observation FAILED its own check(s) ["F4"] — a §1 arm that never escalates (§1.2 of the contract)
+[self-test] ok   negative:arm-not-fold: the mutated observation FAILED its own check(s) ["F4"] — a §1 arm whose suppression came from the §4 fallback instead of the fold
+[self-test] ok   negative:arm-no-hold: the mutated observation FAILED its own check(s) ["F4"] — a §1 escalation that applied no hold (no scene leg either)
+[self-test] ok   negative:warn-only-holds: the mutated observation FAILED its own check(s) ["F4b"] — a hold applied while `actionOnEscalate` is warn-only
+[self-test] ok   negative:report-only-escalates: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm that escalates
+[self-test] ok   negative:report-only-warns-twice: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm warning more than once per task+attempt generation
+[self-test] ok   negative:report-only-holds: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm that held a team
+[self-test] ok   negative:report-only-cause: the mutated observation FAILED its own check(s) ["F12"] — a §4 warn not attributed to the heartbeat fallback
+[self-test] ok   negative:scene-hold-mismatch: the mutated observation FAILED its own check(s) ["F9"] — a scene pointer whose hold disagrees with the sidecar
+[self-test] ok   negative:scene-not-escalate: the mutated observation FAILED its own check(s) ["F9"] — a scene pointer that does not come from the escalation
+[self-test] ok   negative:not-preserving: the mutated observation FAILED its own check(s) ["F6"] — a pause that mutated the team record
+[self-test] ok   negative:deliveries: the mutated observation FAILED its own check(s) ["F6"] — a dispatch that reached a held team
+[self-test] ok   negative:no-contrast: the mutated observation FAILED its own check(s) ["F8"] — a halt control that no longer shows AC-17 going red
+[self-test] ok   negative:captain-missed: the mutated observation FAILED its own check(s) ["F5"] — a captain wedge that was not attributed
+[self-test] ok   negative:not-claimed-dropped: the mutated observation FAILED its own check(s) ["F10"] — a lane that silently dropped a NOT_CLAIMED entry
+[self-test] PASS — team-watchdog-fault (22 checks, 0 failed)

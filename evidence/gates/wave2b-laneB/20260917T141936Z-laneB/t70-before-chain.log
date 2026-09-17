@@ -1,0 +1,13 @@
+# T-70 'before' reading — the OLD verify:gates shape and its short-circuit
+
+## 1. The shape itself, quoted from package.json (the revision this lane replaced):
+    node scripts/verify-vendor.mjs && node scripts/verify-dist-fresh.mjs && bun run verify:rows && bun run verify:docs && node <preset-conformance> --self-test
+
+## 2. Measured today (2026-09-17T14:29:43Z) with the CURRENT tree (all five members green): the
+chain exits 0 — so the short-circuit is NOT observable on a healthy tree, and this log does not claim it is.
+exit=0, every member ran (see t70-old-chain-natural.log).
+
+## 3. The short-circuit demonstrated on a FORCED RED FIRST MEMBER (the same chain shape, first member
+replaced by a command that exits 1): the later members produce NO output at all. This is the row's
+defect made visible without needing the tree to be red:
+[forced-red-first-member] exit 1

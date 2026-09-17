@@ -8,6 +8,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv } from "./lib/credentials.mjs"
 
+const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url))))) // scripts/<domain>/<slug>/<file> -> repo root
 const FIXTURE = `# == base
 - id: llm
@@ -44,12 +45,13 @@ function main() {
   const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
   if (!env.DSH_HOME.startsWith(sandbox)) { console.error("[mount-assert] isolation assertion failed: DSH_HOME does not point to the temp directory"); process.exit(1) }
 
-  const run = spawnSync("dsh", ["--profile", "headless", "--dump-config"], { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+  // T-69: the sanctioned composer is the wrapper (its banner goes to stderr under --json).
+  const run = spawnSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "headless", "--json"], { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
   if (run.status !== 0) {
     console.error("[mount-assert] dsh --dump-config failed:", run.stderr?.slice(0, 2000))
     process.exit(1)
   }
-  const dump = run.stdout
+  const dump = dumpJsonText(run.stdout)
   const result = assertExpectations(dump, expect)
 
   const outDir = join(repoRoot, "evidence", "dsh-qa", "mount-assert", new Date().toISOString().replaceAll(":", "-"))

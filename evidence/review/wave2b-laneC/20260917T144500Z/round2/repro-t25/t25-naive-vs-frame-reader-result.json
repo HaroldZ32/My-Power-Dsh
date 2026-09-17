@@ -1,0 +1,96 @@
+{
+  "schema": "t25/naive-vs-frame-reader/1",
+  "leg": "wave-2b lane C (t17)",
+  "rowWording": "0 events from a naive reader is NOT proof of an empty log",
+  "reader": {
+    "path": "/root/dshProj/my-power-dsh/skills/dsh-qa/scripts/lib/session-evidence.mjs",
+    "sha256": "73d06d44dcb781df290588e6206b587960d9e4d8de7b0b9fa2d912d7216fe075",
+    "provenance": "skills/dsh-qa/scripts/lib/session-evidence.mjs — lane D's file, imported READ-ONLY"
+  },
+  "storeCorpus": {
+    "root": "/root/dshProj/my-power-dsh/.qa-reloc/home/sessions",
+    "found": 10,
+    "multiFrame": 10,
+    "naiveZeroEventStores": 10,
+    "naiveOneRecordStores": 10,
+    "note": "the corpus census is a reading of THIS workspace-local QA corpus (580 stores), not of the harness in general"
+  },
+  "primary": {
+    "store": "/root/dshProj/my-power-dsh/.qa-reloc/home/sessions/--root-dshProj-my-power-dsh-.qa-reloc-ws--/session-e1799679-7918-4249-8b90-ccb13410d59c/session.v3.jsonl.zstd",
+    "selectedBy": "readSessionEvents(dshHome, { workspace }) — the newest store of the workspace key, so every reader below reads the SAME file",
+    "frames": 10,
+    "tornStart": null,
+    "bytes": 62164,
+    "sha256Before": "d82ef35df7994e052b7894a2765911952c54a27ce128ea8f648a5e4cae77f498",
+    "sha256After": "d82ef35df7994e052b7894a2765911952c54a27ce128ea8f648a5e4cae77f498",
+    "byteStableAcrossReadings": true,
+    "mtimeUnchangedAcrossReadings": true
+  },
+  "readings": {
+    "naiveOneFrameRead": {
+      "records": 1,
+      "events": 0,
+      "types": [
+        "session"
+      ],
+      "ok": true,
+      "error": null
+    },
+    "regressedReaderFirstFrameOnly": {
+      "records": 1,
+      "events": 0,
+      "framesUsed": 1,
+      "ok": true
+    },
+    "shippedReaderFrameByFrame": {
+      "records": 26,
+      "events": 25,
+      "frames": 10,
+      "typeCensus": {
+        "session": 1,
+        "permission/preset": 1,
+        "sandbox/mode": 1,
+        "approval/policy": 1,
+        "agent/inbox/spliced": 2,
+        "turn/start": 1,
+        "step/start": 2,
+        "system/message": 1,
+        "user/message": 4,
+        "request/header": 1,
+        "request/context": 1,
+        "session/title": 2,
+        "session/title-llm-request": 1,
+        "assistant/message": 2,
+        "tool/call": 1,
+        "tool/result": 1,
+        "step/end": 2,
+        "turn/end": 1
+      }
+    },
+    "shippedReaderHighLevel": {
+      "records": 26,
+      "frames": 10,
+      "sessionsFound": 16,
+      "undecodableLines": 0,
+      "file": "/root/dshProj/my-power-dsh/.qa-reloc/home/sessions/--root-dshProj-my-power-dsh-.qa-reloc-ws--/session-e1799679-7918-4249-8b90-ccb13410d59c/session.v3.jsonl.zstd"
+    },
+    "sameStoreCheck": {
+      "naiveStore": "/root/dshProj/my-power-dsh/.qa-reloc/home/sessions/--root-dshProj-my-power-dsh-.qa-reloc-ws--/session-e1799679-7918-4249-8b90-ccb13410d59c/session.v3.jsonl.zstd",
+      "frameByFrameStore": "/root/dshProj/my-power-dsh/.qa-reloc/home/sessions/--root-dshProj-my-power-dsh-.qa-reloc-ws--/session-e1799679-7918-4249-8b90-ccb13410d59c/session.v3.jsonl.zstd",
+      "highLevelFile": "/root/dshProj/my-power-dsh/.qa-reloc/home/sessions/--root-dshProj-my-power-dsh-.qa-reloc-ws--/session-e1799679-7918-4249-8b90-ccb13410d59c/session.v3.jsonl.zstd",
+      "identical": true
+    }
+  },
+  "assertions": {
+    "sameFileForEveryReader": true,
+    "multiFrameStore": true,
+    "naiveReadsOnlyTheFirstFrame": true,
+    "naiveReportsZeroEvents": true,
+    "shippedReaderSeesEvents": true,
+    "shippedReaderSeesAToolCall": true,
+    "regressionToSingleFrameWouldRedden": true,
+    "sameMoment": true
+  },
+  "bound": "the shipped reader's count is a reading of THE READER on THIS store at THIS moment; it is not a claim about any other store, and the stores read are the workspace-local QA corpus, never the real ~/.dsh",
+  "finishedAt": "2026-09-17T14:55:09.360Z"
+}

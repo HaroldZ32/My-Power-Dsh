@@ -1,0 +1,16 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=df652241c742 lanes=10 evidence=evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes
+[mpd-qa:(only)] discovery=46 lane script(s) (.mjs entries 46, underscore-excluded 0, unlisted 0, outside-suite 19)
+[mpd-qa:(only)] immutability required=10: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=36
+[mpd-qa:(only)] PASS case=wave2b-lane-d evidence=evidence/dsh-qa/wave2b-laneD/2026-09-17T15-06-21.308Z/result.json log=evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes/lanes/wave2b-lane-d.log ms=1471
+[mpd-qa:(only)] PASS case=workmate-team-member evidence=evidence/plan-f/workmate-team-member/2026-09-17T15-06-22.721Z log=evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes/lanes/workmate-team-member.log ms=86683
+[mpd-qa:(only)] UNAVAILABLE case=session-start-team reason=absent-credentials prereq="provider credential (DEEPSEEK_API_KEY / deepseek-official route)" signature=evidence/dsh-qa/session-start-team/2026-09-17T15-07-49.439Z/output.log:598 exit=1 evidence=evidence/dsh-qa/session-start-team/2026-09-17T15-07-49.439Z log=evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes/lanes/session-start-team.log ms=858574
+[mpd-qa:(only)] PASS case=relocate-smoke evidence=evidence/plan-d/relocate/2026-09-17T15-22-07.988Z log=evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes/lanes/relocate-smoke.log ms=17982
+[mpd-qa:(only)] FAIL case=bundle-lifecycle reason=exit-1 exit=1 evidence=evidence/dsh-qa/bundle-lifecycle/2026-09-17T15-22-25.973Z log=evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes/lanes/bundle-lifecycle.log ms=20485
+[mpd-qa:(only)] PASS case=team-route-rewire evidence=evidence/plan-e/e4-team-vendor/2026-09-17T15-22-46.457Z log=evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes/lanes/team-route-rewire.log ms=32090
+[mpd-qa:(only)] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T15-23-18.693Z log=evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes/lanes/mount-assert.log ms=189
+[mpd-qa:(only)] FAIL case=agent-teams-adopt reason=step:teamState prereq="the lane's own evidence marks step `teamState` as failed" signature=evidence/plan-c/c1-team/2026-09-17T15-23-18.736Z/result.json:null also=unauthorized exit=1 evidence=evidence/plan-c/c1-team/2026-09-17T15-23-18.736Z/web.log log=evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes/lanes/agent-teams-adopt.log ms=26557
+[mpd-qa:(only)] PASS case=workmate-library evidence=evidence/plan-f/workmate-library/2026-09-17T15-23-45.299Z log=evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes/lanes/workmate-library.log ms=31111
+[mpd-qa:(only)] PASS case=tui-team-surface evidence=evidence/tui/team-surface-verify/2026-09-17T15-24-16.418Z log=evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes/lanes/tui-team-surface.log ms=40003
+[mpd-qa:(only)] summary selected=10 pass=7 unavailable=1 fail=2
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/wave2b-laneD/20260917T1522Z-t38-lanes10/lanes
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

@@ -19,6 +19,7 @@ import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
+const safeJson = (text) => { try { return JSON.parse(text) } catch { return null } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PROMPT = `Perform this exact sequence with the tools and report each result:
 1) mpd_workmate_init {base:"hephaestus", name:"alice"}
@@ -84,8 +85,11 @@ function runReal() {
   const inst = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", dshHome, "--profile", "mpd-headless", "--skip-toolchain"], { timeout: 600000 })
   steps.install = { ok: inst.status === 0, exit: inst.status }
 
-  const dump = runSync("dsh", ["--profile", "mpd-headless", "--dump-config"], { timeout: 120000 })
-  steps.dump = { ok: dump.status === 0 && dump.out.includes("id: mpd-workmate") && dump.out.includes("id: mpd-roles") && dump.out.includes("id: agent-teams"), exit: dump.status }
+  // T-69: compose through the wrapper (the banner lands on STDERR under `--json`, so the child's
+  // own output stays parseable and the "composition only" claim travels with the reading).
+  const dump = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "mpd-headless", "--json"], { timeout: 120000 })
+  const dumpText = safeJson(dump.out)?.stdout ?? dump.out
+  steps.dump = { ok: dump.status === 0 && dumpText.includes("id: mpd-workmate") && dumpText.includes("id: mpd-roles") && dumpText.includes("id: agent-teams"), exit: dump.status }
 
   const live = runSync("dsh", ["--profile", "mpd-headless", PROMPT], { timeout: 900000, cwd: ws })
   const out = live.out

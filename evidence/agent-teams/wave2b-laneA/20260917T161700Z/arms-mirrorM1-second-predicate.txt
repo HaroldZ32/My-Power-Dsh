@@ -1,0 +1,58 @@
+bun test v1.3.14 (0d9b296a)
+
+self-fix-tests/t53-member-capacity.test.mjs:
+(pass) T-11 (1/4): the view names the READY task and shows the BLOCKED one as blocked (the chain t1 -> t2) [3.29ms]
+[T-11] scheduler ready set: ["t1"]
+[T-11] view ready set:      ["t1","t2"]
+51 |     const schedulerReady = team.tasks.filter((entry) => isTaskReady(team.tasks, entry)).map((entry) => entry.id).sort()
+52 |     // What the view reports as claimable, member by member (a busy member's row contributes nothing).
+53 |     const viewReady = [...new Set(view.flatMap((row) => row.ready))].sort()
+54 |     console.log(`[T-11] scheduler ready set: ${JSON.stringify(schedulerReady)}`)
+55 |     console.log(`[T-11] view ready set:      ${JSON.stringify(viewReady)}`)
+56 |     expect(viewReady).toEqual(schedulerReady)
+                           ^
+error: expect(received).toEqual(expected)
+
+  [
+    "t1",
++   "t2",
+  ]
+
+- Expected  - 0
++ Received  + 1
+
+      at <anonymous> (/tmp/t53-red2-dxdK/m1/self-fix-tests/t53-member-capacity.test.mjs:56:23)
+(fail) T-11 (2/4): DECISIVE — the view's ready set EQUALS the scheduler's ready set for the same revision [0.62ms]
+74 |             task("t1", { assignee: "Idle", dependencies: ["t9"] }),
+75 |             task("t2", { assignee: "Busy", status: "completed" }),
+76 |         ],
+77 |     }
+78 |     const view = memberCapacityView(stalled)
+79 |     expect(view.every((row) => row.next_claimable === null)).toBe(true)
+                                                                  ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/tmp/t53-red2-dxdK/m1/self-fix-tests/t53-member-capacity.test.mjs:79:62)
+(fail) T-11 (3/4): NEG CONTROL — zero ready tasks prints `none`, and a BUSY member is not claimable [0.33ms]
+ 98 |     // The readiness RULE is not re-implemented here: no dependency satisfaction test of its own, and
+ 99 |     // exactly ONE helper call site inside the ready/blocked answers.
+100 |     expect(region).not.toContain("unsatisfiedDependencies")
+101 |     // TWO call sites, both the helper: the positive answer (`readyOf`) and its negated twin
+102 |     // (`blockedOf`) — so a task the helper refuses is NAMED as blocked instead of being dropped.
+103 |     expect(region.match(/isTaskReady\(/gu)?.length).toBe(2)
+                                                          ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 1
+
+      at <anonymous> (/tmp/t53-red2-dxdK/m1/self-fix-tests/t53-member-capacity.test.mjs:103:53)
+(fail) T-11 (4/4): the view is FED by the scheduler's helper (wiring assert) and never re-implements it [1.16ms]
+
+ 1 pass
+ 3 fail
+ 10 expect() calls
+Ran 4 tests across 1 file. [114.00ms]

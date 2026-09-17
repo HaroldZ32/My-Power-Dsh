@@ -1,0 +1,30 @@
+== t32 independent measures ==
+moment_utc 2026-09-17T15:01:28Z
+checker bc49d6c716652038d5418d9795b1b9d6bc96733d83955b96089e430e070a755b 1257 lines
+my key-producing set: ['skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs', 'skills/dsh-qa/scripts/tui-team-surface.mjs']
+skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs: reference lines carrying A<n> tokens = 2; token set = [1, 2, 3, 4, 6]
+    line 9: [1, 2, 3, 4, 6] :: // `<workspace>/.mpd/mpd.jsonc` (t34 design §1/§2/§A.1/§D; t35 acceptance A1-A4/A6).
+    line 32: [6] :: //   A6 the write-back switch (`writeBack: false`, the design's key; `settingsBridge.writeBack`
+skills/dsh-qa/scripts/tui-team-surface.mjs: reference lines carrying A<n> tokens = 0; token set = []
+B-control exit=0 | 9/9 checks passed, 0 failed | 1 citation(s) (checked 1
+B-position exit=0 | 9/9 checks passed, 0 failed | 0 citation(s) (checked 0
+B-basename exit=0 | 9/9 checks passed, 0 failed | 0 citation(s) (checked 0
+B-rot exit=1 | 5/9 checks passed, 4 failed | 1 citation(s) (checked 1
+C1 (--out INSIDE the scanned root, run 1) exit=0
+C2 (same form, run 2)                  exit=0
+C3 (--out OUTSIDE the scanned root)    exit=0
+--- C1 summary ---
+  SELF-REFERENCE evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:72 — the file QUOTES the scan's own command (provenance, not an anchor): { "command": "node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --out …", "exit": 0, "matches": 0, "files_scanned": 11 },
+  SELF-REFERENCE evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:83 — the file QUOTES the scan's own command (provenance, not an anchor): { "command": "node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --out …", "exit": 0, "evidence": "0 matches in 11 files" }
+
+[anchor-scan] 0 anchor match(es) in 18 file(s) under ./evidence/gates/wave2b-laneB2/20260917T142452Z; 4 self-reference match(es) classified and named (not anchors)
+--- C2 summary ---
+  SELF-REFERENCE evidence/gates/wave2b-laneB2/20260917T142452Z/result.json:83 — the file QUOTES the scan's own command (provenance, not an anchor): { "command": "node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --out …", "exit": 0, "evidence": "0 matches in 11 files" }
+
+[anchor-scan] 0 anchor match(es) in 18 file(s) under ./evidence/gates/wave2b-laneB2/20260917T142452Z; 4 self-reference match(es) classified and named (not anchors)
+--- the two in-scope runs agree? ---
+IDENTICAL summary line across two runs
+R1-verbatim/result.json: contains 'OUT OF FAMILY' = True
+R4-t80-live/result.json: contains 'OUT OF FAMILY' = True
+C1-anchor-in-scope/result.json: contains 'OUT OF FAMILY' = True
+scratch deleted: YES

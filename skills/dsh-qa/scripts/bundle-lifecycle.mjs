@@ -24,6 +24,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
+const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PKG = "@mpd-dsh/mpd"
 const PORT = 3197
@@ -59,7 +60,7 @@ function selfTest() {
 
 function runSync(cmd, args, env, opts = {}) {
   const result = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 600000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
-  return { status: result.status, out: (result.stdout || "") + (result.stderr || "") }
+  return { status: result.status, out: (result.stdout || "") + (result.stderr || ""), stdout: result.stdout || "" }
 }
 
 async function runReal() {
@@ -112,8 +113,9 @@ async function runReal() {
   }
   if (!steps.install.ok) fail("install step failed: " + add.out.slice(-1500))
   // The composed tree is part of the unit too: every bundle row lands at once.
-  const dumpAfterInstall = runSync("dsh", ["--profile", "w", "--dump-config"], env)
-  const composed = dumpAfterInstall.out
+  // T-69: the wrapper composes (banner on stderr under --json, so the tree stays parseable).
+  const dumpAfterInstall = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "w", "--json"], env)
+  const composed = dumpJsonText(dumpAfterInstall.stdout)
   steps.composed = {
     ok: dumpAfterInstall.status === 0
       && ["mpd-dsh-adapter", "mpd-bootstrap", "mpd-web-compat", "mpd-tools", "mpd-roles", "mpd-workmate", "agent-teams", "mcp-astgrep"].every((id) => composed.includes("id: " + id))
@@ -175,14 +177,15 @@ async function runReal() {
   // dependency was installed), so the case asserts the layer is still composed.
   const plainInstall = runSync("pnpm", ["install", "--prefer-offline", "--store-dir", store], env, { cwd: profile })
   const manifestAfterPlain = JSON.parse(readFileSync(join(profile, "package.json"), "utf8"))
-  const dumpAfterPlain = runSync("dsh", ["--profile", "w", "--dump-config"], env)
+  const dumpAfterPlain = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "w", "--json"], env)
+  const dumpAfterPlainText = dumpJsonText(dumpAfterPlain.stdout)
   steps.layerDurability = {
     ok: plainInstall.status === 0
       && manifestAfterPlain.dependencies?.[PKG] !== undefined
       && (manifestAfterPlain.dsh?.profile?.bundles ?? []).includes(PKG)
-      && dumpAfterPlain.out.includes("id: mpd-dsh-adapter")
-      && dumpAfterPlain.out.includes("id: agent-presets")
-      && dumpAfterPlain.out.includes('"/node_modules/@mpd-dsh/mpd/presets"'),
+      && dumpAfterPlainText.includes("id: mpd-dsh-adapter")
+      && dumpAfterPlainText.includes("id: agent-presets")
+      && dumpAfterPlainText.includes('"/node_modules/@mpd-dsh/mpd/presets"'),
     exit: plainInstall.status,
     dependency: typeof manifestAfterPlain.dependencies?.[PKG] === "string",
     bundles: manifestAfterPlain.dsh?.profile?.bundles ?? [],
@@ -191,7 +194,8 @@ async function runReal() {
   // ── 4) real uninstall: everything goes, nothing is left behind ─────────────
   const remove = runSync("dsh", ["plugin", "--profile", "w", "remove", "--store-dir", store, PKG], env)
   const manifestAfterRemove = JSON.parse(readFileSync(join(profile, "package.json"), "utf8"))
-  const dumpAfter = runSync("dsh", ["--profile", "w", "--dump-config"], env)
+  const dumpAfter = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "w", "--json"], env)
+  const dumpAfterText = dumpJsonText(dumpAfter.stdout)
   const residue = []
   for (const candidate of [join(home, "skills"), join(home, ".agent-presets"), join(profile, "node_modules", "@mpd-dsh"), installedBundle]) {
     if (existsSync(candidate)) residue.push(candidate)
@@ -202,10 +206,10 @@ async function runReal() {
     ok: remove.status === 0
       && manifestAfterRemove.dependencies?.[PKG] === undefined
       && !(manifestAfterRemove.dsh?.profile?.bundles ?? []).includes(PKG)
-      && !dumpAfter.out.includes("id: mpd-bootstrap")
-      && !dumpAfter.out.includes("id: mpd-dsh-adapter")
-      && !dumpAfter.out.includes("id: mpd-web-compat")
-      && /default: standard/.test(dumpAfter.out)
+      && !dumpAfterText.includes("id: mpd-bootstrap")
+      && !dumpAfterText.includes("id: mpd-dsh-adapter")
+      && !dumpAfterText.includes("id: mpd-web-compat")
+      && /default: standard/.test(dumpAfterText)
       && residue.length === 0
       && mpdStateEntries.length === 0,
     exit: remove.status,

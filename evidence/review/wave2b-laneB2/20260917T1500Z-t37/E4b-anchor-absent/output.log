@@ -1,0 +1,3 @@
+anchor scan (T-90 / ADDENDUM A: no mailbox-record-id-shaped anchors in this lane's records)
+parameters: literal string "00000000deadbeef" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under /tmp/t32-arms/e4 · scope 1 text file(s) · moment 2026-09-17T15:01:19.905Z
+self-reference: the scan's OWN output under evidence/review/wave2b-laneB2/20260917T1500Z-t37/E4b-anchor-absent is EXCLUDED from the walk (0 file(s)), so this reading is re-takeable with the same command (t31/B2-F5)

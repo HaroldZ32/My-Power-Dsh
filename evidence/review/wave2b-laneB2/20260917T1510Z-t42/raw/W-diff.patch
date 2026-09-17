@@ -1,0 +1,323 @@
+--- evidence/gates/wave2b-laneB2/20260917T142452Z/citation-run/revisions/checker.mjs	2026-09-17 22:25:16.475663675 +0800
++++ scripts/check-citations.mjs	2026-09-17 23:09:10.202799853 +0800
+@@ -40,9 +40,23 @@
+ //       the directories it covers, their per-directory split and BOTH matcher-error directions.
+ //   node scripts/check-citations.mjs --anchor-scan <dir> --pattern <literal>   T-90: report every
+ //       file under <dir> containing the literal, with path + line + phrase (exit 1 on any match).
++//       RE-TAKEABLE 0: the scan excludes its OWN output root from the walk, and the reading is only
++//       re-takeable when `--out` (and any stdout capture) is written OUTSIDE the scanned scope, or
++//       when the scanned scope is a SEALED directory nobody writes into. A scan whose output lands
++//       inside its own scope sees the PREVIOUS scans' records and cannot reproduce its 0.
+ // Every mode writes `<out>/result.json` + `<out>/output.log` (+ `<out>/revisions/` for a citation
+ // run) when `--out` is given, and a SECOND run at the same `--out` is REFUSED, never overwritten
+-// (immutable evidence: T-53, T-74).
++// (immutable evidence: T-53, T-74). `--anchor-scan` EXCLUDES its own output subtree from the walk
++// and names the exclusion in its record, so its reading is re-takeable (t31/B2-F5).
++//
++// ── THE CITATION FAMILY'S BOUNDARY (named, so a silent pass is not read as "checked") ──
++// A citation this checker can JUDGE is a REPO-RELATIVE LITERAL path with at least one `/`
++// (optionally `:line` / `:line-line`), with an optional claim written beside it. Two shapes are
++// OUT OF FAMILY and pass SILENTLY, by DESIGN: (i) a POSITION citation — an arm cited by where it
++// sits ("the third assertion in lane A's note") with no literal string — and (ii) a BASENAME-ONLY
++// citation (`` `alphaSymbol`, `probe.ts` ``, no `/`). Neither can be resolved or rotted by this
++// checker, so a green run says NOTHING about them; the six addressing parameters below are stated
++// in exactly these terms, and this boundary is repeated in every run record's policy block.
+ import { spawnSync } from "node:child_process"
+ import { createHash } from "node:crypto"
+ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
+@@ -650,6 +664,7 @@
+ function parseHeaderClaims(text, { naive = false } = {}) {
+   const claims = new Map()
+   const references = []
++  const referenceTokens = new Set()
+   const claimLines = []
+   let scope = false
+   for (const body of driverHeaderLines(text)) {
+@@ -674,6 +689,15 @@
+     if (!scope) continue
+     if (REFERENCE_MARKERS.test(trimmed)) {
+       references.push(trimmed)
++      // F4 (t31): the exemption is LINE-wide. The tokens on such a line are collected here and
++      // reported as the audit's THIRD matcher-error direction (an under-report), so the exemption
++      // is declared and MEASURED instead of silent.
++      for (const match of trimmed.matchAll(new RegExp(CLAIM_RANGE.source, "g"))) {
++        const from = Number(match[1])
++        const to = Number(match[2])
++        if (to >= from && to - from <= 20) for (let n = from; n <= to; n++) referenceTokens.add(n)
++      }
++      for (const match of trimmed.matchAll(new RegExp(CLAIM_TOKEN.source, "g"))) referenceTokens.add(Number(match[1]))
+       continue
+     }
+     claimLines.push(trimmed)
+@@ -687,7 +711,7 @@
+       if (!claims.has(n)) claims.set(n, trimmed)
+     }
+   }
+-  return { claims, references, claimLines }
++  return { claims, references, referenceTokens, claimLines }
+ }
+ 
+ /** The `add("A<n>…")` assertion keys a driver's code actually produces. */
+@@ -703,7 +727,7 @@
+ /** One driver's row: its keys, its claims, and the two mismatch directions. */
+ function driverRow(absolute, { naive = false } = {}) {
+   const text = readFileSync(absolute, "utf8")
+-  const { claims, references, claimLines } = parseHeaderClaims(text, { naive })
++  const { claims, references, referenceTokens, claimLines } = parseHeaderClaims(text, { naive })
+   const keys = parseAssertedKeys(text)
+   const claimedButUnasserted = [...claims.keys()].filter((n) => !keys.has(n)).sort((a, b) => a - b)
+   const assertedButUnclaimed = [...keys.keys()].filter((n) => !claims.has(n)).sort((a, b) => a - b)
+@@ -715,6 +739,7 @@
+     claimed_but_unasserted: claimedButUnasserted,
+     asserted_but_unclaimed: claims.size === 0 ? [] : assertedButUnclaimed,
+     reference_lines: references,
++    reference_tokens: [...referenceTokens].sort((a, b) => a - b),
+     claim_lines: claimLines,
+     phrases: Object.fromEntries(claimedButUnasserted.map((n) => [`A${n}`, claims.get(n)])),
+   }
+@@ -749,14 +774,41 @@
+     log(`  ${ok ? "ok  " : "FAIL"} ${fixture.id} — exit ${child.status} (expected ${fixture.expect})${fixture.needle === undefined ? "" : "; the key and the driver PATH must both be named"}`)
+     if (!ok) log(output.trim().split("\n").slice(-4).join("\n"))
+   }
++  // t41/B2R3-F1 CLASS REQUIREMENT — a SEEDED counterexample for the DIRECTORY-SCOPE fields. The corpus has
++  // one key-producing file per directory, so a sweep that reads labels against code called the directory
++  // counts consistent; only a seeded shape falsifies them. This directory holds THREE files: each produces
++  // A1–A2 and each claims A1–A3, so A3 is claimed-but-unasserted twice. The pre-fix SUMMING computation
++  // printed keys=6 / claims=8 / violations=2; the DEDUPED reading must be keys=2 / claims=3 / violations=1
++  // with key_producers=3 (the file count stays a file count).
++  const dirScope = join(root, "dir-scope")
++  mkdirSync(dirScope, { recursive: true })
++  for (const name of ["a.mjs", "b.mjs", "c.mjs"]) {
++    writeFileSync(join(dirScope, name), ["#!/usr/bin/env node", "// This driver CHECKS A1–A3.", "", 'add("A1", true)', 'add("A2", true)', ""].join("\n"))
++  }
++  const dirOut = join(root, "dir-scope-out")
++  const dirChild = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--driver-headers", "--dir", dirScope, "--out", dirOut], { encoding: "utf8", cwd: REPO })
++  let dirEntry
++  try {
++    const dirRecord = JSON.parse(readFileSync(join(dirOut, "result.json"), "utf8"))
++    dirEntry = Object.entries(dirRecord.audit.per_directory_split).find(([path]) => path.includes("dir-scope"))?.[1]
++  } catch {
++    dirEntry = undefined
++  }
++  // the seeded shape carries a REAL mismatch (A3 claimed, never asserted), so the child MUST redden —
++  // exit 1 — while its directory counts are DEDUPED; both halves are asserted.
++  const dirOk = dirChild.status === 1 && dirEntry !== undefined && dirEntry.keys === 2 && dirEntry.claims === 3 && dirEntry.violations === 1 && dirEntry.key_producers === 3
++  if (!dirOk) failed += 1
++  log(`  ${dirOk ? "ok  " : "FAIL"} t80-directory-scope-dedup — keys=${dirEntry?.keys} claims=${dirEntry?.claims} violations=${dirEntry?.violations} key_producers=${dirEntry?.key_producers} (DEDUPED at directory scope: expected 2 / 3 / 1 / 3 — the summing computation printed 6 / 8 / 2; the child MUST exit 1 on the seeded mismatch)`)
+   rmSync(root, { recursive: true, force: true })
+   log("")
+-  log(`[driver-headers self-test] ${fixtures.length - failed}/${fixtures.length} arms passed`)
++  log(`[driver-headers self-test] ${fixtures.length + 1 - failed}/${fixtures.length + 1} arms passed (3 fixture arms + the seeded directory-scope counterexample)`)
+   return failed === 0 ? 0 : 1
+ }
+ 
+ function driverHeadersMain() {
+-  const naive = process.argv.includes("--naive")
++  // t31/B2-F2: there is NO user-facing naive MODE. The alternative (naive) matcher is an INTERNAL
++  // measurement the audit runs for its over-report direction; a flag that only relabelled the mode
++  // while every row came from the precise matcher was removed rather than wired.
+   if (process.argv.includes("--self-test")) return driverHeadersSelfTest()
+   const scopeArg = process.argv.includes("--dir") ? process.argv[process.argv.indexOf("--dir") + 1] : DRIVER_SCOPE
+   const runAt = new Date().toISOString()
+@@ -771,7 +823,7 @@
+   const split = new Map()
+   for (const file of files) {
+     const directory = relative(REPO, dirname(file)) + "/"
+-    const bucket = split.get(directory) ?? { files: 0, key_producers: 0, keys: 0, claims: 0, violations: 0, no_claim_set: 0 }
++    const bucket = split.get(directory) ?? { files: 0, key_producers: 0, key_ids: new Set(), claim_ids: new Set(), mismatched_ids: new Set(), no_claim_set: 0 }
+     bucket.files += 1
+     const text = readFileSync(file, "utf8")
+     const keys = parseAssertedKeys(text)
+@@ -779,11 +831,14 @@
+       const row = driverRow(file)
+       rows.push(row)
+       bucket.key_producers += 1
+-      bucket.keys += row.keys.length
+-      bucket.claims += row.claims.length
++      // t41/B2R3-F1: DEDUPED at DIRECTORY scope — the label says "distinct … in that directory", so the
++      // ids are UNIONED across the directory's files. The previous `+= row.keys.length` SUMMED one file's
++      // own distinct count per file (a seeded two-file directory printed 4 where only 2 ids exist).
++      for (const id of row.keys) bucket.key_ids.add(id)
++      for (const id of row.claims) bucket.claim_ids.add(id)
++      for (const id of [...row.claimed_but_unasserted, ...row.asserted_but_unclaimed]) bucket.mismatched_ids.add(id)
+       if (row.no_claim_set) bucket.no_claim_set += 1
+       const violations = row.claimed_but_unasserted.length + row.asserted_but_unclaimed.length
+-      bucket.violations += violations
+       record(
+         `driver:${row.path}`,
+         violations === 0,
+@@ -801,12 +856,65 @@
+   const nonRecursive = scopeIsDirectory ? readdirSync(scopeRoot, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".mjs") && parseAssertedKeys(readFileSync(join(scopeRoot, entry.name), "utf8")).size > 0).length : 0
+   const repoWide = walkFiles(REPO, (file) => file.endsWith(".mjs")).filter((file) => parseAssertedKeys(readFileSync(file, "utf8")).size > 0).length
+   const extensionAssumption = scopeIsDirectory ? DRIVER_EXTENSIONS.flatMap((extension) => walkFiles(scopeRoot, (file) => file.endsWith(extension.replace(".mjs", ".js")))).filter((file) => parseAssertedKeys(readFileSync(file, "utf8")).size > 0).length : 0
++  // t36 (the t32 review's finding): the third direction's UNIT. The count is the number of reference
++  // LINES carrying an `A<n>` token — the SUM, over the scanned rows, of their `reference_lines`
++  // entries that carry one — NOT the number of driver files that contain such a line. The token set
++  // is the union of those lines' tokens. Both are stated with their predicate so neither number can
++  // be read in the other's unit.
++  const lineCarriesAToken = (line) => new RegExp(CLAIM_TOKEN.source).test(line) || new RegExp(CLAIM_RANGE.source).test(line)
++  const referenceLinesWithTokens = rows.reduce((total, row) => total + row.reference_lines.filter(lineCarriesAToken).length, 0)
++  const referenceTokenSet = new Set(rows.flatMap((row) => row.reference_tokens))
+   const audit = {
++    // t36 CLASS SWEEP (captain's acceptance item 2): every count below is read against its OWN label —
++    // predicate, unit and moment. This registry is that reading, and it is what a record reader uses to
++    // tell which SUBJECT a number counts. `moment` is the record's run_at for all of them.
++    moment: runAt,
++    units: {
++      files_scanned: "driver files under the scope (unit: FILES)",
++      "per_directory_split[].files": "driver files scanned in that directory (unit: FILES)",
++      "per_directory_split[].key_producers": "driver files producing at least one add(\"A<n>…\") key (unit: FILES)",
++      "per_directory_split[].keys": "DISTINCT A<n> key ids produced anywhere in that directory — deduped at DIRECTORY scope (the UNION of the directory's files' key ids), never the sum of per-file counts (t41/B2R3-F1; seeded shape in the arm `t80-directory-scope-dedup`)",
++      "per_directory_split[].claims": "DISTINCT A<n> key ids CLAIMED by that directory's headers — deduped at DIRECTORY scope, never summed per file (t41/B2R3-F1; same seeded arm)",
++      "per_directory_split[].violations": "DISTINCT mismatched A<n> key ids in that directory — claimed-but-unasserted ∪ asserted-but-unclaimed, deduped at DIRECTORY scope; never a sum of per-file counts and never a file count (t41/B2R3-F1; same seeded arm)",
++      "per_directory_split[].no_claim_set": "rows whose header claims nothing of its own (unit: ROWS/driver files)",
++      claim_set_parsed: "driver rows whose header yields at least one claim (unit: ROWS/driver files)",
++      no_claim_set: "driver rows whose header yields no claim of its own (unit: ROWS/driver files)",
++      violations: "DISTINCT mismatched A<n> key ids across the scope — deduped at SCOPE (the union over the scanned rows), never a sum of per-row counts (unit: KEYS, never files)",
++      "third_direction.measured": "reference LINES carrying an A<n> token, summed over rows, and the distinct token ids they carry (unit: LINES, then token ids)",
++      "matcher_error_directions[].measured": "each direction states its alternative and its number WITH the unit inline (files / key producers / keys)",
++    },
++    // t41 CLASS REQUIREMENT (from the t37 review): every field below whose label makes a GENERAL claim —
++    // distinct / summed / per-directory / deduped — carries its computing predicate inline (above), and the
++    // fields that were FALSIFIED BY A SEEDED SHAPE are named separately from the fields only READ. A sweep
++    // that reads labels against code can call a field consistent when a seeded shape would falsify it:
++    // exactly how B2R3-F1 survived one sweep, and why the split is published here.
++    units_sweep: {
++      round: "t41 (B2R3-F1) — the class requirement",
++      seeded_this_round: {
++        "per_directory_split[].keys": "arm `t80-directory-scope-dedup`: three files in ONE directory, each producing A1–A2 → the SUMMING computation printed 6, the deduped count is 2",
++        "per_directory_split[].claims": "same seeded shape: the three files claim A1–A3 → the summing computation printed 8, the deduped count is 3",
++        "per_directory_split[].violations": "same seeded shape: two files claim A3 while asserting only A1–A2 → the summing computation printed 2, the deduped count is 1 (and the scope `violations` is the same union)",
++      },
++      read_and_named_consistent: ["directories[].files_scanned", "per_directory_split[].files", "per_directory_split[].key_producers", "per_directory_split[].no_claim_set", "claim_set_parsed", "no_claim_set", "third_direction.measured", "matcher_error_directions[].measured"],
++      falsifiable_now: "the three seeded fields can be RE-FALSIFIED by re-running that arm; the read-only list is an ASSERTION, named as such — a reader can tell which verdicts are falsifiable (t41).",
++    },
+     directories: [{ path: scopeArg, recursive: true, files_scanned: files.length }],
+-    per_directory_split: Object.fromEntries([...split.entries()].sort()),
++    per_directory_split: Object.fromEntries([...split.entries()].sort().map(([path, bucket]) => [path, {
++      files: bucket.files,
++      key_producers: bucket.key_producers,
++      keys: bucket.key_ids.size,
++      claims: bucket.claim_ids.size,
++      violations: bucket.mismatched_ids.size,
++      no_claim_set: bucket.no_claim_set,
++    }])),
+     claim_set_parsed: rows.filter((row) => !row.no_claim_set).length,
+     no_claim_set: rows.filter((row) => row.no_claim_set).length,
+-    violations: rows.reduce((total, row) => total + row.claimed_but_unasserted.length + row.asserted_but_unclaimed.length, 0),
++    violations: new Set(rows.flatMap((row) => [...row.claimed_but_unasserted, ...row.asserted_but_unclaimed])).size,
++    third_direction: {
++      name: "the line-wide REFERENCE exemption",
++      unit: "reference LINES (not driver files): the sum, over the scanned rows, of their `reference_lines` entries that carry an `A<n>` token",
++      measured: `${referenceLinesWithTokens} reference LINE(s) carry ${referenceTokenSet.size} A<n> token(s) (${[...referenceTokenSet].sort((a, b) => a - b).map((n) => `A${n}`).join(", ") || "none"}); the exemption skips the WHOLE line, so a claim sharing a line with an artifact reference is not claimed — declared and measured rather than silent (t31/B2-F4, unit corrected in t36)`,
++    },
+     matcher_error_directions: [
+       { direction: "over-report", alternative: "whole-header token scan (no claim-marker scope, no reference filter)", measured: `${naiveFiles.length} file(s) flagged and ${naiveFiles.reduce((t, row) => t + row.claimed_but_unasserted.length + row.asserted_but_unclaimed.length, 0)} key(s) reported as mismatched, against ${rows.reduce((t, row) => t + row.claimed_but_unasserted.length + row.asserted_but_unclaimed.length, 0)} with the precise rule` },
+       { direction: "under-report", alternative: `non-recursive ${scopeArg}*.mjs (misses lib/)`, measured: `${nonRecursive} key producer(s) found against ${rows.length}` },
+@@ -822,7 +930,7 @@
+   const report = {
+     task: "T-80 (t15, wave-2b lane B2): a driver header's `A<n>` claims vs its own assertion keys",
+     run_at: runAt,
+-    mode: naive ? "driver-headers (naive matcher)" : "driver-headers",
++    mode: "driver-headers",
+     parameters: {
+       literal_string: '`A<n>` (claim) and `add("A<n>…")` (key)',
+       pattern_as_passed: `${CLAIM_TOKEN.source} + ${CLAIM_RANGE.source} + ${KEY_CALL.source} (case-sensitive, unescaped)`,
+@@ -836,6 +944,7 @@
+       asserted_but_unclaimed: "VIOLATION (a header that under-claims is reported, never silent)",
+       no_claim_set: "REPORTED, not a violation — the equality rule has no subject; the file and its keys are named",
+       reference_lines: "an `A<n>` token on a line pointing at another artifact's numbering (acceptance/design/§/t<nn>) is a REFERENCE, counted and printed, never a claim",
++      out_of_family: "a citation cited by POSITION (no literal string) and a BASENAME-ONLY path (no `/`) are OUT OF FAMILY: the six addressing parameters require a repo-relative literal, so neither shape is judged and both pass silently — a green run says nothing about them (t31/B2-F3)",
+     },
+     audit,
+     drivers: rows,
+@@ -865,18 +974,67 @@
+   }
+   const runAt = new Date().toISOString()
+   const root = resolve(REPO, dirArg)
+-  const files = walkFiles(root, () => true).filter((file) => /\.(md|json|mjs|js|ts|txt|log|out|yaml|yml)$/.test(file))
++  const candidates = walkFiles(root, () => true).filter((file) => /\.(md|json|mjs|js|ts|txt|log|out|yaml|yml)$/.test(file))
++  // F5 (t31): the scan writes its record INSIDE the tree it scans by default, and that record carries
++  // the literal — so the first run would poison every re-take. The scan's own output subtree is
++  // therefore EXCLUDED from the walk and NAMED in the record, which is what makes the 0 re-takeable.
++  const selfOutput = resolve(OUT_ROOT)
++  const isSelfOutput = (file) => resolve(file) === selfOutput || resolve(file).startsWith(selfOutput + sep)
++  const files = candidates.filter((file) => !isSelfOutput(file))
++  const excludedSelf = candidates.filter(isSelfOutput).map((file) => relative(REPO, file))
++  // F5 (t31): a match inside the scanner's OWN record is not an anchor — it is the record QUOTING the
++  // scan's command. Those are classified and NAMED (never counted as anchors), so the reading is
++  // re-takeable and a reader can tell a real absence from the scanner's own output.
++  const selfReferenceReason = (file) => {
++    const rel = relative(REPO, file)
++    if (rel.split(sep).some((part) => part.startsWith("anchor-"))) return "the path is inside an anchor-scan output directory"
++    let text = ""
++    try {
++      text = readFileSync(file, "utf8")
++    } catch {
++      return undefined
++    }
++    if (text.includes('"task": "T-90 anchor scan"')) return "the file IS an anchor-scan record"
++    if (text.includes("node scripts/check-citations.mjs --anchor-scan")) return "the file QUOTES the scan's own command (provenance, not an anchor)"
++    return undefined
++  }
+   const hits = []
++  const selfHits = []
+   for (const file of files) {
++    const reason = selfReferenceReason(file)
+     const lines = readFileSync(file, "utf8").split("\n")
+     lines.forEach((line, index) => {
+-      if (line.includes(patternArg)) hits.push({ path: relative(REPO, file), line: index + 1, phrase: line.trim().slice(0, 200) })
++      if (!line.includes(patternArg)) return
++      const entry = { path: relative(REPO, file), line: index + 1, phrase: line.trim().slice(0, 200) }
++      if (reason === undefined) hits.push(entry)
++      else selfHits.push({ ...entry, self_reference: reason })
+     })
+   }
+   log("anchor scan (T-90 / ADDENDUM A: no mailbox-record-id-shaped anchors in this lane's records)")
+   log(`parameters: literal string ${JSON.stringify(patternArg)} · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ${dirArg} · scope ${files.length} text file(s) · moment ${runAt}`)
++  log(`self-reference: the scan's OWN output under ${relative(REPO, selfOutput)} is EXCLUDED from the walk (${excludedSelf.length} file(s)), so this reading is re-takeable with the same command (t31/B2-F5)`)
+   for (const hit of hits) log(`  MATCH ${hit.path}:${hit.line} — ${hit.phrase}`)
+-  const report = { task: "T-90 anchor scan", run_at: runAt, pattern: patternArg, scope: dirArg, files_scanned: files.length, matches: hits }
++  for (const hit of selfHits) log(`  SELF-REFERENCE ${hit.path}:${hit.line} — ${hit.self_reference}: ${hit.phrase}`)
++  const report = {
++    task: "T-90 anchor scan",
++    run_at: runAt,
++    pattern: patternArg,
++    scope: dirArg,
++    files_scanned: files.length,
++    matches_self_reference: selfHits,
++    self_reference: {
++      excluded_output_root: relative(REPO, selfOutput),
++      excluded_files: excludedSelf,
++      rule: "a match is an ANCHOR only if it is not the scanner's own record: the scan excludes its OWN output root, and classifies any hit inside an anchor-scan record (or a capture quoting the scan's command) as SELF-REFERENCE — named, never counted. Re-takeable 0: `--out` (and any stdout capture) belongs OUTSIDE the scanned scope, or the scanned scope must be sealed (t31/B2-F5).",
++      scanned_scope_files: files.length,
++      classified: selfHits.length,
++    },
++    policy: {
++      out_of_family: "a POSITION citation (no literal string) and a BASENAME-ONLY citation (no `/`) are OUT OF FAMILY and pass silently, by design: this scanner judges a repo-relative literal only, so a green scan says nothing about those shapes (t31/B2-F3).",
++      scope_note: "a plain-substring scan reports every file under the scope that contains the literal; it is a DISCOVERY heuristic, not a class rule (T-90's calibration bound).",
++    },
++    matches: hits,
++  }
+   if (OUT_EXPLICIT) {
+     try {
+       writeImmutable(join(OUT_ROOT, "result.json"), JSON.stringify(report, null, 2) + "\n", { label: "anchor-scan run result" })
+@@ -886,7 +1044,7 @@
+     }
+   }
+   log("")
+-  log(`[anchor-scan] ${matches(hits)} match(es) in ${files.length} file(s) under ${dirArg}`)
++  log(`[anchor-scan] ${matches(hits)} anchor match(es) in ${files.length} file(s) under ${dirArg}; ${selfHits.length} self-reference match(es) classified and named (not anchors)`)
+   return hits.length === 0 ? 0 : 1
+ }
+ 
+@@ -1084,6 +1242,9 @@
+         moment: "this record's `run_at` (ISO-8601 UTC)",
+       },
+     },
++    family_boundary: {
++      out_of_family: "a POSITION citation (no literal string) and a BASENAME-ONLY citation (no `/`) are OUT OF FAMILY and pass silently, by design: the family's six addressing parameters require a repo-relative literal, so this checker cannot resolve or rot them and a green run says nothing about them (t31/B2-F3).",
++    },
+   },
+   // T-72: every run quotes WHICH revision it ran and which frozen revision it supersedes, so the
+   // checker's intermediate revisions are diffable, not merely hash-comparable. T-82: the bytes

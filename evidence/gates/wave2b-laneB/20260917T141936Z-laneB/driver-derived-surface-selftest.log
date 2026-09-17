@@ -1,0 +1,6 @@
+[derived-surface-audit] self-test PASS - (a) fixture record with a lane holding packages/*/dist/** -> flagged, task named :: [{"id":"tX","kind":"implementation","covered":[{"surface":"packages/*/dist/**","entry":"packages/*/dist/**"}]}]
+[derived-surface-audit] self-test PASS - (b) the fixture carries the platform's own refusal shape :: refusal string present in the fixture + the surface named
+[derived-surface-audit] self-test PASS - (c) the LIVE record: no lane covers a derived surface :: integration=[{"id":"t25","covered":["packages/*/dist/**","dist/mpd-package/**","VENDOR_LOCK.json",".mpd/plans/**"]}]; violations=[]
+[derived-surface-audit] self-test PASS - (d) the LIVE integration task declares all four derived surfaces :: not declared: []
+[derived-surface-audit] self-test PASS - (e) a record with NO integration task -> red (the surfaces must be declared somewhere) :: []
+[derived-surface-audit] self-test PASS: 5/5 arms

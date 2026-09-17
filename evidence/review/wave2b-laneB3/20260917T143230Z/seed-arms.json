@@ -1,0 +1,67 @@
+{
+  "gate": "scripts/verify-docs-parity.mjs",
+  "roots": [
+    {
+      "id": "seedA-agent-references-no-twin",
+      "expectedExit": 0,
+      "exit": 0,
+      "pass": true,
+      "why": "T-28: the agent-facing band is deliberately OUT of the gate's discovery — the same file under docs/ (seedB) reddens",
+      "verdictLine": "[verify-docs-parity] root=./evidence/review/wave2b-laneB3/20260917T143230Z/seedA-agent-references-no-twin pairs=1 failed=0 violations=0 exempt=2 derived=3 — PASS",
+      "failures": []
+    },
+    {
+      "id": "seedB-docs-missing-twin",
+      "expectedExit": 1,
+      "exit": 1,
+      "pass": true,
+      "why": "T-29/T-30: a docs/ *.md with no *.zh-CN.md twin must FAIL the gate",
+      "verdictLine": "[verify-docs-parity] root=./evidence/review/wave2b-laneB3/20260917T143230Z/seedB-docs-missing-twin pairs=2 failed=1 violations=0 exempt=2 derived=3 — FAIL",
+      "failures": [
+        "FAIL docs/probe.md — missing zh-CN file"
+      ]
+    },
+    {
+      "id": "seedC-docs-stale-twin",
+      "expectedExit": 1,
+      "exit": 1,
+      "pass": true,
+      "why": "a STALE twin (English bytes, no CJK, no switch link) must FAIL the gate, not pass as a pair",
+      "verdictLine": "[verify-docs-parity] root=./evidence/review/wave2b-laneB3/20260917T143230Z/seedC-docs-stale-twin pairs=2 failed=1 violations=0 exempt=2 derived=3 — FAIL",
+      "failures": [
+        "FAIL docs/probe.md — zh-CN switch link missing/not under the title; zh-CN file carries no CJK content (copy-paste of the EN file?)"
+      ]
+    },
+    {
+      "id": "seedD-docs-zh-only",
+      "expectedExit": 1,
+      "exit": 1,
+      "pass": true,
+      "why": "a zh-only document must FAIL (no EN twin)",
+      "verdictLine": "[verify-docs-parity] root=./evidence/review/wave2b-laneB3/20260917T143230Z/seedD-docs-zh-only pairs=1 failed=1 violations=1 exempt=2 derived=3 — FAIL",
+      "failures": [
+        "FAIL inverse:docs/probe.zh-CN.md — zh-CN file has no EN twin (docs/probe.md is missing)"
+      ]
+    },
+    {
+      "id": "seedE-templates-unmarked-asset",
+      "expectedExit": 0,
+      "exit": 0,
+      "pass": true,
+      "why": "T-29: classification is by the DECLARED marker, so an unmarked file in an asset band stays an ASSET",
+      "verdictLine": "[verify-docs-parity] root=./evidence/review/wave2b-laneB3/20260917T143230Z/seedE-templates-unmarked-asset pairs=1 failed=0 violations=0 exempt=2 derived=3 — PASS",
+      "failures": []
+    },
+    {
+      "id": "seedF-templates-promoted-doc",
+      "expectedExit": 1,
+      "exit": 1,
+      "pass": true,
+      "why": "T-29: the SAME band with the promotion marker must redden (a misplaced doc cannot escape by directory)",
+      "verdictLine": "[verify-docs-parity] root=./evidence/review/wave2b-laneB3/20260917T143230Z/seedF-templates-promoted-doc pairs=2 failed=1 violations=0 exempt=2 derived=3 — FAIL",
+      "failures": [
+        "FAIL templates/tpl/notes/misplaced.md — missing zh-CN file"
+      ]
+    }
+  ]
+}

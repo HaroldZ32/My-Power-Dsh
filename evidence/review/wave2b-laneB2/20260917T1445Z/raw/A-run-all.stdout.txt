@@ -1,0 +1,42 @@
+== t21 review: seeded arms ==
+moment_utc 2026-09-17T14:36:55Z
+checker_pinned fbdc02569a8be827745c13dadaec63eb2353ab1380d245ac6a275a2381779f28 1146 lines
+A-control : exit=0 | 9/9 checks passed, 0 failed | 0 line-number-only anchor(s)
+A-a2-line-number-only : exit=1 | 5/9 checks passed, 4 failed | 2 line-number-only anchor(s)
+A-a3-position : exit=0 | 9/9 checks passed, 0 failed | 0 line-number-only anchor(s)
+A-a4-abbreviated-path : exit=0 | 9/9 checks passed, 0 failed | 0 line-number-only anchor(s)
+A-a4b-ellipsis-path : exit=1 | 7/9 checks passed, 2 failed | 0 line-number-only anchor(s)
+A-d1 seeded mailbox-id scan : exit=1 (expect 1)
+A-d2 absent-pattern control : exit=0 (expect 0)
+Traceback (most recent call last):
+  File "<stdin>", line 5, in <module>
+AssertionError: doc_rewrite survived the strip
+A-a6 stripped-copy self-test: exit=1 (the t78 arm must be FAIL here)
+  ok   negative-control:t78-record-carries-the-rule — T-78: the run at ../../t78-t82-arms-kamHeR/t78-run/result.json (3907 B) carries the driver RULE ("a doc-rewrite task's verify list MUST carry the citation driver") and the COMMAND ("node scripts/check-citations.mjs --out ./evidence/gates/<slug>/<stamp>/run") — asserted against the record's BYTES, not against a comment
+A-t78 my record: bytes=8683 rule_present=True command='node scripts/check-citations.mjs --out ./evidence/gates/<slug>/<stamp>/run' params=6
+A-a8 runA exit=0
+A-a8 runB exit=0
+A-a8 runC/runD exit=0 (identical copies)
+A-a8 diff CHANGED pair   : exit=1 (expect 1, non-empty)
+A-a8 diff UNCHANGED pair : exit=0 (expect 0, EMPTY)
+A-a8 diff SAME-COPY pair : exit=0 (expect 0, EMPTY)
+448 evidence/review/wave2b-laneB2/20260917T1445Z/raw/A-a8-diff-changed-pair.txt
+  0 evidence/review/wave2b-laneB2/20260917T1445Z/raw/A-a8-diff-unchanged-pair.txt
+  0 evidence/review/wave2b-laneB2/20260917T1445Z/raw/A-a8-diff-same-copy-pair.txt
+448 total
+A-a8 the changed pair names the changed line: 1
+-- driver hashes BEFORE my live re-scan --
+f18e3b3aa074543caa85fe7cfe08440025faaac4f328cc269ae549328aa5a52d  ./skills/dsh-qa/scripts/tui-team-surface.mjs
+826a39d4172701b89900b249e11e43b757f0a50c1100f0cd889b9eb48530ee26  ./skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
+A-b1 driver-headers live     : exit=0
+A-b2 driver-headers --naive  : exit=0 (the over-report direction)
+-- driver hashes AFTER my live re-scan --
+f18e3b3aa074543caa85fe7cfe08440025faaac4f328cc269ae549328aa5a52d  ./skills/dsh-qa/scripts/tui-team-surface.mjs
+826a39d4172701b89900b249e11e43b757f0a50c1100f0cd889b9eb48530ee26  ./skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
+[driver-headers] evidence -> evidence/review/wave2b-laneB2/20260917T1445Z/A-b1-driver-headers-live
+
+[driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s)
+[driver-headers] evidence -> evidence/review/wave2b-laneB2/20260917T1445Z/A-b2-driver-headers-naive
+
+[driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s)
+A-scratch deleted: YES

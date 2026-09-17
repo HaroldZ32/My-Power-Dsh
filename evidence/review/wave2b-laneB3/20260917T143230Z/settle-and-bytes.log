@@ -1,0 +1,11 @@
+=== t22: ownership + settle check — 2026-09-17T14:37:10Z ===
+
+-- hashes re-pinned (settle window since 14:32:30Z) --
+4068616ac479a8601874f65eb5cfc04c23b34e39ce890c3acb502a953a09eb9d  scripts/verify-docs-parity.mjs
+b1f1a28372ef4c018541378850e7628433e4e3e7750ad66fbb4460e569a75ec0  AGENTS.md
+8e1fbb893fcb428b4059bb04cceca6980aec7d8f9f104b3c76a85de2cf13e316  templates/mpd-extension/README.md
+832ad62f8099b20a55ef5914c2b511e90cfc26e049500360dfdbce7bbfb914f5  templates/mpd-extension/README.zh-CN.md
+
+-- packed copies (the artifact under dist/) --
+2943a10c46ab80a8f117ac19e7d44541e5a8a968d1af0006f24e4b114ac708d1  dist/mpd-package/templates/mpd-extension/README.md
+8a11d7ac6a796c4da42a154b2313d56351768ef27ac7b8f472d8ab9783ac5820  dist/mpd-package/templates/mpd-extension/README.zh-CN.md

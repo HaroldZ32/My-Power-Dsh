@@ -1,0 +1,62 @@
+ok   README.md
+ok   docs/extensions.md
+ok   docs/development.md
+ok   docs/architecture.md
+ok   docs/feature-audit.md
+ok   docs/tui-parity.md
+ok   docs/extension-authoring-guide.md
+ok   docs/user-guide.md
+ok   docs/tui.md
+ok   docs/extension-adaptation-report.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/index.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **93**/10 vs derived 93/10 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (live `//#region mpd-delta` markers agree: 93)
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS

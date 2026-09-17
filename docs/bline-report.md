@@ -1,3 +1,4 @@
+<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->
 # B-line Report (Plan B completed)
 
 Implementation of the plan backlog (B1-B4) as self-written DSH plugins. All verified with real

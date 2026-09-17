@@ -1,0 +1,51 @@
+{
+  "task": "t57 — impl-B3/7: the docs gate's region count must be NESTING-AWARE (t44-F1 part 5, gate half)",
+  "attempt_id": "271f778c-73f7-4cb9-9805-63b793a44acf",
+  "owner": "docs-parity-engineer (lane B3)",
+  "defect_closed": "scripts/verify-docs-parity.mjs's liveRegionCount took the FIRST matching end marker as a region's end and skipped the whole span, so a file carrying three markers counted as two and the corroboration printed a FALSE agreement while a nested region existed (t44-F1: registry 119 ids, helper reported agreement).",
+  "revision": {
+    "head": "ca78033",
+    "reading_at": "2026-09-17T17:01:15Z",
+    "registry_sha256_prefix": "f8f64be9d045e19efa128fce",
+    "gate_sha256_prefix": "2bbe584a5906537460138adb",
+    "count_at_this_revision": "120 regions across 10 adopted files (the post-t55 value; lane A regenerated once more while this task ran, so 119 -> 120 is quoted as MY OWN reading, not inherited)"
+  },
+  "change": {
+    "liveRegionIds": "NEW stack-based scan (rel, fileText) -> { ids, problems }: every begin is paired with ITS OWN end; a nested region is its OWN region and is counted; a mismatched end, an orphan end, an unclosed begin or a duplicate in-file id is REPORTED.",
+    "deriveRegistryCounts": "now compares ID SETS per file (registeredIds vs liveIds) and exposes onlyInRegistry / onlyOnTree / mismatched; the per-file reading is printed on every run.",
+    "note_text": "`… PER FILE (nesting-aware: every begin paired with its OWN end, T-57): <file>: registry N id(s), live M id(s) — agree | — MISMATCH (registered but not on the tree: [...]; on the tree but unregistered: [...])`.",
+    "severity_unchanged": "registry-vs-tree drift is still a NOTE, never a violation — the applier's `--check` owns that class (an in-flight region edit is expected unregistered until --write-registry runs). The FALSE AGREEMENT is what died, not the ownership rule.",
+    "self_test": "28/28 arms, including NEW `T-57: a region NESTED inside another span counts as its OWN region and surfaces as a NAMED mismatch` (fixture: nested extra child -> live 3 vs registry 2, naming mpd-delta fixture-extra)."
+  },
+  "readings": {
+    "live_gate": "bun run verify:docs -> exit 0; [verify-docs-parity] pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS; per-file arm on the live tree: `tools.js: registry 63 id(s), live 63 id(s) — agree` (all 10 files agree at this revision).",
+    "self_test": "node scripts/verify-docs-parity.mjs --self-test -> exit 0, 28/28 checks passed.",
+    "negative_control_quoted": "`ok T-75 arm 3 (NEGATIVE CONTROL): a stale region count REDDENS and NAMES the deltas doc — derived-value:region-count:agent-references/agent-teams-deltas.md:9 — …:9 claims **65** regions across **9** adopted files but … derives 73 regions across 9 files` (the count-lie arm still reddens; the derived arm still compares the doc sentence against the derived count and reports it).",
+    "temp_copy_clean": "TEMP COPY of the adopted tree at the same revision (/tmp/tmp.cFpp8aLBTf/root: AGENTS.md + agent-references/*.md + packages/mpd-agent-teams-plugin/{README.md, lib/*.js}) -> exit 0, derived=3, `tools.js: registry 63 id(s), live 63 id(s) — agree` (temp-seeded.log/temp-clean.log, temp path recorded in temp-path.txt; the copy was deleted after the readings).",
+    "temp_copy_seeded": "SAME temp copy with ONE new region `mpd-delta t57-seed-child` nested inside `mpd-delta artifact-channel-imports` (line 14) in the TEMP tools.js -> the corroboration reports `tools.js: registry 63 id(s), live 64 id(s) — MISMATCH (registered but not on the tree: []; on the tree but unregistered: [mpd-delta t57-seed-child])` — the nested child is COUNTED and NAMED.",
+    "old_walk_contrast": "on the SAME seeded file: OLD nesting-blind walk 63, NEW stack walk 64 — the one child the old walk could not see. (old-walk-contrast.txt)"
+  },
+  "files_touched": [
+    "scripts/verify-docs-parity.mjs",
+    "evidence/docs/wave2b-laneB3/t57-nesting-aware/20260917T170040Z/result.json",
+    "evidence/docs/wave2b-laneB3/t57-nesting-aware/20260917T170040Z/temp-clean.log",
+    "evidence/docs/wave2b-laneB3/t57-nesting-aware/20260917T170040Z/temp-seeded.log",
+    "evidence/docs/wave2b-laneB3/t57-nesting-aware/20260917T170040Z/temp-path.txt",
+    "evidence/docs/wave2b-laneB3/t57-nesting-aware/20260917T170040Z/old-walk-contrast.txt",
+    "evidence/docs/wave2b-laneB3/t57-nesting-aware/20260917T170040Z/verify-docs.log",
+    "evidence/docs/wave2b-laneB3/t57-nesting-aware/20260917T170040Z/selftest.log",
+    "evidence/docs/wave2b-laneB3/t57-nesting-aware/20260917T170040Z/final.txt"
+  ],
+  "files_NOT_touched": [
+    "packages/mpd-agent-teams-plugin/lib/** (out of scope; the seeded nesting was done on TEMP copies only, never the live tree)",
+    "scripts/patch-agent-teams-fixes.mjs (lane A's; the stack-based `regionSpans` REFUSAL is t55's half of part (5), not claimed here)",
+    "agent-references/agent-teams-deltas.md (lane A's; its count sentence moved 119 -> 120 while this task ran, which is exactly the window that reddened my first reading and cleared on the re-take)",
+    "evidence/agent-teams/wave2b-laneA/** (lane A's evidence)",
+    "templates/** and every README pair: BYTE-IDENTICAL across this task (templates/mpd-extension/README.md 8e1fbb893fcb428b…, README.zh-CN.md 832ad62f8099b20a… = the t16 hashes), so the wave's pre-pack proof for the packed rows stands",
+    "AGENTS.md (no edit; the instruction budget is therefore unchanged and was not re-taken here — t22/t28 own that surface)"
+  ],
+  "bounds": [
+    "The derivation helper is exercised through the gate's public surface (verifyDocsParity) plus the printed per-file note; the old-vs-new walk contrast is reproduced by a faithful inline replica of the OLD helper, not by re-running the previous gate revision.",
+    "The 119 -> 120 move happened inside this task's window (lane A regenerating the registry with the doc sentence ahead of it); my first live reading was RED for that reason and the re-take at 17:01:15Z is the reading quoted above. A reader comparing counts must take the registry sha beside them."
+  ]
+}

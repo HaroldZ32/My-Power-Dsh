@@ -19,6 +19,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
+const safeJson = (text) => { try { return JSON.parse(text) } catch { return null } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const NOTICE_MARKER = "[AgentTeams] Session-start team rule"
 const SETTLE_MS = 50000
@@ -133,7 +134,7 @@ async function runReal() {
     const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
     const out = (r.stdout || "") + (r.stderr || "")
     LOG.push("$ " + cmd + " " + args.join(" ") + "\n[[exit=" + r.status + "]]\n" + out.slice(0, 20000))
-    return { status: r.status, out }
+    return { status: r.status, out, stdout: r.stdout || "" }
   }
 
   const inst = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { timeout: 600000 })
@@ -142,8 +143,10 @@ async function runReal() {
   const homePatch = readFileSync(join(sandbox, "cordis.patch.yml"), "utf8")
   steps.patchRow = { ok: /id:\s*agent-teams/.test(homePatch) && homePatch.includes("sessionTeamPolicy") && homePatch.includes('"off"') && homePatch.includes("autoRoute") && homePatch.includes("MPD Default"), hasRow: homePatch.includes("agent-teams") }
 
-  const dump = runSync("dsh", ["--profile", "mpd-headless", "--dump-config"], { timeout: 120000 })
-  steps.compose = { ok: dump.status === 0 && dump.out.includes("agent-teams") && dump.out.includes("sessionTeamPolicy") && dump.out.includes("MPD Default"), exit: dump.status }
+  // T-69: the wrapper composes; `--json` keeps the child's output parseable (banner on stderr).
+  const dump = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "mpd-headless", "--json"], { timeout: 120000 })
+  const dumpText = safeJson(dump.stdout)?.stdout ?? dump.stdout
+  steps.compose = { ok: dump.status === 0 && dumpText.includes("agent-teams") && dumpText.includes("sessionTeamPolicy") && dumpText.includes("MPD Default"), exit: dump.status }
 
   async function runSide(label, prompts, expectTeam) {
     const results = []

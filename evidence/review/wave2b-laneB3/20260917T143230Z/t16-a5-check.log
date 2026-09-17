@@ -1,0 +1,6 @@
+keys: task, attempt_id, owner, head, generated_at, rows, packer_readings, readings, changed_paths, note, a6_re_take
+A5 mentions: 2
+  - AGENTS.md gains the Pack-closure row in the §4 gate table, the post-t26 BOUND paragraph (freshness read from the `expected-after-pack` membership at the re-pack, timestamp order, `--pack-stamp`; the closure gate's own self-test arms are the operative evidence), and §11 names the gate in the release 
+  - MEASURED FALSE: the packer comment at scripts/pack-mpd.mjs:128 — AGENTS.md deliberately stays out of the artifact (amendment A5).
+mentions AGENTS.md NOT packed: true
+mentions templates packed: true

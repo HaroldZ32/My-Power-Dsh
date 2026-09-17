@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wtm-dsh-cFZTJ7",
+  "wmHome": "/tmp/mpd-wtm-home-rHnNEm",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "injection": {
+      "ok": true,
+      "sample": " output. |  | Also good to note the teammate's out-of-band report. Let me do the status call. |  | Also I should consider whether to delete the team. The instructions say the user asked for an exact sequence ending with DONE — do not add extra steps beyond it. The user said \"Perform this exact sequence... End with the word DONE.\" So I should not delete the team (that would be an extra step). I'll report and end with DONE. |  | Let me call agent_teams_status. | dsh: reasoning: | All steps done. Let me report each result. |  | Step 1: workmate alice initialized (base Deep Worker, deepseek-official/deepseek-v4-flash), note: \"Deep Worker-based workmate 'alice'. No task history yet.\" | Step 2: re"
+    },
+    "reflect": {
+      "ok": true,
+      "tokenCount": 2,
+      "uses": 2
+    },
+    "files": {
+      "ok": true,
+      "memory": "## 2026-09-17T14:42:41.053Z — memorize build token\nalice remembers the build token is PINEAPPLE42\n\n## 2026-09-17T14:43:17.384Z — report build token\nReported from independent workmate memory that the b"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer"
+    }
+  }
+}

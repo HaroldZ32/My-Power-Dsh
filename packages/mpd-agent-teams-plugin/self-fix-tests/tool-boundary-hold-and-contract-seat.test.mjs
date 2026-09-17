@@ -25,6 +25,9 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { registerAgentTeamsTools } from "../lib/tools.js"
+// T-92 (t43): absence is asserted against the subject's COMMENT-STRIPPED text, so a comment may
+// name an identifier without reddening the pin; presence pins keep the raw text.
+import { codeOf } from "./lib-absence.mjs"
 import { installTeamCapabilities } from "../lib/capabilities.js"
 import { spawnMember } from "../lib/members.js"
 import { CAPTAIN_TOOL_NAMES, MEMBER_TOOL_NAMES, TEAM_TOOL_NAMES } from "../lib/tool-names.js"
@@ -116,13 +119,14 @@ function fixture() {
 
 test("D2: the two tool-boundary guards and tools.js's reader copy are gone; scheduler keeps its own", () => {
     const tools = readFileSync(join(libDir, "tools.js"), "utf8")
+    const toolsCode = codeOf(tools)
     const scheduler = readFileSync(join(libDir, "scheduler.js"), "utf8")
     for (const id of ["mpd-delta claim-task-hold-guard", "mpd-delta update-task-hold-guard"]) {
-        expect(tools, `${id} must be DELETED from tools.js`).not.toContain(id)
+        expect(toolsCode, `${id} must be DELETED from tools.js`).not.toContain(id)
         expect(MPD_DELTAS.filter((delta) => delta.id === id), `${id} must leave the registry`).toHaveLength(0)
     }
-    expect(tools).not.toContain("watchdogHoldOf")
-    expect(tools).not.toContain("mpd-delta watchdog-hold-reader")
+    expect(toolsCode).not.toContain("watchdogHoldOf")
+    expect(toolsCode).not.toContain("mpd-delta watchdog-hold-reader")
     // the surviving half: the scheduler's own copy of the same id, plus its call sites
     expect(scheduler).toContain("mpd-delta watchdog-hold-reader")
     expect(scheduler).toContain("function watchdogHoldOf(ctx, teamId, workspace)")
@@ -131,7 +135,7 @@ test("D2: the two tool-boundary guards and tools.js's reader copy are gone; sche
     expect(readerEntries[0].file.endsWith("scheduler.js")).toBe(true)
     // and the T-19 render change is a registered region, not an unmarked edit
     expect(MPD_DELTAS.some((delta) => delta.id === "mpd-delta status-pause-mechanisms" && delta.file.endsWith("tools.js"))).toBe(true)
-    expect(tools).not.toContain("watchdog-hold-reader")
+    expect(toolsCode).not.toContain("watchdog-hold-reader")
 })
 
 test("D2: with a LIVE hold present, claim_task and update_task SUCCEED (the hold no longer blocks a write)", async () => {

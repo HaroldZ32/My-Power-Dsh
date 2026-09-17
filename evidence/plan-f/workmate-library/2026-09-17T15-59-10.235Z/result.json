@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wm-dsh-hWnuDn",
+  "wmHome": "/tmp/mpd-wm-home-TLXlTZ",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "attempts": 1,
+      "retryNotes": []
+    },
+    "flow": {
+      "ok": true,
+      "calls": {
+        "mpd_workmate_init": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_list": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_spawn": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_reflect": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_match": {
+          "called": true,
+          "succeeded": true
+        }
+      },
+      "unproven": [],
+      "availableTools": 103,
+      "source": "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+      "sample": "e ws? No. |  | Hmm — one more idea: maybe the plugin's workmate root is derived from `$DSH_HOME` when set... DSH_HOME=/tmp/mpd-wm-dsh-hWnuDn doesn't exist. Interesting: that dir doesn't exist either, yet the session uses it as DSH_HOME. Perhaps the harness creates sandbox overlays for these paths at runtime, visible only inside the dsh process namespace. That would explain why the plugin can write/read but I can't see it. |  | Regardless: I can't access the file. Let me try the read tool once on the canonical path, then on /root/.mpd path, and report honestly. |  | Let me try read with \"~/.mpd"
+    },
+    "files": {
+      "ok": true,
+      "uses": 2,
+      "noteChars": 234,
+      "memoryChars": 340,
+      "note": "Deep Worker-based workmate \"alice\". Verilog counter specialist; workspace README.md is a 2-line stub: title \"my-power-dsh\" plus tagline \"workmate e2e workspace\"",
+      "wmRoot": "/tmp/mpd-wm-home-TLXlTZ/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-TLXlTZ",
+      "sandboxRoot": "/tmp/mpd-wm-home-TLXlTZ/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

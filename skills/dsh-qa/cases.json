@@ -432,6 +432,13 @@
         "all"
       ],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
+    },
+    {
+      "case": "wave2b-lane-d",
+      "script": "skills/dsh-qa/scripts/wave2b-lane-d.mjs",
+      "suites": [],
+      "outsideSuites": "wave-2b lane D corpus arms: the six rows are asserted by their own --self-test and by a named run; the suite sweep is not where a corpus-property scan belongs.",
+      "immutabilityGuard": "required"
     }
   ],
   "gates": [

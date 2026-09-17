@@ -1,0 +1,27 @@
+bun test v1.3.14 (0d9b296a)
+
+self-fix-tests/t52-one-plan-format.test.mjs:
+[T-42] path A (plan artifact .mpd/plans/fixture-plan.md): [{"seedId":"T1","id":"t1","subject":"the first item — do the first thing"},{"seedId":"T2","id":"t2","subject":"the second item — do the second thing"},{"seedId":"F1","id":"t3","subject":"run the reading"}]
+[T-42] path B (DAG seed seam, 3 draft task(s)): [{"seedId":"T1","id":"t1","subject":"the first item — do the first thing"},{"seedId":"T2","id":"t2","subject":"the second item — do the second thing"},{"seedId":"F1","id":"t3","subject":"run the reading"}]
+[T-42] path B' (profile tasks convention): [{"seedId":"T1","id":"t1","subject":"the first item — do the first thing"},{"seedId":"T2","id":"t2","subject":"the second item — do the second thing"},{"seedId":"F1","id":"t3","subject":"run the reading"}]
+(pass) T-42 (1/3): ONE plan file through BOTH paths yields the SAME task set (the comparison IS the reading) [5.30ms]
+88 |         "F1. run the reading",
+89 |         "",
+90 |     ].join("\n")
+91 |     const { workspace, stateRoot } = fixture(collided)
+92 |     // The REFUSAL names the colliding id and both lines.
+93 |     expect(parsePlanSeedItems(collided).ok).toBe(false)
+                                                 ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/tmp/t52-red-fmxq/m1/self-fix-tests/t52-one-plan-format.test.mjs:93:45)
+(fail) T-42 (2/3): an ID COLLISION is REFUSED with the id named — never merged, never suffixed [0.56ms]
+(pass) T-42 (3/3): the format is DECLARED, so a plan that declares nothing is refused rather than seeded empty [0.16ms]
+
+ 2 pass
+ 1 fail
+ 11 expect() calls
+Ran 3 tests across 1 file. [102.00ms]

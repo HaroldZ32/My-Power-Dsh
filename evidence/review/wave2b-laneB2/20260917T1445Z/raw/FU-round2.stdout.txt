@@ -1,0 +1,31 @@
+== t21 final batch ==
+moment_utc 2026-09-17T14:40:16Z
+checker fbdc02569a8be827745c13dadaec63eb2353ab1380d245ac6a275a2381779f28
+FU-4 seeds written; the under-claim seed asserts A1-A5 and claims A1-A3
+FU-4 seed A (claimed-but-unasserted A11): exit=0 (expect 1)
+FU-4 seed B (asserted-but-unclaimed A4,A5): exit=1 (expect 1)
+FAIL driver:../../../tmp/t21-final/fu4/b/seeded-underclaim.mjs — ASSERTED-BUT-UNCLAIMED A4, A5
+FU-5 retention disabled in the copy
+FU-5 retention-disabled self-test exit=1
+  ok   negative-control:t78-record-carries-the-rule — T-78: the run at ../../t78-t82-arms-qEjEXj/t78-run/result.json (3649 B) carries the driver RULE ("a doc-rewrite task's verify list MUS
+  FAIL negative-control:t82-retention-diffable — T-82: changed pair differs at line ? (NO DIFF); unchanged pair EMPTY (the control holds); retained {"runA_checker":false,"runB_checker":fal
+  ok   negative-control:immutability-second-run-refused — immutability: a second run at the same --out exited 3 (expected 3) — docs-claims checker (t72: existence + range + SITE-PAIRED c
+      1   FAIL negative-control:t82-retention-diffable
+== FU-6 line counts, moment 2026-09-17T14:40:18Z ==
+wc -l  scripts/check-citations.mjs                 : 1146
+non-empty lines (grep -c .) same file              : 1095
+python split('\n') length same file               : 1147
+wc -l  evidence/extensions/docs-claims/check-citations.mjs (frozen): 562
+wc -l  the lane's retained revisions/checker.mjs    : 1146
+python split('\n') the lane's retained checker.mjs  : 1147
+the lane's record field                            : 1143
+FU-7 lane dir, pattern ee9ec16 : exit=1 (expect 0)
+
+[anchor-scan] 4 match(es) in 16 file(s) under ./evidence/gates/wave2b-laneB2/20260917T142452Z
+FU-7 lane dir, pattern dupCount: exit=0 (expect 0)
+
+[anchor-scan] 0 match(es) in 16 file(s) under ./evidence/gates/wave2b-laneB2/20260917T142452Z
+FU-7 MY OWN review dir, pattern ee9ec16: exit=1 (expect 0 = this review's records cite no mailbox id)
+
+[anchor-scan] 22 match(es) in 70 file(s) under ./evidence/review/wave2b-laneB2/20260917T1445Z
+FU scratch deleted: YES

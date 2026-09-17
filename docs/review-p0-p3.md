@@ -1,3 +1,4 @@
+<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->
 # P0–P3 review report (2026-08-26)
 
 Review target: mpd-dsh repo commits 80e5260..4d37934 (P0–P3 + review fixes)

@@ -1,0 +1,18 @@
+{
+  "control_deliveries": 1,
+  "pure_terminal_deliveries": 0,
+  "recorded_race_deliveries": 0,
+  "stripped_race_deliveries": 1,
+  "named_declines": 1,
+  "composed_tickets": [
+    1,
+    0,
+    1,
+    1
+  ],
+  "ticket_attempt_ids": [
+    "f94d6798-e331-4a17-be4d-f17f4c2297c7",
+    "ec6c99c8-5dbb-4f3b-a147-f41d41296baf"
+  ],
+  "scheduler_sha256": "4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68"
+}

@@ -1,0 +1,20 @@
+== units_sweep (published in the record) ==
+{
+ "round": "t41 (B2R3-F1) \u2014 the class requirement",
+ "seeded_this_round": {
+  "per_directory_split[].keys": "arm `t80-directory-scope-dedup`: three files in ONE directory, each producing A1\u2013A2 \u2192 the SUMMING computation printed 6, the deduped count is 2",
+  "per_directory_split[].claims": "same seeded shape: the three files claim A1\u2013A3 \u2192 the summing computation printed 8, the deduped count is 3",
+  "per_directory_split[].violations": "same seeded shape: two files claim A3 while asserting only A1\u2013A2 \u2192 the summing computation printed 2, the deduped count is 1 (and the scope `violations` is the same union)"
+ },
+ "read_and_named_consistent": [
+  "directories[].files_scanned",
+  "per_directory_split[].files",
+  "per_directory_split[].key_producers",
+  "per_directory_split[].no_claim_set",
+  "claim_set_parsed",
+  "no_claim_set",
+  "third_direction.measured",
+  "matcher_error_directions[].measured"
+ ],
+ "falsifiable_now": "the three seeded fields can be RE-FALSIFIED by re-running that arm; the read-only list is an ASSERTION, named as such \u2014 a reader can tell which verdicts are falsifiable (t41)."
+}

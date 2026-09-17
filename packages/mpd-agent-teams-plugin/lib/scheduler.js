@@ -17,7 +17,7 @@ import { acknowledgeMailbox, beginTaskAttempt, CAPTAIN_KEY, claimMailboxDelivery
 //#region mpd-delta terminal-dispatch-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
 // T-07 (wave 1, t36): the delivery-boundary re-check needs the ONE terminal-status list, from
 // the module that owns it, so the scheduler can never drift from the tool layer's definition.
-import { TERMINAL_TASK_STATUSES } from "./types.js";
+import { TERMINAL_TASK_STATUSES, isNonDispatchableKind } from "./types.js";
 //#endregion mpd-delta terminal-dispatch-import
 /** Per-dependency output cap in the assignment prompt. */
 export const DEPENDENCY_OUTPUT_MAX_CHARS = 2_000;
@@ -256,6 +256,10 @@ function ownedOpenTask(tasks, memberName) {
  */
 export function isTaskReady(tasks, task) {
     return task.status === 'pending'
+        // T-13 (wave 2b, t27): a deferred task is never offered to a seat. The filter keys on the
+        // task's OWN kind, so the same shape WITHOUT the kind stays dispatchable (the negative
+        // control the T-13 acceptance names).
+        && !isNonDispatchableKind(task)
         && task.reassigning !== true
         && unsatisfiedDependencies([...tasks], task.dependencies).length === 0;
 }
@@ -278,7 +282,7 @@ export function isTaskReady(tasks, task) {
  * @param task - the candidate task.
  * @returns which halves the task needs.
  */
-function taskCapabilityNeed(task) {
+export function taskCapabilityNeed(task) {
     return {
         writes: task.kind === 'implementation' || task.kind === 'repair' || (task.inScope ?? []).length > 0,
         exec: (task.verify ?? []).length > 0,
@@ -290,7 +294,10 @@ function taskCapabilityNeed(task) {
  * @param member - the member about to be woken, or undefined when unknown.
  * @returns the withheld tool names, in the order they are reported.
  */
-function taskCapabilityGap(task, member) {
+// T-93 (wave 2b, lane A): EXPORTED so the generator's own seat filter (`lib/quality-gates.js`,
+// `mpd-delta repair-seat-capability`) can be asserted EQUAL to the dispatch's read on a fixture
+// matrix — the same read, with the equivalence pinned rather than assumed.
+export function taskCapabilityGap(task, member) {
     const denied = new Set(member?.toolDeny ?? []);
     const need = taskCapabilityNeed(task);
     const missing = [];
@@ -350,6 +357,51 @@ function nextReadyTask(tasks, memberName) {
     return ready.find(task => task.assignee === memberName)
         ?? ready.find(task => task.assignee === undefined);
 }
+//#region mpd-delta reoffer-terminal-route (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * T-93 (wave 2b, lane A): the ROUTING CLASS of one delivery, keyed on BOTH halves.
+ *
+ * The family this classifies, measured on this wave's own surfaces and tallied in the captain's
+ * ledger: a delivery reaches a seat for work it cannot do, and the seat spends its turn proving that
+ * instead of doing the ready task the re-offer displaced. The two halves are load-bearing and the
+ * wave has ONE measurement for each, so neither alone covers both surfaces:
+ *
+ *  - TERMINALITY (`task.status` is terminal): terminal work can never be claimed — the platform's own
+ *    refusal text is `task status cannot move from "completed"|"failed" to "claimed"` — so no delivery
+ *    of it can be worked at all.
+ *  - EQUALITY (`delivery.attemptId === task.attemptId`): the delivery carries the capability the task
+ *    ALREADY records, i.e. the id its completion recorded. A REASSIGNMENT mints a FRESH attempt id
+ *    (`invalidateTaskAttempt` re-opens the task, then `beginTaskAttempt` mints), and the kick compose
+ *    always mints too (lane C's t17: `48c3f297…`/`251420e9…` against the completion's `7c133ef3…`), so
+ *    the equality is what distinguishes a RE-OFFER of finished work from a ticket that merely lost its
+ *    generation. A fix keyed only on terminality refuses both surfaces but cannot name either; a fix
+ *    keyed only on the equality says nothing about the kick surface (unmeasurable there).
+ *
+ * @param tasks - the team's tasks, read under the same lock as the decision.
+ * @param delivery - `{ taskId, attemptId }` of the composed delivery.
+ * @returns `undefined` when the delivery may be handed over; otherwise the class name —
+ *  `'reoffer-terminal-same-attempt'` (finished work re-offered with its own completed id: refuse,
+ *  report, never re-work), `'terminal-rotated'` (the task became terminal before delivery, T-07's
+ *  compose/wake race) or `'rotated'` (the generation moved on), or `'task-gone'`.
+ */
+export function deliveryRoutingClass(tasks, delivery) {
+    const current = tasks.find((candidate) => candidate.id === delivery.taskId);
+    if (current === undefined)
+        return 'task-gone';
+    const terminal = TERMINAL_TASK_STATUSES.includes(current.status);
+    // EXACT equality, with no special case for an absent id: this reproduces the pre-T-93 decision
+    // table branch for branch (it refused on `current.attemptId !== ticket.attemptId`), so the fix
+    // CLASSIFIES a delivery without moving any edge of the existing refusals.
+    const sameAttempt = current.attemptId === delivery.attemptId;
+    if (terminal && sameAttempt)
+        return 'reoffer-terminal-same-attempt';
+    if (terminal)
+        return 'terminal-rotated';
+    if (!sameAttempt)
+        return 'rotated';
+    return undefined;
+}
+//#endregion mpd-delta reoffer-terminal-route
 export function assignmentPrompt(ticket, stateDir, teamId) {
     const description = ticket.description === undefined ? '' : `\n\n${ticket.description}`;
     const seed = ticket.profileSeedId === undefined ? '' : ` [${ticket.profileSeedId}]`;
@@ -677,14 +729,27 @@ export function installTeamScheduler(ctx, config) {
                 // that "restored" `pending` over it would destroy a finished deliverable.
                 const stale = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
                     const latest = await readTeam(stateRoot, team.id);
-                    const current = latest?.tasks.find((candidate) => candidate.id === ticket.taskId);
-                    if (latest === undefined || current === undefined)
+                    if (latest === undefined)
                         return "the task disappeared before its assignment could be delivered";
-                    if (TERMINAL_TASK_STATUSES.includes(current.status))
+                    // T-93 (wave 2b, lane A): the decision is the NAMED predicate (`mpd-delta
+                    // reoffer-terminal-route`, keyed on BOTH halves) and the decline note names the
+                    // CLASS, so a re-offer of finished work is never collapsed into the sentence that
+                    // describes a compose/wake race — the two need different captain actions.
+                    const routing = deliveryRoutingClass(latest.tasks, { taskId: ticket.taskId, attemptId: ticket.attemptId });
+                    if (routing === undefined)
+                        return undefined;
+                    const current = latest.tasks.find((candidate) => candidate.id === ticket.taskId);
+                    if (routing === 'task-gone' || current === undefined)
+                        return "the task disappeared before its assignment could be delivered";
+                    if (routing === 'reoffer-terminal-same-attempt')
+                        // T-93: the boundary OBSERVES the same sentence the race produces (the task IS
+                        // terminal here), so the pinned wording stays byte-for-byte and the CLASS is
+                        // appended — an operator needs to tell a re-offer from a lost generation, and
+                        // the routing class is what names which one this was.
+                        return `task ${ticket.taskId} became ${current.status} before its assignment could be delivered (routing class ${routing}: the delivery carries the attempt id the task's own completion recorded — a RE-OFFER of finished work, not a reassignment)`;
+                    if (routing === 'terminal-rotated')
                         return `task ${ticket.taskId} became ${current.status} before its assignment could be delivered`;
-                    if (current.attemptId !== ticket.attemptId)
-                        return `task ${ticket.taskId} was handed to a newer attempt before its assignment could be delivered`;
-                    return undefined;
+                    return `task ${ticket.taskId} was handed to a newer attempt before its assignment could be delivered`;
                 });
                 if (stale !== undefined) {
                     await withTeamLock(teamLockKey(stateRoot, team.id), async () => {

@@ -1,0 +1,17 @@
+{
+  "maxBytes": 65536,
+  "renderer": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js",
+  "results": [
+    {
+      "label": "agents-before",
+      "path": "/root/dshProj/my-power-dsh/AGENTS.md",
+      "sourceBytes": 53283,
+      "renderedBytes": 53587,
+      "underBudget": true,
+      "truncated": false,
+      "omitted": [],
+      "truncatedRecords": [],
+      "verdict": "GREEN (full content injected)"
+    }
+  ]
+}

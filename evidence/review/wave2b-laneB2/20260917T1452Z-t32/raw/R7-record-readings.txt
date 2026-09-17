@@ -1,0 +1,39 @@
+== R1 (citation run) rules.family_boundary ==
+{
+  "out_of_family": "a POSITION citation (no literal string) and a BASENAME-ONLY citation (no `/`) are OUT OF FAMILY and pass silently, by design: the family's six addressing parameters require a repo-relative literal, so this checker cannot resolve or rot them and a green run says nothing about them (t31/B2-F3)."
+}
+R1 rules keys: ['doc_rewrite', 'family_boundary']
+
+== R4 (driver-headers) policy + audit.third_direction ==
+mode: driver-headers
+policy.out_of_family: a citation cited by POSITION (no literal string) and a BASENAME-ONLY path (no `/`) are OUT OF FAMILY: the six addressing parameters require a repo-relative literal, so neither shape is judged and both pass silently — a green run says nothing about them (t31/B2-F3)
+third_direction: {
+  "name": "the line-wide REFERENCE exemption",
+  "measured": "1 reference line(s) carry 5 A<n> token(s) (A1, A2, A3, A4, A6); the exemption skips the WHOLE line, so a claim sharing a line with an artifact reference is not claimed \u2014 declared and measured rather than silent (t31/B2-F4)"
+}
+matcher_error_directions: [
+ {
+  "direction": "over-report",
+  "alternative": "whole-header token scan (no claim-marker scope, no reference filter)",
+  "measured": "1 file(s) flagged and 1 key(s) reported as mismatched, against 0 with the precise rule"
+ },
+ {
+  "direction": "under-report",
+  "alternative": "non-recursive ./skills/dsh-qa/scripts/*.mjs (misses lib/)",
+  "measured": "1 key producer(s) found against 2"
+ },
+ {
+  "direction": "under-report",
+  "alternative": "a file-type assumption (.js) instead of .mjs",
+  "measured": "0 key producer(s) found against 2"
+ },
+ {
+  "direction": "over-report",
+  "alternative": "a whole-repo literal scan for `add(\"A`",
+  "measured": "25 key-producing .mjs file(s) repo-wide against 2 in scope"
+ }
+]
+directories: [{'path': './skills/dsh-qa/scripts/', 'recursive': True, 'files_scanned': 54}] split: {"skills/dsh-qa/scripts/": {"files": 46, "key_producers": 1, "keys": 9, "claims": 9, "violations": 0, "no_claim_set": 0}, "skills/dsh-qa/scripts/lib/": {"files": 8, "key_producers": 1, "keys": 5, "claims": 5, "violations": 0, "no_claim_set": 0}}
+
+== R6 (--naive probe) mode + violations ==
+mode: driver-headers | violations: 0 | third: 1 reference line(s) carry 5 A<n> token(s) (A1, A2, A3, A4, A6); the exemption skips the WHOLE line, so a claim sharing a line with an artifact reference is not 

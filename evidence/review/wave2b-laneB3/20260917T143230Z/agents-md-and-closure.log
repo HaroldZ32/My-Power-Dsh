@@ -1,0 +1,32 @@
+-- budget bytes (full JSON grep) --
+  "maxBytes": 65536,
+
+-- ROOT_ASSET_DIRS membership --
+const ROOT_ASSET_DIRS = [
+  // the skill corpus, SERVED from <bundle>/skills by the `mpd-bootstrap` row (never copied
+  // into $DSH_HOME); a packed bundle without it silently loses every skill
+  "skills",
+  // the `mpd` preset, served through the bundle patch's agent-presets root (<bundle>/presets)
+  "presets",
+  // the mpd-ext bundle discovery root: mpd-ext resolves the bundle plane as
+  // `<bundleRoot>/extensions` (plan §1.9), so a packed bundle that ships the plugin but not
+  // this directory silently loses the whole bundle plane, reference extension included
+  "extensions",
+  // the extension scaffold template `templates/mpd-extension` — the ONLY source of
+
+-- AGENTS.md §4: the T-91 closure row + bound sentence (grep by CONTENT, not line) --
+189:| Pack closure | `node scripts/verify-pack-closure.mjs` (completeness + the byte identity of files whose sources did not move; `--self-test` is the fixture-driven arm; `--pack-stamp <t>` re-anchors the comparison for a reviewer mutating a copy) | any pack, any post-pack writer, and in the release sweep (§11) |
+200:`node scripts/verify-pack-closure.mjs` certifies COMPLETENESS plus the BYTE IDENTITY of every file
+539:   `node scripts/verify-dist-fresh.mjs`, `node scripts/verify-pack-closure.mjs` (freshness read from
+
+-- the landed reason (A5-corrected: AGENTS.md NOT packed) vs the stale label --
+
+-- §11 release sweep line --
+
+-- pack-closure LIVE read (read-only): artifact stamp + is the template pair expected/absorbed? --
+exit=0
+content bytes: 1181 file(s) compared, 1167 identical, 0 drift, 14 expected-after-pack
+pack stamp 2026-09-17T08:55:57.244Z
+template README mentions in the closure read: 2
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - templates/mpd-extension/README.md: source mtime 2026-09-17T14:26:10.128Z is AFTER the art
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - templates/mpd-extension/README.zh-CN.md: source mtime 2026-09-17T14:26:10.145Z is AFTER t

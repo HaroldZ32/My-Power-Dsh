@@ -1,0 +1,51 @@
+{
+  "schema": "t44/review-laneA-remainder/1",
+  "task": "t44",
+  "attemptId": "a1907982-57c9-4d76-8b6e-fa7a8d275dc4",
+  "verdict": "needs_revision",
+  "reviewMoment": "2026-09-17T16:50:04Z",
+  "record": "evidence/review/wave2b-laneA/20260917T1535Z-t44/record.md",
+  "subjects": ["t43", "t47", "t48", "t49", "t50", "t51", "t52", "t53"],
+  "pinsAtReviewMoment": {
+    "registry": { "file": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js", "sha256_prefix": "0691215912cb4bc8eb19", "entries": 118, "ids": 118, "files": 10 },
+    "sessionStart": { "file": "packages/mpd-agent-teams-plugin/lib/session-start.js", "sha256_prefix": "b6ef8b15e11174d954c5" },
+    "deltasDoc": { "file": "agent-references/agent-teams-deltas.md", "sha256_prefix": "24c891b83257ea5b6888" },
+    "liveMarkerIds": 119,
+    "nestingScan": "exactly 1 nested child (unregistered), 0 mismatched or unclosed spans"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "high",
+      "file": "packages/mpd-agent-teams-plugin/lib/session-start.js",
+      "line": 224,
+      "problem": "`mpd-delta plan-format-seed` (:224-:313, t52's T-42 region) is NESTED INSIDE `mpd-delta session-start-gate` (:86-:648) and is absent from the registry (`MPD_DELTAS` = 118 entries; the whole-tree scan finds exactly this one nested child and no registry entry lacks a live marker). Every check is green and each one is BLIND to it: `--check` exits 0 ('already applied: 118 regions across 10 adopted file(s)') because it verifies registered regions; the docs gate's `liveRegionCount` (verify-docs-parity.mjs:184-196) finds the first `//#endregion mpd-delta session-start-gate` at :648, treats 86-648 as ONE region and returns 2 for a file carrying 3 markers, so its 'markers agree: 118' is a FALSE agreement; the heal suite (21/0) heals registered regions only. Consequence: on a hand re-materialize of session-start.js the applier cannot restore a region it does not know, `--write-registry` keeps missing it (same nesting-unaware enumeration), T-42's plan-format code would be silently absent, and no gate would redden. The lane's own rule is 'a marker is a SIBLING, never a child' (t43's acceptance), and `agent-references/agent-teams-deltas.md:56-58` claims t52 ADDED this region while reporting 113 regions - the doc and the registry disagree by one region.",
+      "requiredFix": "(1) Re-anchor the region as a SIBLING outside `session-start-gate`'s span (after :648/:649 or before :86) - or, if the nesting is intended, teach the machinery to represent it (registry + counts + gate), which is the larger change; (2) run `node scripts/patch-agent-teams-fixes.mjs --write-registry` and confirm the count MOVES by the previously missing entry, quoting the registry sha beside it; (3) at that revision: `--check` green AND the strip/heal suite green AND `bun run verify:docs` green with its derived arm reading true; (4) update the deltas doc's account at :56-58 to the regenerated counts; (5) DURABLE HALF: make the fault detectable - the applier's writer (or its `--check`) must refuse/flag a `//#region mpd-delta` whose span lies inside another region's span, and the docs gate's per-file corroboration should count with a nesting-aware scan so a child surfaces as a mismatch instead of 'agree'."
+    }
+  ],
+  "itemOutcomes": {
+    "0_everyRowIndependentlyReproduced": { "status": "passed", "evidence": "all eight remainder arm files reproduce under my own ./ -formed runs: t43-mailbox-clear-guard 3/0, t47-mailbox-window 3/0, t48-mailbox-gate 3/0, t49-retention-prune 4/0, t50-team-revision 6/0, t51-reoffer-routing 4/0, t52-one-plan-format 3/0, t53-member-capacity 4/0 (raw/row-arms-dot.log) - plus the registry family, the cross-lane clause and the honest-partial states", "bound": "the DO-WHEN's full staged legs beyond the shipped arms (e.g. t52's declared wiring-only seam) were not driven by me" },
+    "1_P1b": { "status": "passed", "evidence": "my own run of `bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/t49-retention-prune.test.mjs` -> exit 0, 4 pass / 0 fail; the arms cover the three eligibility conditions EACH armed on its own, archive-first (the sidecar holds the bytes + the tombstone keeps id/ts/from/to and its read/delivery markers), the knob (0 disables the prune; the ACK path runs it), and the MEASURED seeded before/after printed by the arm itself: '[P1b] seeded 45 records at 1970-01-31T00:16:40.000Z -> pruned 40, tombstones 40, live 5' (raw/p1b-arms.log), matching t49's own capture" },
+    "2_registryFamilyEndToEnd": { "status": "failed", "evidence": "the three checks are green at this revision (`--check` exit 0; heal 21/0; `verify:docs` PASS) but the end-to-end measurement found F1: the registry is INCOMPLETE for the tree it claims (118 entries vs 119 live marker ids) and all three checks are structurally blind to the nesting. Count re-taken at the review moment: 118 entries / 118 ids / 10 files, registry sha 0691215912cb4bc8eb19" },
+    "3_crossLaneClauseWithDeclaredInterest": { "status": "passed", "evidence": "DECLARED INTEREST stated (my 2a control arm splices `mpd-delta ready-task-predicate`; lane A's t27 broke its anchor and I repaired it in MY file under t33). Reading: the anchor target exists exactly once in scheduler.js; `bun test ./packages/mpd-team-watchdog-plugin` -> exit 0, 139 pass / 0 fail / 684 expect() / 13 files; `isTaskReady`'s shape is unchanged (no refusal edge moved); t51's `deliveryRoutingClass` is CONSULTED at scheduler.js:738 and keyed on BOTH halves (terminality + attempt equality) with the class named in the decline note. A withdrawn probe of mine is recorded inside raw/anchor-and-wiring.mjs (a literal backslash-n from shell quoting reported 0 occurrences; the suite's reading is authoritative)" },
+    "4_honestPartialTrail": { "status": "passed", "evidence": "judged on readings from the terminal states: t43 failed with 6/7 item statuses passed (its P1b gap NAMED and later DELIVERED by t49, 5/5), t47 failed with 4/6 (its remainder P1d landed as t48, 6/6), t13 (3 of 14, the other eleven NAMED) and t40 (deliberate partial, per-row handover) - while t27/t29/t48/t49/t50/t51/t52/t53 closed with full payloads. No row is failed for its shape" },
+    "5_t30F1ThreeCases": { "status": "failed", "evidence": "NOT VERIFIED BY ME in this pass (bound, stated): the three cases (members PENDING -> the cycle IS named and blocking=['B']; FAILED -> not named, task claimable; COMPLETED -> not named) plus the arm's revert-state run were not reproduced. With F1 standing, the tree must move for the repair, so these readings are owed at the re-review" },
+    "6_findingsStructuredBoundsInScopeNothingPacked": { "status": "passed", "evidence": "the finding is structured (id/severity/problem/requiredFix/file/line); the bounds are explicit (items 0/5 above, plus the unattributed expect() movement recorded as a measurement with no named cause: 2755 at this revision matches the captain's chain's last value); all writes are inside evidence/review/wave2b-laneA/**; no lib/** edit, no manual edit, nothing packed touched" }
+  },
+  "unattributedMovements": [
+    "the plugin suite's expect() total reads 2755 at this revision (48 files), matching the captain's chain's last value (2695 -> 2755 at t53); no test file was edited by me, and I do not attribute the earlier movement either - recorded as a movement with its measurement and no named cause",
+    "t50's corrected call-site census (29 = members 3 / scheduler 6 / tools 20, state.js the definition, TWO team.json writers) is NOT verified by me in this pass (bound)"
+  ],
+  "verify": [
+    { "command": "node ./scripts/patch-agent-teams-fixes.mjs --check", "exit": 0, "reading": "already applied: 118 mpd delta region(s) across 10 adopted file(s) - blind to the nested region (F1)" },
+    { "command": "bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs", "exit": 0, "reading": "21 pass / 0 fail / 1214 expect()" },
+    { "command": "bun test ./packages/mpd-agent-teams-plugin", "exit": 0, "reading": "299 pass / 0 fail / 2755 expect() / 48 files" },
+    { "command": "bun run ./scripts/verify-docs-parity.mjs", "exit": 0, "reading": "pairs=38 failed=0 violations=0 exempt=19 derived=3 PASS - its marker agreement is FALSE for the nested region (F1)" },
+    { "command": "bun test ./packages/mpd-team-watchdog-plugin", "exit": 0, "reading": "139 pass / 0 fail / 684 expect() / 13 files (the cross-lane reading; my interest declared)" },
+    { "command": "node raw/nesting-scan.mjs", "exit": 0, "reading": "1 nested child (mpd-delta plan-format-seed inside mpd-delta session-start-gate), unregistered; 0 mismatched spans" },
+    { "command": "node raw/registry-vs-markers.mjs", "exit": 0, "reading": "118 registered vs 119 live ids; the extra is mpd-delta plan-format-seed at session-start.js:224" },
+    { "command": "bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/t49-retention-prune.test.mjs", "exit": 0, "reading": "4 pass / 0 fail; seeded 45 -> pruned 40, tombstones 40, live 5" }
+  ],
+  "residual": "t44 FAILS on F1. The remainder's rows themselves reproduce under my own runs (eight arms, plus P1b's seeded reading), the cross-lane clause passes with my interest on the record, and the honest-partial trail is judged sound - but the registry is not healthy: one region is outside it, invisible to `--check`, to the docs gate's corroboration and to the heal suite. The re-review owes item 5's three cases and the DO-WHEN's staged legs, on the repaired revision.",
+  "finishedAt": "2026-09-17T16:52:00Z"
+}

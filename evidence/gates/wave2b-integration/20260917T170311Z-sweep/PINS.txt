@@ -1,0 +1,22 @@
+=== pinned revision BEFORE ===
+b001214ea76a60191c04a6132ac400147b31a7949a564e34a279a5bd04ff4853  packages/mpd-agent-teams-plugin/lib/tools.js
+ec795cce7e7cf4cde146fee4bc4526fdadca894bb5879482a5b90fd5a5e5453c  packages/mpd-agent-teams-plugin/lib/session-start.js
+f8f64be9d045e19efa128fcef7288d4d3ff82bae571d71fa7b8e8e4b74d6bc72  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+2bbe584a5906537460138adb2f5997bf573ceccf50fda8488c91a7ebe428ce6e  scripts/verify-docs-parity.mjs
+8d6a3102eed6973dfda5148c30ab49e5e84caaef7beaa223bd8383a8f108db6d  scripts/patch-agent-teams-fixes.mjs
+fd6074e6d068cd4ce4e29ccac2b00270b015b08c26d26b0b0612d4241a106972  agent-references/agent-teams-deltas.md
+cfc8005d56bc3e3fb5ebfa74c30b86a609c85eb56439547fc79f117722ca1256  VENDOR_LOCK.json
+5a87a6ad5138d7f3c6d3fdff9f5134c30f8e9d7528794506cdb8276fde0005bf  skills/dsh-qa/scripts/agent-teams-messaging.mjs
+registry entries: 120
+ca780331abdaecdef2e35ad7cad643bb69d86d90
+=== pinned revision AFTER (end of the resumed window) ===
+b001214ea76a60191c04a6132ac400147b31a7949a564e34a279a5bd04ff4853  packages/mpd-agent-teams-plugin/lib/tools.js
+ec795cce7e7cf4cde146fee4bc4526fdadca894bb5879482a5b90fd5a5e5453c  packages/mpd-agent-teams-plugin/lib/session-start.js
+f8f64be9d045e19efa128fcef7288d4d3ff82bae571d71fa7b8e8e4b74d6bc72  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+2bbe584a5906537460138adb2f5997bf573ceccf50fda8488c91a7ebe428ce6e  scripts/verify-docs-parity.mjs
+8d6a3102eed6973dfda5148c30ab49e5e84caaef7beaa223bd8383a8f108db6d  scripts/patch-agent-teams-fixes.mjs
+fd6074e6d068cd4ce4e29ccac2b00270b015b08c26d26b0b0612d4241a106972  agent-references/agent-teams-deltas.md
+cfc8005d56bc3e3fb5ebfa74c30b86a609c85eb56439547fc79f117722ca1256  VENDOR_LOCK.json
+5a87a6ad5138d7f3c6d3fdff9f5134c30f8e9d7528794506cdb8276fde0005bf  skills/dsh-qa/scripts/agent-teams-messaging.mjs
+registry entries: 120
+ca780331abdaecdef2e35ad7cad643bb69d86d90

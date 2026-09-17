@@ -1,0 +1,7 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=df652241c742 lanes=1 evidence=evidence/dsh-qa/wave2b-laneD/20260917T1447Z-lanes3
+[mpd-qa:(only)] discovery=46 lane script(s) (.mjs entries 46, underscore-excluded 0, unlisted 0, outside-suite 19)
+[mpd-qa:(only)] immutability required=10: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=36
+[mpd-qa:(only)] FAIL case=session-start-team reason=exit-1 exit=1 evidence=evidence/dsh-qa/session-start-team/2026-09-17T14-47-32.307Z log=evidence/dsh-qa/wave2b-laneD/20260917T1447Z-lanes3/lanes/session-start-team.log ms=855936
+[mpd-qa:(only)] summary selected=1 pass=0 unavailable=0 fail=1
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/wave2b-laneD/20260917T1447Z-lanes3
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

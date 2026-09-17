@@ -1,3 +1,4 @@
+<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->
 # ULW deep-optimization for DeepSeek V4 + DSH (2026-08-27)
 
 What was changed in the ultrawork loop stack (mpd-ulw-plugin + ulw-plan/ulw-execute/ulw-research

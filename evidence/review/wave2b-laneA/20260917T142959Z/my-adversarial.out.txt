@@ -1,0 +1,14 @@
+BAD  T-84/A: a `reported` entry for a NON-verified command is REFUSED  :: {"ok":true}
+OK   T-84/B: passed + reported covers TWO verify commands (the legitimate path)  :: {"ok":true}
+OK   T-84/C: OMITTED commandsRun is still refused  :: {"ok":false,"error":"verification completion requires a passed commandsRun entry for every verify command — no entry for bun run x (matched 0 of 1)"}
+   T-84/D: blank reason      => {"ok":true} | isCommandResult= false
+   T-84/E: empty commandsRun => {"ok":false,"error":"verification completion requires a passed commandsRun entry for every verify command — no entry for bun run x (matched 0 of 1)"}
+OK   T-84/F: a FAILED command still fails the task  :: {"ok":false,"error":"verify failure must fail the task","requiredStatus":"failed"}
+BAD  T-87/A: a WRONG item (not merely missing) is refused  :: undefined
+   T-87/B: one item UNPAID     => implementation completion requires passed acceptanceResults for every acceptance item — not passed: item-9 (matched 8 of 9)
+BAD  T-64/A: a CYCLE is named by unresolvedDependencies (acceptance OBSERVABLE: "or a cycle")  :: returned []
+BAD  T-64/B: the status note NAMES the deadlock  :: note=""
+   T-64/C: dependencyStates(cyclic t1) => {"blocking":["t2"],"failed":[]}
+OK   T-64/D: the phantom id IS named (the half the lane verified)
+
+ADVERSARIAL FAILURES: 4

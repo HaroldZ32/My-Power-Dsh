@@ -1,0 +1,15 @@
+### MATCHED MIRROR CONTROLS — full plugin package suite, same mirror, same call
+--- BASELINE (no split) ---
+ 254 pass
+ 4 fail
+Ran 258 tests across 40 files. [12.18s]
+--- SHAPE 2 (region wraps only the fallback return) ---
+  shape 2 applied
+ 234 pass
+ 24 fail
+Ran 258 tests across 40 files. [1.93s]
+--- the SPLIT of the OTHER shape (region spans the header, ends mid-body), same mirror ---
+  shape 1 applied
+ 233 pass
+ 25 fail
+Ran 258 tests across 40 files. [1.99s]

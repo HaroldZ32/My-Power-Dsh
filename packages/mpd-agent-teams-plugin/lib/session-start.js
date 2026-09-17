@@ -73,7 +73,7 @@
  * @module dsh-agent-teams/session-start
  */
 import { createHash } from 'node:crypto';
-import { readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createUserMessage } from '../_deps/dsh-llm/lib/index.js';
 import { appendTeamEvent } from "./events.js";
@@ -556,6 +556,96 @@ export function installSessionTeamPolicy(ctx, resolved) {
     }, { global: true, prepend: true });
 }
 //#endregion mpd-delta session-start-gate
+//#region mpd-delta plan-format-seed (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * T-42 (wave 2b, lane A): ONE plan format, understood by BOTH paths.
+ *
+ * The friction: the session-start path only ASKED WHETHER a `.mpd/plans/*.md` artifact exists (a soft
+ * signal for the complexity gate) while the DAG seed took its tasks from a profile's `tasks` templates —
+ * two conventions for "the plan", and nothing compared them, so a plan file could describe one DAG and
+ * the seed produce another (or a task nobody authored). The declared convention is the PLAN'S OWN: the
+ * item ids the artifact already carries — `## TODOs` items (`1.`, `2.`, …) as `T1`, `T2`, … and
+ * `## Final Verification Wave` items (`F1.`) as `F1` — normalised here and consumed by BOTH the
+ * session-start reader and the DAG seed (`lib/tools.js`, `initializeProfileTeam`, which now accepts a
+ * `planFile` and builds its draft tasks through the SAME items).
+ *
+ * IDENTITY IS REFUSED, NEVER REPAIRED: two items naming the same id are a REFUSAL that names the id and
+ * both lines — never a merge and never a suffix, because a suffixed id is a task the author did not write.
+ */
+export const PLAN_TODO_SECTION = '## TODOs';
+export const PLAN_FINAL_WAVE_SECTION = '## Final Verification Wave';
+function planItemSubject(text) {
+    return text.replace(/\*\*/gu, '').replace(/\s+/gu, ' ').trim();
+}
+/**
+ * Parse one plan's task items into the declared convention.
+ * @param planText - the plan artifact's bytes.
+ * @returns `{ ok: true, items }` or `{ ok: false, error }` naming the collision (or the absence).
+ */
+export function parsePlanSeedItems(planText) {
+    const items = [];
+    const seen = new Map();
+    let section;
+    const lines = String(planText ?? '').split('\n');
+    for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        if (line.trim().startsWith('#'))
+            section = line.trim().replace(/#+\s*$/u, '');
+        const todo = section === PLAN_TODO_SECTION ? /^\s*(\d+)\.\s+(.+)$/u.exec(line) : null;
+        const final = section === PLAN_FINAL_WAVE_SECTION ? /^\s*F(\d+)\.\s+(.+)$/u.exec(line) : null;
+        const match = todo ?? final;
+        if (match === null)
+            continue;
+        const id = todo === null ? `F${match[1]}` : `T${match[1]}`;
+        const subject = planItemSubject(match[2]);
+        if (subject === '')
+            continue;
+        const previous = seen.get(id);
+        if (previous !== undefined) {
+            return {
+                ok: false,
+                error: `plan item id "${id}" is named twice (lines ${previous} and ${index + 1}) — ids are IDENTITY: the plan is refused, never merged and never suffixed`,
+            };
+        }
+        seen.set(id, index + 1);
+        items.push({ id, subject, line: index + 1 });
+    }
+    if (items.length === 0)
+        return { ok: false, error: `no plan items found: a plan declares its work under "${PLAN_TODO_SECTION}" (numbered items) and its verification under "${PLAN_FINAL_WAVE_SECTION}" (F-items)` };
+    return { ok: true, items };
+}
+/**
+ * Read the workspace's plan artifact as the declared task set — the SESSION-START path's half of the
+ * T-42 reading. The file is chosen deterministically (first `*.md` by name, since a plan set is a set).
+ * @param workspace - the session workspace.
+ * @param planFile - optional workspace-relative plan path (the seed's explicit choice).
+ * @returns `{ ok, planFile, items }` or `{ ok: false, error }`.
+ */
+export async function readPlanSeedSet(workspace, planFile) {
+    let relative = planFile;
+    if (relative === undefined) {
+        let entries;
+        try {
+            entries = (await readdir(join(workspace, PLANS_DIR))).filter((entry) => entry.endsWith('.md')).sort();
+        }
+        catch {
+            return { ok: false, error: `no plan artifact under ${PLANS_DIR}` };
+        }
+        if (entries.length === 0)
+            return { ok: false, error: `no plan artifact under ${PLANS_DIR}` };
+        relative = join(PLANS_DIR, entries[0]);
+    }
+    let text;
+    try {
+        text = await readFile(join(workspace, relative), 'utf8');
+    }
+    catch {
+        return { ok: false, error: `plan artifact ${relative} is not readable` };
+    }
+    const parsed = parsePlanSeedItems(text);
+    return parsed.ok === true ? { ...parsed, planFile: relative } : parsed;
+}
+//#endregion mpd-delta plan-format-seed
 //#region mpd-delta interjection-expiry-session-start (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
 /**
  * R1 dormancy fix: make "captain silence = DENY" resolve even for a DORMANT team.

@@ -1207,8 +1207,15 @@ function selfTest() {
     // Arm 20c — the same mutated copy with the stamp PINNED at the source file's own mtime: now the
     // writer cannot be "after the pack", so the mutated byte is a hard CONTENT-DRIFT and the gate
     // reddens. This is the falsifiable pair for "a content mutation reddens": 20a green, 20c red.
-    const sourceRefMtime = statSync(join(repoRoot, "agent-references", "troubleshooting.md")).mtime
-    arm("negative-control (same mutation, stamp pinned -> hard CONTENT-DRIFT, exit 1)", runChecker(["--packed", realCopy, "--require-packed", "--pack-stamp", sourceRefMtime.toISOString()]), (c) => c.status === 1 && c.all.includes(CONTENT_KIND) && c.all.includes("agent-references/troubleshooting.md"))
+    // PRECISION TRAP (measured 2026-09-17, wave 2b): `statSync().mtime` is a Date — millisecond
+    // precision — while the gate compares `statSync().mtimeMs`, which carries sub-millisecond digits.
+    // A source file whose mtime is `X.400086 ms` reads as NEWER than a pin built from `X.400`, so the
+    // intended HARD verdict silently became the EXPECTED class and this arm flapped with the file's
+    // mtime. The pin is therefore built from the FLOAT mtime, one millisecond above its floor, so the
+    // file's own mtime is strictly older than the pin and the arm cannot flap.
+    const sourceRefMtimeMs = statSync(join(repoRoot, "agent-references", "troubleshooting.md")).mtimeMs
+    const pinnedStamp = new Date(Math.floor(sourceRefMtimeMs) + 1).toISOString()
+    arm("negative-control (same mutation, stamp pinned -> hard CONTENT-DRIFT, exit 1)", runChecker(["--packed", realCopy, "--require-packed", "--pack-stamp", pinnedStamp]), (c) => c.status === 1 && c.all.includes(CONTENT_KIND) && c.all.includes("agent-references/troubleshooting.md"))
 
   } finally {
     rmSync(scratch, { recursive: true, force: true })

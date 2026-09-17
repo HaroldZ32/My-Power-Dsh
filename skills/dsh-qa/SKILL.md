@@ -38,6 +38,40 @@ sandbox (temp DSH_HOME + sandbox HOME + sandbox workspace cwd — see Hard rule 
    historical artifacts are never rewritten.
 4. **--self-test**: every helper script ships `--self-test` (offline, no network, no real API).
 5. **Language**: all descriptions, logs, and script strings are English.
+6. **Session logs are concatenated-zstd-frame containers** (T-25). The reader is
+   `skills/dsh-qa/scripts/lib/session-evidence.mjs` — `readSessionEvents` / `findToolCall` /
+   `recordedToolNames` are its declared entry points. ONE `zstdDecompressSync` returns the HEADER
+   frame only, so a naive read reports **zero events** on a log that has plenty; a record that cites
+   "0 events" as proof of an empty log is a defect, and the arm must carry BOTH readings from the
+   same store at the same moment.
+7. **Compose through the wrapper, never the raw flag** (T-69). A lane that composes a profile runs
+   `node scripts/dump-config.mjs [--profile <name>] [--json|--quiet] ...`; the raw
+   `dsh --dump-config` spelling survives only in CONTRAST prose (this manual's own sentence and the
+   wrapper's warning text), and those sites are declared BY NAME in the scan, never by count. Two follow-on rules, both MEASURED on this corpus (R-D-F1 / R-D-F5):
+   **(a) a `join(REPO|repoRoot, …)` call site must resolve to a BINDING in its own file.** An
+   identifier that no file binds crashes the lane at argv-evaluation time while every scanner stays
+   green — `ReferenceError: REPO is not defined` took five lanes down at once; the arm is
+   `T-69.call-site-binding` in `wave2b-lane-d.mjs`.
+   **(b) the wrapper's JSON envelope rides on STDOUT and its banner on STDERR.** A capture that MERGES
+   the two streams cannot parse the envelope, and a fallback to that merged text turns a `"`-quoted
+   predicate FALSE without any error (the measured cause of `bundle-lifecycle`'s red `composed` /
+   `layerDurability`). Read the child's tree out of the envelope's `stdout` field — never out of
+   the merged buffer; the contract is pinned by the `T-69.json-stream` arm.
+8. **A driver's scratch root matches the repository's ignore SHAPE** (T-77): the declared root is
+   `./.qa-<slug>/` and the `.gitignore` rule `/.qa-*` covers files AND directories; a near-miss
+   without the leading dot is NOT ignored, and that pair is the assertion.
+9. **Path-qualified commands carry the leading `./`** (T-89): a test runner's positional path
+   argument is a SUBSTRING FILTER, so a bare spelling can reach an unintended copy elsewhere in the
+   tree. Measured: a deliberately-reverted copy made the command read 331 ran / 164 failed / 324
+   errors while the `./` form discovered exactly 15 files, 107/0. A driver that keeps a scratch copy
+   NAMES its path AND the exact file count the clean command discovers.
+10. **Running someone else's driver pins its output** (T-74, beside T-53's immutability rule):
+   a verification that runs another task's driver pins its output with `--out` into its own evidence dir,
+   so the foreign window stays BYTE-IDENTICAL; an existing target is refused rather than overwritten.
+11. **A driver header's `A<n>` claims are checked, not prose** (T-80):
+   `node scripts/check-citations.mjs --driver-headers` compares the header's CLAIM line with the keys the
+   driver's own `add("A<n>", …)` calls produce — claimed-but-unasserted and produced-but-unclaimed are
+   both violations, and a stray key token in prose counts as a CLAIM (measured on this corpus).
 
 ## Cases (grow per phase)
 

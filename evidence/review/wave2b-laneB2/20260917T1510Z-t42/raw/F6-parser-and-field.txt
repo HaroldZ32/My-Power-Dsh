@@ -1,0 +1,4 @@
+MY PARSER on round-4 revision: skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs -> 2 reference lines carrying tokens; set [1, 2, 3, 4, 6]
+MY PARSER on round-4 revision: skills/dsh-qa/scripts/tui-team-surface.mjs -> 0 reference lines carrying tokens; set []
+THE FIELD (my own live run): 2 reference LINE(s) carry 5 A<n> token(s) (A1, A2, A3, A4, A6); the exemption skips the WHOLE line, so a claim
+units_sweep present in the record: True | audit keys: ['claim_set_parsed', 'directories', 'matcher_error_directions', 'moment', 'no_claim_set', 'not_inherited', 'per_directory_split', 'third_direction', 'units', 'units_sweep', 'violations']

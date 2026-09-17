@@ -1,0 +1,413 @@
+{
+  "prober": "verify-debranding-full.mjs",
+  "supersedes": "evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.mjs (F7: probe narrower than its printed claim; NOT edited)",
+  "supersededProberCoverage": {
+    "available": true,
+    "path": "evidence/mpd-ext-debranding/20260915T074904Z/verify-debranding.mjs",
+    "printedClaim": "quoted snippets match the shipped example verbatim",
+    "oldFields": [
+      "flows.description",
+      "flows.id",
+      "flows.title",
+      "flows.whenToUse",
+      "skills.description",
+      "skills.name"
+    ],
+    "gap": [
+      "mcp.args",
+      "mcp.command",
+      "mcp.serverName",
+      "mcp.transport",
+      "roles.description",
+      "roles.name",
+      "roles.persona"
+    ]
+  },
+  "fieldInventory": {
+    "skills": [
+      "name",
+      "description"
+    ],
+    "flows": [
+      "id",
+      "title",
+      "description",
+      "whenToUse"
+    ],
+    "roles": [
+      "name",
+      "description",
+      "persona"
+    ],
+    "mcp": [
+      "serverName",
+      "transport",
+      "command",
+      "args"
+    ]
+  },
+  "kinds": [
+    "skills",
+    "flows",
+    "roles",
+    "mcp"
+  ],
+  "targets": [
+    {
+      "id": "mpd-ext-example",
+      "root": "extensions/mpd-ext-example",
+      "docs": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ],
+      "requireAllQuoted": true,
+      "artifactCounts": {
+        "skills": 1,
+        "flows": 1,
+        "roles": 1,
+        "mcp": 1
+      },
+      "probeCount": 13,
+      "quotedCount": 13,
+      "notQuoted": []
+    },
+    {
+      "id": "mpd-extension-template",
+      "root": "templates/mpd-extension",
+      "docs": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ],
+      "requireAllQuoted": false,
+      "artifactCounts": {
+        "skills": 1,
+        "flows": 1,
+        "roles": 1,
+        "mcp": 1
+      },
+      "probeCount": 13,
+      "quotedCount": 13,
+      "notQuoted": []
+    }
+  ],
+  "probeList": [
+    {
+      "target": "mpd-ext-example",
+      "kind": "skills",
+      "artifact": "extensions/mpd-ext-example/skills/change-triage/SKILL.md",
+      "field": "name",
+      "value": "change-triage",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "skills",
+      "artifact": "extensions/mpd-ext-example/skills/change-triage/SKILL.md",
+      "field": "description",
+      "value": "Reference extension skill: triage a code change before review (what changed, what it touches, which risks deserve a reader). Use when a code diff needs a first pass before a human or reviewer looks at it.",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "flows",
+      "artifact": "extensions/mpd-ext-example/flows/change-triage-flow.json",
+      "field": "id",
+      "value": "change-triage-flow",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "flows",
+      "artifact": "extensions/mpd-ext-example/flows/change-triage-flow.json",
+      "field": "title",
+      "value": "Change triage before review",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "flows",
+      "artifact": "extensions/mpd-ext-example/flows/change-triage-flow.json",
+      "field": "description",
+      "value": "Walk a code change through the reference extension's triage skill, then hand the result to a reviewer. Use before a code change is reviewed.",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "flows",
+      "artifact": "extensions/mpd-ext-example/flows/change-triage-flow.json",
+      "field": "whenToUse",
+      "value": "Use when a code change needs a first pass before review.",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "roles",
+      "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+      "field": "name",
+      "value": "Code Reviewer",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "roles",
+      "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+      "field": "description",
+      "value": "Reference extension role: reviews a change read-only against the extension contract and reports findings without editing files.",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "roles",
+      "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+      "field": "persona",
+      "value": "personas/code-reviewer.md",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "mcp",
+      "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+      "field": "serverName",
+      "value": "lint-mcp",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "mcp",
+      "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+      "field": "transport",
+      "value": "stdio",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "mcp",
+      "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+      "field": "command",
+      "value": "node",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-ext-example",
+      "kind": "mcp",
+      "artifact": "extensions/mpd-ext-example/mpd-ext.json",
+      "field": "args",
+      "value": "[\"server.mjs\"]",
+      "quotedIn": [
+        "docs/extensions.md",
+        "docs/extensions.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "skills",
+      "artifact": "templates/mpd-extension/skills/mpd-extension-template-skill/SKILL.md",
+      "field": "name",
+      "value": "mpd-extension-template-skill",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "skills",
+      "artifact": "templates/mpd-extension/skills/mpd-extension-template-skill/SKILL.md",
+      "field": "description",
+      "value": "The mpd-extension-template extension's first skill. Replace this description with what the skill does and when an agent should use it; keep the load-bearing sentence first.",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "flows",
+      "artifact": "templates/mpd-extension/flows/mpd-extension-template-flow.json",
+      "field": "id",
+      "value": "mpd-extension-template-flow",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "flows",
+      "artifact": "templates/mpd-extension/flows/mpd-extension-template-flow.json",
+      "field": "title",
+      "value": "mpd-extension-template flow",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "flows",
+      "artifact": "templates/mpd-extension/flows/mpd-extension-template-flow.json",
+      "field": "description",
+      "value": "The mpd-extension-template extension's first flow. Replace this procedure with the real one, or delete the flows directory and the flows entry in mpd-ext.json.",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "flows",
+      "artifact": "templates/mpd-extension/flows/mpd-extension-template-flow.json",
+      "field": "whenToUse",
+      "value": "Use when a task needs the repeatable procedure this flow describes.",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "roles",
+      "artifact": "templates/mpd-extension/mpd-ext.json",
+      "field": "name",
+      "value": "mpd-extension-template reviewer",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "roles",
+      "artifact": "templates/mpd-extension/mpd-ext.json",
+      "field": "description",
+      "value": "Read-only reviewer contributed by the mpd-extension-template extension: checks a change against this extension's own contract and reports findings with evidence.",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "roles",
+      "artifact": "templates/mpd-extension/mpd-ext.json",
+      "field": "persona",
+      "value": "personas/mpd-extension-template-reviewer.md",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "mcp",
+      "artifact": "templates/mpd-extension/mpd-ext.json",
+      "field": "serverName",
+      "value": "mpd-extension-template",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "mcp",
+      "artifact": "templates/mpd-extension/mpd-ext.json",
+      "field": "transport",
+      "value": "stdio",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "mcp",
+      "artifact": "templates/mpd-extension/mpd-ext.json",
+      "field": "command",
+      "value": "node",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    },
+    {
+      "target": "mpd-extension-template",
+      "kind": "mcp",
+      "artifact": "templates/mpd-extension/mpd-ext.json",
+      "field": "args",
+      "value": "[\"server.mjs\"]",
+      "quotedIn": [
+        "templates/mpd-extension/README.md",
+        "templates/mpd-extension/README.zh-CN.md"
+      ]
+    }
+  ],
+  "totals": {
+    "targets": 2,
+    "fieldsPerKind": {
+      "skills": [
+        "name",
+        "description"
+      ],
+      "flows": [
+        "id",
+        "title",
+        "description",
+        "whenToUse"
+      ],
+      "roles": [
+        "name",
+        "description",
+        "persona"
+      ],
+      "mcp": [
+        "serverName",
+        "transport",
+        "command",
+        "args"
+      ]
+    },
+    "probes": 26,
+    "quoted": 26,
+    "notQuoted": 0,
+    "findings": 0
+  },
+  "findings": [],
+  "claim": "probed 26 field-probes (skills, flows, roles, mcp) on 2 targets; 26 quoted verbatim, 0 reported not-quoted; 0 finding(s). No claim is made about a field this prober did not probe."
+}

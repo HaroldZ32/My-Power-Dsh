@@ -1,0 +1,40 @@
+      "claimable": false
+    },
+    "failed": {
+      "note": "",
+      "blocking": [],
+      "claimable": true
+    },
+    "completed": {
+      "note": "",
+      "blocking": [],
+      "claimable": true
+    }
+  },
+  "revertedReading": {
+    "pending": {
+      "note": " [unresolved dep: cycle B→C→B]",
+      "blocking": [
+        "B"
+      ],
+      "claimable": false
+    },
+    "failed": {
+      "note": " [unresolved dep: cycle B→C→B]",
+      "blocking": [],
+      "claimable": true
+    },
+    "completed": {
+      "note": " [unresolved dep: cycle B→C→B]",
+      "blocking": [],
+      "claimable": true
+    }
+  },
+  "checks": {
+    "pending: the cycle IS named and blocking=['B']": true,
+    "failed: the note is NOT emitted and T is claimable": true,
+    "completed: the note is NOT emitted": true,
+    "REVERT state REDDENS on both non-blocking cases": true
+  },
+  "verdict": "PASS — the three cases hold and the condition is load-bearing"
+}

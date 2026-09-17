@@ -1,3 +1,4 @@
+<!-- docs-parity: exempt prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1) -->
 > **Why this file is committed here.** The working copies of this contract and this report live under
 > `.mpd/`, which is **gitignored** — nothing under `.mpd/` is ever committed. This pair is the
 > repository's durable, auditable record, written on the captain's direct instruction as part of the t14

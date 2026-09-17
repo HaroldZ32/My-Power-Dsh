@@ -1,0 +1,19 @@
+{
+  "control_deliveries": 1,
+  "pure_terminal_deliveries": 0,
+  "recorded_race_deliveries": 0,
+  "stripped_race_deliveries": 1,
+  "named_declines": 1,
+  "composed_tickets": [
+    1,
+    0,
+    1,
+    1
+  ],
+  "ticket_attempt_ids": [
+    "4ddc4a46-eac5-4885-a036-1109d6e497fb",
+    "02f34b07-57be-4654-81a8-16f13998d9c3"
+  ],
+  "scheduler_sha256": "4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68"
+}
+T79-DRIVER-EXIT=0

@@ -1,0 +1,29 @@
+{
+  "task": "T-90 anchor scan",
+  "run_at": "2026-09-17T14:40:19.008Z",
+  "pattern": "ee9ec16",
+  "scope": "./evidence/gates/wave2b-laneB2/20260917T142452Z",
+  "files_scanned": 16,
+  "matches": [
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/output.log",
+      "line": 2,
+      "phrase": "parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/2026091"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/result.json",
+      "line": 4,
+      "phrase": "\"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T142452Z/result.json",
+      "line": 72,
+      "phrase": "{ \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --out …\", \"exit\": 0, \"matches\": 0, \"files_scanned\": 11 },"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T142452Z/result.json",
+      "line": 83,
+      "phrase": "{ \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --out …\", \"exit\": 0, \"evidence\": \"0 matches in 11 files\" }"
+    }
+  ]
+}

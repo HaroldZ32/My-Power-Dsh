@@ -1,0 +1,3 @@
+dir ../../../tmp/t42-falsify/b/two/: keys=2 claims=3 violations=1
+scope violations: 1 | per-row mismatches: [('a.mjs', [3]), ('b.mjs', [3])]
+=> two files in ONE directory both mismatch A3: a SUM would print 2, the UNION prints 1

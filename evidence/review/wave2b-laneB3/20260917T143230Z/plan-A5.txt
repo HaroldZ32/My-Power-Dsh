@@ -1,0 +1,23 @@
+# AMENDMENT A5 (appended by the captain; nested correction of a LABEL, not of an order)
+
+**The plan's T-91 note that `AGENTS.md` is "PACKED → before the pack" is WRONG, and the requirements seat caught it at the
+source.** `scripts/pack-mpd.mjs` states the opposite in its own words — *"AGENTS.md itself deliberately stays out of the
+artifact (it is the repository's contributor manual)"* — and its `ROOT_ASSET_DIRS` confirms the split: **`templates/**`
+(T-47's marker) IS packed; `AGENTS.md` is NOT.**
+
+**What stays and what changes:** the ORDERING the note was attached to is harmless and unchanged (the T-91 row still lands
+before the pack by lane order); what changes is only the reason a reader would give. The pre-pack requirement that actually
+bites is **T-47's `templates/**` README pair** (packed) plus any `docs/**`, `agent-references/**` or root-asset edit — which
+is why the wave's single pack must follow lane B3, not because of the manual. A 2c reader must not conclude that editing the
+manual ships a stale artifact; it does not, and the packer's own comment is the authority.
+
+---
+
+# AMENDMENT A6 (appended by the captain; one DECLARATION and two standing requirements, all from the requirements seat's measurements)
+
+**(1) DECLARED: `agent-references/index.md` joins lane B3's write set.** The requirements seat measured that
+`bun run verify:docs` is a **DERIVED-VALUE gate**: its T-75 half re-derives the delta pointer in **`AGENTS.md`** *and*
+**`agent-references/index.md`**, plus the registry count, against the GENERATED `lib/mpd-deltas.js` that **lane A**
+regenerates with `--write-registry`. So B3's own lane gate can be red purely from lane A's window — and the second pointer
+site was in **NO lane's 2b write set**, i.e. an unowned path of exactly the class that cost wave 2a a refused completion
+(T-88). It is now declared on **`impl-B3` (`t16`)** by a captain amendment, so the pointer re-take has a legal writer.

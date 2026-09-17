@@ -69,3 +69,19 @@ evidence/**/scratch-control*/
 # evidence cites by name (captain's ruling, 2026-09-17). A genuine non-regenerable record that must live at
 # this exact path: `git add -f <path>`.
 evidence/**/raw/final/
+
+# QA SCRATCH ROOTS at the repository root, ignored BY SHAPE (T-77), not by name. The QA drivers create
+# throwaway roots beside the checkout; measured 2026-09-17 in skills/dsh-qa/scripts/**: `.qa-reloc`,
+# `.qa-web-client`, `.qa-shipped-path`, and on disk also `.qa-t15-dir`, `.qa-t17-*`, `.qa-t21-dir`,
+# `.qa-run-stamp`. The older rules named a few of them individually, so a NEW scratch root was
+# machine-generated-but-visible and `git add .` would stage it — the landmine T-77 names. The pattern
+# below is root-anchored and family-wide: any top-level `.qa-*` path is scratch, whatever it is called.
+# It covers BOTH shapes the drivers actually produce — measured 2026-09-17: directories (`.qa-reloc`,
+# `.qa-t15-dir`) and stamp FILES (`.qa-run-stamp`, `.qa-t17-final`, `.qa-before-dir`); a directory-only
+# pattern (`/.qa-*/`) left every stamp file visible, which is why the pattern carries no trailing slash.
+# It deliberately does NOT match a near-miss that merely shares the prefix without the `.qa-` boundary
+# (`/.quarantine-probe`, `/.qaXYZ/`, `qa-scratch/`) — those stay visible, which is the point of a SHAPE
+# rather than a longer name list. PREREQUISITE, recorded rather than assumed: the drivers' scratch-root
+# CONVENTION is lane D's (plan §4.2); the shape here is DERIVED by measuring the drivers it must cover, and
+# it can only ever ignore root paths that already begin `.qa-`.
+/.qa-*

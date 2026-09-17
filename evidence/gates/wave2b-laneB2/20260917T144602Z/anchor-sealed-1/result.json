@@ -1,0 +1,39 @@
+{
+  "task": "T-90 anchor scan",
+  "run_at": "2026-09-17T14:46:43.720Z",
+  "pattern": "ee9ec16",
+  "scope": "./evidence/gates/wave2b-laneB2/20260917T142452Z",
+  "files_scanned": 16,
+  "self_reference": {
+    "excluded_output_root": "evidence/gates/wave2b-laneB2/20260917T144602Z/anchor-sealed-1",
+    "excluded_files": [],
+    "rule": "the scan excludes its OWN output root; a sibling scan's record is still visible, so a re-takeable 0 requires `--out` (and any stdout capture) OUTSIDE the scanned scope, or a SEALED scanned scope (t31/B2-F5). The scanned scope's own files are named below, so a reader can tell a real absence from the scanner's own output.",
+    "scanned_scope_files": 16
+  },
+  "policy": {
+    "out_of_family": "a POSITION citation (no literal string) and a BASENAME-ONLY citation (no `/`) are OUT OF FAMILY and pass silently, by design: this scanner judges a repo-relative literal only, so a green scan says nothing about those shapes (t31/B2-F3).",
+    "scope_note": "a plain-substring scan reports every file under the scope that contains the literal; it is a DISCOVERY heuristic, not a class rule (T-90's calibration bound)."
+  },
+  "matches": [
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/output.log",
+      "line": 2,
+      "phrase": "parameters: literal string \"ee9ec16\" · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ./evidence/gates/wave2b-laneB2/2026091"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T142452Z/anchor-scan-id/result.json",
+      "line": 4,
+      "phrase": "\"pattern\": \"ee9ec16\","
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T142452Z/result.json",
+      "line": 72,
+      "phrase": "{ \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --out …\", \"exit\": 0, \"matches\": 0, \"files_scanned\": 11 },"
+    },
+    {
+      "path": "evidence/gates/wave2b-laneB2/20260917T142452Z/result.json",
+      "line": 83,
+      "phrase": "{ \"command\": \"node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --out …\", \"exit\": 0, \"evidence\": \"0 matches in 11 files\" }"
+    }
+  ]
+}

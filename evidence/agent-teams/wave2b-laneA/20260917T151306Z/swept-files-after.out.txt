@@ -1,0 +1,25 @@
+bun test v1.3.14 (0d9b296a)
+
+self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs:
+(pass) D2: the two tool-boundary guards and tools.js's reader copy are gone; scheduler keeps its own [24.25ms]
+(pass) D2: with a LIVE hold present, claim_task and update_task SUCCEED (the hold no longer blocks a write) [24.90ms]
+(pass) D2 NEGATIVE CONTROL: the deleted guard re-injected into a scratch copy makes the same call FAIL [36.50ms]
+(pass) T-49: the contract tool is a MEMBER tool in BOTH deny computations [2.25ms]
+(pass) T-19: the status surface names ONE pause mechanism and reports the hold as its INTERNAL implementation [13.50ms]
+(pass) T-19: with NO watchdog service the status says the hold is NOT READABLE — never a guessed hold [4.76ms]
+(pass) t41: the contract tool refuses a NON-PARTICIPANT and an UNKNOWN id NAMING the known ids — both FALSIFIABLE [44.56ms]
+(pass) T-19 SEEDED NEGATIVE CONTROL: the pin's matchers go RED on the restored wave-1 wording [53.50ms]
+
+self-fix-tests/pool-capability-guard.test.mjs:
+(pass) a pooled write task is LEFT IN THE POOL for a read-only member and reported [0.63ms]
+(pass) a write-capable member still gets the pooled write task (the guard is not a blanket refusal) [0.13ms]
+(pass) a member whose deny blocks nothing relevant is unaffected by an unrelated deny entry [0.07ms]
+(pass) an EXPLICIT assignment is still dispatched to a restricted member, and says so [0.10ms]
+(pass) a member's own ready task outranks a pooled task it could also run [0.07ms]
+(pass) nothing executable is left: undefined, and every withheld candidate is reported [0.17ms]
+(pass) the guard is region-registered and its replacement is REFUSED after a re-materialize [235.58ms]
+
+ 15 pass
+ 0 fail
+ 97 expect() calls
+Ran 15 tests across 2 files. [568.00ms]

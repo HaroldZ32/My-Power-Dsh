@@ -1,0 +1,29 @@
+{
+  "dir": "/root/dshProj/my-power-dsh/evidence/gates/wave2b-laneB/20260917T141936Z-laneB",
+  "ok": true,
+  "failures": [],
+  "reported": [
+    {
+      "name": "reading-verify-manual-paths-live",
+      "exitCode": 1,
+      "note": "declared READING: its exit code is evidence, not this lane's verdict"
+    },
+    {
+      "name": "reading-mpd-doctor-live",
+      "exitCode": 0,
+      "note": "declared READING: its exit code is evidence, not this lane's verdict"
+    },
+    {
+      "name": "reading-mpd-doctor-missing-sg",
+      "exitCode": 2,
+      "note": "declared READING: its exit code is evidence, not this lane's verdict"
+    },
+    {
+      "name": "reading-repin-vendor-check",
+      "exitCode": 0,
+      "note": "declared READING: its exit code is evidence, not this lane's verdict"
+    }
+  ],
+  "artifacts": 34,
+  "result_json_digest": "b33837d1dda9143a"
+}

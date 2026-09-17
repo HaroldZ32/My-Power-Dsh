@@ -11,6 +11,10 @@
 // (this client mounts its own top-level `settings.section`; the pre-move Plugins-tab CARD was cut
 // by the user), because no browser exists in this environment.
 //
+// CLAIM SET (T-80): this driver CLAIMS the assertion keys A1–A5 — the same keys its own
+// `add("A…")` calls produce below. A claimed-but-unasserted key, or a produced-but-unclaimed one,
+// is a defect the corpus arm reports with this path and the key.
+//
 // WHAT THIS LANE DRIVES, stated exactly: the host's own `settings/mutate` RPC over the
 // gateway (the SAME wire call the web section and the TUI section emit), against a REAL boot of
 // the bundle in an isolated DSH_HOME + sandbox HOME + sandbox WORKSPACE. It does NOT send

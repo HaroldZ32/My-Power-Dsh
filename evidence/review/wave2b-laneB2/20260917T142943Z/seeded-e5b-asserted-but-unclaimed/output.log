@@ -1,0 +1,4 @@
+driver-header claim check (T-80)
+parameters: claims \bA(\d+)\b + \bA(\d+)\s*[–-]\s*A?(\d+)\b (markers \b(claims?|claimed|asserts?|asserted|checks?|checked|covers?|covered|arms?|keys?|proves?|proof|must|expects?|expected)\b; references (design|acceptance|\bplan\b|§|\bt\d+\b)) · keys add\(\s*"A(\d+)[^"]*" · mode one offline process · unit one driver file · scope /tmp/revb2-scratch/e5b · moment 2026-09-17T14:33:27.597Z
+
+  FAIL driver:../../../tmp/revb2-scratch/e5b/asserted-but-unclaimed.mjs — ASSERTED-BUT-UNCLAIMED A4, A5, A6, A7, A8, A10

@@ -1,0 +1,136 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-c1-UhCDcG",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": false,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        []
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-b44b1287-d7f0-4417-b80c-8bb13c407512",
+          "createdAt": 1789658609122,
+          "members": [
+            {
+              "id": "",
+              "name": "librarian",
+              "role": "researcher",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789658610665,
+              "status": "idle"
+            },
+            {
+              "id": "",
+              "name": "oracle",
+              "role": "reviewer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789658610672,
+              "status": "idle"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Team c1qa exists to verify AgentTeams adoption end-to-end (C1 adoption QA). Produce a single-line summary of that QA goal. Output the one-liner as the task output.",
+              "status": "pending",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 0,
+              "createdAt": 1789658612377,
+              "updatedAt": 1789658612377,
+              "kind": "work",
+              "acceptance": [
+                "Task output is exactly one line",
+                "The line states the c1qa QA goal"
+              ],
+              "deliverables": [
+                "one-line QA goal summary in the task output"
+              ]
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Read the completed t1 output (the librarian's one-line summary of the c1qa QA goal) and approve or reject it. Do not modify t1.",
+              "status": "pending",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 0,
+              "createdAt": 1789658613834,
+              "updatedAt": 1789658613834,
+              "kind": "review",
+              "objective": "Judge whether t1's one-line summary accurately and sufficiently captures the c1qa QA goal (end-to-end AgentTeams adoption verification).",
+              "outOfScope": [
+                "**/*"
+              ],
+              "acceptance": [
+                "The verdict is justified against t1's actual one-line summary"
+              ],
+              "reviewedTaskId": "t1"
+            }
+          ],
+          "taskSeq": 2,
+          "phase": "staged",
+          "planReviewState": "awaiting_review"
+        }
+      ]
+    },
+    "archive": {
+      "ok": false,
+      "archiveIds": []
+    },
+    "taskTerminal": {
+      "ok": false,
+      "tasks": 2,
+      "taskTerminal": false
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "arm": "fence-refusal",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T15-23-18.736Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

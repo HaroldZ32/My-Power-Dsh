@@ -1,0 +1,27 @@
+{
+  "task": "t44",
+  "contractVersion": 8,
+  "amendedAt": 1789661734188,
+  "attemptId": "407eba1b-237e-4359-a584-71f74eb601a9",
+  "dependencies": [
+    "t47",
+    "t48",
+    "t49",
+    "t50",
+    "t51",
+    "t52",
+    "t53"
+  ],
+  "inScope": [
+    "evidence/review/wave2b-laneA/**"
+  ],
+  "acceptance": [
+    "Every ROW the lane-A remainder claims is verified by an INDEPENDENT READING at a revision you pinned yourself — reproduce the command and the reading, never accept the completion summary — with `evidence/requirements/wave2b-laneA/20260917T1405Z-wave2b-laneA-acceptance.md` as the DO-WHEN: **T-92** (delivered: the absence pins assert in CODE with comments stripped, a COMMENT seed red → same seed green → a CODE seed still red, the audit re-taken on the lane's OWN corpus) · **T-06** · **T-93** · **T-42** · and **T-11's carrier**",
+    "**P1b IS PART OF THIS BRIEF** (added because the user's own directive put it in this lane): the automatic, archive-first RETENTION PRUNE on the mailbox DELIVERY path. Verify the three eligibility conditions EACH with its own reading (stale acknowledged IS pruned · unread is NOT · leased is NOT), the sidecar byte-for-byte, that a pruned record keeps id/ts/from/to and its read/delivery markers so it can never re-open as unread, **that the knob's disabled value 0 actually disables it**, and **that a SEEDED mailbox measurably shrank** — a prune that cannot be shown to have reduced a seeded mailbox is not closed. It is the user's remaining Priority-1 half, so it is judged at least as strictly as a register row",
+    "The registry family is verified END-TO-END at the current revision, and **the count is RE-TAKEN with its registry sha beside it**: you have already observed it move 93/10 (14:51:13Z) → 96/10 (15:05Z) → again, which is why nothing is inherited. Verify `--check` green AND the **strip/heal suite** green AND `bun run verify:docs` with its derived arm reading true — and that the count sentence in `agent-references/agent-teams-deltas.md` moved in the SAME change as the registry when the count moved",
+    "**THE CROSS-LANE CLAUSE IS JUDGED WITH YOUR INTEREST DECLARED** — a requirement, not a courtesy: your own 2a control arm was broken by lane A's t27 text, so for any clause touching that predicate you are an INTERESTED PARTY. State the interest in the verdict, judge as a reviewer rather than a defending author, and note that the captain's own integration sweep re-runs `bun test ./packages` on the settled tree, so the second read of that one clause is STRUCTURAL rather than promised",
+    "**THE HONEST-PARTIAL TRAIL IS JUDGED AS THE STANDARD, NOT AS A DEFECT:** t13 failed deliberately with the other eleven rows NAMED; t40 returned a deliberate partial with NOTHING written and a per-row handover; t43 returned six of seven items with the gap NAMED rather than half-landed (*\"a write-path prune I could not arm and verify in the remaining budget would have been worse than an honest gap\"*). A row that is PARTIAL with its uncovered half named is judged on its READING — never failed for its shape — and a row claimed CLOSED is judged on whether its reading reproduces",
+    "**t30's F1 IS REPRODUCED BY YOU with your own three cases** (members PENDING → the cycle IS named and `blocking=['B']`; members FAILED → NOT named, task claimable; members COMPLETED → NOT named), plus the arm case the fix added, run in its revert state. Its defect shape is worth restating in your verdict: `renderStatus` appends that note to EVERY task line, so an over-claiming note tells a captain that a DISPATCHABLE task has an unresolved dependency",
+    "Findings are structured (id/severity/problem/requiredFix/file) and FAIL this task; what you did NOT verify is stated as an explicit bound; your writes stay inside `evidence/review/wave2b-laneA/**`; nothing packed is touched"
+  ]
+}

@@ -1,0 +1,3273 @@
+{
+  "slug": "wave2b-lane-d",
+  "suite": "wave2b lane D corpus arms",
+  "moment": "2026-09-17T15:55:53.357Z",
+  "only": null,
+  "checks": [
+    {
+      "id": "T-69.raw-flag",
+      "ok": true,
+      "detail": "raw `dsh --dump-config` invocation(s) in the corpus: none (files scanned 233, prose sites 0, declared exceptions 2)"
+    },
+    {
+      "id": "T-69.call-site-binding",
+      "ok": true,
+      "detail": "`join(REPO|repoRoot, …)` call sites: 288 in 42 of 54 scanned file(s); UNBOUND: none"
+    },
+    {
+      "id": "T-69.json-stream",
+      "ok": true,
+      "detail": "live (profile headless): exit 1, stdout is the JSON envelope=true, banner on stderr=true, banner on stdout=false, MERGED capture parses=false | fixture child via --bin: envelope=true, child stdout reachable only through the field=true, merged parses=false"
+    },
+    {
+      "id": "T-89.dot-slash",
+      "ok": true,
+      "detail": "exectued argv tokens without `./`: none; prose/usage occurrences (documented, not violations): 208; the `./` form ./skills/dsh-qa/scripts discovers 54 file(s) (files scanned 54)"
+    },
+    {
+      "id": "T-77.scratch-shape",
+      "ok": true,
+      "detail": "`.qa-wave2b-lane-d-scratch/keep.txt` ignored=true (pattern: .gitignore:87:/.qa-*); near-miss `qa-wave2b-lane-d-scratch/keep.txt` ignored=false"
+    },
+    {
+      "id": "T-80.header-claims",
+      "ok": true,
+      "detail": "live: [driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s) | seeded mismatch: exit 1, violations 1 (a claimed-but-unasserted key must redden)"
+    },
+    {
+      "id": "T-25.naive-reader",
+      "ok": true,
+      "detail": "container frames=2, naive one-shot read=first-frame-only (the failure IS the evidence); docs name the three entry points=true, trap documented=true; real-store reading: unavailable (no --store passed)"
+    },
+    {
+      "id": "T-74.out-discipline",
+      "ok": true,
+      "detail": "SKILL.md rule sentence present=true; digest pair: not requested"
+    }
+  ],
+  "readings": [
+    {
+      "id": "T-69.raw-flag",
+      "check": {
+        "id": "T-69.raw-flag",
+        "ok": true,
+        "detail": "raw `dsh --dump-config` invocation(s) in the corpus: none (files scanned 233, prose sites 0, declared exceptions 2)"
+      },
+      "scan": {
+        "filesScanned": 233,
+        "sites": [
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:46",
+            "kind": "invocation",
+            "covered": true,
+            "line": "const RAW_FLAG = /\"--dump-config\"/g"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:342",
+            "kind": "invocation",
+            "covered": true,
+            "line": "writeFileSync(join(box, \"raw.mjs\"), 'const dump = spawnSync(\"dsh\", [\"--profile\", \"p\", \"--dump-config\"])\\n')"
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:348",
+            "kind": "invocation",
+            "covered": true,
+            "line": "check(\"t69-fixture-reddens\", RAW_FLAG.test(text) || /\"--dump-config\"/.test(text), \"a fixture carrying a raw invocation i"
+          }
+        ],
+        "exceptions": [
+          "skills/dsh-qa/SKILL.md",
+          "skills/dsh-qa/scripts/wave2b-lane-d.mjs"
+        ]
+      },
+      "rawInvocations": []
+    },
+    {
+      "id": "T-69.call-site-binding",
+      "check": {
+        "id": "T-69.call-site-binding",
+        "ok": true,
+        "detail": "`join(REPO|repoRoot, …)` call sites: 288 in 42 of 54 scanned file(s); UNBOUND: none"
+      },
+      "scan": {
+        "filesScanned": 54,
+        "sites": [
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:63",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-panels.mjs:144",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-panels.mjs:145",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:37",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:41",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:42",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:50",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:57",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:90",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:38",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:282",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:293",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:97",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:98",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:99",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:100",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:122",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:123",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:132",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:137",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:147",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:153",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:252",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:258",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:273",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:298",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:299",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:69",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:70",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:71",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:558",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:558",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:763",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:768",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:774",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:807",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:807",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:808",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:37",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:38",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:40",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:44",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:62",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:85",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:90",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:87",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:92",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:94",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:96",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:99",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:112",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:116",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:140",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:147",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:26",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:67",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:89",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:109",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:30",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:51",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:110",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:130",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:169",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:191",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:224",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:366",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:367",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:368",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:369",
+            "name": "repoRoot",
+            "binding": [
+              "parameter"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:370",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:388",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-mount.mjs:99",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-mount.mjs:101",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-mount.mjs:104",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:226",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:438",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:220",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:480",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:500",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:511",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:513",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:515",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:32",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:43",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:84",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:103",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:104",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:130",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:22",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:49",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:59",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:61",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:64",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:96",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:102",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:108",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:23",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:61",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:67",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:85",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:103",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:121",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/memory-smoke.mjs:17",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/memory-smoke.mjs:19",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/memory-smoke.mjs:23",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/memory-smoke.mjs:32",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/memory-smoke.mjs:48",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/ultrawork-smoke.mjs:18",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/ultrawork-smoke.mjs:22",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/ultrawork-smoke.mjs:31",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/ultrawork-smoke.mjs:51",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs:54",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs:236",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs:254",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:31",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:38",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:45",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:50",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:51",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:52",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:54",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:70",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:72",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:117",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:180",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:197",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:35",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:37",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:40",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:73",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:88",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:97",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:30",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:33",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:73",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:76",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:83",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:84",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:85",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:98",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:101",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:119",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:121",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:124",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:159",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:163",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:175",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/vision-smoke.mjs:96",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/vision-smoke.mjs:132",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:19",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:20",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:30",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:40",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:57",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:53",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:54",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:89",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:202",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:212",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:218",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:231",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:235",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:105",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:136",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:139",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:144",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:164",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:167",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:187",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:224",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:232",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:233",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:383",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:414",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:415",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:651",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:654",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mount-assert.mjs:49",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mount-assert.mjs:57",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:55",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:56",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:57",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:317",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/explicit-team-trigger.mjs:54",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/explicit-team-trigger.mjs:68",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/explicit-team-trigger.mjs:73",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/explicit-team-trigger.mjs:81",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:34",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:88",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:89",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:89",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:169",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:32",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:136",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:223",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:226",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:226",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:229",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:229",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:426",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:430",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:448",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:656",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:671",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:681",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:682",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:712",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:712",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:70",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:74",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:225",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:285",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:455",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:20",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:23",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:24",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:25",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:26",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:27",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:28",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:29",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:30",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:31",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:32",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/gate-probe.mjs:12",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-config.mjs:141",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-config.mjs:142",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:55",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:158",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:168",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:197",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:231",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:245",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:249",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:52",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:56",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:57",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:332",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:339",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:344",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:357",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:370",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:423",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:526",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:854",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:855",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:63",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:66",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:67",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:69",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:70",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:72",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:81",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:109",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:121",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:143",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:195",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:40",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:45",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:97",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:101",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:108",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:122",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:16",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:37",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:42",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:51",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:53",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:60",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:64",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:74",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:98",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:99",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:99",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:136",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:33",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:35",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:38",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:40",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:42",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:44",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:49",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:73",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:83",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:92",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:109",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:136",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:140",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          }
+        ],
+        "offenders": []
+      }
+    },
+    {
+      "id": "T-69.json-stream",
+      "check": {
+        "id": "T-69.json-stream",
+        "ok": true,
+        "detail": "live (profile headless): exit 1, stdout is the JSON envelope=true, banner on stderr=true, banner on stdout=false, MERGED capture parses=false | fixture child via --bin: envelope=true, child stdout reachable only through the field=true, merged parses=false"
+      },
+      "live": {
+        "exit": 1,
+        "stdoutBytes": 248,
+        "stderrBytes": 1876,
+        "stdoutIsEnvelope": true,
+        "mergedParses": false
+      },
+      "fixture": {
+        "exit": 0,
+        "stdoutIsEnvelope": true,
+        "childStdoutReachable": true,
+        "mergedParses": false
+      }
+    },
+    {
+      "id": "T-89.dot-slash",
+      "check": {
+        "id": "T-89.dot-slash",
+        "ok": true,
+        "detail": "exectued argv tokens without `./`: none; prose/usage occurrences (documented, not violations): 208; the `./` form ./skills/dsh-qa/scripts discovers 54 file(s) (files scanned 54)"
+      },
+      "scan": {
+        "filesScanned": 54,
+        "offenders": [],
+        "prose": [
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:22",
+            "token": "tools/pre-execute",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:81",
+            "token": "tools/pre-execute",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:87",
+            "token": "tools/post-execute",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:121",
+            "token": "agent/pre-step",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:121",
+            "token": "agent/session-start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:121",
+            "token": "agent/turn-stopping",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:121",
+            "token": "tools/post-execute",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:187",
+            "token": "agent/session-start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:188",
+            "token": "agent/pre-step",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:189",
+            "token": "agent/pre-step",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:190",
+            "token": "tools/post-execute",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:191",
+            "token": "agent/turn-stopping",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:193",
+            "token": "agent/session-start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:194",
+            "token": "agent/pre-step",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:217",
+            "token": "tools/pre-execute",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:218",
+            "token": "tools/post-execute",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:219",
+            "token": "tools/pre-execute",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:247",
+            "token": "agent/pre-step",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:247",
+            "token": "agent/session-start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:247",
+            "token": "agent/turn-stopping",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:247",
+            "token": "tools/pre-execute",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:247",
+            "token": "tools/post-execute",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:265",
+            "token": "tools/post-execute",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-panels.mjs:38",
+            "token": "mpd-tui/board-opened",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-panels.mjs:243",
+            "token": "negative/control.json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:31",
+            "token": ".mpd/boulder.json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:231",
+            "token": "text/event-stream",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:186",
+            "token": "text/event-stream",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:271",
+            "token": "adapter-probe/index.js",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:290",
+            "token": "neg-outer/neg-inner/neg-root",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:298",
+            "token": "packages/mpd-dsh-adapter-plugin/dist/index.js",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:648",
+            "token": "approved-by-the-adopted-runtime/verdict-NOT-visible-after-commit",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:648",
+            "token": "approved-by-the-adopted-runtime/verdict-visible",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:883",
+            "token": "skills/dsh-qa/scripts/tui-team-surface.mjs",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:90",
+            "token": "agent/pre-step",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:33",
+            "token": "distribution.dsh.dev/v1alpha1",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:87",
+            "token": "packages/conformance/lib/cli.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:26",
+            "token": "skills/dsh-qa/scripts",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:27",
+            "token": "skills/dsh-qa/SKILL.md",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:43",
+            "token": "skills/dsh-qa/SKILL.md",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:44",
+            "token": "skills/dsh-qa/scripts/wave2b-lane-d.mjs",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:51",
+            "token": "skills/",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:205",
+            "token": ".qa-wave2b-lane-d-scratch/keep.txt",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:206",
+            "token": "qa-wave2b-lane-d-scratch/keep.txt",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:218",
+            "token": "n/a",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:236",
+            "token": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:265",
+            "token": "session/event",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:265",
+            "token": "tool/call",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/web-client-adapt.mjs:34",
+            "token": "packages/mpd-bundle-plugin/dist/index.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/web-client-adapt.mjs:79",
+            "token": "internal/service",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/web-client-adapt.mjs:220",
+            "token": "application/json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-mount.mjs:161",
+            "token": "packages/mpd-tui-plugin/dist/index.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:214",
+            "token": "turn/end",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:214",
+            "token": "assistant/message",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:226",
+            "token": "evidence/team-watchdog/boot",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:261",
+            "token": "application/json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:268",
+            "token": "session/create",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:271",
+            "token": "session/prompt",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:280",
+            "token": "turn/end",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:348",
+            "token": "turn/end",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:349",
+            "token": "assistant/message",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:403",
+            "token": "turn/end",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:403",
+            "token": "assistant/message",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:404",
+            "token": "turn/end",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:405",
+            "token": "turn/end",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:438",
+            "token": "packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.js",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:442",
+            "token": "agent/pre-step",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:445",
+            "token": "agent/pre-step",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:116",
+            "token": "text/event-stream",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:276",
+            "token": "tool/result",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:299",
+            "token": "tool/call",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:454",
+            "token": "application/json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:472",
+            "token": "application/json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:489",
+            "token": "personas/r.md",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:32",
+            "token": ".toolchain/node_modules/.bin/codegraph",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:43",
+            "token": "packages/mpd-bundle/cordis.patch.yml",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:58",
+            "token": "src/util.ts",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:103",
+            "token": "packages/mpd-bundle/cordis.patch.yml",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:104",
+            "token": "tests/overlays/codegraph-plugin.yml",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:130",
+            "token": "evidence/dsh-qa/codegraph",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:23",
+            "token": "dist/mpd-package/package.json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:24",
+            "token": "dist/mpd-package/package.json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs:216",
+            "token": "subagent/descriptor",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-conformance.mjs:51",
+            "token": "presets/mpd/agent.cordis.yml",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-conformance.mjs:52",
+            "token": "packages/mpd-bundle/cordis.patch.yml",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-conformance.mjs:358",
+            "token": "application/json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-conformance.mjs:360",
+            "token": "session/create",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-conformance.mjs:376",
+            "token": "agent-preset/invalid",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-conformance.mjs:426",
+            "token": "preset-conformance/main",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-conformance.mjs:442",
+            "token": "agent-preset/invalid",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-conformance.mjs:448",
+            "token": "preset-conformance/control",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:18",
+            "token": "tests/overlays/compat-track.yml",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:35",
+            "token": "packages/mpd-bundle/cordis.patch.yml",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:40",
+            "token": "packages/mpd-bundle-plugin/dist/index.js",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:84",
+            "token": "llm-dual-track/",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:97",
+            "token": "evidence/dsh-qa/llm-dual-track/dual-track.tsv",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:34",
+            "token": "dist/mpd-package/package.json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:94",
+            "token": "_deps/schemastery/lib/index.mjs",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:96",
+            "token": "cosmokit/lib/index.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:102",
+            "token": "packages/mpd-bundle-plugin/dist/index.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:164",
+            "token": ".mpd/team",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-fault.mjs:161",
+            "token": "session/event",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-fault.mjs:164",
+            "token": "turn/start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-fault.mjs:164",
+            "token": "step/start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-fault.mjs:234",
+            "token": "hold/",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/vision-smoke.mjs:114",
+            "token": "application/json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:25",
+            "token": "packages/mpd-hashline-plugin",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:26",
+            "token": "packages/mpd-boulder-plugin",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:27",
+            "token": "packages/mpd-config-plugin",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:66",
+            "token": "personas/",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:170",
+            "token": "skills/",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:171",
+            "token": "flows/",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:214",
+            "token": "scripts/extension-template.mjs",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:215",
+            "token": "scripts/extension-isolation.mjs",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:231",
+            "token": "packages/mpd-ext-plugin/dist/index.js",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:232",
+            "token": "templates/mpd-extension/mpd-ext.json",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:138",
+            "token": "packages/mpd-ext-plugin/dist/index.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:149",
+            "token": "../escape",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:352",
+            "token": "../escape",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:651",
+            "token": "packages/mpd-ext-plugin/dist/index.js",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:177",
+            "token": "session/event",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:177",
+            "token": "turn/start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:178",
+            "token": "session/event",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:178",
+            "token": "step/start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:180",
+            "token": "agent/assistant-stream",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:202",
+            "token": "session/event",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:202",
+            "token": "turn/start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:203",
+            "token": "session/event",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:203",
+            "token": "step/start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:227",
+            "token": "session/event",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:227",
+            "token": "turn/start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:228",
+            "token": "session/event",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:228",
+            "token": "step/start",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:291",
+            "token": "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:387",
+            "token": "session/event",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:387",
+            "token": "agent/assistant-stream",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:539",
+            "token": "lib/tools.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:709",
+            "token": "skills/dsh-qa/scripts/",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:710",
+            "token": "skills/dsh-qa/scripts/",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:711",
+            "token": "skills/dsh-qa/scripts/",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:868",
+            "token": "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:869",
+            "token": "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:46",
+            "token": "lib/types/adapter/standard/registry.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:47",
+            "token": "lib/types/adapter/standard/admission.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:152",
+            "token": "client/worker",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:167",
+            "token": ".mpd/recon/dsh-TUI",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:36",
+            "token": "registry/registry-0.15.json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:37",
+            "token": "schemas/conformance-claim.schema.json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:38",
+            "token": "schemas/effect-ledger-record.schema.json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:39",
+            "token": "schemas/host-descriptor.schema.json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:40",
+            "token": "registry/permissions-0.1.json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:41",
+            "token": "registry/contracts/decision-events-v1alpha1.json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:42",
+            "token": "protocols/tui-channel.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:43",
+            "token": "protocols/profile-definitions.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:91",
+            "token": "tui.dsh/",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:170",
+            "token": ".mpd/mpd.jsonc",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:333",
+            "token": "application/json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:344",
+            "token": "application/json",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:345",
+            "token": "session/create",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:677",
+            "token": "packages/mpd-tui-plugin/dist/index.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:708",
+            "token": "packages/mpd-bundle-plugin/client.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:738",
+            "token": "settings/mutate",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:747",
+            "token": "settings/describe",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:773",
+            "token": "settings/mutate",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:808",
+            "token": "settings/mutate",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/session-evidence.mjs:11",
+            "token": "tool/call",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/session-evidence.mjs:12",
+            "token": "tool/result",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/session-evidence.mjs:200",
+            "token": "tool/call",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/session-evidence.mjs:204",
+            "token": "tool/result",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/session-evidence.mjs:243",
+            "token": "request/header",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/session-evidence.mjs:280",
+            "token": "tool/call",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/session-evidence.mjs:282",
+            "token": "tool/result",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/session-evidence.mjs:312",
+            "token": "request/header",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:64",
+            "token": "packages/mpd-tui-plugin/dist/index.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:144",
+            "token": "user/message",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:607",
+            "token": "command/run",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:608",
+            "token": "command/done",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/credentials.mjs:364",
+            "token": "client-connection/browser-session",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-config.mjs:96",
+            "token": "settings/document-updated",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:124",
+            "token": "notifications/initialized",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:125",
+            "token": "tools/list",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:126",
+            "token": "tools/call",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:245",
+            "token": "packages/mpd-ext-plugin/dist/index.js",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:246",
+            "token": "packages/mpd-mcp-lsp/dist/cli.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-sidebar.mjs:379",
+            "token": "src/web-client.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-sidebar.mjs:379",
+            "token": "src/team-page.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-sidebar.mjs:388",
+            "token": "src/web-client.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-sidebar.mjs:400",
+            "token": "packages/mpd-agent-teams-plugin/lib/index.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-sidebar.mjs:635",
+            "token": "packages/mpd-bundle-plugin/client.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:864",
+            "token": "mpd.omo-align.qa-shipped-path/2",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:117",
+            "token": ".mpd/team",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:117",
+            "token": "packages/mpd-agent-teams-plugin/lib/index.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:123",
+            "token": ".mpd/team",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:40",
+            "token": "packages/mpd-bundle/cordis.patch.yml",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:108",
+            "token": "packages/mpd-bundle/cordis.patch.yml",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:37",
+            "token": "packages/mpd-bundle/cordis.patch.yml",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:42",
+            "token": "packages/mpd-bundle-plugin/dist/index.js",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:51",
+            "token": "packages/mpd-qa-roles-probe/dist/index.js",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:53",
+            "token": "packages/mpd-roles-plugin/src/roles.data.ts",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:60",
+            "token": "packages/mpd-bundle/cordis.patch.yml",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:64",
+            "token": "packages/mpd-bundle-plugin/dist/index.js",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:73",
+            "token": "mpd-mcp-astgrep/launch.mjs",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:73",
+            "token": "mpd-mcp-gitbash/dist/cli.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:73",
+            "token": "mpd-mcp-lsp/dist/cli.js",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:73",
+            "token": "mpd-mcp-codegraph/launch.mjs",
+            "built": false
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:98",
+            "token": "tests/overlays/agent-presets-headless.yml",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:99",
+            "token": "tests/overlays/roles-probe.yml",
+            "built": true
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:99",
+            "token": "packages/mpd-qa-roles-probe/dist/index.js",
+            "built": true
+          }
+        ]
+      },
+      "discovered": {
+        "glob": "./skills/dsh-qa/scripts",
+        "count": 54,
+        "exists": true
+      }
+    },
+    {
+      "id": "T-77.scratch-shape",
+      "check": {
+        "id": "T-77.scratch-shape",
+        "ok": true,
+        "detail": "`.qa-wave2b-lane-d-scratch/keep.txt` ignored=true (pattern: .gitignore:87:/.qa-*); near-miss `qa-wave2b-lane-d-scratch/keep.txt` ignored=false"
+      },
+      "result": {
+        "exit": 0,
+        "ignored": [
+          ".qa-wave2b-lane-d-scratch/keep.txt"
+        ],
+        "raw": ".gitignore:87:/.qa-*\t.qa-wave2b-lane-d-scratch/keep.txt"
+      }
+    },
+    {
+      "id": "T-80.header-claims",
+      "check": {
+        "id": "T-80.header-claims",
+        "ok": true,
+        "detail": "live: [driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s) | seeded mismatch: exit 1, violations 1 (a claimed-but-unasserted key must redden)"
+      },
+      "live": {
+        "exit": 0,
+        "summary": "[driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s)",
+        "violations": 0,
+        "claimSets": 2,
+        "noClaim": 1,
+        "out": "driver-header claim check (T-80)\nparameters: claims \\bA(\\d+)\\b + \\bA(\\d+)\\s*[\\u2013-]\\s*A?(\\d+)\\b (markers \\b(claims?|claimed|asserts?|asserted|checks?|checked|covers?|covered|arms?|keys?|proves?|proof|must|expects?|expected)\\b; references (design|acceptance|\\bplan\\b|\\u00A7|\\bt\\d+\\b)) · keys add\\(\\s*\"A(\\d+)[^\"]*\" · mode one offline process · unit one driver file · scope ./skills/dsh-qa/scripts · moment 2026-09-17T15:55:52.079Z\n\n  ok   driver:skills/dsh-qa/scripts/tui-team-surface.mjs — 9 assertion key(s) [A1–A10]; 9 claimed\n  ok   driver:skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs — 5 assertion key(s) [A1–A5]; 5 claimed\n\n[driver-headers] 54 file(s) scanned, 2 key-producing driver(s), 2 claim set(s), 0 NO-CLAIM-SET, 0 violation(s)\n"
+      },
+      "seeded": {
+        "exit": 1,
+        "summary": "[driver-headers] 1 file(s) scanned, 1 key-producing driver(s), 1 claim set(s), 0 NO-CLAIM-SET, 1 violation(s)",
+        "violations": 1,
+        "claimSets": 1,
+        "noClaim": 1,
+        "out": "driver-header claim check (T-80)\nparameters: claims \\bA(\\d+)\\b + \\bA(\\d+)\\s*[\\u2013-]\\s*A?(\\d+)\\b (markers \\b(claims?|claimed|asserts?|asserted|checks?|checked|covers?|covered|arms?|keys?|proves?|proof|must|expects?|expected)\\b; references (design|acceptance|\\bplan\\b|\\u00A7|\\bt\\d+\\b)) · keys add\\(\\s*\"A(\\d+)[^\"]*\" · mode one offline process · unit one driver file · scope /tmp/lane-d-t80-Fpf2Nm · moment 2026-09-17T15:55:52.766Z\n\n  FAIL driver:../../../tmp/lane-d-t80-Fpf2Nm/settings-bridge-lane.mjs — CLAIMED-BUT-UNASSERTED A6 (header phrase: \"CLAIM SET (T-80): this driver CLAIMS the assertion keys A1–A6 — the same keys its own\")\n\n[driver-headers] 1 file(s) scanned, 1 key-producing driver(s), 1 claim set(s), 0 NO-CLAIM-SET, 1 violation(s)\n"
+      }
+    },
+    {
+      "id": "T-25.naive-reader",
+      "check": {
+        "id": "T-25.naive-reader",
+        "ok": true,
+        "detail": "container frames=2, naive one-shot read=first-frame-only (the failure IS the evidence); docs name the three entry points=true, trap documented=true; real-store reading: unavailable (no --store passed)"
+      },
+      "shape": {
+        "file": "/tmp/lane-d-t25-rmudWU/session.frame",
+        "frames": 2,
+        "naive": "first-frame-only"
+      },
+      "real": null,
+      "docBytes": 49589
+    },
+    {
+      "id": "T-74.out-discipline",
+      "check": {
+        "id": "T-74.out-discipline",
+        "ok": true,
+        "detail": "SKILL.md rule sentence present=true; digest pair: not requested"
+      },
+      "pair": null,
+      "rulePresent": true
+    }
+  ],
+  "ok": true
+}

@@ -1,0 +1,28 @@
+bun test v1.3.14 (0d9b296a)
+
+self-fix-tests/t50-team-revision.test.mjs:
+(pass) T-06 (1/6): the FUNNEL bumps on every write and the token round-trips a record [14.05ms]
+(pass) T-06 (2/6): NEGATIVE CONTROL — an unmoved fixture reddens the very assertion used above [4.35ms]
+[T-06] writeTeam call sites: members.js 3 / scheduler.js 6 / tools.js 20 = 29 → 2 writers (1 funnel + 1 opener), both in state.js
+(pass) T-06 (3/6): the CENSUS — two writers and ONE funnel, so every write path is covered [51.02ms]
+(pass) T-06 (4/6): STATUS — two reads straddling ONE task transition carry different tokens, each state stamped by its own [32.51ms]
+219 | test("T-06 (5/6): the OPENING write stamps the first token, so a fresh team is never token-less", async () => {
+220 |     const { stateRoot, teamFile } = fixture()
+221 |     const draft = legacyRecord({ taskSeq: 0, tasks: [] })
+222 |     // The OTHER `team.json` writer: it opens a record, so there is no prior counter to preserve.
+223 |     await createTeamDir(stateRoot, draft)
+224 |     expect(diskToken(teamFile)).toBe(1)
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: undefined
+
+      at <anonymous> (/tmp/t50-red-ORis/pkgB/self-fix-tests/t50-team-revision.test.mjs:224:33)
+(fail) T-06 (5/6): the OPENING write stamps the first token, so a fresh team is never token-less [0.69ms]
+(pass) T-06 (6/6): the SHAPE CHAIN — the token is validated like `taskSeq`, and a legacy record stays readable [1.07ms]
+
+ 5 pass
+ 1 fail
+ 47 expect() calls
+Ran 6 tests across 1 file. [223.00ms]

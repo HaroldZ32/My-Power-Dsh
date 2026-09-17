@@ -1,5 +1,9 @@
 #!/usr/bin/env bun
 // Case tui-team-surface: prove the TUI team-workflow + plan-approval surfaces
+//
+// CLAIM SET (T-80): this driver CLAIMS the assertion keys A1–A8 and A10 — the same keys its own
+// `add("A…")` calls produce below. A claimed-but-unasserted key, or a produced-but-unclaimed one,
+// is a defect the corpus arm reports with this path and the key.
 // (`packages/mpd-tui-plugin`, frozen contract `.mpd/plans/tui-team-surface.md`)
 // GATE A REAL MUTATION on a real host, and that the gate can be seen to fail.
 //

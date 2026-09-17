@@ -1,0 +1,8 @@
+ok   README.md
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: site file not present in this root (packed artifact / partial copy) — delta-range claims skipped
+note agent-references/index.md — DERIVED: site file not present in this root (packed artifact / partial copy) — delta-range claims skipped
+note agent-references/agent-teams-deltas.md — DERIVED: site file not present in this root — region-count claim skipped
+
+[verify-docs-parity] root=./evidence/review/wave2b-laneB3/20260917T143230Z/seedA-agent-references-no-twin pairs=1 failed=0 violations=0 exempt=2 derived=3 — PASS

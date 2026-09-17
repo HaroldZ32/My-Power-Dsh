@@ -1,0 +1,7 @@
+REAL checker (dedup): dir ../../../tmp/t42-exact/dir/ files=3 key_producers=3 keys=2 claims=3 violations=1
+   per-file rows: a.mjs keys=[1, 2] claims=[1, 2, 3] mismatches=[3]; b.mjs keys=[1, 2] claims=[1, 2, 3] mismatches=[3]; c.mjs keys=[1, 2] claims=[1, 2, 3] mismatches=[3]
+RESTORED summing copy: dir ../dir/ files=3 key_producers=3 keys=6 claims=9 violations=3
+   per-file rows: a.mjs keys=[1, 2] claims=[1, 2, 3] mismatches=[3]; b.mjs keys=[1, 2] claims=[1, 2, 3] mismatches=[3]; c.mjs keys=[1, 2] claims=[1, 2, 3] mismatches=[3]
+
+THE ARM'S PARENTHETICAL CLAIMS the summing computation prints keys=6 / claims=8 / violations=2.
+MY RESTORED-SUMMING MEASUREMENT of the arm's own fixture prints the line above (summed) — compare.

@@ -14,6 +14,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
+const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const NOTICE_LINE = "Copyright (c) 2026 程序员阿江(Relakkes)"
 const AGENTS_EXCEPTION = "Adopted plugins keep their plugin ids and tool names"
@@ -101,7 +102,7 @@ async function runReal() {
     const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
     const out = (r.stdout || "") + (r.stderr || "")
     LOG.push("$ " + cmd + " " + args.join(" ") + "\\n[[exit=" + r.status + "]]\\n" + out.slice(0, 20000))
-    return { status: r.status, out }
+    return { status: r.status, out, stdout: r.stdout || "" }
   }
 
   // 1) install into the isolated home (headless profile)
@@ -116,8 +117,10 @@ async function runReal() {
   steps.override = { ok: /id:\s*agent-teams/.test(homePatch) && homePatch.includes(".mpd/team") && homePatch.includes("packages/mpd-agent-teams-plugin/lib/index.js"), hasPatch: homePatch.includes("agent-teams") }
 
   // 3) composed config
-  const dump = runSync("dsh", ["--profile", "mpd-headless", "--dump-config"], { timeout: 120000 })
-  const composed = dump.out.includes("agent-teams") && dump.out.includes(".mpd/team")
+  // T-69: the wrapper composes; the composed tree is read from the --json child output.
+  const dump = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "mpd-headless", "--json"], { timeout: 120000 })
+  const composedText = dumpJsonText(dump.stdout)
+  const composed = composedText.includes("agent-teams") && composedText.includes(".mpd/team")
   steps.compose = { ok: dump.status === 0 && composed, exit: dump.status }
 
   // 4) live headless AgentTeams run

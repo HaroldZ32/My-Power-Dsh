@@ -1,0 +1,2054 @@
+{
+  "slug": "wave2b-lane-d",
+  "suite": "wave2b lane D corpus arms",
+  "moment": "2026-09-17T15:06:13.460Z",
+  "only": "t69-binding",
+  "checks": [
+    {
+      "id": "T-69.call-site-binding",
+      "ok": false,
+      "detail": "`join(REPO|repoRoot, …)` call sites: 287 in 42 of 54 scanned file(s); UNBOUND: skills/dsh-qa/scripts/mount-assert.mjs:49 `REPO`"
+    }
+  ],
+  "readings": [
+    {
+      "id": "T-69.call-site-binding",
+      "check": {
+        "id": "T-69.call-site-binding",
+        "ok": false,
+        "detail": "`join(REPO|repoRoot, …)` call sites: 287 in 42 of 54 scanned file(s); UNBOUND: skills/dsh-qa/scripts/mount-assert.mjs:49 `REPO`"
+      },
+      "scan": {
+        "filesScanned": 54,
+        "sites": [
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs:63",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-panels.mjs:144",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-panels.mjs:145",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:37",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:41",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:42",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:50",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:57",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tool-output-validation.mjs:90",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:38",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:282",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/software-smoke.mjs:293",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:97",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:98",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:99",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:100",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:122",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:123",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:132",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:137",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:147",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:153",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:252",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:258",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:273",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:298",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/readonly-deny.mjs:299",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:69",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:70",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:71",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:558",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:558",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:763",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:768",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:774",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:807",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:807",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-team-surface.mjs:808",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:37",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:38",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:40",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:44",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:62",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:85",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-team-member.mjs:90",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:87",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:92",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:94",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:96",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:99",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:112",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:116",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:140",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/session-start-team.mjs:147",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:26",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:67",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:89",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-distribution.mjs:109",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:30",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:51",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:110",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:126",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:148",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:181",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:323",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:324",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:325",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:326",
+            "name": "repoRoot",
+            "binding": [
+              "parameter"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:327",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/wave2b-lane-d.mjs:343",
+            "name": "REPO",
+            "binding": [
+              "declared",
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-mount.mjs:99",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-mount.mjs:101",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-mount.mjs:104",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:226",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-boot.mjs:438",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:220",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:480",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:500",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:511",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:513",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-isolation.mjs:515",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:32",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:43",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:84",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:103",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:104",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/codegraph-smoke.mjs:130",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:22",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:49",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:59",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:61",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:64",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:96",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:102",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/relocate-smoke.mjs:108",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:23",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:61",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:67",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:85",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:103",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/skill-catalog-probe.mjs:121",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/memory-smoke.mjs:17",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/memory-smoke.mjs:19",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/memory-smoke.mjs:23",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/memory-smoke.mjs:32",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/memory-smoke.mjs:48",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/ultrawork-smoke.mjs:18",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/ultrawork-smoke.mjs:22",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/ultrawork-smoke.mjs:31",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/ultrawork-smoke.mjs:51",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs:54",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs:236",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs:254",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:31",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:38",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:45",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:50",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:51",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:52",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:54",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:70",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:72",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:117",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:180",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/bundle-lifecycle.mjs:196",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:35",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:37",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:40",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:73",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:88",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/dual-track-smoke.mjs:97",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:30",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:33",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:73",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:76",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:83",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:84",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:85",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:98",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:101",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:119",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:121",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:124",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:159",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:163",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-route-rewire.mjs:175",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/vision-smoke.mjs:96",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/vision-smoke.mjs:132",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:19",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:20",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:30",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:40",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/plan-c-smoke.mjs:57",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:53",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:54",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:89",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:202",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:212",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:218",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:231",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-template.mjs:235",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:105",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:136",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:139",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:144",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:164",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:167",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:187",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:224",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:232",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:233",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:383",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:414",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:415",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:651",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-lifecycle.mjs:654",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mount-assert.mjs:49",
+            "name": "REPO",
+            "binding": []
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mount-assert.mjs:58",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:55",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:56",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:57",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/watchdog-redesign.mjs:317",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/explicit-team-trigger.mjs:54",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/explicit-team-trigger.mjs:68",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/explicit-team-trigger.mjs:73",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/explicit-team-trigger.mjs:81",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:34",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:88",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:89",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:89",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-admission.mjs:169",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:32",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:136",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:223",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:226",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:226",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:229",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/tui-spec-conformance.mjs:229",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:426",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:430",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:448",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:656",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:671",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:681",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:682",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:712",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs:712",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:70",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:74",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:225",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:285",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/tui-lane.mjs:455",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:20",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:23",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:24",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:25",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:26",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:27",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:28",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:29",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:30",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:31",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/watchdog-lane.mjs:32",
+            "name": "REPO",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/lib/gate-probe.mjs:12",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-config.mjs:141",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/team-watchdog-config.mjs:142",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:55",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:158",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:168",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:197",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:231",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:245",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs:249",
+            "name": "REPO",
+            "binding": [
+              "imported"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:52",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:56",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:57",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:332",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:339",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:344",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:357",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:370",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:423",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:526",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:854",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-messaging.mjs:855",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:63",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:66",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:67",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:69",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:70",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:72",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:81",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:109",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:121",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:143",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/agent-teams-adopt.mjs:195",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:40",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:45",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:97",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:101",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:108",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/mcp-call.mjs:122",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:16",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:37",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:42",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:51",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:53",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:60",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:64",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:74",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:98",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:99",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:99",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/preset-register.mjs:136",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:33",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:35",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:38",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:40",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:42",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:44",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:49",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:73",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:83",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:92",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:109",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:136",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          },
+          {
+            "site": "skills/dsh-qa/scripts/workmate-library.mjs:140",
+            "name": "repoRoot",
+            "binding": [
+              "declared"
+            ]
+          }
+        ],
+        "offenders": [
+          {
+            "site": "skills/dsh-qa/scripts/mount-assert.mjs:49",
+            "name": "REPO",
+            "binding": []
+          }
+        ]
+      }
+    }
+  ],
+  "ok": false
+}

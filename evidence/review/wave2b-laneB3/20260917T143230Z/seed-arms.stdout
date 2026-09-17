@@ -1,0 +1,8 @@
+ok   seedA-agent-references-no-twin — exit 0 (expected 0); (no FAIL line)
+ok   seedB-docs-missing-twin — exit 1 (expected 1); FAIL docs/probe.md — missing zh-CN file
+ok   seedC-docs-stale-twin — exit 1 (expected 1); FAIL docs/probe.md — zh-CN switch link missing/not under the title; zh-CN file carries no CJK content (copy-paste of the EN file?)
+ok   seedD-docs-zh-only — exit 1 (expected 1); FAIL inverse:docs/probe.zh-CN.md — zh-CN file has no EN twin (docs/probe.md is missing)
+ok   seedE-templates-unmarked-asset — exit 0 (expected 0); (no FAIL line)
+ok   seedF-templates-promoted-doc — exit 1 (expected 1); FAIL templates/tpl/notes/misplaced.md — missing zh-CN file
+
+[t22 seed arms] 6/6 arms behaved as required

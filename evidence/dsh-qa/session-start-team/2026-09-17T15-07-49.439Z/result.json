@@ -1,0 +1,115 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-sst-zFuP4C",
+  "steps": {
+    "settled": {
+      "ok": true,
+      "rev": "ca780331abdaecdef2e35ad7cad643bb69d86d90",
+      "gateHash": "b8a483c176fcbe30b5e5bf84c26135de455dedfcff505bb7e9f7ba83564b9b36"
+    },
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "patchRow": {
+      "ok": true,
+      "hasRow": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "simpleSide": [
+      {
+        "prompt": "Reply with exactly: hello-ok",
+        "exited": 0,
+        "teams": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "notice": false,
+        "ok": true
+      },
+      {
+        "prompt": "What does the git-master skill do? Answer in one sentence.",
+        "exited": 0,
+        "teams": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "notice": false,
+        "ok": true
+      },
+      {
+        "prompt": "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+        "exited": 0,
+        "teams": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "notice": false,
+        "ok": true
+      }
+    ],
+    "complexSide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "exited": 0,
+        "teams": 1,
+        "staged": "staged",
+        "profile": "mpd",
+        "members": 11,
+        "spawnedMembers": 0,
+        "notice": true,
+        "ok": true
+      },
+      {
+        "prompt": "team: fix the flaky test",
+        "exited": 0,
+        "teams": 1,
+        "staged": "staged",
+        "profile": "mpd",
+        "members": 11,
+        "spawnedMembers": 0,
+        "notice": true,
+        "ok": true
+      },
+      {
+        "prompt": "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+        "exited": 0,
+        "teams": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "notice": true,
+        "ok": false
+      }
+    ],
+    "negativeControl": {
+      "ok": true,
+      "teams": 0,
+      "notice": false,
+      "disarmed": true
+    },
+    "twoSided": {
+      "ok": false,
+      "simpleTeams": [
+        0,
+        0,
+        0
+      ],
+      "simpleNotices": [
+        false,
+        false,
+        false
+      ],
+      "complexTeams": [
+        1,
+        1,
+        0
+      ],
+      "complexNotices": [
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "totalSteps": 8
+}

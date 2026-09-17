@@ -24,6 +24,7 @@ import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
+const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const DEV = process.env.MPD_DEV_ROOT || repoRoot
 const VENDOR = join(repoRoot, "packages", "mpd-agent-teams-plugin")
@@ -145,7 +146,7 @@ async function runReal() {
   const steps = {}
   function runSync(cmd, args, opts = {}) {
     const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
-    return { status: r.status, out: (r.stdout || "") + (r.stderr || "") }
+    return { status: r.status, out: (r.stdout || "") + (r.stderr || ""), stdout: r.stdout || "" }
   }
 
   writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-t", private: true, dependencies: {}, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
@@ -154,8 +155,9 @@ async function runReal() {
   const store = join(reloc, "pnpm-store")
   const add = runSync("dsh", ["plugin", "--profile", "t", "add", "--store-dir", store, staged], { timeout: 600000 })
   steps.install = { ok: add.status === 0, exit: add.status }
-  const dump = runSync("dsh", ["--profile", "t", "--dump-config"], { timeout: 120000 })
-  const dumpOut = dump.out
+  // T-69: composition goes through the wrapper; --json keeps the child's tree parseable.
+  const dump = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "t", "--json"], { timeout: 120000 })
+  const dumpOut = dumpJsonText(dump.stdout)
   // The QA probe row legitimately names the checkout; mask it so the leak check
   // only fails on a real bundle row carrying a dev path.
   const dumpClean = dumpOut.split(home).join("<QAHOME>").split(join(repoRoot, "packages", "mpd-qa-roles-probe")).join("<QAPROBE>")

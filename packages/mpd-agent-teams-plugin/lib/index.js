@@ -24,7 +24,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectArchivedTeamsActivity, collectTeamsActivity } from "./snapshot.js";
-import { findTeamByCaptain } from "./state.js";
+import { findTeamByCaptain, MAILBOX_DEDUP_WINDOW_DEFAULT_MS, MAILBOX_RETENTION_DEFAULT_MS } from "./state.js";
 import { formatProfilesForPrompt } from "./profiles.js";
 import { qualityPlanningPrompt } from "./quality-gates.js";
 import { installInterjectionExpirySweep, installSessionTeamPolicy } from "./session-start.js";
@@ -46,6 +46,12 @@ const fallbackRouteConfig = z.union([
 ]);
 export const Config = z.object({
     stateDir: z.string().default('.mpd/team'),
+    // P1e (t47): the duplicate window, configured rather than borrowed from the delivery lease.
+    // 0 disables the fold (proven by an arm); the default covers every measured repeat group (30 min).
+    mailboxDedupWindowMs: z.number().default(MAILBOX_DEDUP_WINDOW_DEFAULT_MS),
+    // P1b (t49): the retention window for the automatic prune, configured the SAME way as the dedup
+    // window: one schema default, single-sourced from state.js, 0 = off.
+    mailboxRetentionMs: z.number().default(MAILBOX_RETENTION_DEFAULT_MS),
     memberProvider: z.string().default('spawn'),
     memberModel: z.string(),
     executionPrompt: z.string(),
@@ -140,6 +146,8 @@ Tools: ${toolNames}${profilesText === '' ? '' : `\n\n${profilesText}`}`;
 export function apply(ctx, config) {
     const resolved = {
         stateDir: config.stateDir ?? '.agent-teams',
+        mailboxDedupWindowMs: config.mailboxDedupWindowMs ?? MAILBOX_DEDUP_WINDOW_DEFAULT_MS,
+        mailboxRetentionMs: config.mailboxRetentionMs ?? MAILBOX_RETENTION_DEFAULT_MS,
         memberProvider: config.memberProvider ?? 'spawn',
         memberModel: config.memberModel,
         executionPrompt: config.executionPrompt,

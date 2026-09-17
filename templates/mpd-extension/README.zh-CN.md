@@ -96,9 +96,10 @@ bun scripts/mpd-ext.mjs list             # 本宿主按平面会发现的扩展
 ## 6. 为什么本目录既不会被发现、也不会被打包
 
 `templates/` 不在上面三个发现根之内，所以这里的内容不会被挂载——在本目录出现前后，未改动的
-代码树启动时发现的扩展完全相同。而且模板既不被发现、也**不被打包**：发布打包脚本
-`scripts/pack-mpd.mjs` 按显式白名单拷贝，其中没有任何 `templates/` 条目，因此模板是被刻意排除在
-`dist/mpd-package` 之外的。
+代码树启动时发现的扩展完全相同。而且模板**不会被扩展加载器发现**，但它**确实会被打包**：发布打包脚本在其
+`ROOT_ASSET_DIRS` 中点名了 `templates`（读自 `scripts/pack-mpd.mjs`），因此
+`dist/mpd-package/templates/mpd-extension` 会随产物一同交付；若模板从打包中掉失，那就是
+交付资产的缺失（即打包器会高声拒绝的 T-38 类）。
 
 这件事有一个你在打包安装里伸手拿 CLI 之前应当知道的后果：打包器确实会拷贝
 `scripts/mpd-ext.mjs`，但它只拷贝 `packages/<pkg>/dist`、从不拷贝 `packages/<pkg>/src`，而这个
@@ -117,3 +118,25 @@ stdout 只承载协议数据，并从自己的 `mpd-ext.json` 读取 `serverInfo
 ```bash
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node <扩展根>/server.mjs
 ```
+
+## 8. 本 README 引用的清单取值
+
+去品牌探针（`verify-debranding-full.mjs`）会检查本 README **对**逐字引用了模板清单里的片段取值，
+这样 `mpd-ext.json` 与文档之间的漂移就不会悄无声息地通过。以下为当前取值（`scaffold` 会改写你的拷贝里的
+**名称**；说明文字与 `stdio`/`node` 这对取值保持如下，直到你替换它们）：
+
+| 位置 | 字段 | 取值 |
+|---|---|---|
+| `skills/mpd-extension-template-skill/SKILL.md` | `skills.name` | `mpd-extension-template-skill` |
+| `skills/mpd-extension-template-skill/SKILL.md` | `skills.description` | `The mpd-extension-template extension's first skill. Replace this description with what the skill does and when an agent should use it; keep the load-bearing sentence first.` |
+| `flows/mpd-extension-template-flow.json` | `flows.id` | `mpd-extension-template-flow` |
+| `flows/mpd-extension-template-flow.json` | `flows.title` | `mpd-extension-template flow` |
+| `flows/mpd-extension-template-flow.json` | `flows.description` | `The mpd-extension-template extension's first flow. Replace this procedure with the real one, or delete the flows directory and the flows entry in mpd-ext.json.` |
+| `flows/mpd-extension-template-flow.json` | `flows.whenToUse` | `Use when a task needs the repeatable procedure this flow describes.` |
+| `mpd-ext.json` | `roles.name` | `mpd-extension-template reviewer` |
+| `mpd-ext.json` | `roles.description` | `Read-only reviewer contributed by the mpd-extension-template extension: checks a change against this extension's own contract and reports findings with evidence.` |
+| `mpd-ext.json` | `roles.persona` | `personas/mpd-extension-template-reviewer.md` |
+| `mpd-ext.json` | `mcp.serverName` | `mpd-extension-template` |
+| `mpd-ext.json` | `mcp.transport` | `stdio` |
+| `mpd-ext.json` | `mcp.command` | `node` |
+| `mpd-ext.json` | `mcp.args` | `["server.mjs"]` |

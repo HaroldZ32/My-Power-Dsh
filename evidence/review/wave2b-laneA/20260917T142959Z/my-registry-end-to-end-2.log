@@ -1,0 +1,20 @@
+### SCRATCH MIRROR 2 (same minimal shape; outside workspace; deleted after use)
+### ARM A — EDIT an EXISTING region body, then --check (must REDDEN: drift)
+edited one line inside region: coverage-gap-text
+[patch-agent-teams-fixes] FAIL: delta "mpd-delta coverage-gap-text" in packages/mpd-agent-teams-plugin/lib/quality-gates.js (lines 693-723) no longer matches this script's registered block — first difference at line 721; either the delta was edited without regenerating lib/mpd-deltas.js (run --write-registry) or a re-vendor rewrote it
+check-after-edit exit=1
+
+### ARM B — --write-registry (regenerates from the marked regions)
+[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (88 regions)
+write-registry exit=0
+
+### ARM C — --check AFTER regeneration (must be GREEN)
+[patch-agent-teams-fixes] already applied: 88 mpd delta region(s) across 9 adopted file(s)
+exit=0
+
+### ARM D — add a NEW region with a UNIQUE after-anchor, then --write-registry + --check
+inserted a new marked region above a unique anchor
+[patch-agent-teams-fixes] registry regenerated: packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (88 regions)
+write-registry exit=0
+[patch-agent-teams-fixes] already applied: 88 mpd delta region(s) across 9 adopted file(s)
+check exit=0

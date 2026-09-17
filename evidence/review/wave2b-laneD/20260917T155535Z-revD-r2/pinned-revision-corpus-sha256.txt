@@ -1,0 +1,27 @@
+# THE PINNED REVISION (my own hash pass, 2026-09-17T16:07:37Z)
+
+## The changed corpus paths, sha256 as measured by THIS reviewer
+## (the repair's record carries no updated list - advisory OBS-3, not a finding)
+bf253410b7aa97a9be0cf183e016eebe7bcaed33f808ff785820654d6f9db5e1  skills/dsh-qa/SKILL.md
+df652241c74265b5233252e1a5310d9f3825266415dc598d152c6994546c0c07  skills/dsh-qa/cases.json
+6a43886611b8139cf3f68ce2f40eba228f4d7f9a04b329e258d27c956a7ca8aa  skills/dsh-qa/scripts/agent-teams-adopt.mjs
+30e579df9592b053fb6aafeb5f04dc25b0a26999224b7b80a055c2ac135daf8d  skills/dsh-qa/scripts/bundle-lifecycle.mjs
+826a39d4172701b89900b249e11e43b757f0a50c1100f0cd889b9eb48530ee26  skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
+fe0243cfc8fbef69aabef604d08aec1301048f61b841f201e1087bbef23c1550  skills/dsh-qa/scripts/lib/tui-lane.mjs
+769ee489f3848617a138c1f331b2dcf4d53ce2e3265ac6cb02b41387fb2ee055  skills/dsh-qa/scripts/mount-assert.mjs
+d9780256207cabc485033237e26aac4e6473ee9c43b461a1641ba92a197d3d53  skills/dsh-qa/scripts/relocate-smoke.mjs
+fbff74b3a13dd4631f7e9c4b2dfad8ea26825022b0ea2601ca68924ad82b236a  skills/dsh-qa/scripts/session-start-team.mjs
+e78fbaa17a3d922ad2138160a1859f0be5890cff1507fa9db797fb768d1168ab  skills/dsh-qa/scripts/team-route-rewire.mjs
+f18e3b3aa074543caa85fe7cfe08440025faaac4f328cc269ae549328aa5a52d  skills/dsh-qa/scripts/tui-team-surface.mjs
+4f183ce76c3929c0e32b6d523ce353c7214abb18c75e97294b92a50776c2abc5  skills/dsh-qa/scripts/workmate-library.mjs
+4da8bd62e0ada92d8cc5bd9f569378b2c2c01e0502b8b1e7396457b7a3e8c289  skills/dsh-qa/scripts/workmate-team-member.mjs
+48ef0cd6204c64b7df5d2c58afd1454a41c1e9098a5bcb3472cd9baa4591c8fd  skills/dsh-qa/scripts/wave2b-lane-d.mjs
+
+## The corpus treeSha, LF-normalized, re-derived by me at this moment (must match t38's preview)
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor]   locked       : treeSha=b9097d115ae0742828744d9a305c145fe2efeaef11d6a4e641bf666687102620 fileCount=323
+[repin-vendor]   computed (LF) : treeSha=5fbe9dbcd5c52c50a0148f9b2c14b07e6210f4b710e4d7060aeee94a8887b71a fileCount=324 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 26ec1af28bb29eee4b1b5b4b6282d0baf4f24c4776bc4a0c2f4b1a7db9dd41cc   <- NEVER write this one
+
+## The lock is untouched (git status empty for VENDOR_LOCK.json) -> the ONE re-pin is still OWED
+   (empty line above = untouched)

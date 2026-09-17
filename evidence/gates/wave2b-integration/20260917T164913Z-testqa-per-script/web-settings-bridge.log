@@ -1,0 +1,1 @@
+[web-settings-bridge self-test] ok: 18 web-arm + 7 TUI-arm + 4 client-shape injected faults each flip their own check; all three synthetic green artifacts pass

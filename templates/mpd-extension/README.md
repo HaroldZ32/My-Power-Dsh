@@ -106,9 +106,11 @@ must never be accepted and then do nothing.
 
 `templates/` is not one of the three discovery roots above, so nothing here is mounted — a
 boot of the unmodified tree discovers exactly the extensions it discovered before this
-directory existed. And the template is neither discovered nor **packed**: the release packer
-`scripts/pack-mpd.mjs` copies by an explicit allowlist that carries no `templates/` entry, so
-the template is deliberately absent from `dist/mpd-package`.
+directory existed. And the template is **not discovered by the extension loader**, but it IS
+**packed**: the release packer names `templates` in its `ROOT_ASSET_DIRS` (read at
+`scripts/pack-mpd.mjs`), so `dist/mpd-package/templates/mpd-extension` ships in the artifact, and
+a template that dropped out of the pack would be a shipped-asset loss (the T-38 class the packer
+refuses loudly).
 
 That has a consequence worth knowing before you reach for the CLI in a packed install: the
 packer does ship `scripts/mpd-ext.mjs`, but it ships `packages/<pkg>/dist` and never
@@ -129,3 +131,26 @@ from the directory that holds it:
 ```bash
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node <extension-root>/server.mjs
 ```
+
+## 8. The manifest values this README quotes
+
+The debranding prober (`verify-debranding-full.mjs`) checks that this README PAIR quotes the
+template manifest snippet values VERBATIM, so a drift between `mpd-ext.json` and the docs cannot
+pass silently. The values as they stand today (a scaffold rewrites the NAMES in your copy; the
+prose and the `stdio`/`node` pair stay as quoted until you replace them):
+
+| Where | Field | Value |
+|---|---|---|
+| `skills/mpd-extension-template-skill/SKILL.md` | `skills.name` | `mpd-extension-template-skill` |
+| `skills/mpd-extension-template-skill/SKILL.md` | `skills.description` | `The mpd-extension-template extension's first skill. Replace this description with what the skill does and when an agent should use it; keep the load-bearing sentence first.` |
+| `flows/mpd-extension-template-flow.json` | `flows.id` | `mpd-extension-template-flow` |
+| `flows/mpd-extension-template-flow.json` | `flows.title` | `mpd-extension-template flow` |
+| `flows/mpd-extension-template-flow.json` | `flows.description` | `The mpd-extension-template extension's first flow. Replace this procedure with the real one, or delete the flows directory and the flows entry in mpd-ext.json.` |
+| `flows/mpd-extension-template-flow.json` | `flows.whenToUse` | `Use when a task needs the repeatable procedure this flow describes.` |
+| `mpd-ext.json` | `roles.name` | `mpd-extension-template reviewer` |
+| `mpd-ext.json` | `roles.description` | `Read-only reviewer contributed by the mpd-extension-template extension: checks a change against this extension's own contract and reports findings with evidence.` |
+| `mpd-ext.json` | `roles.persona` | `personas/mpd-extension-template-reviewer.md` |
+| `mpd-ext.json` | `mcp.serverName` | `mpd-extension-template` |
+| `mpd-ext.json` | `mcp.transport` | `stdio` |
+| `mpd-ext.json` | `mcp.command` | `node` |
+| `mpd-ext.json` | `mcp.args` | `["server.mjs"]` |

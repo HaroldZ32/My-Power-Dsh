@@ -1,0 +1,5 @@
+my key-producing set: ['skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs', 'skills/dsh-qa/scripts/tui-team-surface.mjs']
+skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs: reference lines carrying A<n> tokens = 2; token set = [1, 2, 3, 4, 6]
+    line 9: [1, 2, 3, 4, 6] :: // `<workspace>/.mpd/mpd.jsonc` (t34 design §1/§2/§A.1/§D; t35 acceptance A1-A4/A6).
+    line 32: [6] :: //   A6 the write-back switch (`writeBack: false`, the design's key; `settingsBridge.writeBack`
+skills/dsh-qa/scripts/tui-team-surface.mjs: reference lines carrying A<n> tokens = 0; token set = []

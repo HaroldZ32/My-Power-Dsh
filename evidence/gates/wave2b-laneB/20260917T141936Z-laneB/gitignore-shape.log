@@ -1,0 +1,7 @@
+[gitignore-shape] shape probe   ./.qa-w2b-shape-probe -> ignored=true pattern=".gitignore:87:/.qa-*\t./.qa-w2b-shape-probe"
+[gitignore-shape] near-miss     ./.quarantine-probe -> ignored=false (visible, as required)
+[gitignore-shape] existing      ./.qa-t15-dir -> ignored=true pattern=".gitignore:87:/.qa-*\t./.qa-t15-dir"
+[gitignore-shape] existing      ./.qa-t17-dir -> ignored=true pattern=".gitignore:87:/.qa-*\t./.qa-t17-dir"
+[gitignore-shape] existing      ./.qa-t21-dir -> ignored=true pattern=".gitignore:87:/.qa-*\t./.qa-t21-dir"
+[gitignore-shape] existing      ./.qa-reloc -> ignored=true pattern=".gitignore:87:/.qa-*\t./.qa-reloc"
+[gitignore-shape] ok: the shape ignores the .qa-* family and does NOT swallow the near-miss

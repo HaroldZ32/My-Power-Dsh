@@ -1,0 +1,20 @@
+== FU-3 base rate, my own instrument, moment 2026-09-17T14:37:55Z ==
+-- files per directory (globbed, the same split the lane names) --
+top-level  *.mjs : 46
+top-level  all   : 47
+lib/       *.mjs : 8
+lib/       all   : 8
+recursive  *.mjs : 54
+-- key-producing drivers (literal 'add("A<n>' ...) --
+recursive in scope (.mjs)          : 2
+non-recursive in scope (top level) : 1
+'.js' file-type assumption in scope: 0
+whole-repo literal scan (.mjs)     : 27
+whole-repo literal scan (all files): 28
+-- the two drivers lane B2 named, and what they produce --
+./skills/dsh-qa/scripts/tui-team-surface.mjs
+./skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
+-- files added to the corpus since the lane's 53-file scan --
+ M skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
+ M skills/dsh-qa/scripts/tui-team-surface.mjs
+?? skills/dsh-qa/scripts/wave2b-lane-d.mjs

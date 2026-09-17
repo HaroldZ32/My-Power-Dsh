@@ -1,0 +1,90 @@
+{
+  "task": "t15 — impl-B2 — wave-2b lane B2: the citation / derived-value family (T-78, T-80, T-82)",
+  "agent": "citation-checker-engineer",
+  "attemptId": "9371ef07-b30b-4d23-bdb2-fb9109d97e58",
+  "date": "2026-09-17T14:25Z",
+  "acceptance": "evidence/requirements/wave2b-laneB2/20260917T1410Z-wave2b-laneB2-acceptance.md (read in full, 182 lines; worked row by row)",
+  "revisions": {
+    "durable_checker": { "path": "scripts/check-citations.mjs", "before": "c86f00cc978863ea28354f4f7ea45ad3a628a84b54b7008082d2d8e581ac5112", "after": "fbdc02569a8be827745c13dadaec63eb2353ab1380d245ac6a275a2381779f28", "lines": 1143 },
+    "frozen_superseded": { "path": "evidence/extensions/docs-claims/check-citations.mjs", "sha256": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c", "state": "BYTE-UNTOUCHED (re-measured after the work)" },
+    "home_decision": "T-80 lives as a SUBCOMMAND of this checker (`--driver-headers`), not as the plan's optional NEW file `scripts/check-driver-headers.mjs`: the t15 inScope is file-exact (`scripts/check-citations.mjs`, `evidence/extensions/**`, `evidence/gates/wave2b-laneB2/**`) and the acceptance §1 allows the either/or explicitly ('or the same file's subcommand'). No out-of-scope path was created."
+  },
+  "T78": {
+    "rule_text": "the checker's own usage/header block carries the RULE, the exact command, the six addressing parameters, and the new modes; every run record carries the same rule under `rules.doc_rewrite`",
+    "command": "node scripts/check-citations.mjs --out ./evidence/gates/<slug>/<stamp>/run",
+    "arm": "negative-control:t78-record-carries-the-rule — a REAL run into a temp dir (--citations-only --out <tmp>, no DOCS_CLAIMS_REPO so a record IS written) is read back as BYTES and asserted to contain the rule string and the command",
+    "arm_readings": { "record_bytes": 7900, "rule_present": true, "command_present": true, "exit": 0 },
+    "neg_control_precedent": "the checker's own fixture pair (mis-anchored → exit 1 `does not carry the claim`; correct → exit 0) is unchanged and reported in `negative_control` of every self-test run"
+  },
+  "T80": {
+    "mode": "node scripts/check-citations.mjs --driver-headers [--self-test] [--dir <dir|file>] [--naive]",
+    "policy": {
+      "claimed_but_unasserted": "VIOLATION (exit 1) — the key, the driver PATH and the header PHRASE are named",
+      "asserted_but_unclaimed": "VIOLATION (exit 1) — stated policy, so an under-claiming header is never silent",
+      "no_claim_set": "REPORTED, not a violation — the equality rule has no subject; the file and its keys are named",
+      "reference_lines": "an `A<n>` token on a line pointing at another artifact's numbering (acceptance/design/§/t<nn>) is a REFERENCE — counted and printed, never a claim"
+    },
+    "fixture_arms": { "t80-matching": "exit 0 (header CHECKS A1–A3, code produces A1–A3)", "t80-claimed-but-unasserted": "exit 1, names A4 + the path", "t80-extra-key-near-miss": "exit 1, names A4 + the path", "total": "3/3 passed" },
+    "live_scan": {
+      "moment": "2026-09-17T14:24:52.491Z",
+      "scope": "./skills/dsh-qa/scripts/ (recursive)",
+      "files_scanned": 53,
+      "per_directory_split": {
+        "skills/dsh-qa/scripts/": { "files": 45, "key_producers": 1, "keys": 9, "claims": 0, "violations": 0, "no_claim_set": 1 },
+        "skills/dsh-qa/scripts/lib/": { "files": 8, "key_producers": 1, "keys": 5, "claims": 0, "violations": 0, "no_claim_set": 1 }
+      },
+      "drivers": [
+        { "path": "skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs", "keys": "A1–A5", "claims": "none", "no_claim_set": true, "reference_lines": 6 },
+        { "path": "skills/dsh-qa/scripts/tui-team-surface.mjs", "keys": "A1–A8, A10", "claims": "none", "no_claim_set": true, "reference_lines": 2 }
+      ],
+      "violations": 0,
+      "note": "both key-producing drivers make NO claim of their own; the engine header's `t35 acceptance A1-A4/A6` line and its `(design §9.3 …)` falsifier list are REFERENCE lines, and the audit PRINTS them rather than dropping them — the precise rule is what keeps the naive reading from reddening a driver that has no defect"
+    },
+    "audit_matcher_error_directions": [
+      { "direction": "over-report", "alternative": "whole-header token scan (no claim-marker scope, no reference filter)", "measured": "1 file flagged / 2 keys reported as mismatched, against 0 with the precise rule" },
+      { "direction": "under-report", "alternative": "non-recursive ./skills/dsh-qa/scripts/*.mjs (misses lib/)", "measured": "1 key producer found against 2" },
+      { "direction": "under-report", "alternative": "a file-type assumption (.js) instead of .mjs", "measured": "0 key producers found against 2" },
+      { "direction": "over-report", "alternative": "a whole-repo literal scan for `add(\"A`", "measured": "25 key-producing .mjs files repo-wide against 2 in scope" }
+    ],
+    "not_inherited": "lane A's T-92 audit split (25 self-fix-tests/** + 17 test/** = 42 `not.toContain(` occurrences; subject-scoped 3 with 0 reddened) measures a DIFFERENT audit — different literal, different subject — and is NOT reused or restated as this audit's numbers",
+    "handoff": "the DRIVER-side conformance (adding `A<n>` claims to the two drivers' headers) is lane D's corpus edit; this lane delivers the RULE plus the report, and the live scan currently reports two NO-CLAIM-SET drivers with their keys named"
+  },
+  "T82": {
+    "rule": "each citation run copies the revision bytes it measured — its own file AND the frozen revision it supersedes — into `<out>/revisions/` under STABLE names (`checker.mjs`, `superseded.mjs`), so two runs are DIFFABLE, not merely hash-comparable",
+    "record": "`revisions[]` in result.json names target/source/sha256/label; `checker{path,sha256,supersedes}` keeps the hash view unchanged",
+    "sentence_corrected": "the record's old sentence claiming diffability is now TRUE by construction (retention); the comment beside `checker` says so explicitly",
+    "arm": "negative-control:t82-retention-diffable — a COPY of the checker runs twice with a one-line change between the runs (fixture root at depth 1 with a `skills` symlink for the relative import, a fake frozen revision, and the five subjects)",
+    "arm_readings": {
+      "changed_pair": "non-empty, differs at line 2, names `// T-82 ARM CHANGE B`",
+      "unchanged_pair": "EMPTY (the anti-fake control — a retention that copied the CURRENT file into both run dirs would pass the existence half and fail this one)",
+      "retained": { "runA_checker": true, "runB_checker": true, "runA_superseded": true, "runB_superseded": true }
+    },
+    "live_evidence": "evidence/gates/wave2b-laneB2/20260917T142452Z/citation-run/revisions/{checker.mjs,superseded.mjs} retained by the scoped run itself"
+  },
+  "output_domain_and_immutability": {
+    "rule": "every run this lane RECORDS passes an explicit `--out ./evidence/gates/wave2b-laneB2/<stamp>/…`",
+    "immutability_arm": "a SECOND run at the same --out exits 3 (`IMMUTABLE_EXIT_CODE`) with `refusing to overwrite` — refused on the first retained file, so the guard is exercised on this lane's own evidence",
+    "declared_exception": "the contract's verify command was ALSO run VERBATIM (`node scripts/check-citations.mjs`, no --out): it wrote the legacy default run dir `evidence/extensions/docs-claims/runs/run-2026-09-17T14-25-20.731Z`, which is inside this task's declared write set (`evidence/extensions/**`) — declared here rather than left implicit; every other run is --out-pinned"
+  },
+  "addendum_A3_anchor_scan": {
+    "why": "the absence of a mailbox-record-id-shaped anchor in this lane's records must be CHECKABLE",
+    "runs": [
+      { "command": "node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern 'ee9ec16' --out …", "exit": 0, "matches": 0, "files_scanned": 11 },
+      { "command": "node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern '\"dupCount\"' --out …", "exit": 0, "matches": 0, "files_scanned": 13 }
+    ],
+    "parameters": "literal string named in each run's record; plain substring, case-sensitive, unescaped; one offline process; one file unit; the run dir scope; the run's `run_at` moment"
+  },
+  "commands": [
+    { "command": "node scripts/check-citations.mjs", "exit": 0, "evidence": "13/13 checks passed, 0 failed, 249 citations, 19 symbol-first, 30 line-dependent, 0 rot-flagged (contract verify, verbatim)" },
+    { "command": "node scripts/check-citations.mjs --out ./evidence/gates/wave2b-laneB2/20260917T142452Z/citation-run", "exit": 0, "evidence": "13/13; retained revisions/checker.mjs + revisions/superseded.mjs" },
+    { "command": "node scripts/check-citations.mjs --self-test --out ./evidence/gates/wave2b-laneB2/20260917T142452Z/citation-selftest", "exit": 0, "evidence": "25/25 checks passed (was 22/22): +3 wave-2b arms (T-78 record bytes, T-82 retention diff, immutability refusal)" },
+    { "command": "node scripts/check-citations.mjs --driver-headers --self-test", "exit": 0, "evidence": "3/3 fixture arms passed" },
+    { "command": "node scripts/check-citations.mjs --driver-headers --out ./evidence/gates/wave2b-laneB2/20260917T142452Z/driver-headers-live", "exit": 0, "evidence": "53 files scanned, 2 key-producing drivers, 0 violations, 2 NO-CLAIM-SET reported" },
+    { "command": "node scripts/check-citations.mjs --anchor-scan ./evidence/gates/wave2b-laneB2/20260917T142452Z --pattern ee9ec16 --out …", "exit": 0, "evidence": "0 matches in 11 files" }
+  ],
+  "scope": {
+    "inScope": ["scripts/check-citations.mjs", "evidence/extensions/**", "evidence/gates/wave2b-laneB2/**"],
+    "not_touched": ["scripts/verify-*.mjs (lane B)", "scripts/verify-docs-parity.mjs (lane B3)", "skills/** (lane D)", "docs/**", "AGENTS.md", "templates/**", "packages/*/dist/**", "dist/mpd-package/**", "VENDOR_LOCK.json", ".mpd/plans/**"],
+    "git": "no git commands run (the captain is the only writer)"
+  }
+}

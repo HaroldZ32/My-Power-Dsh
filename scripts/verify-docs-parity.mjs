@@ -59,33 +59,51 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-// Files the AGENTS.md Language policy exempts. An exemption means ONLY that a missing zh twin is
-// not a violation; it never suppresses the checks for a pair that exists — an exempt file that
-// GAINS a zh-CN twin is checked like any other pair (and must then satisfy all four rules).
-const EXEMPT_LONE_FILES = new Map([
-  ["docs/plan-c.md", "process record (AGENTS.md §3: plan-*.md)"],
-  ["docs/plan-d.md", "process record (AGENTS.md §3: plan-*.md)"],
-  ["docs/plan-e.md", "process record (AGENTS.md §3: plan-*.md)"],
-  ["docs/plan-f.md", "process record (AGENTS.md §3: plan-*.md)"],
-  ["docs/plan-tui-edition.md", "process record (AGENTS.md §3: plan-*.md)"],
-  ["docs/decisions.md", "process record (AGENTS.md §3)"],
-  ["docs/bline-report.md", "prior-phase report (AGENTS.md §3)"],
-  ["docs/omo-parity-gap.md", "prior-phase report (AGENTS.md §3)"],
-  ["docs/review-p0-p3.md", "prior-phase report (AGENTS.md §3)"],
-  ["docs/track-a-report.md", "prior-phase report (AGENTS.md §3)"],
-  ["docs/ulw-deepseek-optimization.md", "prior-phase report (AGENTS.md §3)"],
-  ["docs/adder4.md", "internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet and the manual no longer names it as an example; this list is the single source (t39)"],
-  ["docs/cnt8.md", "internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet and the manual no longer names it as an example; this list is the single source (t39)"],
-  ["docs/tui-edition-report.md", "prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)"],
-  ["packages/mpd-agent-teams-plugin/README.md", "adopted upstream main code, kept verbatim as provenance"],
+// ── T-30: lone-file exemptions are DERIVED from the file itself ───────────────────────────────
+// An exemption means ONLY that a missing zh twin is not a violation; it never suppresses the checks
+// for a pair that exists (an exempt file that GAINS a zh-CN twin is checked like any other pair and
+// must then satisfy all four rules). Two derived sources replaced the hand-maintained per-file map:
+//   * the IN-FILE MARKER `<!-- docs-parity: exempt <reason> -->` — any `*.md` carrying it is
+//     reported with the marker's OWN reason, so a new historical doc is exempted WITHOUT editing
+//     this gate, and the same doc without the marker is a normal policed file (T-30's observable);
+//   * a declared PATTERN table for the classes the AGENTS.md §3 policy names BY GLOB (the plan
+//     files) — a policy shape, not a per-file list.
+// The two ANTICIPATORY paths are kept by design and PRINTED as their own class: they do not exist
+// in this tree, an anticipatory exemption can rot silently, and silence is the failure this row
+// removes (t39 recorded them; retiring them is a captain decision, not a silent drop).
+const EXEMPT_MARKER = /<!--\s*docs-parity:\s*exempt\s+([^>]*?)\s*-->/;
+const EXEMPT_PATTERNS = [{ pattern: /^docs\/plan-[^/]+\.md$/, reason: "process record (AGENTS.md §3: plan-*.md)" }];
+const ANTICIPATORY_EXEMPTIONS = new Map([
+  ["docs/adder4.md", "internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source"],
+  ["docs/cnt8.md", "internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source"],
 ]);
 const EXEMPT_WITHOUT_README = new Map([
   ["packages/mpd-mcp-shared", "ships source and tests only; its README pair is a recorded follow-up"],
 ]);
-// `docs/plan-*.md` is a glob in the policy, so the exemption set is extended at discovery time.
-const isExemptLone = (rel) => EXEMPT_LONE_FILES.has(rel) || /^docs\/plan-[^/]+\.md$/.test(rel);
-const exemptReason = (rel) =>
-  /^docs\/plan-/.test(rel) && !EXEMPT_LONE_FILES.has(rel) ? "process record (AGENTS.md §3: plan-*.md)" : EXEMPT_LONE_FILES.get(rel);
+// A third, deliberately tiny source: files whose BYTES must stay verbatim, so the in-file marker
+// cannot be added without destroying the property that earns the exemption.
+const EXEMPT_PROVENANCE = new Map([
+  ["packages/mpd-agent-teams-plugin/README.md", "adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker"],
+]);
+const markerExemption = (text) => {
+  const match = EXEMPT_MARKER.exec(text ?? "");
+  return match === null ? undefined : match[1];
+};
+const patternExemption = (rel) => EXEMPT_PATTERNS.find((entry) => entry.pattern.test(rel))?.reason;
+const isExemptLone = (rel, text) => patternExemption(rel) !== undefined || markerExemption(text) !== undefined || EXEMPT_PROVENANCE.has(rel);
+const exemptReason = (rel, text) => patternExemption(rel) ?? markerExemption(text) ?? EXEMPT_PROVENANCE.get(rel);
+
+// ── T-29: classification is DECLARED, never directory position alone ──────────────────────────
+// Bands: `docs/**` (every *.md is a doc), `extensions/**` and `templates/**` (README.md files are
+// docs, every other *.md is an ASSET — extension skills, personas, flow docs). The PROMOTION
+// MARKER `<!-- docs-parity: doc -->` makes any *.md a doc wherever it lives, so a doc that lands in
+// an asset band REDDENS instead of escaping (T-29's observable); the bands alone never promote.
+// `templates/**` joined the discovery set with this row: the template README pair shipped UNPOLICED.
+const DOC_MARKER = /<!--\s*docs-parity:\s*doc\s*-->/;
+const isDocByBand = (rel) =>
+  rel.startsWith("docs/") ||
+  rel.split("/").at(-1) === "README.md";
+const promotedByMarker = (text) => DOC_MARKER.test(text ?? "");
 
 const readIf = (path) => (existsSync(path) ? readFileSync(path, "utf8") : null);
 const switchLinkUnderTitle = (text, twinBase) => {
@@ -158,47 +176,68 @@ export function deriveDeltaRange(root) {
 }
 
 /**
- * Every registered region span in one file, as a count — the same walk the applier uses
- * (`regionSpans` in `scripts/patch-agent-teams-fixes.mjs`: a region opening INSIDE another
- * region's span is part of that span, not a region of its own, so a naive marker grep
- * OVER-counts). `null` = an unterminated region, which the applier also refuses.
+ * T-57: every region id ONE FILE carries, pairing each begin with ITS OWN end (a STACK), so a
+ * region NESTED inside another region's span counts as its OWN region. The earlier walk took the
+ * FIRST matching end marker as a region's end and skipped the whole span, so a file carrying three
+ * markers counted as two and this corroboration printed a FALSE agreement while a real nested
+ * region existed (t44-F1: the registry held 119 ids while this helper reported agreement).
+ * A mismatched end, an orphan end, an unclosed begin or a duplicate in-file id is REPORTED, never
+ * silently counted around.
  */
-function liveRegionCount(fileText) {
+function liveRegionIds(rel, fileText) {
   const lines = fileText.split("\n");
-  let count = 0;
-  let index = 0;
-  while (index < lines.length) {
-    const begin = lines.findIndex((line, at) => at >= index && /^\s*\/\/#region mpd-delta [A-Za-z0-9-]+ \(/.test(line));
-    if (begin === -1) break;
-    const id = /\/\/#region (mpd-delta [A-Za-z0-9-]+) \(/.exec(lines[begin])[1];
-    const end = lines.findIndex((line, at) => at > begin && line.trim() === `//#endregion ${id}`);
-    if (end === -1) return null;
-    count += 1;
-    index = end + 1;
+  const ids = [];
+  const stack = [];
+  const problems = [];
+  for (let at = 0; at < lines.length; at += 1) {
+    const begin = /^\s*\/\/#region (mpd-delta [A-Za-z0-9-]+) \(/.exec(lines[at]);
+    if (begin !== null) {
+      ids.push(begin[1]);
+      stack.push({ id: begin[1], line: at + 1 });
+      continue;
+    }
+    const end = /^\s*\/\/#endregion (mpd-delta [A-Za-z0-9-]+)\s*$/.exec(lines[at]);
+    if (end === null) continue;
+    if (stack.length === 0) {
+      problems.push(`${rel}:${at + 1} closes ${end[1]} with no open region`);
+      continue;
+    }
+    const open = stack.pop();
+    if (open.id !== end[1]) problems.push(`${rel}:${at + 1} closes ${end[1]} while ${open.id} (opened at :${open.line}) is still open`);
   }
-  return count;
+  for (const open of stack) problems.push(`${rel}:${open.line} opens ${open.id} with no matching end marker`);
+  const duplicates = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+  if (duplicates.length > 0) problems.push(`${rel} carries duplicate region id(s): ${duplicates.join(", ")}`);
+  return { ids, problems };
 }
 
-/** The generated registry's region/file counts, corroborated per file against the live markers. */
+/** The generated registry's region/file ids, corroborated PER FILE (ids, not just counts). */
 function deriveRegistryCounts(root) {
   const registry = readIf(join(root, REGISTRY_REL));
   if (registry === null) return { ok: false, reason: `${REGISTRY_REL} is absent — regenerate with: node scripts/patch-agent-teams-fixes.mjs --write-registry` };
   const entries = [...registry.matchAll(/^ {8}file: "([^"]+)",$/gm)].map((match) => match[1]);
-  if (entries.length === 0) return { ok: false, reason: `no MPD_DELTAS entries parsed from ${REGISTRY_REL} (zero-subject: refusing to derive nothing)` };
+  const registryIds = [...registry.matchAll(/^ {8}id: "([^"]+)",$/gm)].map((match) => match[1]);
+  if (entries.length === 0 || registryIds.length !== entries.length) {
+    return { ok: false, reason: `no MPD_DELTAS entries parsed from ${REGISTRY_REL} (zero-subject: refusing to derive nothing)` };
+  }
   const files = [...new Set(entries)];
   const perFile = [];
   for (const file of files) {
     const text = readIf(join(root, file));
     if (text === null) return { ok: false, reason: `${file} is named by the registry but absent from this root — registry and tree cannot be corroborated` };
-    const markers = liveRegionCount(text);
-    if (markers === null) return { ok: false, reason: `${file} carries an unterminated \`//#region mpd-delta\` region — the applier refuses such a file, so its count cannot be corroborated` };
-    perFile.push({ file, registered: entries.filter((entry) => entry === file).length, markers });
+    const { ids: liveIds, problems } = liveRegionIds(file, text);
+    if (problems.length > 0) return { ok: false, reason: `${file} cannot be corroborated: ${problems.join("; ")}` };
+    const registeredIds = registryIds.filter((id, index) => entries[index] === file);
+    const onlyInRegistry = registeredIds.filter((id) => !liveIds.includes(id));
+    const onlyOnTree = liveIds.filter((id) => !registeredIds.includes(id));
+    perFile.push({ file, registered: registeredIds.length, markers: liveIds.length, registeredIds, liveIds, onlyInRegistry, onlyOnTree });
   }
   return {
     ok: true,
     regions: entries.length,
     files: files.length,
     markers: perFile.reduce((total, item) => total + item.markers, 0),
+    mismatched: perFile.filter((item) => item.onlyInRegistry.length > 0 || item.onlyOnTree.length > 0),
     perFile,
   };
 }
@@ -246,10 +285,16 @@ function checkDerivedValues(root) {
       if (Number(claim[1]) !== counts.regions || Number(claim[2]) !== counts.files) {
         violations.push({ id: `derived-value:region-count:${DELTAS_DOC_REL}:${line}`, detail: `${DELTAS_DOC_REL}:${line} claims **${claim[1]}** regions across **${claim[2]}** adopted files but ${REGISTRY_REL} derives ${counts.regions} regions across ${counts.files} files — the registry is the AUTHORITY (it is what the applier heals from; regenerate it with: node scripts/patch-agent-teams-fixes.mjs --write-registry), so UPDATE THIS SENTENCE to the derived pair in the same change that moves the registry` });
       }
-      const drifted = counts.perFile.filter((item) => item.registered !== item.markers);
-      notes.push({ path: DELTAS_DOC_REL, reason: `region-count claim checked: carried **${claim[1]}**/${claim[2]} vs derived ${counts.regions}/${counts.files} from ${REGISTRY_REL}` + (drifted.length === 0
-        ? ` (live \`//#region mpd-delta\` markers agree: ${counts.markers})`
-        : `; live markers in those files: ${counts.markers} — ${drifted.map((item) => `${item.file} (registry ${item.registered} vs markers ${item.markers})`).join(", ")} is the applier's \`--check\` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs`) });
+      // T-57: the corroboration is printed PER FILE with the ids it counted, so a region nested
+      // inside another span surfaces as a NAMED mismatch instead of a bare "markers agree".
+      const perFileReading = counts.perFile
+        .map((item) => `${item.file}: registry ${item.registered} id(s), live ${item.markers} id(s)` + (item.onlyInRegistry.length > 0 || item.onlyOnTree.length > 0
+          ? ` — MISMATCH (registered but not on the tree: [${item.onlyInRegistry.join(", ")}]; on the tree but unregistered: [${item.onlyOnTree.join(", ")}])`
+          : " — agree"))
+        .join("; ");
+      notes.push({ path: DELTAS_DOC_REL, reason: `region-count claim checked: carried **${claim[1]}**/${claim[2]} vs derived ${counts.regions}/${counts.files} from ${REGISTRY_REL}; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): ${perFileReading}` + (counts.mismatched.length === 0
+        ? ""
+        : ` — the mismatch is the applier's \`--check\` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs`) });
     }
   }
   return { violations, notes };
@@ -289,28 +334,34 @@ function discoverPairs(root) {
       inverse.push(rel);
       continue;
     }
+    const text = readIf(join(root, rel));
     const twin = rel.replace(/\.md$/, ".zh-CN.md");
-    if (!existsSync(join(root, twin)) && isExemptLone(rel)) {
-      exemptNotes.push({ path: rel, reason: exemptReason(rel) });
+    if (!existsSync(join(root, twin)) && isExemptLone(rel, text)) {
+      exemptNotes.push({ path: rel, reason: exemptReason(rel, text) });
       continue;
     }
     push(rel, twin);
   }
 
-  // extensions/**: README files are documentation; other .md files are assets.
-  for (const rel of walkFiles(root, "extensions")) {
-    if (!rel.endsWith(".md")) continue;
-    if (rel.endsWith(".zh-CN.md")) {
-      inverse.push(rel);
-      continue;
+  // The declared bands: README.md files are docs, every other *.md is an ASSET (extension skills,
+  // personas, flow docs) — UNLESS the file carries the promotion marker, which makes it a doc
+  // wherever it lives (T-29: a misplaced doc reddens instead of escaping).
+  for (const band of ["extensions", "templates"]) {
+    for (const rel of walkFiles(root, band)) {
+      if (!rel.endsWith(".md")) continue;
+      if (rel.endsWith(".zh-CN.md")) {
+        inverse.push(rel);
+        continue;
+      }
+      const text = readIf(join(root, rel));
+      if (!isDocByBand(rel) && !promotedByMarker(text)) continue;
+      const twin = rel.replace(/\.md$/, ".zh-CN.md");
+      if (!existsSync(join(root, twin)) && isExemptLone(rel, text)) {
+        exemptNotes.push({ path: rel, reason: exemptReason(rel, text) });
+        continue;
+      }
+      push(rel, twin);
     }
-    if (rel.split("/").at(-1) !== "README.md") continue;
-    const twin = rel.replace(/\.md$/, ".zh-CN.md");
-    if (!existsSync(join(root, twin)) && isExemptLone(rel)) {
-      exemptNotes.push({ path: rel, reason: exemptReason(rel) });
-      continue;
-    }
-    push(rel, twin);
   }
 
   const pkgs = join(root, "packages");
@@ -327,8 +378,9 @@ function discoverPairs(root) {
         violations.push({ id: `package-no-readme:packages/${entry.name}`, detail: `package directory ${entry.name} has no README (not an exempt package)` });
         continue;
       }
-      if (!existsSync(join(root, `packages/${entry.name}/README.zh-CN.md`)) && isExemptLone(rel)) {
-        exemptNotes.push({ path: rel, reason: exemptReason(rel) });
+      const text = readIf(join(root, rel));
+      if (!existsSync(join(root, `packages/${entry.name}/README.zh-CN.md`)) && isExemptLone(rel, text)) {
+        exemptNotes.push({ path: rel, reason: exemptReason(rel, text) });
         continue;
       }
       push(rel, `packages/${entry.name}/README.zh-CN.md`);
@@ -340,11 +392,19 @@ function discoverPairs(root) {
   for (const zh of inverse) {
     const en = zh.replace(/\.zh-CN\.md$/, ".md");
     if (existsSync(join(root, en))) continue;
-    if (isExemptLone(en)) {
-      exemptNotes.push({ path: en, reason: `${exemptReason(en)} — its zh file exists, but an exempt record requires no EN twin` });
+    const enText = readIf(join(root, en));
+    if (isExemptLone(en, enText)) {
+      exemptNotes.push({ path: en, reason: `${exemptReason(en, enText)} — its zh file exists, but an exempt record requires no EN twin` });
       continue;
     }
     violations.push({ id: `inverse:${zh}`, detail: `zh-CN file has no EN twin (${en} is missing)` });
+  }
+
+  // The ANTICIPATORY class is reported on its own: an exemption for a file that does not exist yet
+  // can rot silently, so it is printed (and never counted as a live path).
+  for (const [rel, reason] of ANTICIPATORY_EXEMPTIONS) {
+    if (existsSync(join(root, rel))) continue;
+    exemptNotes.push({ path: rel, reason: `${reason} [ANTICIPATORY — not a live path]` });
   }
 
   return { pairs, exemptNotes, violations };
@@ -429,13 +489,22 @@ function selfTest() {
     write("extensions/deep/skills/thing/SKILL.md", "# thing\n\nan asset, not a doc\n");
     write("packages/alpha/README.md", good("Alpha", "Body").replace("./X.zh-CN.md", "./README.zh-CN.md"));
     write("packages/alpha/README.zh-CN.md", zhGood("甲").replace("./X.md", "./README.md"));
-    write("docs/decisions.md", "# Decisions\n\nno twin needed\n");
+    // T-30 fixtures: the process records carry their OWN marker; the two ANTICIPATORY paths are
+    // deliberately NOT created, because their exemption is for files that do not exist yet.
+    write("docs/decisions.md", "<!-- docs-parity: exempt process record (AGENTS.md §3) -->\n# Decisions\n\nno twin needed\n");
     for (const rel of [
       "docs/plan-c.md", "docs/plan-d.md", "docs/plan-e.md", "docs/plan-f.md", "docs/plan-tui-edition.md",
-      "docs/bline-report.md", "docs/omo-parity-gap.md", "docs/review-p0-p3.md", "docs/track-a-report.md",
-      "docs/ulw-deepseek-optimization.md", "docs/adder4.md", "docs/cnt8.md", "docs/tui-edition-report.md",
     ])
-      write(rel, `# ${rel}\n\nprocess record, no twin by policy\n`);
+      write(rel, `# ${rel}\n\nprocess record, no twin by policy (covered by the DECLARED plan-*.md pattern)\n`);
+    for (const rel of [
+      "docs/bline-report.md", "docs/omo-parity-gap.md", "docs/review-p0-p3.md", "docs/track-a-report.md",
+      "docs/ulw-deepseek-optimization.md", "docs/tui-edition-report.md",
+    ])
+      write(rel, `<!-- docs-parity: exempt prior-phase report (AGENTS.md §3) -->\n# ${rel}\n\nprocess record, no twin by policy (IN-FILE marker)\n`);
+    // T-29 fixtures: a POLICED template pair, a promoted misplaced doc, and an unmarked asset.
+    write("templates/tpl/README.md", good("Tpl", "Body").replace("./X.zh-CN.md", "./README.zh-CN.md"));
+    write("templates/tpl/README.zh-CN.md", zhGood("模板").replace("./X.md", "./README.md"));
+    write("templates/tpl/notes/asset.md", "# Asset\n\nan asset, no twin demanded\n");
     write("packages/mpd-mcp-shared/src/index.ts", "export {}\n");
     write("packages/mpd-agent-teams-plugin/README.md", "# upstream verbatim\n");
     const clean = verifyDocsParity(sandbox);
@@ -467,6 +536,49 @@ function selfTest() {
       ok: missingExempt.length === 0,
       detail: missingExempt.length === 0 ? `${expectedExempt.length} exemption paths reported` : `missing: ${missingExempt.join(", ")}`,
     });
+
+    // ── T-30 arms: the exemption is derived from the FILE ─────────────────────────────────────
+    write("docs/from-1999.md", "<!-- docs-parity: exempt historical note (AGENTS.md §3) -->\n# From 1999\n\nold\n");
+    const marked = verifyDocsParity(sandbox);
+    cases.push({
+      case: "T-30: a doc carrying the IN-FILE marker is exempt WITHOUT editing the gate",
+      ok: marked.ok && marked.exemptNotes.some((n) => n.path === "docs/from-1999.md"),
+      detail: JSON.stringify(marked.exemptNotes.find((n) => n.path === "docs/from-1999.md") ?? null),
+    });
+    write("docs/from-1999.md", "# From 1999\n\nold, and now WITHOUT the marker\n");
+    const unmarked = verifyDocsParity(sandbox);
+    cases.push({
+      case: "T-30 NEGATIVE: the SAME doc without the marker is a VIOLATION",
+      ok: unmarked.ok === false && unmarked.pairs.some((p) => p.pair === "docs/from-1999.md" && !p.ok),
+      detail: JSON.stringify(unmarked.pairs.find((p) => p.pair === "docs/from-1999.md") ?? null),
+    });
+    rmSync(join(sandbox, "docs/from-1999.md"), { force: true });
+    const anticipatory = clean.exemptNotes.filter((n) => n.path === "docs/adder4.md" || n.path === "docs/cnt8.md");
+    cases.push({
+      case: "T-30: the TWO ANTICIPATORY paths are reported as their OWN class (never silently dropped)",
+      ok: anticipatory.length === 2 && anticipatory.every((n) => n.reason.includes("ANTICIPATORY")),
+      detail: JSON.stringify(anticipatory),
+    });
+
+    // ── T-29 arms: classification is DECLARED, and a misplaced doc reddens ────────────────────
+    cases.push({
+      case: "T-29: templates/**/README.md pairs enter the discovery set as POLICED pairs",
+      ok: clean.ok && clean.pairs.some((p) => p.pair === "templates/tpl/README.md"),
+      detail: `pairs=${clean.pairs.length}, template pair present=${clean.pairs.some((p) => p.pair === "templates/tpl/README.md")}`,
+    });
+    cases.push({
+      case: "T-29 NEG CONTROL: an UNMARKED non-README *.md under templates/ stays an ASSET",
+      ok: clean.ok && !clean.pairs.some((p) => p.pair === "templates/tpl/notes/asset.md"),
+      detail: "templates/tpl/notes/asset.md left out of the pair set",
+    });
+    write("templates/tpl/notes/promoted.md", "<!-- docs-parity: doc -->\n# Promoted\n\na doc that landed in an ASSET band\n");
+    const promoted = verifyDocsParity(sandbox);
+    cases.push({
+      case: "T-29 NEGATIVE: a misplaced doc carrying the PROMOTION marker REDDENS instead of escaping",
+      ok: promoted.ok === false && promoted.pairs.some((p) => p.pair === "templates/tpl/notes/promoted.md" && !p.ok),
+      detail: JSON.stringify(promoted.pairs.find((p) => p.pair === "templates/tpl/notes/promoted.md") ?? null),
+    });
+    rmSync(join(sandbox, "templates/tpl/notes/promoted.md"), { force: true });
 
     // 2. NEGATIVE CONTROLS — each mutant must fail the gate.
     const mutants = [
@@ -649,10 +761,21 @@ function selfTestDerivedValues() {
     write(tree, "adopted/b.js", markers(2));
     const drift = verifyDocsParity(tree);
     cases.push({
-      case: "T-75 bound: registry-vs-LIVE-marker drift is REPORTED (note, naming the file), never a violation — the applier's --check owns it",
-      ok: drift.ok === true && drift.derivedNotes.some((note) => note.reason.includes("adopted/b.js") && note.reason.includes("registry 1 vs markers 2")),
+      case: "T-75 bound: registry-vs-LIVE-marker drift is REPORTED (note, naming the file AND the ids), never a violation — the applier's --check owns it",
+      ok: drift.ok === true && drift.derivedNotes.some((note) => note.reason.includes("adopted/b.js") && note.reason.includes("registry 1 id(s), live 2 id(s)") && note.reason.includes("MISMATCH")),
       detail: JSON.stringify(drift.derivedNotes),
     });
+    // T-57 arm: a region NESTED inside another region's span is its OWN region, and an unregistered
+    // child surfaces as a NAMED mismatch instead of the old false "markers agree".
+    seed(tree);
+    write(tree, "adopted/a.js", "//#region mpd-delta fixture-0 (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\nexport const outer = 0;\n//#region mpd-delta fixture-extra (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\nexport const child = 1;\n//#endregion mpd-delta fixture-extra\n//#endregion mpd-delta fixture-0\n//#region mpd-delta fixture-1 (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\nexport const sibling = 2;\n//#endregion mpd-delta fixture-1\n");
+    const nested = verifyDocsParity(tree);
+    cases.push({
+      case: "T-57: a region NESTED inside another span counts as its OWN region and surfaces as a NAMED mismatch (the old walk counted 2, this counts 3)",
+      ok: nested.ok === true && nested.derivedNotes.some((note) => note.reason.includes("adopted/a.js") && note.reason.includes("registry 2 id(s), live 3 id(s)") && note.reason.includes("MISMATCH") && note.reason.includes("mpd-delta fixture-extra")),
+      detail: JSON.stringify(nested.derivedNotes),
+    });
+    seed(tree);
 
     const packed = join(sandbox, "packed");
     write(packed, DELTAS_DOC_REL, deltasDoc(3, 2));

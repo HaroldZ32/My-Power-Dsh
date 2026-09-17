@@ -1,0 +1,44 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/t49-retention-prune.test.mjs:
+29 |     await appendMailbox(stateRoot, TEAM, "captain", old("stale-acked"))
+30 |     await appendMailbox(stateRoot, TEAM, "captain", record("never-read", { deliveredAt: 1_000_000 }))
+31 |     await appendMailbox(stateRoot, TEAM, "captain", old("leased", { deliveryClaimedAt: now - 1_000 }))
+32 |     await appendMailbox(stateRoot, TEAM, "captain", old("fresh", { deliveredAt: now - 60_000, readAt: now - 59_000 }))
+33 |     const result = await pruneMailboxRetention(stateRoot, TEAM, "captain", { retentionMs: MAILBOX_RETENTION_DEFAULT_MS, now })
+34 |     expect(result.pruned).toEqual(["stale-acked"])
+                               ^
+error: expect(received).toEqual(expected)
+
+  [
+    "stale-acked",
++   "never-read",
+  ]
+
+- Expected  - 0
++ Received  + 1
+
+      at <anonymous> (/tmp/t49-red/packages/mpd-agent-teams-plugin/self-fix-tests/t49-retention-prune.test.mjs:34:27)
+(fail) P1b: the three eligibility conditions, each armed on its own [5.91ms]
+(pass) P1b: archive-first — the sidecar holds the bytes, and the tombstone keeps its markers [1.49ms]
+(pass) P1b: the knob — 0 disables the prune, a per-call window is honoured, and the ACK path runs it automatically [2.19ms]
+[P1b] seeded 45 records at 1970-01-31T00:16:40.000Z → pruned 45, tombstones 45, live 0
+88 |     const before = (await readMailbox(stateRoot, TEAM, "captain")).length
+89 |     const moment = new Date(now).toISOString()
+90 |     const result = await pruneMailboxRetention(stateRoot, TEAM, "captain", { retentionMs: MAILBOX_RETENTION_DEFAULT_MS, now, limit: 100 })
+91 |     const after = await readMailbox(stateRoot, TEAM, "captain")
+92 |     console.log(`[P1b] seeded ${before} records at ${moment} → pruned ${result.pruned.length}, tombstones ${after.filter((entry) => entry.tombstone === true).length}, live ${after.filter((entry) => entry.tombstone !== true).length}`)
+93 |     expect(result.pruned).toHaveLength(40)
+                               ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 40
+Received length: 45
+
+      at <anonymous> (/tmp/t49-red/packages/mpd-agent-teams-plugin/self-fix-tests/t49-retention-prune.test.mjs:93:27)
+(fail) P1b: MEASURED before/after on a SEEDED mailbox, and the t43 clear guard still holds [16.45ms]
+
+ 2 pass
+ 2 fail
+ 17 expect() calls
+Ran 4 tests across 1 file. [64.00ms]

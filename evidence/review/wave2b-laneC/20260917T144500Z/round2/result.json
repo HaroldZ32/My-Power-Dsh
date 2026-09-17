@@ -1,0 +1,73 @@
+{
+  "task": "t34",
+  "kind": "review",
+  "round": 2,
+  "object": "wave-2b lane C (t17) after the t33 repair — T-79's decisive test + the instrument legs, re-judged at the current revision",
+  "done_when": "evidence/requirements/wave2b-laneC/20260917T1416Z-wave2b-laneC-acceptance.md",
+  "verdict": "pass",
+  "verdict_reason": "round 1's single finding is dispositioned with its predicate and moment named and re-verified by me at the current revision (93 regions / 10 files across four independent predicates), the repaired control arm is red-capable and sibling-tolerant under my own scratch-mirror attack, the decisive test reproduces its four-leg matrix at the NEW scheduler revision, and the token census is unchanged (0 / 0 with exactly 1+1 verbatim third-party captures; the lane's own split spelling does not count as an appearance).",
+  "pins_round2": {
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js": "405d4e364c289299 (moved by lane A's t27 at 14:45:53Z)",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "6915cd8ba924ea3d",
+    "agent-references/agent-teams-deltas.md": "4fd1ef5ccde94957",
+    "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts": "b10d4ac7b3f39752 (the t33 repair)"
+  },
+  "finding_disposition_F1": {
+    "was": "the pin table carried 89 live region ids, unreproducible by any live predicate (line-count-as-id-count confusion)",
+    "now_value": "93 regions across 10 adopted files at 2026-09-17T14:51:13Z",
+    "predicate_named": "MPD_DELTAS entries in packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "my_re_take_at_this_revision": {
+      "registry_entries": 93,
+      "registry_unique_ids": 93,
+      "distinct_files": 10,
+      "live_marker_unique_ids": 93,
+      "check_line": "93 mpd delta region(s) across 10 adopted file(s)",
+      "docs_derived": "carried 93/10 vs derived 93/10 … markers agree: 93 (PASS)",
+      "old_loose_predicate_now": 94
+    },
+    "visible_correction_kept": "t17-result.json carries liveRegionIds:93, liveRegionIdsPredicate (with the header-comment note), and liveRegionIdsWas:{value:89, why:…}",
+    "moment_consistency": "both file mtimes (14:49:39Z, 14:50:47Z) precede the reading moment 14:51:13Z, so 93/10 was correct at its moment and is still correct now",
+    "status": "CLOSED"
+  },
+  "repaired_arm_attack": {
+    "mirror": "scratch under /tmp (six packages + the _deps symlink), deleted after use (T-89)",
+    "arms": [
+      { "state": "as shipped", "reading": "12 pass / 0 fail — the arm's own control fires" },
+      { "state": "one sibling conjunct added to isTaskReady (the failure t33 repaired)", "reading": "12 pass / 0 fail — the repair achieved its purpose" },
+      { "state": "the arm's target text perturbed", "reading": "11 pass / 1 fail with 'expected exactly 1 anchor, found 0' — still red-capable, no silent no-op" }
+    ]
+  },
+  "reproduced_round2": [
+    { "reading": "decisive driver, own --out", "value": "exit 0 — control 1/1 · pure terminal 0/0 · recorded race 1 ticket/0 deliveries + named decline · region-stripped 1/1; outcome NOT WOKEN; equalityHalfHolds false; the driver's own schedulerSha256 = 405d4e36… (the revision actually loaded)" },
+    { "reading": "watchdog suite (RED 138/1 at t33)", "value": "139 pass / 0 fail / Ran 139 tests across 13 files, exit 0" },
+    { "reading": "mpd-bg --self-test / mpd-doctor --self-test", "value": "exit 0 / exit 0" },
+    { "reading": "Addendum A --live", "value": "PASS, liveWithoutRestart: true" },
+    { "reading": "Addendum A --mutant restart-needed", "value": "DETECTED (the assertion reddened), liveness LOST, KNOBS DIVERGE named" },
+    { "reading": "T-25 leg", "value": "exit 0" },
+    { "reading": "T-41 absent leg", "value": "exit 2, ast-grep [OPTIONAL]: MISSING ⇒ degrades …, verdict=DEGRADED missingOPTIONAL=ast-grep" }
+  ],
+  "token_census": {
+    "authority": "captain log A-28 + register row T-79; round-2 rule: a split/elided token in the lane's OWN artifacts is not an appearance",
+    "inert in-process": 0,
+    "consistent with a stale host": 0,
+    "bare token verbatim": "2 total — 1 in raw/t41-baseline.txt and 1 in raw/t41-pinned.txt (third-party doctor captures, the declared exception)",
+    "lane_own_spelling": "split as \"in\" + \"ert\" in the record's prose — explicitly NOT counted as an appearance"
+  },
+  "clause_4": {
+    "verify_re_derives_another_lane_value": false,
+    "forbidden_aggregates_run": "none",
+    "dist_written": "none — find packages/*/dist dist/mpd-package -newermt 2026-09-17T14:15Z -type f → empty"
+  },
+  "findings": [],
+  "observations": [
+    { "id": "O1", "severity": "low", "note": "the ADDENDUM attributes the loose grep's off-by-one to the registry file's own header comment; the off-by-one reproduces exactly (94 vs 93 at these bytes) but the inflating match is packages/mpd-agent-teams-plugin/lib/tool-names.js:7 ('…registered from a mpd-delta region in'), which the same loose pattern matches as 'mpd-delta region'. The header line itself does not match. Count, predicate, moment and class are all correct; naming the actual string makes the next re-derivation shorter." },
+    { "id": "O2", "severity": "low", "note": "the pin table's scheduler.js entry still reads 4b824797… (the revision AT the write); the tree has since moved to 405d4e36… via lane A's t27. ADDENDUM 2 already records the cross-lane pin break, so this is moment-bound rather than stale — a reader must take the current sha from the tree, as the record's own §6 rule says." }
+  ],
+  "not_verified": [
+    "the long-lived host PROCESS — unobservable here; the decisive test's 'restart' is a NEW PROCESS importing the tree fresh (its own recorded schedulerSha256 = 405d4e36… is what it loaded), and the pid-namespaced sandbox cannot observe the host's start time",
+    "the other wake routes (idle edge, approval/spawn-time dispatch, memberSelections, a stale on-disk snapshot read outside the lock) — unmeasured, so the residual stays UNRESOLVED",
+    "the register's replay count (8 MEASURED EVENTS) — not re-derived",
+    "test/** pins in packages other than the one instrument this lane changed"
+  ],
+  "evidence_dir": "evidence/review/wave2b-laneC/20260917T144500Z/round2/"
+}

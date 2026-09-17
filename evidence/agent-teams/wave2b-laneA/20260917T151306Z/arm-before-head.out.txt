@@ -1,0 +1,42 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/t43-mailbox-clear-guard.test.mjs:
+(pass) P1: the pre-fix return expression is NOT lossless on the real manifest shape, and the shipped one IS [0.49ms]
+52 | test("P1c: an UNDELIVERED/UNREAD record is PROTECTED by default, reported as skipped_unread, and cleared only with force", async () => {
+53 |     const box = mailboxFixture([])
+54 |     await appendMailbox(box.stateRoot, TEAM, "captain", { id: "unread-1", from: "Engineer", to: "captain", content: "never delivered", ts: 100 })
+55 |     await appendMailbox(box.stateRoot, TEAM, "captain", { id: "acked-1", from: "Engineer", to: "captain", content: "delivered and read", ts: 200, deliveredAt: 150, readAt: 160 })
+56 |     const guarded = await clearMailboxToWatermark(box.stateRoot, TEAM, "captain", 500, { now: 1_000 })
+57 |     expect(guarded.cleared).toEqual(["acked-1"])
+                                 ^
+error: expect(received).toEqual(expected)
+
+  [
++   "unread-1",
+    "acked-1",
+  ]
+
+- Expected  - 0
++ Received  + 1
+
+      at <anonymous> (/tmp/t43-red/packages/mpd-agent-teams-plugin/self-fix-tests/t43-mailbox-clear-guard.test.mjs:57:29)
+(fail) P1c: an UNDELIVERED/UNREAD record is PROTECTED by default, reported as skipped_unread, and cleared only with force [5.58ms]
+69 |     expect((await readMailbox(box.stateRoot, TEAM, "captain")).find((record) => record.id === "unread-1")?.tombstone).toBe(true)
+70 | })
+71 | 
+72 | test("F1 (t30's finding): the cycle note fires only while the cycle BLOCKS — a failed or completed cycle must not fire", () => {
+73 |     const pending = [{ id: "c1", status: "pending", dependencies: ["c2"] }, { id: "c2", status: "pending", dependencies: ["c1"] }]
+74 |     expect(unresolvedDependencyNote(pending[0], pending)).toContain("cycle c2→c1→c2")
+                                                               ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "cycle c2→c1→c2"
+Received: ""
+
+      at <anonymous> (/tmp/t43-red/packages/mpd-agent-teams-plugin/self-fix-tests/t43-mailbox-clear-guard.test.mjs:74:59)
+(fail) F1 (t30's finding): the cycle note fires only while the cycle BLOCKS — a failed or completed cycle must not fire [0.17ms]
+
+ 1 pass
+ 2 fail
+ 7 expect() calls
+Ran 3 tests across 1 file. [45.00ms]

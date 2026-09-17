@@ -1,0 +1,70 @@
+WRITE-SET AUDIT (wave-2b lane B, t14) — captured 2026-09-17T14:24:32Z
+
+DECLARED SET (acceptance §1 / plan A2.2), file-exact:
+  scripts/verify-rows-parity.mjs           2026-09-17 22:15:32  e622eb2fcf8556b7  12840 bytes
+  scripts/verify-manual-paths.mjs          2026-09-17 22:20:40  22d49ea72c12b8a1  28211 bytes
+  scripts/verify-gates.mjs                 2026-09-17 22:17:51  d6bc7b02ccecfab5  26742 bytes
+  scripts/repin-vendor.mjs                 2026-09-17 22:16:49  fc3919ef5d6b07f7  31609 bytes
+  scripts/run-qa-lanes.mjs                 2026-09-17 22:18:55  2b8ff82cad206aab  60688 bytes
+  scripts/mpd-doctor.mjs                   2026-09-17 22:23:16  4ea99c54a770848d  51223 bytes
+  scripts/install-git-hooks.mjs            2026-09-17 22:15:52  2708e1f6a02618d1  20301 bytes
+  .gitignore                               2026-09-17 22:21:08  83baa5404c203025  4320 bytes
+  package.json                             2026-09-17 22:14:47  ef7d0884e56df8ca  2646 bytes
+  evidence/gates/wave2b-laneB/** — this lane's evidence root (all files below)
+
+EXCLUDED BY NAME (round-1 blocker PLAN-F-2): scripts/verify-docs-parity.mjs
+  scripts/verify-docs-parity.mjs           (see note)  (see note)  — NOT modified by THIS lane: it is
+      excluded by name in the freeze (§1 / PLAN-F-2, the round-1 blocker) and lane B3's t16 declares it
+      as its own file. Its mtime/digest move during the wave because B3 is editing it; this lane's runner
+      never writes it and no lane-B command reads it. Authorship cannot be read from the shared checkout's
+      identity field, so the evidence is the DECLARED SET plus the exclusion, not a mtime argument.
+      Measured at audit time: mtime 2026-09-17 22:22:15, sha256-16 2e2b1f730633e029
+
+THE FOUR NEW SCRIPTS (verified ABSENT at the 14:06Z freeze; present now):
+  scripts/verify-manual-paths.mjs          28211 bytes  22d49ea72c12b8a1
+  scripts/verify-gates.mjs                 26742 bytes  d6bc7b02ccecfab5
+  scripts/mpd-doctor.mjs                   51223 bytes  4ea99c54a770848d
+  scripts/install-git-hooks.mjs            20301 bytes  2708e1f6a02618d1
+
+TREE STATE (read-only snapshot; other lanes are editing concurrently — this is NOT a claim of authorship):
+   M .gitignore
+   M agent-references/agent-teams-deltas.md
+   M docs/bline-report.md
+   M docs/decisions.md
+   M docs/omo-parity-gap.md
+   M docs/review-p0-p3.md
+   M docs/track-a-report.md
+   M docs/tui-edition-report.md
+   M docs/ulw-deepseek-optimization.md
+   M package.json
+   M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+   M packages/mpd-agent-teams-plugin/lib/quality-gates.js
+   M packages/mpd-agent-teams-plugin/lib/state.js
+   M packages/mpd-agent-teams-plugin/lib/tools.js
+   M scripts/check-citations.mjs
+   M scripts/repin-vendor.mjs
+   M scripts/run-qa-lanes.mjs
+   M scripts/verify-docs-parity.mjs
+   M scripts/verify-rows-parity.mjs
+  ?? .t28ev
+  ?? evidence/agent-teams/wave2b-laneA/
+  ?? evidence/docs/wave2b-laneB3/
+  ?? evidence/extensions/docs-claims/runs/run-2026-09-17T14-24-29.334Z/
+  ?? evidence/gates/wave2b-laneB/
+  ?? evidence/requirements/
+  ?? evidence/team-watchdog/wave2b-laneC/
+  ?? scripts/install-git-hooks.mjs
+  ?? scripts/mpd-doctor.mjs
+  ?? scripts/verify-gates.mjs
+  ?? scripts/verify-manual-paths.mjs
+
+MY LANE'S FILES AMONG THE CHANGED ONES:
+   M scripts/verify-rows-parity.mjs
+  ?? scripts/verify-manual-paths.mjs
+  ?? scripts/verify-gates.mjs
+   M scripts/repin-vendor.mjs
+   M scripts/run-qa-lanes.mjs
+  ?? scripts/mpd-doctor.mjs
+  ?? scripts/install-git-hooks.mjs
+   M .gitignore
+   M package.json

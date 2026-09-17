@@ -91,8 +91,10 @@ async function runReal() {
   const manifest = JSON.parse(readFileSync(join(profile, "package.json"), "utf8"))
   manifest.dsh.profile.bundles.push("@mpd-dsh/mpd")
   writeFileSync(join(profile, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
-  const dump = spawnSync("dsh", ["--profile", "t", "--dump-config"], { env, encoding: "utf8", timeout: 120000, maxBuffer: 32 * 1024 * 1024 })
-  const dumpOut = (dump.stdout || "") + (dump.stderr || "")
+  // T-69: the wrapper is the sanctioned composer; `--json` puts the banner on stderr, so the
+  // child's composed tree is read from `.stdout` and the banner can be asserted separately.
+  const dump = spawnSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "t", "--json"], { env, encoding: "utf8", timeout: 120000, maxBuffer: 32 * 1024 * 1024 })
+  const dumpOut = (() => { try { return JSON.parse(dump.stdout || "{}").stdout ?? "" } catch { return dump.stdout || "" } })()
   // The QA scratch root (.qa-reloc) legitimately appears in the composed tree —
   // the profile overlay roots the roster at the RELOCATED package — so the leak
   // check masks it and only fails on a real checkout path.

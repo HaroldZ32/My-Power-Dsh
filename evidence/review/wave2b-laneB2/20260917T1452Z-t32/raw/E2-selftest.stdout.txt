@@ -1,0 +1,41 @@
+  ok   negative-control:correct-fixture — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<correct fixture>) - exit 0 (a correct anchor must pass)
+  ok   negative-control:mis-anchored-fixture — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<mis-anchored fixture>) - exit 1;   FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: the cited line/range does not carry the claim `alphaSymbol` (src/probe.ts:3) |   FAIL citations:docs/extension-authoring-guide.zh-CN.md — 1 c
+  ok   negative-control:symbol-first-present — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<symbol-first, symbol present>) - exit 0 (T-55: the line-less form must be ACCEPTED and verified)
+  ok   negative-control:symbol-first-absent — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<symbol-first, symbol ABSENT>) - exit 1 (T-55: an absent symbol must FAIL, not pass silently);   FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: the cited file does not contain the claim `gammaSymbol` (src/probe.ts) — cite a symbol the cited file declares (T-55), or drop the claim if this anchor is a plai
+  ok   negative-control:rot-line-number-only — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<line-number-only anchor>) - exit 1 (T-72: a line-number-only anchor must be FLAGGED as rot, not accepted);   FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: line-number-only anchor `src/probe.ts:2`: a line number is not a citation (T-55) — it rots as soon as the cited file is edited. Cite the symbol instead: `SYMBOL`
+  ok   negative-control:rot-line-number-only-shadowed — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<line-number-only anchor shadowed by a sibling claim for the same path:line>) - exit 1 (T-72: a sibling claim for the same path:line must not excuse a line-number-only anchor at another site — the frozen pre-T-72 revision ACCEPTS this fixture, exit 0);   FAIL citations:docs/extension-authoring-guide.md — 2 citation(s) (checked 2: path 2, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 5: line-number-only anchor `src/probe.ts:2`: a line number is not a citation (T-55) — it rots as soon as the cited file is edited. Cite the symbol instead: `SYMBOL`
+  ok   negative-control:rot-line-number-only-drifted — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<line-number-only anchor whose pinned line MOVED under it>) - exit 1 (T-72: the pinned line moved under the document — the rot the row names);   FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: line-number-only anchor `src/probe.ts:2`: a line number is not a citation (T-55) — it rots as soon as the cited file is edited. Cite the symbol instead: `SYMBOL`
+  ok   negative-control:symbol-first-survives-a-source-shift — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<symbol-first anchor, cited file shifted>) - exit 0 (T-55/T-72: the line-free form still resolves after the cited file moves under it — the same shift that reddens the line-only fixture)
+  ok   negative-control:symbol-first-right-then-wrong — check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<symbol-first: correct claim first, WRONG claim later for the same path>) - exit 1 (F3/t27: a WRONG symbol-first claim must FAIL even when an EARLIER line-free claim for the same path exists — the t17 reviewer's fixture shape, which the frozen AND the pre-repair durable revision ACCEPTED at exit 0);   FAIL citations:docs/extension-authoring-guide.md — 2 citation(s) (checked 2: path 2, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 5: the cited file does not contain the claim `gammaSymbol` (src/probe.ts) — cite a symbol the cited file declares (T-55), or drop the claim if this anchor is a plai
+  ok   negative-control:t78-record-carries-the-rule — T-78: the run at ../../t78-t82-arms-AGMO3l/t78-run/result.json (4000 B) carries the driver RULE ("a doc-rewrite task's verify list MUST carry the citation driver") and the COMMAND ("node scripts/check-citations.mjs --out ./evidence/gates/<slug>/<stamp>/run") — asserted against the record's BYTES, not against a comment
+  FAIL negative-control:t82-retention-diffable — T-82: changed pair differs at line ? (NO DIFF); unchanged pair EMPTY (the control holds); retained {"runA_checker":false,"runB_checker":false,"runA_superseded":false,"runB_superseded":false} — the changed pair NAMES the changed line, and the unchanged pair's empty diff is the anti-fake control
+  ok   negative-control:immutability-second-run-refused — immutability: a second run at the same --out exited 3 (expected 3) — docs-claims checker (t72: existence + range + SITE-PAIRED content claims + symbol-first enforcement + negative control)
+docs-claims checker (t72: existence + range + SITE-PAIRED content claims + symbol-first enforcement + negative control)
+repo /tmp/t32-arms/e2
+
+  FAIL subject:docs/extension-authoring-guide.md — missing subject file
+  FAIL subject:docs/extension-authoring-guide.zh-CN.md — missing subject file
+  FAIL subject:EXTENSIONS-FOR-AGENTS.md — missing subject file
+  FAIL subject:docs/extension-adaptation-report.md — missing subject file
+  FAIL subject:docs/extension-adaptation-report.zh-CN.md — missing subject file
+  ok   annotations:pending — none
+  ok   annotations:illustrative — none
+  ok   content:anchors — 0 citation(s) verified against their claim: 0 symbol-first (line-free, whole file), 0 line-dependent (the line is a hint — rot risk); 0 line-number-only anchor(s) FLAGGED as rot
+  ok   content:rot — no line-number-only anchors
+node:fs:441
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/tmp/t32-arms/e2/docs/extension-authoring-guide.md'
+    at readFileSync (node:fs:441:20)
+    at file:///tmp/t32-arms/e2/copydir/check-citations.mjs:1073:38
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:633:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/tmp/t32-arms/e2/docs/extension-authoring-guide.md'
+}
+
+Node.js v24.16.0

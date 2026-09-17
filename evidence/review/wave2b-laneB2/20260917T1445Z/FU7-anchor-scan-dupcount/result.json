@@ -1,0 +1,8 @@
+{
+  "task": "T-90 anchor scan",
+  "run_at": "2026-09-17T14:40:19.069Z",
+  "pattern": "\"dupCount\"",
+  "scope": "./evidence/gates/wave2b-laneB2/20260917T142452Z",
+  "files_scanned": 16,
+  "matches": []
+}

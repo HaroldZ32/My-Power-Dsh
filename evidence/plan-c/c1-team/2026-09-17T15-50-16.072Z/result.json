@@ -1,0 +1,129 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-c1-qRUTfV",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        [
+          "captain.jsonl"
+        ]
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-e70dcc94-5f9a-40ca-9482-132d273b7f57",
+          "createdAt": 1789660230034,
+          "members": [
+            {
+              "id": "375a67f3-8547-4e9e-ba08-1a960c8b818d",
+              "name": "oracle",
+              "role": "reviewer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789660230995,
+              "status": "removed"
+            },
+            {
+              "id": "dd798e39-7c54-4717-b72b-1a1f11d939a3",
+              "name": "librarian",
+              "role": "researcher",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789660231057,
+              "status": "removed"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Read the team purpose (C1 adoption QA) and write a single-line summary of what this QA effort is verifying. Report the one-line summary in your task output.",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1789660233285,
+              "updatedAt": 1789660245455,
+              "kind": "work",
+              "attemptId": "143c3484-2da6-47fc-876a-aca7994c145a",
+              "reassigning": false,
+              "output": "One-line summary: This QA effort verifies that C1 has actually been adopted — i.e. that the claimed uptake of C1 holds in practice (it is correctly integrated and working end-to-end), not merely declared, documented, or nominally present.\n\nGrounding/limits: derived solely from the team purpose \"C1 adoption QA\" (workspace .mpd/team/c1qa/team.json). The workspace itself is otherwise empty (no C1 artifacts, code, or specs), so the summary stays at the purpose level; it makes no claim about which concrete C1 deliverable/component is under test."
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Read the one-line summary produced by t1 (librarian) from the task output. Judge whether it correctly summarizes the QA goal, then record an explicit approval or rejection with a one-sentence reason in your task output.",
+              "status": "completed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1789660234734,
+              "updatedAt": 1789660261709,
+              "kind": "work",
+              "attemptId": "afb1671f-e7eb-42b4-9d3b-ead8f4d59fef",
+              "reassigning": false,
+              "output": "APPROVED. Reason: t1's summary faithfully captures the purpose-level QA goal — verifying that C1 is genuinely adopted (correctly integrated and working end-to-end) rather than merely declared/documented/nominally present — and it correctly avoids asserting a concrete C1 deliverable, which the workspace cannot support.\n\nReview evidence:\n- Read t1's stored output (team.json, task t1, attempt 1): one-line summary plus an explicit grounding/limits note.\n- Independently confirmed the grounding claim: workspace /tmp/mpd-c1-qRUTfV/ws contains only .codegraph/ and .mpd/team/ — no C1 artifacts, code, or specs; a content search for \"C1\" matches nothing outside team state. The only definition of C1 available is the team purpose \"C1 adoption QA\".\n- Cross-checked librarian's captain report (inbox/captain.jsonl) — it restates the same summary, so no divergence between task output and report.\n- Scope check: the deliverable asked for a one-line summary of what the QA effort is verifying; t1 delivered exactly that, with the extra grounding note being transparency about limits rather than unrequested scope.\n- Residual ambiguity (noted, not blocking): the referent of \"C1\" remains undefined at the purpose level; this is inherent to the given goal, is explicitly disclosed by t1, and is not a defect in the summary itself.\n\nNo findings raised; t2's success criteria (explicit approval + one-sentence reason recorded) are satisfied."
+            }
+          ],
+          "taskSeq": 2
+        }
+      ]
+    },
+    "archive": {
+      "ok": true,
+      "archiveIds": [
+        "c1qa"
+      ]
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "arm": "fence-refusal",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T15-50-16.072Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

@@ -1,0 +1,66 @@
+{
+  "schema": "t41/absent-optional-binary/1",
+  "leg": "wave-2b lane C (t17)",
+  "instrument": {
+    "path": "scripts/mpd-doctor.mjs",
+    "sha256": null,
+    "provenance": "lane B's file, READ-ONLY — the two captured runs are raw/t41-baseline.txt and raw/t41-pinned.txt"
+  },
+  "baseline": {
+    "arm": "no pin (the environment as it is)",
+    "exit": 0,
+    "verdict": "[mpd-doctor] verdict=OK exit=0 rule=\"exit 0 = every entry (REQUIRED and OPTIONAL) resolved\" required=all-present",
+    "checks": {
+      "the baseline run reports every entry ok": true,
+      "the baseline verdict is OK/exit=0": true,
+      "the absent binary was OK in the baseline (so the pin is what changed it)": true
+    },
+    "passed": true
+  },
+  "pinned": {
+    "arm": "MPD_AST_GREP_SG_PATH=/nonexistent/ast-grep-absent (deliberately absent)",
+    "exit": 2,
+    "verdict": "[mpd-doctor] verdict=DEGRADED exit=2 rule=\"exit 2 = no REQUIRED entry missing; only OPTIONAL entries are missing (degraded, not broken)\" required=all-present missingOPTIONAL=ast-grep",
+    "entryLine": "[mpd-doctor] ast-grep [OPTIONAL]: MISSING ⇒ degrades: the ast_grep MCP exposes no tools (mcp__ast_grep__search / mcp__ast_grep__scan / mcp__ast_grep__rewrite unavailable): dist/cli.js answers BINARY_NOT_FOUND - \"no candidate passed the --version probe across the env override, MPD runtime, skill bin cache, PATH, or Homebrew prefixes\" | rule: a non-empty MPD_AST_GREP_SG_PATH wins untouched in launch.mjs (no MPD-side substitution) | reason: MPD_AST_GREP_SG_PATH=/nonexistent/ast-grep-absent is set and does not exist | checked: env pin MPD_AST_GREP_SG_PATH=/nonexistent/ast-grep-absent (MISSING) | note: adopted-chain PATH fallback: nothing accepted (rejected: /usr/bin/sg (exit 1, no version output)) ; scope: the adopted server's MPD-runtime, skill-bin-cache and Homebrew tiers are not probed by this doctor | env=MPD_AST_GREP_SG_PATH,MPD_AST_GREP_BIN_DIR",
+    "checks": {
+      "the absent binary is NAMED with the MISSING status": true,
+      "its entry carries a degrade sentence (⇒ degrades:)": true,
+      "its entry names the pin that made it absent": true,
+      "its entry names what becomes unavailable": true,
+      "every OTHER entry stayed ok": true,
+      "the verdict NAMES the missing entry": true
+    },
+    "passed": true
+  },
+  "negativeControl": {
+    "arm": "the same assertion against the SAME output with the absent binary's own line REMOVED",
+    "reddened": true,
+    "failingChecks": [
+      "the absent binary is NAMED with the MISSING status",
+      "its entry carries a degrade sentence (⇒ degrades:)",
+      "its entry names the pin that made it absent",
+      "its entry names what becomes unavailable"
+    ]
+  },
+  "perEntryCensus": {
+    "baseline": [
+      "node=ok",
+      "ast-grep=ok",
+      "codegraph=ok",
+      "lsp=ok",
+      "git-bash=ok",
+      "comment-checker=ok"
+    ],
+    "pinned": [
+      "node=ok",
+      "ast-grep=MISSING",
+      "codegraph=ok",
+      "lsp=ok",
+      "git-bash=ok",
+      "comment-checker=ok"
+    ]
+  },
+  "shapeNote": "the entry status word is UPPERCASE for a missing optional entry (`MISSING`) while ok entries read lowercase (`ok`) — a lowercase-only grep would MISS the very reading this leg is about",
+  "bound": "this asserts the doctor's OUTPUT, not the resolver underneath it: a doctor that reported ok while the binary was absent would pass the baseline arm and fail the pinned arm — that asymmetry is the point",
+  "finishedAt": "2026-09-17T14:32:30.956Z"
+}

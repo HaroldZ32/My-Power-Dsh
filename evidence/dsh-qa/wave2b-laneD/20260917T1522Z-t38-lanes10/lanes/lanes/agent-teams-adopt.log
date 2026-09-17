@@ -1,0 +1,11 @@
+[agent-teams-adopt] ok=false -> /root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T15-23-18.736Z
+  installer: {"ok":true,"exit":0}
+  bundleRow: {"ok":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-headless"]}
+  override: {"ok":true,"hasPatch":true}
+  compose: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0}
+  teamState: {"ok":false,"teamIds":["c1qa"],"inbox":[[]],"teamJson":[{"name":"c1qa","id":"c1qa","description":"C1 adoption QA","captainSessionId":"session-b44b1287-d7f0-4417-b80c-8bb13c407512","createdAt":1789658609122,"members":[{"id":"","name":"librarian","role":"researcher","provider":"deepseek-official","mod
+  archive: {"ok":false,"archiveIds":[]}
+  taskTerminal: {"ok":false,"tasks":2,"taskTerminal":false}
+  webInstaller: {"ok":true,"exit":0}
+  webRoute: {"ok":true,"arm":"fence-refusal","status":401,"body":"{\"error\":\"unauthorized\"}","webLog":"/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T15-23-18.736Z/web.log"}

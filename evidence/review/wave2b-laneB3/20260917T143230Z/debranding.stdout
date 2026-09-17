@@ -1,0 +1,7 @@
+[verify-debranding-full] field inventory: skills(name/description)  flows(id/title/description/whenToUse)  roles(name/description/persona)  mcp(serverName/transport/command/args)
+[verify-debranding-full] target mpd-ext-example [extensions/mpd-ext-example] artifacts: skills=1 flows=1 roles=1 mcp=1
+[verify-debranding-full]   field-probes: 13  quoted-verbatim: 13  not-quoted: 0  (all fields must be quoted)
+[verify-debranding-full] target mpd-extension-template [templates/mpd-extension] artifacts: skills=1 flows=1 roles=1 mcp=1
+[verify-debranding-full]   field-probes: 13  quoted-verbatim: 13  not-quoted: 0  (unquoted fields are reported, not claimed)
+[verify-debranding-full] probed 26 field-probes (skills, flows, roles, mcp) on 2 targets; 26 quoted verbatim, 0 reported not-quoted; 0 finding(s). No claim is made about a field this prober did not probe.
+[verify-debranding-full] probe list written to evidence/review/wave2b-laneB3/20260917T143230Z/debranding.json (explicit target)

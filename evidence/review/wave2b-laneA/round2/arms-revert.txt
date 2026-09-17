@@ -1,0 +1,24 @@
+### SCRATCH MIRRORS (outside the workspace, deleted after; T-89)
+### ARM A — the committed extended driver at the CURRENT revision (the after side)
+  PASS [T-64/cycle] the note prints the cycle PATH, not a bare id list
+  PASS [T-64/cycle-red] a SATISFIED linear chain is not reported as a cycle (the control)
+
+RED-SIDE FAILURES: 0
+
+### ARM B — SEMANTIC REVERT of the CYCLE HALF only (reader = phantoms; note = no cycle)
+  cycle half reverted (pre-repair behaviour)
+  PASS [T-84/red] a genuinely FAILED command still fails the task
+  FAIL [T-64/cycle] the exported reader names the cyclic id (nothing can satisfy it)
+  FAIL [T-64/cycle] the status note names the cycle MEMBER
+  FAIL [T-64/cycle] the note reports the cycle AS ITSELF (the word + its path)
+  FAIL [T-64/cycle] the note prints the cycle PATH, not a bare id list
+RED-SIDE FAILURES: 4
+
+### ARM C — the PRESERVED pre-extension driver vs git-HEAD bytes (their arm-before-committed pair)
+  PASS [T-64/red] a LIVE satisfied dependency is not reported as blocking (the legitimate state is not erased)
+
+RED-SIDE FAILURES: 6
+### ARM D — the EXTENDED driver vs git-HEAD bytes (their arm-cycle-before pair)
+  PASS [T-64/cycle-red] a SATISFIED linear chain is not reported as a cycle (the control)
+
+RED-SIDE FAILURES: 10

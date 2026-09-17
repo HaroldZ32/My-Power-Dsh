@@ -475,16 +475,38 @@ export function applyAgentTeamsFixes({ root = repoRoot, write = false } = {}) {
 
 /** Every region span currently in one file, as `[begin, end]` index pairs. */
 function regionSpans(lines) {
+  // T-92/T-42 (t55): a marker is a SIBLING, never a CHILD. The previous scan jumped from a region's
+  // begin to its end (`index = end + 1`), so a region opened INSIDE another region's span was
+  // invisible to every nesting-unaware consumer: the registry missed it, `--write-registry` kept
+  // missing it, the docs gate's per-file count still said "agree", and no gate reddened — the measured
+  // defect (session-start.js's `plan-format-seed` nested inside `session-start-gate`). The scan is now
+  // a STACK: an inner begin, a mismatched end or an unterminated region is REFUSED by name and span,
+  // which is the one place `--write-registry`, the applier and the heal path all pass through.
   const spans = []
-  let index = 0
-  while (index < lines.length) {
-    const begin = lines.findIndex((line, at) => at >= index && /^\s*\/\/#region mpd-delta [A-Za-z0-9-]+ \(/.test(line))
-    if (begin === -1) break
-    const id = /\/\/#region (mpd-delta [A-Za-z0-9-]+) \(/.exec(lines[begin])[1]
-    const end = lines.findIndex((line, at) => at > begin && line.trim() === endLine(id))
-    if (end === -1) throw new Error(`[patch-agent-teams-fixes] FAIL: unterminated region "${id}"`)
-    spans.push([begin, end])
-    index = end + 1
+  const open = []
+  for (let index = 0; index < lines.length; index += 1) {
+    const beginMatch = /^\s*\/\/#region (mpd-delta [A-Za-z0-9-]+) \(/.exec(lines[index])
+    if (beginMatch !== null) {
+      const id = beginMatch[1]
+      if (open.length > 0) {
+        const parent = open[open.length - 1]
+        throw new Error(`[patch-agent-teams-fixes] FAIL: region "${id}" (line ${index + 1}) is NESTED inside region "${parent.id}" (line ${parent.begin + 1}) — a marker must be a SIBLING, never a child: move "${id}" outside "${parent.id}"'s span (or teach the registry, every count and this scan to represent the nesting)`)
+      }
+      open.push({ id, begin: index })
+      continue
+    }
+    const endMatch = /^\s*\/\/#endregion (mpd-delta [A-Za-z0-9-]+)\s*$/.exec(lines[index])
+    if (endMatch === null)
+      continue
+    const top = open.pop()
+    if (top === undefined || top.id !== endMatch[1]) {
+      throw new Error(`[patch-agent-teams-fixes] FAIL: end marker "${endMatch[1]}" (line ${index + 1}) closes ${top === undefined ? "no open region" : `region "${top.id}" (line ${top.begin + 1}) instead`}`)
+    }
+    spans.push([top.begin, index])
+  }
+  if (open.length > 0) {
+    const stray = open[open.length - 1]
+    throw new Error(`[patch-agent-teams-fixes] FAIL: unterminated region "${stray.id}" (line ${stray.begin + 1})`)
   }
   return spans
 }

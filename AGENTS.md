@@ -9,7 +9,9 @@ repository is English-only (see Language Policy).
 - **Human-facing documentation is BILINGUAL**: every doc a person reads — `README.md`,
   `docs/*.md`, and every `packages/*/README.md` — ships BOTH an English file and a
   **简体中文** (`*.zh-CN.md`) translation. Both versions must exist and stay in sync.
-- The policy is executable: `bun run verify:docs` (`scripts/verify-docs-parity.mjs`) enforces the pair, the switch link, the heading tree and real CJK content for every pair it discovers — every `*.md` under `docs/` at any depth, `extensions/**/README.md`, `packages/*/README.md` and the root README — reports a zh-CN document with no EN twin or a non-exempt package with no README as a violation, and prints the documented exemptions (see §4).
+- The policy is executable: `bun run verify:docs` (`scripts/verify-docs-parity.mjs`) enforces the pair, the switch link, the heading tree and real CJK content for every pair it discovers — every `*.md` under `docs/` at any depth, `extensions/**/README.md`, `templates/**/README.md`, `packages/*/README.md` and the root README — reports a zh-CN document with no EN twin or a non-exempt package with no README as a violation, and prints the documented exemptions (see §4). Classification is DECLARED, not directory-sensitive: a `*.md` carrying `<!-- docs-parity: doc -->` is a doc wherever it lives, so a misplaced doc reddens instead of escaping.
+- **The agent-facing band is deliberately OUT of that discovery.** `agent-references/**` is agent-facing content, so it is English-only and ships no `*.zh-CN.md` twin; the docs gate **does not discover that tree** (T-28). Read this as a POLICY SENTENCE, not an omission: an English-only agent document belongs OUTSIDE `docs/` — never inside a band whose every `*.md` is policed. The register's literal `docs/agent/**` suggestion is NOT the shape this repository uses; `agent-references/**` is the band, and its files are exempt BY POLICY.
+- **A lone file exempts ITSELF, not by a hand-maintained list.** The gate derives the process-record exemptions from the file: a doc carrying `<!-- docs-parity: exempt <reason> -->` is reported with that reason, and the same doc without the marker is a normal policed file (T-30). The AGENTS.md §3 policy classes that are named by GLOB (`docs/plan-*.md`) stay a declared pattern, and the two ANTICIPATORY paths (`docs/adder4.md`, `docs/cnt8.md`) are kept by design and printed as their own class so an exemption for a file that does not exist can never rot silently.
 - **Every bilingual doc carries a language switch link directly under its title**:
   the English file links `[中文](./<name>.zh-CN.md)`, the Chinese file links
   `[English](./<name>.md)`.
@@ -141,7 +143,7 @@ mpd-dsh/
 │   ├── install-profile.mjs       # ONLY sanctioned writer to a user DSH_HOME (default dry-run)
 │   ├── pack-mpd.mjs              # Plan D: assemble the relocatable installable bundle
 │   ├── vendor-agent-teams.mjs    # materialize the adopted agent-teams plugin + closure
-│   ├── mpd-ext.mjs               # extension developer CLI (validate/scaffold/list/--self-test/--validator); shares the RUNTIME validator (TS sources in a checkout, the packer-generated `dist/validator.js` inside a packed artifact)
+│   ├── mpd-ext.mjs               # extension developer CLI (validate/scaffold/list/--self-test/--validator); shares the RUNTIME validator (TS sources in a checkout, the packer-generated `<bundle>/packages/mpd-ext-plugin/dist/validator.js` inside a packed artifact)
 │   └── build-mpd-client.mjs      # build the combined bundle web client (client.js)
 ├── packages/
 │   ├── mpd-bundle/               # cordis.patch.yml: llm dual-track, skills, MCPs, all mpd plugins
@@ -184,14 +186,24 @@ mpd-dsh/
 | Vendor | `node scripts/verify-vendor.mjs`; the corpus re-pin is DERIVED — `node scripts/repin-vendor.mjs` (dry-run by default, `--check` asserts, `--write` applies; the helper REFUSES the repository's own `VENDOR_LOCK.json` without `--i-know-this-is-the-captains-step`, so a wave cannot re-pin mid-flight) — and lands in the commit that invalidated the `treeSha` (§9/§11) | any baseline/asset change; before release |
 | Dist freshness | `node scripts/verify-dist-fresh.mjs` (deterministic rebuild-and-diff: every `packages/*/src` entry is rebuilt twice into a temp dir and compared byte-for-byte with its committed `dist/`; unmatched `dist/` files are printed in a loud NOT COVERED section, never silently skipped; `--self-test` seeds a mismatch; the canonical REBUILD command — repo root, path-qualified args — and the package-directory trap are named in §6's Build line) | any `packages/*/src` or `dist/` change; before release |
 | Row/parity | `bun run verify:rows` (`scripts/verify-rows-parity.mjs`) **and** `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` | any bundle-patch / preset / overlay / row change |
+| Pack closure | `node scripts/verify-pack-closure.mjs` (completeness + the byte identity of files whose sources did not move; `--self-test` is the fixture-driven arm; `--pack-stamp <t>` re-anchors the comparison for a reviewer mutating a copy) | any pack, any post-pack writer, and in the release sweep (§11) |
 | Tests | `bun test` (per package) + `bun run typecheck` (root) | every plugin change |
 | QA self-tests | `bun run test:qa` (all `--self-test`) | every plugin/QA-script change |
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` | runtime-behavior changes |
 | Installer | `node scripts/install-profile.mjs --dry-run` | any bundle-patch/installer change |
-| Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.mjs`; ships `--self-test` with a negative control; recursive under `docs/` and `extensions/**/README.md`, and it fails on a zh-only doc or an undocumented package) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`); before release |
+| Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.mjs`; ships `--self-test` with a negative control; recursive under `docs/`, `extensions/**/README.md` and `templates/**/README.md`, and it fails on a zh-only doc or an undocumented package) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`, `templates/**/README*.md`); before release |
 | Extension CLI | `bun scripts/mpd-ext.mjs --self-test` + `bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.mjs` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable), or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
 | Composition only | `node scripts/dump-config.mjs --profile <p>` (repo wrapper around the raw harness flag: prints the composition-only banner in its own output and propagates the child's exit code) | whenever a row/preset composition question is asked |
+
+**The pack-closure bound (T-91), stated once so a reader of the table above is not misled:** a green
+`node scripts/verify-pack-closure.mjs` certifies COMPLETENESS plus the BYTE IDENTITY of every file
+whose source did not move; **freshness is not what the exit code says** — it is read from the
+`expected-after-pack` list, i.e. the files the pack was supposed to ABSORB being GONE from that list
+at the re-pack (T-26's discriminator: TIMESTAMP ORDER, not a blanket freshness claim; `--pack-stamp
+<t>` re-anchors the comparison for a reviewer mutating a COPY). The closure gate's own `--self-test`
+fixture arms are the operative evidence for that sentence; an acceptance that only greps for this
+paragraph's presence is not evidence.
 
 `--dump-config` is NOT this gate: it only COMPOSES rows and never executes plugin code, so a
 schema/apply abort that takes the whole plugin tree down is invisible to it. Measured:
@@ -266,7 +278,7 @@ gate until the wave's single re-pin lands (§9/§11).
 
 ## 6. Plugin Authoring Guide
 
-Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `dist/index.js`
+Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `packages/<pkg>/dist/index.js`
 (bun build), `README.md`, optional `package.json` with `@mpd-dsh/<name>` naming.
 
 - **Harness seams go through `mpd-dsh-adapter` — binding.** No plugin row may touch a
@@ -408,6 +420,28 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   both measured (`codegraph-smoke`, `evidence/dsh-qa/codegraph/2026-09-14T08-56-10.102Z` false green,
   `…T14-45-59.644Z` false red).
 - Evidence path: `evidence/<domain>/<slug>/<timestamp>/{result.json, output.log}`.
+- **Durable anchors (T-90): an ARTIFACT PATH is the anchor — a mailbox id is not a link.** A citation
+  must survive the policy that owns its target: a line pointer rots by an EDIT (T-55), and a mailbox
+  id rots by a **MAILBOX CLEARING** — the platform's clear is archive-first, so nothing is
+  hard-deleted, but no member-facing surface serves a cleared record any more, and the citation
+  resolves to nothing (measured in wave 2: a synthesis cited a message id that was gone within the
+  hour, while the relay and the artifact stayed readable). The rule, in the order the two seats
+  adopted it: **the artifact is the primary anchor** (the only link a policy cannot remove), **the
+  relay is secondary** (it can be removed), **the id is provenance, not an anchor** — cite it as
+  "read while present". Operationally: a seat that must cite an EXCHANGE copies the quoted bytes into
+  its own artifact the moment it identifies them. This is a CLASS rule, not a pattern hunt — an
+  `attemptId`/session id is DATA, and a shape scan is only a DISCOVERY HEURISTIC with a measured
+  calibration bound (31 of 31 hits were false positives on one scan).
+- **Derived surfaces are declared at PLAN time (T-88): `packages/*/dist/**`, `dist/mpd-package/**`,
+  `VENDOR_LOCK.json` and `.mpd/plans/**` belong to the INTEGRATION task's `inScope` at CREATION.**
+  Measured: a lane edited a package's `src/**`, its own `verify-dist-fresh` reddened on a built
+  `packages/<pkg>/dist/index.js` that belonged to NO lane's scope, and the platform refused the completion
+  (`1 changed path(s) not covered by inScope: …/dist/index.js is undeclared`). The rule has two
+  halves: (a) **pre-declare** the derived path on the task whose edits redden it — the hop rule
+  applied BEFORE the refusal — and (b) **the mid-wave escape is a HOP**, requested with the exact
+  amendment text in ONE message and no work attached; a LANE must not declare a `dist/**` pattern
+  for itself (the platform's `inScope overlaps` validator refused exactly that, measured) — the
+  declaration belongs at plan time, which is why this rule is stated where a planner reads it.
 - **Preset/row conformance against the INSTALLED harness** (`preset-conformance`, required for any
   preset, patch or overlay change): a row config is validated with the installed plugin's own
   schemastery `Config`, because that is what the loader runs. Two failure modes exist and only one
@@ -437,10 +471,11 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   IS the bundle package: `package.json` is named `@mpd-dsh/mpd` and declares
   `dsh.bundle.patch` (`./packages/mpd-bundle/cordis.patch.yml`), `dsh.client`
   (`platform: web`), the `exports` map the rows resolve through (`./packages/*`,
-  `./skills/*`, `./presets/*`, `./client`) and the toolchain `optionalDependencies`.
+  `./skills/*`, `./presets/*`, and the `client` subpath
+  `packages/mpd-bundle-plugin/client.js`) and the toolchain `optionalDependencies`.
   `dsh plugin remove @mpd-dsh/mpd` is the matching one-command uninstall.
 - Every path-bearing patch value resolves through the loader's `baseUrl` (the profile
-  directory), so the same patch works for a checkout install (`node_modules/@mpd-dsh/mpd`
+  directory), so the same patch works for a checkout install (`<profile>/node_modules/@mpd-dsh/mpd`
   → the repo) and for a packed install. The adopted `agent-teams` plugin is first-class
   main code at `packages/mpd-agent-teams-plugin` (no npm dependency); the `mpd` preset
   and the skill corpus are SERVED by reference (`agent-presets` root → `<bundle>/presets`,
@@ -502,7 +537,9 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
    `skills/**` changed), `bun test`,
    `bun run typecheck`, `bun run test:qa`, `bun run verify:docs`, `bun run verify:rows`,
    `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test`,
-   `node scripts/verify-dist-fresh.mjs`, plus the real smoke cases (`dual-track-smoke`, `mcp-call`).
+   `node scripts/verify-dist-fresh.mjs`, `node scripts/verify-pack-closure.mjs` (freshness read from
+   the `expected-after-pack` list at the re-pack, never from its exit code — §4's bound), plus the
+   real smoke cases (`dual-track-smoke`, `mcp-call`).
    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME
      commit as every `skills/**` change that invalidates its `treeSha`; with the single-skills-writer
      rule (§9) that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and

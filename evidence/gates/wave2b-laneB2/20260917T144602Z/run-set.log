@@ -1,0 +1,34 @@
+=== t31 repair run set — 2026-09-17T14:47:50Z ===
+
+-- hashes before --
+53ae5cbc387c95566fadaf6697cff6b31f9e759f6cdefb9e519d99f33bc8b41f  scripts/check-citations.mjs
+-- line count re-take (F1: predicate + unit + moment) --
+1230 scripts/check-citations.mjs
+fbdc02569a8be827745c13dadaec63eb2353ab1380d245ac6a275a2381779f28  evidence/gates/wave2b-laneB2/20260917T142452Z/citation-run/revisions/checker.mjs
+1146 evidence/gates/wave2b-laneB2/20260917T142452Z/citation-run/revisions/checker.mjs
+
+-- 1: contract verify VERBATIM (node scripts/check-citations.mjs) --
+exit=0
+
+[docs-claims] 13/13 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 2: scoped run with an explicit --out --
+exit=0
+
+[docs-claims] 13/13 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 3: --self-test --
+exit=0
+
+[docs-claims] 25/25 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 4: T-80 fixture arms --
+exit=0
+[driver-headers self-test] 3/3 arms passed
+
+-- 5: T-80 live scan (output outside the scanned scope) --
+exit=3
+[driver-headers] refusing to overwrite the existing driver-header run result: /root/dshProj/my-power-dsh/evidence/gates/wave2b-laneB2/20260917T144602Z/driver-headers-live/result.json — evidence is immutable by default (T-53); pass an explicit new target
+
+-- hashes after --
+53ae5cbc387c95566fadaf6697cff6b31f9e759f6cdefb9e519d99f33bc8b41f  scripts/check-citations.mjs

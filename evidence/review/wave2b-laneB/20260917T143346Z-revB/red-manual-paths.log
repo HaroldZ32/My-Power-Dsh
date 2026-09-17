@@ -1,0 +1,25 @@
+[verify-manual-paths] manual /tmp/tmp.G9123g8Cat/AGENTS.md
+[verify-manual-paths] root /tmp/tmp.G9123g8Cat
+[verify-manual-paths] manual-sha256 cba903cbc94063728290131e3db2aed2318e44b7ec2246053e823594ea7ce7fa bytes=95 mtime=2026-09-17T14:34:45.993Z
+[verify-manual-paths] rule candidate=path-shaped token | position=code span or ./|../-prefixed prose | shape=no glob/tilde/url/whitespace/placeholder/trailing-punctuation | anchor=./|-literal else first segment must be a repo-root entry | existence=stat <root>/<token>
+[verify-manual-paths] subjects audited=2 (resolved=0 unresolved=2); tokens that are not path-shaped are out of scope by the rule above and are counted nowhere
+[verify-manual-paths] census bucket=resolved direction=audited count=0 reason="audited: the path exists at the repo root"
+[verify-manual-paths] census bucket=unresolved direction=audited count=2 reason="audited: the path does NOT exist at the repo root"
+[verify-manual-paths] unresolved AGENTS.md:3 -> scripts/does-not-exist.mjs
+[verify-manual-paths] unresolved AGENTS.md:3 -> docs/also-missing.md
+[verify-manual-paths] census bucket=over-report:url direction=over-report count=0 reason="contains `://` — a URL, not a repo path"
+[verify-manual-paths] census bucket=over-report:fragment direction=over-report count=0 reason="contains whitespace — a sentence or command fragment, not one path"
+[verify-manual-paths] census bucket=over-report:trailing direction=over-report count=0 reason="ends with punctuation — a bound-token fragment, not a path target"
+[verify-manual-paths] census bucket=over-report:npm direction=over-report count=0 reason="starts with `@` — an npm package name, not a repo path"
+[verify-manual-paths] census bucket=over-report:notRoot direction=over-report count=0 reason="first segment is not an entry at the repo root — a slug, route, branch, tool name or package-relative spelling, not a repo path"
+[verify-manual-paths] census bucket=over-report:bare direction=over-report count=0 reason="a bare file name with no directory component and not a root file this repo is expected to carry"
+[verify-manual-paths] census bucket=under-report:glob direction=under-report count=0 reason="a glob pattern — there is no single file to stat"
+[verify-manual-paths] census bucket=under-report:home direction=under-report count=0 reason="home-relative (`~`) — it resolves in the user's HOME, not in the repo"
+[verify-manual-paths] census bucket=under-report:absolute direction=under-report count=0 reason="absolute (`/`) — it is outside the repo root"
+[verify-manual-paths] census bucket=under-report:outside direction=under-report count=0 reason="escapes the repo root (`../`) — it is outside the repo root"
+[verify-manual-paths] census bucket=under-report:placeholder direction=under-report count=0 reason="carries a placeholder (`<name>`, `$VAR`, `{a,b}`) — not a literal path"
+[verify-manual-paths] census bucket=under-report:elided direction=under-report count=0 reason="contains an elision mark — the path is not written out, so no literal target exists"
+[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason="a directory spelled in words rather than as a token — nothing to stat"
+[verify-manual-paths] census family=over-report direction=over-report total=0 buckets=6 (counted apart from under-report and from unresolved)
+[verify-manual-paths] census family=under-report direction=under-report total=0 buckets=7 (counted apart from over-report and from unresolved)
+[verify-manual-paths] FAIL unresolved=2 — the manual names paths that do not exist at the repo root: scripts/does-not-exist.mjs (AGENTS.md:3), docs/also-missing.md (AGENTS.md:3)

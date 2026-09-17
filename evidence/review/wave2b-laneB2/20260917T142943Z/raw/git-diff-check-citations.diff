@@ -1,0 +1,521 @@
+diff --git a/scripts/check-citations.mjs b/scripts/check-citations.mjs
+index 1ee87c0..aded3ee 100644
+--- a/scripts/check-citations.mjs
++++ b/scripts/check-citations.mjs
+@@ -15,16 +15,44 @@
+ // above it carries an explicit `<!-- citation-check: pending <task> -->` annotation,
+ // which is reported separately as a PENDING citation (a documented gap, never a
+ // silent one).
++//
++// ── RULE (T-78): A DOC-REWRITE TASK'S VERIFY LIST MUST CARRY THIS DRIVER ─────────────
++// The exact command a doc-rewrite task must run — path-qualified, single invocation, offline and
++// deterministic, with its output root stated so the evidence lands where the task owns it:
++//
++//   node scripts/check-citations.mjs --out ./evidence/gates/<slug>/<stamp>/run
++//
++// The same rule is written into EVERY run record (`rules.doc_rewrite`), so a reader of either
++// surface finds it without prose. An omitted driver is not a silent state: the fixture pair in
++// `--self-test` shows a mis-anchored citation exiting 1 with `does not carry the claim` while the
++// correct fixture exits 0.
++//
++// Its addressing parameters, in the citation family's own six terms (F5): the literal string is
++// `node scripts/check-citations.mjs --out`; the pattern AS PASSED is unescaped and case-sensitive;
++// the tool mode is one process with an explicit `--out`; the unit is one run directory; the scope
++// is the five subject documents under <repo> (`--citations-only` for the citation arms alone);
++// the moment is the run's own `run_at`, recorded in the record.
++//
++// ── MODES (wave 2b, lane B2) ────────────────────────────────────────────────────────
++//   node scripts/check-citations.mjs --self-test                       the citation arms
++//   node scripts/check-citations.mjs --driver-headers [--self-test]    T-80: a driver header's
++//       `A<n>` claims vs the `add("A<n>…")` keys the driver's code produces. The live scan names
++//       the directories it covers, their per-directory split and BOTH matcher-error directions.
++//   node scripts/check-citations.mjs --anchor-scan <dir> --pattern <literal>   T-90: report every
++//       file under <dir> containing the literal, with path + line + phrase (exit 1 on any match).
++// Every mode writes `<out>/result.json` + `<out>/output.log` (+ `<out>/revisions/` for a citation
++// run) when `--out` is given, and a SECOND run at the same `--out` is REFUSED, never overwritten
++// (immutable evidence: T-53, T-74).
+ import { spawnSync } from "node:child_process"
+ import { createHash } from "node:crypto"
+-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
++import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
+ import { tmpdir } from "node:os"
+ import { dirname, extname, join, relative, resolve, sep } from "node:path"
+ import { fileURLToPath } from "node:url"
+ // T-53: evidence is immutable by default — a plain run writes to a FRESH timestamped directory and
+ // an existing target is refused instead of overwritten (this script used to rewrite the canonical
+ // result.json/output.log next to itself on every run).
+-import { exitOnRefusal, refuseOverwrite, resolveOutputDir, timestamp, writeImmutable } from "../skills/dsh-qa/scripts/lib/immutable-output.mjs"
++import { IMMUTABLE_EXIT_CODE, exitOnRefusal, refuseOverwrite, resolveOutputDir, timestamp, writeImmutable } from "../skills/dsh-qa/scripts/lib/immutable-output.mjs"
+ 
+ const HERE = dirname(fileURLToPath(import.meta.url))
+ const OUT_FLAG = process.argv.findIndex((a) => a === "--out" || a.startsWith("--out="))
+@@ -402,6 +430,82 @@ function materializeSkeleton(raw) {
+  * DOCS_CLAIMS_REPO) over each: the correct fixture must exit 0, the mis-anchored one
+  * must exit 1 and name the missing claim. Both arms are recorded in result.json.
+  */
++/**
++ * WAVE-2B arms (T-78, T-82, immutability), spawned as CHILDREN of the REAL checker with an explicit
++ * `--out` into a temp dir and NO `DOCS_CLAIMS_REPO` (so a record IS written):
++ *   · T-78  the run's record is read as BYTES: the driver RULE and the COMMAND must be in them;
++ *   · T-82  a COPY of the checker is run twice with a one-line change between the runs; the retained
++ *           revisions must exist and the CHANGED pair must diff non-empty while an UNCHANGED pair
++ *           diffs EMPTY — the anti-fake control, which a retention that copied the CURRENT file into
++ *           both run dirs could not pass;
++ *   · immutability  a SECOND run at the same `--out` must be REFUSED (exit 3), never overwritten.
++ */
++function retentionArm(sandbox) {
++  const root = join(sandbox, "t82-root")
++  for (const dir of ["docs", "src", "copydir", join("evidence", "extensions", "docs-claims")]) mkdirSync(join(root, dir), { recursive: true })
++  // the copy runs from `<root>/copydir/`, so its `../skills/...` import needs `<root>/skills`
++  symlinkSync(join(REPO, "skills"), join(root, "skills"))
++  const guide = "# fixture guide\n\nSee `alphaSymbol`, `src/probe.ts`.\n"
++  const report = "# fixture report\n\n## 12. Status\n\nSee `alphaSymbol`, `src/probe.ts`.\n"
++  writeFileSync(join(root, "docs", "extension-authoring-guide.md"), guide)
++  writeFileSync(join(root, "docs", "extension-authoring-guide.zh-CN.md"), guide)
++  writeFileSync(join(root, "docs", "extension-adaptation-report.md"), report)
++  writeFileSync(join(root, "docs", "extension-adaptation-report.zh-CN.md"), report)
++  writeFileSync(join(root, "EXTENSIONS-FOR-AGENTS.md"), "# fixture contract\n\nSee `alphaSymbol`, `src/probe.ts`.\n")
++  writeFileSync(join(root, "src", "probe.ts"), "// fixture\nexport const alphaSymbol = 1\n")
++  writeFileSync(join(root, "evidence", "extensions", "docs-claims", "check-citations.mjs"), "// FROZEN fixture revision — identical in both runs (the unchanged pair)\nexport const frozen = true\n")
++  const copy = join(root, "copydir", "checker.mjs")
++  const original = readFileSync(fileURLToPath(import.meta.url), "utf8")
++  const runCopy = (out) => spawnSync(process.execPath, [copy, "--citations-only", "--out", out], { encoding: "utf8", cwd: root })
++  writeFileSync(copy, original.replace("#!/usr/bin/env node", "#!/usr/bin/env node\n// T-82 ARM CHANGE A"))
++  const runA = runCopy(join(root, "runA"))
++  writeFileSync(copy, original.replace("#!/usr/bin/env node", "#!/usr/bin/env node\n// T-82 ARM CHANGE B"))
++  const runB = runCopy(join(root, "runB"))
++  const readOrNull = (path) => (existsSync(path) ? readFileSync(path, "utf8") : null)
++  const firstDifferingLine = (left, right) => {
++    if (left === null || right === null) return null
++    const leftLines = left.split("\n")
++    const rightLines = right.split("\n")
++    for (let index = 0; index < Math.max(leftLines.length, rightLines.length); index += 1) {
++      if (leftLines[index] !== rightLines[index]) return { line: index + 1, left: String(leftLines[index]).slice(0, 80), right: String(rightLines[index]).slice(0, 80) }
++    }
++    return null
++  }
++  const checkerA = readOrNull(join(root, "runA", "revisions", "checker.mjs"))
++  const checkerB = readOrNull(join(root, "runB", "revisions", "checker.mjs"))
++  const supersededA = readOrNull(join(root, "runA", "revisions", "superseded.mjs"))
++  const supersededB = readOrNull(join(root, "runB", "revisions", "superseded.mjs"))
++  const changed = firstDifferingLine(checkerA, checkerB)
++  const unchanged = firstDifferingLine(supersededA, supersededB)
++  return {
++    exitCodes: [runA.status, runB.status],
++    retained: { runA_checker: checkerA !== null, runB_checker: checkerB !== null, runA_superseded: supersededA !== null, runB_superseded: supersededB !== null },
++    changed_pair: changed,
++    unchanged_pair: unchanged,
++    passed: checkerA !== null && checkerB !== null && supersededA !== null && supersededB !== null && changed !== null && String(changed.right).includes("T-82 ARM CHANGE B") && unchanged === null,
++  }
++}
++
++function wave2bArms() {
++  const sandbox = mkdtempSync(join(tmpdir(), "t78-t82-arms-"))
++  const argumentsFor = (out) => [fileURLToPath(import.meta.url), "--citations-only", "--out", out]
++  const t78Out = join(sandbox, "t78-run")
++  const first = spawnSync(process.execPath, argumentsFor(t78Out), { encoding: "utf8", cwd: REPO })
++  const recordPath = join(t78Out, "result.json")
++  const recordBytes = existsSync(recordPath) ? readFileSync(recordPath, "utf8") : ""
++  const RULE = "a doc-rewrite task's verify list MUST carry the citation driver"
++  const COMMAND = "node scripts/check-citations.mjs --out ./evidence/gates/<slug>/<stamp>/run"
++  const second = spawnSync(process.execPath, argumentsFor(t78Out), { encoding: "utf8", cwd: REPO })
++  const secondOutput = (second.stdout ?? "") + (second.stderr ?? "")
++  const t82 = retentionArm(sandbox)
++  rmSync(sandbox, { recursive: true, force: true })
++  return {
++    t78: { exitCode: first.status, passed: recordBytes.includes(RULE) && recordBytes.includes(COMMAND), record: relative(REPO, recordPath), bytes: recordBytes.length, rule: RULE, command: COMMAND },
++    t82,
++    immutability: { exitCode: second.status, passed: second.status === IMMUTABLE_EXIT_CODE && /refusing to overwrite/.test(secondOutput), message: secondOutput.trim().split("\n")[0]?.slice(0, 160) ?? "" },
++  }
++}
++
+ function negativeControl() {
+   // `anchor` is the WHOLE inline anchor clause, so one maker serves the line-anchored arms and the
+   // T-55 symbol-first arms (a claim with no line number).
+@@ -475,9 +579,324 @@ function negativeControl() {
+   record("negative-control:rot-line-number-only-drifted", arms.rotLineOnlyDrifted.passed, `${arms.rotLineOnlyDrifted.command} - exit ${arms.rotLineOnlyDrifted.exitCode} (T-72: the pinned line moved under the document — the rot the row names); ${arms.rotLineOnlyDrifted.evidence === "" ? "NO rot reported" : arms.rotLineOnlyDrifted.evidence}`)
+   record("negative-control:symbol-first-survives-a-source-shift", arms.symbolFirstSurvivesShift.passed, `${arms.symbolFirstSurvivesShift.command} - exit ${arms.symbolFirstSurvivesShift.exitCode} (T-55/T-72: the line-free form still resolves after the cited file moves under it — the same shift that reddens the line-only fixture)`)
+   record("negative-control:symbol-first-right-then-wrong", arms.symbolFirstRightThenWrong.passed, `${arms.symbolFirstRightThenWrong.command} - exit ${arms.symbolFirstRightThenWrong.exitCode} (F3/t27: a WRONG symbol-first claim must FAIL even when an EARLIER line-free claim for the same path exists — the t17 reviewer's fixture shape, which the frozen AND the pre-repair durable revision ACCEPTED at exit 0); ${arms.symbolFirstRightThenWrong.evidence === "" ? "NO mismatch reported" : arms.symbolFirstRightThenWrong.evidence}`)
++  // ── wave-2b arms (T-78 / T-82 / immutability): real runs into temp dirs, then read the BYTES ──
++  const wave2b = wave2bArms()
++  arms.t78RecordCarriesTheRule = { command: "check-citations.mjs --citations-only --out <tmp>; the record's BYTES are read back", exitCode: wave2b.t78.exitCode, passed: wave2b.t78.passed, evidence: `${wave2b.t78.record} (${wave2b.t78.bytes} B) carries the RULE and the COMMAND` }
++  arms.t82RetentionDiffable = { command: "a COPY of the checker runs twice with a one-line change between the runs; the retained revisions are diffed", exitCode: wave2b.t82.exitCodes[1], passed: wave2b.t82.passed, evidence: `changed pair differs at line ${wave2b.t82.changed_pair?.line ?? "?"} (${wave2b.t82.changed_pair?.right ?? "NO DIFF"}); unchanged pair ${wave2b.t82.unchanged_pair === null ? "EMPTY (the control holds)" : "NOT EMPTY"}; retained ${JSON.stringify(wave2b.t82.retained)}` }
++  arms.immutabilitySecondRunRefused = { command: "check-citations.mjs --citations-only --out <the SAME dir> a second time", exitCode: wave2b.immutability.exitCode, passed: wave2b.immutability.passed, evidence: wave2b.immutability.message }
++  record("negative-control:t78-record-carries-the-rule", arms.t78RecordCarriesTheRule.passed, `T-78: the run at ${wave2b.t78.record} (${wave2b.t78.bytes} B) carries the driver RULE ("${wave2b.t78.rule}") and the COMMAND ("${wave2b.t78.command}") — asserted against the record's BYTES, not against a comment`)
++  record("negative-control:t82-retention-diffable", arms.t82RetentionDiffable.passed, `T-82: ${arms.t82RetentionDiffable.evidence} — the changed pair NAMES the changed line, and the unchanged pair's empty diff is the anti-fake control`)
++  record("negative-control:immutability-second-run-refused", arms.immutabilitySecondRunRefused.passed, `immutability: a second run at the same --out exited ${wave2b.immutability.exitCode} (expected ${IMMUTABLE_EXIT_CODE}) — ${wave2b.immutability.message}`)
+   return arms
+ }
+ 
++// ══ T-80: a driver header's `A<n>` claims vs the keys the driver's code produces ═══════════
++//
++// ADDRESSING PARAMETERS (F5, six terms): literal string `A<n>` for a claim and `add("A<n>…")` for a
++// key; pattern AS PASSED `/\bA(\d+)\b/g` + `/\bA(\d+)\s*[–-]\s*A?(\d+)\b/g` and
++// `/add\(\s*"(A\d+)[^"]*"/g`, all case-sensitive and unescaped; tool mode one offline process, no
++// children; unit one driver file, and every finding names its PATH (never a position); scope the
++// directories named in the record's `audit.directories`; moment the record's `run_at`.
++//
++// POLICY — stated in the checker, because silence is not acceptable (acceptance T-80 (a)):
++//   CLAIMED-BUT-UNASSERTED  a header claim the code produces no key for   → VIOLATION (exit 1)
++//   ASSERTED-BUT-UNCLAIMED  a produced key no header claim covers         → VIOLATION (exit 1)
++//   NO-CLAIM-SET            a driver whose header makes no claim of its own (no claim marker line,
++//                           or only REFERENCE lines — see below)         → REPORTED, not a
++//                           violation: the equality rule has no subject there, and the file and
++//                           its keys are still named in the record.
++// A claim counts only inside a claim SCOPE: a header line carrying a claim marker opens the scope,
++// which closes at the next blank header line. A line inside a scope that points at another
++// artifact's numbering (acceptance/design/§/`t<nn>`) is a REFERENCE, never a claim — the measured
++// instance that forced the rule is `skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs`, whose
++// header writes "t35 acceptance A1-A4/A6" (a citation of t35's items) and whose falsifier list is
++// headed "(design §9.3 F1/F2/F4/F5, ...)": a whole-header token scan reads both as claims and
++// reports a violation that does not exist. References are COUNTED AND PRINTED, never dropped.
++const CLAIM_MARKERS = /\b(claims?|claimed|asserts?|asserted|checks?|checked|covers?|covered|arms?|keys?|proves?|proof|must|expects?|expected)\b/i
++const REFERENCE_MARKERS = /(design|acceptance|\bplan\b|§|\bt\d+\b)/i
++const CLAIM_TOKEN = /\bA(\d+)\b/g
++const CLAIM_RANGE = /\bA(\d+)\s*[–-]\s*A?(\d+)\b/g
++const KEY_CALL = /add\(\s*"A(\d+)[^"]*"/g
++const DRIVER_SCOPE = "./skills/dsh-qa/scripts/"
++const DRIVER_EXTENSIONS = [".mjs"]
++
++/** Recursive file walk with a filter, skipping the two directories that are never corpus. */
++function walkFiles(root, filter, out = []) {
++  if (!existsSync(root)) return out
++  for (const entry of readdirSync(root, { withFileTypes: true })) {
++    const child = join(root, entry.name)
++    if (entry.isDirectory()) {
++      if (entry.name === "node_modules" || entry.name === ".git") continue
++      walkFiles(child, filter, out)
++    } else if (filter(child)) out.push(child)
++  }
++  return out
++}
++
++/** The leading comment block of a driver (shebang + `//` lines + blanks), up to the first code line. */
++function driverHeaderLines(text) {
++  const lines = []
++  for (const line of text.split("\n")) {
++    if (/^#!/.test(line) || /^\s*$/.test(line) || /^\s*\/\//.test(line)) lines.push(line.replace(/^\s*\/\/\s?/, ""))
++    else break
++  }
++  return lines
++}
++
++/**
++ * Claim extraction. `naive: true` is the ALTERNATIVE matcher this audit measures itself against: no
++ * claim-marker scope and no reference filter — every `A<n>` token in the header counts as a claim.
++ */
++function parseHeaderClaims(text, { naive = false } = {}) {
++  const claims = new Map()
++  const references = []
++  const claimLines = []
++  let scope = false
++  for (const body of driverHeaderLines(text)) {
++    const trimmed = body.trim()
++    if (trimmed === "") {
++      scope = false
++      continue
++    }
++    if (naive) {
++      for (const match of trimmed.matchAll(new RegExp(CLAIM_RANGE.source, "g"))) {
++        const from = Number(match[1])
++        const to = Number(match[2])
++        if (to >= from && to - from <= 20) for (let n = from; n <= to; n++) if (!claims.has(n)) claims.set(n, trimmed)
++      }
++      for (const match of trimmed.matchAll(new RegExp(CLAIM_TOKEN.source, "g"))) {
++        const n = Number(match[1])
++        if (!claims.has(n)) claims.set(n, trimmed)
++      }
++      continue
++    }
++    if (CLAIM_MARKERS.test(trimmed)) scope = true
++    if (!scope) continue
++    if (REFERENCE_MARKERS.test(trimmed)) {
++      references.push(trimmed)
++      continue
++    }
++    claimLines.push(trimmed)
++    for (const match of trimmed.matchAll(new RegExp(CLAIM_RANGE.source, "g"))) {
++      const from = Number(match[1])
++      const to = Number(match[2])
++      if (to >= from && to - from <= 20) for (let n = from; n <= to; n++) if (!claims.has(n)) claims.set(n, trimmed)
++    }
++    for (const match of trimmed.matchAll(new RegExp(CLAIM_TOKEN.source, "g"))) {
++      const n = Number(match[1])
++      if (!claims.has(n)) claims.set(n, trimmed)
++    }
++  }
++  return { claims, references, claimLines }
++}
++
++/** The `add("A<n>…")` assertion keys a driver's code actually produces. */
++function parseAssertedKeys(text) {
++  const keys = new Map()
++  for (const match of text.matchAll(new RegExp(KEY_CALL.source, "g"))) {
++    const n = Number(match[1])
++    if (!keys.has(n)) keys.set(n, match[0])
++  }
++  return keys
++}
++
++/** One driver's row: its keys, its claims, and the two mismatch directions. */
++function driverRow(absolute, { naive = false } = {}) {
++  const text = readFileSync(absolute, "utf8")
++  const { claims, references, claimLines } = parseHeaderClaims(text, { naive })
++  const keys = parseAssertedKeys(text)
++  const claimedButUnasserted = [...claims.keys()].filter((n) => !keys.has(n)).sort((a, b) => a - b)
++  const assertedButUnclaimed = [...keys.keys()].filter((n) => !claims.has(n)).sort((a, b) => a - b)
++  return {
++    path: relative(REPO, absolute),
++    keys: [...keys.keys()].sort((a, b) => a - b),
++    claims: [...claims.keys()].sort((a, b) => a - b),
++    no_claim_set: claims.size === 0,
++    claimed_but_unasserted: claimedButUnasserted,
++    asserted_but_unclaimed: claims.size === 0 ? [] : assertedButUnclaimed,
++    reference_lines: references,
++    claim_lines: claimLines,
++    phrases: Object.fromEntries(claimedButUnasserted.map((n) => [`A${n}`, claims.get(n)])),
++  }
++}
++
++/**
++ * The T-80 fixture arms, each a spawned CHILD of this checker (`--driver-headers --dir <fixture>`)
++ * with an asserted exit code AND an asserted message — never a prose claim:
++ *   · matching                header CHECKS A1–A3, code produces A1–A3          → exit 0
++ *   · claimed-but-unasserted   header CHECKS A1–A4, code produces A1–A3          → exit 1, names A4 + path
++ *   · extra-key (near miss)    header CHECKS A1–A3, code produces A1–A4          → exit 1, names A4 + path
++ */
++function driverHeadersSelfTest() {
++  const root = mkdtempSync(join(tmpdir(), "t80-driver-headers-"))
++  const make = (name, header, keys) => {
++    const file = join(root, name)
++    writeFileSync(file, ["#!/usr/bin/env node", ...header.map((line) => `// ${line}`), "", ...keys.map((key) => `  add("${key}", true, "fixture arm")`), ""].join("\n"))
++    return file
++  }
++  const fixtures = [
++    { id: "t80-matching", expect: 0, needle: undefined, file: make("matching.mjs", ["This driver CHECKS A1–A3; each arm produces its own assertion key."], ["A1", "A2", "A3"]) },
++    { id: "t80-claimed-but-unasserted", expect: 1, needle: /driver:.*claimed-but-unasserted\.mjs[\s\S]*CLAIMED-BUT-UNASSERTED A4/, file: make("claimed-but-unasserted.mjs", ["This driver CHECKS A1–A4; the header claims an arm the code never asserts."], ["A1", "A2", "A3"]) },
++    { id: "t80-extra-key-near-miss", expect: 1, needle: /driver:.*extra-key\.mjs[\s\S]*ASSERTED-BUT-UNCLAIMED A4/, file: make("extra-key.mjs", ["This driver CHECKS A1–A3."], ["A1", "A2", "A3", "A4"]) },
++  ]
++  log("driver-header claim check — self-test (T-80 fixture arms)")
++  let failed = 0
++  for (const fixture of fixtures) {
++    const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--driver-headers", "--dir", fixture.file], { encoding: "utf8", cwd: REPO })
++    const output = (child.stdout ?? "") + (child.stderr ?? "")
++    const ok = child.status === fixture.expect && (fixture.needle === undefined || fixture.needle.test(output))
++    if (!ok) failed += 1
++    log(`  ${ok ? "ok  " : "FAIL"} ${fixture.id} — exit ${child.status} (expected ${fixture.expect})${fixture.needle === undefined ? "" : "; the key and the driver PATH must both be named"}`)
++    if (!ok) log(output.trim().split("\n").slice(-4).join("\n"))
++  }
++  rmSync(root, { recursive: true, force: true })
++  log("")
++  log(`[driver-headers self-test] ${fixtures.length - failed}/${fixtures.length} arms passed`)
++  return failed === 0 ? 0 : 1
++}
++
++function driverHeadersMain() {
++  const naive = process.argv.includes("--naive")
++  if (process.argv.includes("--self-test")) return driverHeadersSelfTest()
++  const scopeArg = process.argv.includes("--dir") ? process.argv[process.argv.indexOf("--dir") + 1] : DRIVER_SCOPE
++  const runAt = new Date().toISOString()
++  log("driver-header claim check (T-80)")
++  log(`parameters: claims ${CLAIM_TOKEN.source} + ${CLAIM_RANGE.source} (markers ${CLAIM_MARKERS.source}; references ${REFERENCE_MARKERS.source}) · keys ${KEY_CALL.source} · mode one offline process · unit one driver file · scope ${scopeArg} · moment ${runAt}`)
++  log("")
++  const scopeRoot = resolve(REPO, scopeArg)
++  // the scope is EITHER a directory (the live corpus) or ONE file (a fixture arm)
++  const scopeIsDirectory = statSync(scopeRoot).isDirectory()
++  const files = scopeIsDirectory ? walkFiles(scopeRoot, (file) => DRIVER_EXTENSIONS.some((extension) => file.endsWith(extension))) : [scopeRoot]
++  const rows = []
++  const split = new Map()
++  for (const file of files) {
++    const directory = relative(REPO, dirname(file)) + "/"
++    const bucket = split.get(directory) ?? { files: 0, key_producers: 0, keys: 0, claims: 0, violations: 0, no_claim_set: 0 }
++    bucket.files += 1
++    const text = readFileSync(file, "utf8")
++    const keys = parseAssertedKeys(text)
++    if (keys.size > 0) {
++      const row = driverRow(file)
++      rows.push(row)
++      bucket.key_producers += 1
++      bucket.keys += row.keys.length
++      bucket.claims += row.claims.length
++      if (row.no_claim_set) bucket.no_claim_set += 1
++      const violations = row.claimed_but_unasserted.length + row.asserted_but_unclaimed.length
++      bucket.violations += violations
++      record(
++        `driver:${row.path}`,
++        violations === 0,
++        violations === 0
++          ? `${row.keys.length} assertion key(s) [A${row.keys[0]}–A${row.keys[row.keys.length - 1]}]; ${row.no_claim_set ? "NO-CLAIM-SET declared in the header (reported, not a violation)" : `${row.claims.length} claimed`}`
++          : `${row.claimed_but_unasserted.map((n) => `CLAIMED-BUT-UNASSERTED A${n} (header phrase: "${String(row.phrases[`A${n}`]).slice(0, 120)}")`).join("; ")}${row.asserted_but_unclaimed.length > 0 ? `${row.claimed_but_unasserted.length > 0 ? "; " : ""}ASSERTED-BUT-UNCLAIMED ${row.asserted_but_unclaimed.map((n) => `A${n}`).join(", ")}` : ""}`,
++      )
++    }
++    split.set(directory, bucket)
++  }
++  // ER-2: the audit measures BOTH matcher-error directions on ITSELF, instead of inheriting another
++  // audit's numbers (lane A's T-92 split — 25 self-fix-tests/** + 17 test/** = 42 `not.toContain(`
++  // occurrences — measures a DIFFERENT audit and is NOT reused here).
++  const naiveFiles = rows.map((row) => driverRow(join(REPO, row.path), { naive: true })).filter((row) => row.claims.length > 0 && (row.claimed_but_unasserted.length > 0 || row.asserted_but_unclaimed.length > 0))
++  const nonRecursive = scopeIsDirectory ? readdirSync(scopeRoot, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".mjs") && parseAssertedKeys(readFileSync(join(scopeRoot, entry.name), "utf8")).size > 0).length : 0
++  const repoWide = walkFiles(REPO, (file) => file.endsWith(".mjs")).filter((file) => parseAssertedKeys(readFileSync(file, "utf8")).size > 0).length
++  const extensionAssumption = scopeIsDirectory ? DRIVER_EXTENSIONS.flatMap((extension) => walkFiles(scopeRoot, (file) => file.endsWith(extension.replace(".mjs", ".js")))).filter((file) => parseAssertedKeys(readFileSync(file, "utf8")).size > 0).length : 0
++  const audit = {
++    directories: [{ path: scopeArg, recursive: true, files_scanned: files.length }],
++    per_directory_split: Object.fromEntries([...split.entries()].sort()),
++    claim_set_parsed: rows.filter((row) => !row.no_claim_set).length,
++    no_claim_set: rows.filter((row) => row.no_claim_set).length,
++    violations: rows.reduce((total, row) => total + row.claimed_but_unasserted.length + row.asserted_but_unclaimed.length, 0),
++    matcher_error_directions: [
++      { direction: "over-report", alternative: "whole-header token scan (no claim-marker scope, no reference filter)", measured: `${naiveFiles.length} file(s) flagged and ${naiveFiles.reduce((t, row) => t + row.claimed_but_unasserted.length + row.asserted_but_unclaimed.length, 0)} key(s) reported as mismatched, against ${rows.reduce((t, row) => t + row.claimed_but_unasserted.length + row.asserted_but_unclaimed.length, 0)} with the precise rule` },
++      { direction: "under-report", alternative: `non-recursive ${scopeArg}*.mjs (misses lib/)`, measured: `${nonRecursive} key producer(s) found against ${rows.length}` },
++      { direction: "under-report", alternative: "a file-type assumption (.js) instead of .mjs", measured: `${extensionAssumption} key producer(s) found against ${rows.length}` },
++      { direction: "over-report", alternative: "a whole-repo literal scan for `add(\"A`", measured: `${repoWide} key-producing .mjs file(s) repo-wide against ${rows.length} in scope` },
++    ],
++    not_inherited: "lane A's T-92 audit split (25 self-fix-tests/** + 17 test/** = 42 `not.toContain(` occurrences; subject-scoped 3 with 0 reddened) measures a DIFFERENT audit — different literal, different subject — and is not reused here.",
++  }
++  const violations = rows.flatMap((row) => [
++    ...row.claimed_but_unasserted.map((n) => `CLAIMED-BUT-UNASSERTED ${row.path} A${n} — header phrase: "${String(row.phrases[`A${n}`]).slice(0, 160)}"`),
++    ...row.asserted_but_unclaimed.map((n) => `ASSERTED-BUT-UNCLAIMED ${row.path} A${n}`),
++  ])
++  const report = {
++    task: "T-80 (t15, wave-2b lane B2): a driver header's `A<n>` claims vs its own assertion keys",
++    run_at: runAt,
++    mode: naive ? "driver-headers (naive matcher)" : "driver-headers",
++    parameters: {
++      literal_string: '`A<n>` (claim) and `add("A<n>…")` (key)',
++      pattern_as_passed: `${CLAIM_TOKEN.source} + ${CLAIM_RANGE.source} + ${KEY_CALL.source} (case-sensitive, unescaped)`,
++      tool_mode: "one process, offline, no children",
++      unit: "one driver file (every finding names its PATH)",
++      scope: scopeArg,
++      moment: runAt,
++    },
++    policy: {
++      claimed_but_unasserted: "VIOLATION",
++      asserted_but_unclaimed: "VIOLATION (a header that under-claims is reported, never silent)",
++      no_claim_set: "REPORTED, not a violation — the equality rule has no subject; the file and its keys are named",
++      reference_lines: "an `A<n>` token on a line pointing at another artifact's numbering (acceptance/design/§/t<nn>) is a REFERENCE, counted and printed, never a claim",
++    },
++    audit,
++    drivers: rows,
++    violations,
++  }
++  if (OUT_EXPLICIT) {
++    try {
++      writeImmutable(join(OUT_ROOT, "result.json"), JSON.stringify(report, null, 2) + "\n", { label: "driver-header run result" })
++      writeImmutable(join(OUT_ROOT, "output.log"), logs.join("\n") + "\n", { label: "driver-header run log" })
++      log("[driver-headers] evidence -> " + relative(REPO, OUT_ROOT))
++    } catch (error) {
++      exitOnRefusal(error, "[driver-headers]")
++    }
++  }
++  log("")
++  log(`[driver-headers] ${files.length} file(s) scanned, ${rows.length} key-producing driver(s), ${audit.claim_set_parsed} claim set(s), ${audit.no_claim_set} NO-CLAIM-SET, ${violations.length} violation(s)`)
++  return violations.length === 0 ? 0 : 1
++}
++
++// ══ T-90 / addendum A: an anchor scan with the pattern NAMED and the moment stated ═════════
++function anchorScanMain() {
++  const dirArg = process.argv[process.argv.indexOf("--anchor-scan") + 1]
++  const patternArg = process.argv.includes("--pattern") ? process.argv[process.argv.indexOf("--pattern") + 1] : undefined
++  if (dirArg === undefined || patternArg === undefined) {
++    log("usage: node scripts/check-citations.mjs --anchor-scan <dir> --pattern <literal> [--out <dir>]")
++    return 2
++  }
++  const runAt = new Date().toISOString()
++  const root = resolve(REPO, dirArg)
++  const files = walkFiles(root, () => true).filter((file) => /\.(md|json|mjs|js|ts|txt|log|out|yaml|yml)$/.test(file))
++  const hits = []
++  for (const file of files) {
++    const lines = readFileSync(file, "utf8").split("\n")
++    lines.forEach((line, index) => {
++      if (line.includes(patternArg)) hits.push({ path: relative(REPO, file), line: index + 1, phrase: line.trim().slice(0, 200) })
++    })
++  }
++  log("anchor scan (T-90 / ADDENDUM A: no mailbox-record-id-shaped anchors in this lane's records)")
++  log(`parameters: literal string ${JSON.stringify(patternArg)} · pattern AS PASSED plain substring, case-sensitive, unescaped · mode one offline process, no children · unit one file under ${dirArg} · scope ${files.length} text file(s) · moment ${runAt}`)
++  for (const hit of hits) log(`  MATCH ${hit.path}:${hit.line} — ${hit.phrase}`)
++  const report = { task: "T-90 anchor scan", run_at: runAt, pattern: patternArg, scope: dirArg, files_scanned: files.length, matches: hits }
++  if (OUT_EXPLICIT) {
++    try {
++      writeImmutable(join(OUT_ROOT, "result.json"), JSON.stringify(report, null, 2) + "\n", { label: "anchor-scan run result" })
++      writeImmutable(join(OUT_ROOT, "output.log"), logs.join("\n") + "\n", { label: "anchor-scan run log" })
++    } catch (error) {
++      exitOnRefusal(error, "[anchor-scan]")
++    }
++  }
++  log("")
++  log(`[anchor-scan] ${matches(hits)} match(es) in ${files.length} file(s) under ${dirArg}`)
++  return hits.length === 0 ? 0 : 1
++}
++
++function matches(hits) {
++  return hits.length
++}
++
++if (process.argv.includes("--driver-headers")) process.exit(driverHeadersMain())
++if (process.argv.includes("--anchor-scan")) process.exit(anchorScanMain())
++
+ const fixtureRun = process.env.DOCS_CLAIMS_REPO !== undefined
+ const negativeControlArms = process.argv.includes("--self-test") ? negativeControl() : undefined
+ 
+@@ -622,16 +1041,60 @@ if (!citationsOnly && process.argv.includes("--gates")) {
+   }
+ }
+ 
++// ── T-82: each run RETAINS the revision bytes it measured ────────────────────
++// `checker{path,sha256,supersedes}` is the HASH view, and a hash cannot be diffed. So a run also
++// COPIES the bytes it measured — its own file and the frozen revision it supersedes — into
++// `<out>/revisions/` under STABLE names, so two runs of different revisions are diffable
++// file-to-file: `diff <runA>/revisions/checker.mjs <runB>/revisions/checker.mjs`.
++const retainedRevisions = []
++function retainRevision(source, target, label) {
++  if (!existsSync(source)) return
++  const destination = join(OUT_ROOT, "revisions", target)
++  writeImmutable(destination, readFileSync(source), { label: `retained revision (${label})` })
++  retainedRevisions.push({ target: relative(REPO, destination), source: relative(REPO, source), sha256: fileHash(source), label })
++}
++if (!fixtureRun) {
++  // A second run at the same `--out` is refused HERE, on the first retained file (exit 3), which is
++  // this lane's ready-made immutability arm.
++  try {
++    retainRevision(fileURLToPath(import.meta.url), "checker.mjs", "the running checker")
++    retainRevision(join(REPO, "evidence", "extensions", "docs-claims", "check-citations.mjs"), "superseded.mjs", "the frozen revision this one supersedes")
++  } catch (error) {
++    exitOnRefusal(error, "[docs-claims]")
++  }
++}
++
+ const failed = results.filter((entry) => entry.status === "failed")
+ const report = {
+   task: "t72 (durable home of the t21/t9 checker: SITE-PAIRED claims + SYMBOL-FIRST enforcement — a line-number-only anchor is ROT)",
++  run_at: new Date().toISOString(),
++  // T-78: the driver rule travels WITH the record, so a reader of the record finds it without
++  // prose. Asserted against these very bytes by `negative-control:t78-record-carries-the-rule`.
++  rules: {
++    doc_rewrite: {
++      rule: "a doc-rewrite task's verify list MUST carry the citation driver",
++      command: "node scripts/check-citations.mjs --out ./evidence/gates/<slug>/<stamp>/run",
++      why: "an omitted driver is not a silent state: a mis-anchored citation exits 1 with `does not carry the claim` while the correct fixture exits 0",
++      parameters: {
++        literal_string: "node scripts/check-citations.mjs --out",
++        pattern_as_passed: "unescaped, case-sensitive, no glob",
++        tool_mode: "one process, explicit --out, offline (no dsh boot)",
++        unit: "one run directory (`<out>/result.json` + `output.log` + `revisions/`)",
++        scope: "the five subject documents under <repo>; `--citations-only` for the citation arms alone",
++        moment: "this record's `run_at` (ISO-8601 UTC)",
++      },
++    },
++  },
+   // T-72: every run quotes WHICH revision it ran and which frozen revision it supersedes, so the
+-  // checker's intermediate revisions are diffable, not merely hash-comparable.
++  // checker's intermediate revisions are diffable, not merely hash-comparable. T-82: the bytes
++  // behind those hashes are now RETAINED under `<out>/revisions/`, so that sentence is true by
++  // construction rather than by claim.
+   checker: {
+     path: relative(REPO, fileURLToPath(import.meta.url)),
+     sha256: fileHash(fileURLToPath(import.meta.url)),
+     supersedes: { path: "evidence/extensions/docs-claims/check-citations.mjs", sha256: fileHash(join(REPO, "evidence", "extensions", "docs-claims", "check-citations.mjs")) },
+   },
++  revisions: retainedRevisions,
+   // F1 (t27 repair): the hard-coded `attempt_id` (t21's, inherited from the evidence-side build) is
+   // REMOVED — it stamped a FOREIGN task's attempt into every run record, including the reviewer's.
+   // Revision provenance is `checker{path, sha256, supersedes}` above; a caller that wants its own

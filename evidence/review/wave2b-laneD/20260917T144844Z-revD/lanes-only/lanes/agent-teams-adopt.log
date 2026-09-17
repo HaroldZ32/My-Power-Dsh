@@ -1,0 +1,12 @@
+116 |   const homePatch = readFileSync(join(sandbox, "cordis.patch.yml"), "utf8")
+117 |   steps.override = { ok: /id:\s*agent-teams/.test(homePatch) && homePatch.includes(".mpd/team") && homePatch.includes("packages/mpd-agent-teams-plugin/lib/index.js"), hasPatch: homePatch.includes("agent-teams") }
+118 | 
+119 |   // 3) composed config
+120 |   // T-69: the wrapper composes; the composed tree is read from the --json child output.
+121 |   const dump = runSync(process.execPath, [join(REPO, "scripts", "dump-config.mjs"), "--profile", "mpd-headless", "--json"], { timeout: 120000 })
+                                                     ^
+ReferenceError: REPO is not defined
+      at runReal (/root/dshProj/my-power-dsh/skills/dsh-qa/scripts/agent-teams-adopt.mjs:121:48)
+      at /root/dshProj/my-power-dsh/skills/dsh-qa/scripts/agent-teams-adopt.mjs:216:6
+
+Bun v1.3.14 (Linux x64)

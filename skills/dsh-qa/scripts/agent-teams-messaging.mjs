@@ -41,7 +41,7 @@
 //    for the real workspace was written. Never touches the real ~/.dsh.
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -233,29 +233,76 @@ async function plantFixture(workspace, { libDir = PLUGIN_LIB, teamId = TEAM } = 
  * in `evidence/omo-align/qa-shipped-path/…`), while the module keeps importing the
  * current `state.js`. This is the RED arm: the SAME scenario against the shipped path as
  * it was before the repair, so the positive assertion is provably not tautological.
+ * The MEMBER half is addressed by its stable call head (see `MEMBER_CALL_HEAD`): the
+ * member path is not region-wrapped, so it cannot be extracted like the two regions and
+ * must not be pinned as a full-statement literal (t54 — that is what rotted it).
  */
+/**
+ * The member send path's dedup call, addressed by its STABLE HEAD (t54). The previous
+ * fixture pinned the WHOLE single-line statement, so the P1e change that resolved the
+ * dedup window per call (adding a multi-line options argument) rotted it silently: the
+ * transform then failed with a generic message and read like a refactor instead of the
+ * regression detector it is. Only the head is anchored, and the statement is consumed
+ * through its own `);` terminator, so an added/reordered option cannot rot it again.
+ */
+const MEMBER_CALL_HEAD = "appendMailboxDeduped(stateRoot, fresh.id, recipient.name, pendingMember"
+
+/**
+ * Consume the whole call statement that STARTS on the line carrying `head` and ENDS at the
+ * terminator `);` that closes its line — the shape-guard the fixture now uses instead of a
+ * full-statement literal. Returns `{ from, to, text }` in the source's own coordinates, or a
+ * discriminated reason (`absent` = the wiring is GONE; `unterminated` = the statement shape
+ * changed in a way this fixture cannot consume).
+ */
+function consumeCallStatement(source, head) {
+  const at = source.indexOf(head)
+  if (at < 0) return { reason: "absent" }
+  const from = source.lastIndexOf("\n", at) + 1
+  const rel = source.slice(at).search(/\);[ \t]*(?:\n|$)/)
+  if (rel < 0) return { reason: "unterminated", from, line: source.slice(0, from).split("\n").length }
+  return { from, to: at + rel + 2, text: source.slice(from, at + rel + 2) }
+}
+
 function revertDedupWiring(source) {
   const captainRegion = extractRegion(source, "send-dedup-wiring")
   const guardRegion = extractRegion(source, "send-dedup-delivery-guard")
   if (captainRegion === null || guardRegion === null) {
-    fail("cannot build the pre-fix arm: the send-dedup regions are missing (the RED arm must not silently no-op)")
+    fail("cannot build the pre-fix arm: a send-dedup REGION is missing (the RED arm must not silently no-op)")
   }
   const captainOld = [
     "                    const message = { ...createMessage(from, CAPTAIN_KEY, args.content), deliveryClaimedAt: Date.now() };",
     "                    await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, message);",
     "",
   ].join("\n")
-  const memberFixed = "                const { message, folded } = await appendMailboxDeduped(stateRoot, fresh.id, recipient.name, pendingMember);\n"
-  const memberOld = "                const message = { ...createMessage(from, recipient.name, args.content), deliveryClaimedAt: Date.now() };\n                await appendMailbox(stateRoot, fresh.id, recipient.name, message);\n"
+  const memberCall = consumeCallStatement(source, MEMBER_CALL_HEAD)
+  if (memberCall.reason === "absent") {
+    // DISCRIMINATION (t54): an ABSENT anchor is not a fixture that needs re-pinning — it means the
+    // shipped member send path LOST its dedup wiring, i.e. the capability regressed. Say that.
+    fail("the member send path LOST its dedup wiring: `" + MEMBER_CALL_HEAD + "…` is not present in tools.js, so the shipped member path no longer folds duplicate sends — restore/re-materialize the wiring (the region `send-dedup-wiring` is the captain path; the member path is currently UN-REGIONED), then re-run. This is a REGRESSION, not a fixture to re-pin.")
+  }
+  if (memberCall.reason === "unterminated") {
+    fail("cannot build the pre-fix arm: the member dedup call at tools.js:" + memberCall.line + " has no `);` terminating its statement, so the RED arm cannot be consumed from the shipped source (the transform refuses to guess where the statement ends)")
+  }
+  const indent = (source.slice(memberCall.from).match(/^[ \t]*/) ?? [""])[0]
+  const memberFixed = memberCall.text
+  const memberOld = indent + "const message = { ...createMessage(from, recipient.name, args.content), deliveryClaimedAt: Date.now() };\n"
+    + indent + "await appendMailbox(stateRoot, fresh.id, recipient.name, message);\n"
   const guardOld = "            // (pre-fix: no delivery guard - a folded send still ran live delivery)\n"
   let out = source
-  if (!out.includes(captainRegion) || !out.includes(guardRegion) || !out.includes(memberFixed)) {
-    fail("cannot build the pre-fix arm: a reverted region is not present verbatim in tools.js")
+  if (!out.includes(captainRegion) || !out.includes(guardRegion)) {
+    fail("cannot build the pre-fix arm: a reverted REGION is not present verbatim in tools.js")
   }
   out = out.replace(captainRegion, captainOld)
   out = out.replace(/\n\s*\.\.\.folded \? \{ foldedDuplicate: true, dupCount: message\.dupCount \} : \{\},/, "")
   out = out.replace(memberFixed, memberOld)
   out = out.replace(guardRegion, guardOld)
+  // PER-REPLACEMENT guard (t54): the whole-transform `out === source` check cannot see a
+  // member revert that silently no-ops while the other three changed bytes. Assert the
+  // member half APPLIED, so a fixture that stops reverting the member path fails loudly.
+  if (!out.includes(memberOld) || out.includes(MEMBER_CALL_HEAD)) {
+    fail("cannot build the pre-fix arm: the member revert did not apply — the produced source "
+      + (out.includes(MEMBER_CALL_HEAD) ? "still carries the dedup call" : "misses the pre-fix appendMailbox body"))
+  }
   if (out === source) fail("cannot build the pre-fix arm: the reverting transform changed nothing")
   return {
     source: out,
@@ -335,17 +382,29 @@ function selfTest() {
       + " tree=" + computed.fileCount + "/" + computed.treeSha.slice(0, 12) + " (re-pin in the same commit, AGENTS.md §9)")
   }
   // falsifiable: the pin MUST move when one skills file changes (otherwise the
-  // recomputation above could be a constant that always "matches").
-  const probeFile = join(repoRoot, "skills", "dsh-qa", "SKILL.md")
-  const original = readFileSync(probeFile, "utf8")
+  // recomputation above could be a constant that always "matches"). The probe mutates a
+  // TEMP COPY (t54): a probe that wrote into the tracked corpus could leave residue inside
+  // a wave whose whole invariant is that `skills/**` does not move between re-pins, and an
+  // interrupted run would leave the probe line in a tracked file.
+  const probeRoot = mkdtempSync(join(tmpdir(), "agent-teams-messaging-tree-"))
+  let baseline
   let mutated
   try {
-    writeFileSync(probeFile, original + "\n<!-- treeSha falsifiability probe -->\n")
-    mutated = buildTreeSha(join(repoRoot, "skills"))
+    cpSync(join(repoRoot, "skills"), probeRoot, { recursive: true })
+    baseline = buildTreeSha(probeRoot)
+    const probeFile = join(probeRoot, "dsh-qa", "SKILL.md")
+    writeFileSync(probeFile, readFileSync(probeFile, "utf8") + "\n<!-- treeSha falsifiability probe -->\n")
+    mutated = buildTreeSha(probeRoot)
   } finally {
-    writeFileSync(probeFile, original)
+    rmSync(probeRoot, { recursive: true, force: true })
   }
-  if (mutated.treeSha === computed.treeSha) fail("skills treeSha did not move when a file changed (constant hash?)")
+  // The copy must REPRODUCE the working tree's pin before it can falsify anything: a copy
+  // that silently misses files would make the probe below pass for the wrong reason.
+  if (baseline.fileCount !== computed.fileCount || baseline.treeSha !== computed.treeSha) {
+    fail("the temp COPY of skills does not reproduce the working tree's treeSha (copy=" + baseline.fileCount + "/" + baseline.treeSha.slice(0, 12)
+      + " tree=" + computed.fileCount + "/" + computed.treeSha.slice(0, 12) + "), so the falsifiability probe would be vacuous")
+  }
+  if (mutated.treeSha === baseline.treeSha) fail("skills treeSha did not move when a file changed (constant hash?) — the probe mutated a temp COPY, never <repoRoot>/skills")
 
   // (d) the case table row exists, with the same 4 columns as every other row.
   const table = readFileSync(SKILL_MD, "utf8").split("\n").filter((line) => line.startsWith("| " + CASE_SLUG + " |"))
@@ -357,8 +416,8 @@ function selfTest() {
   const runner = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")).scripts["test:qa"]
   if (!runner.includes("skills/dsh-qa/scripts/*.mjs")) fail("test:qa no longer globs the case directory")
 
-  console.log("[" + CASE_SLUG + " self-test] ok: R1 exports + SHIPPED send/clear/interject wiring + this case drives the tool surface + scheduler exclusion on both reads + RED-arm transform applies + VENDOR_LOCK skills pin current ("
-    + computed.fileCount + " files/" + computed.treeSha.slice(0, 12) + ") + SKILL.md row + test:qa glob")
+  console.log("[" + CASE_SLUG + " self-test] ok: R1 exports + SHIPPED send/clear/interject wiring + this case drives the tool surface + scheduler exclusion on both reads + RED-arm transform applies (member revert consumed by its stable head) + VENDOR_LOCK skills pin current ("
+    + computed.fileCount + " files/" + computed.treeSha.slice(0, 12) + ") + treeSha falsifiability probe on a temp COPY (nothing written under <repoRoot>/skills) + SKILL.md row + test:qa glob")
 }
 
 // ------------------------------------------------------------------ real run

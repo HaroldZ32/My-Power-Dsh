@@ -1,0 +1,344 @@
+{
+  "name": "MPD Default",
+  "id": "mpd-default",
+  "description": "Auto-routed by the complexity gate (sessionTeamPolicy.autoRoute; staged — the captain designs the roster/DAG, then the user reviews and approves the plan in the Web panel).",
+  "profile": {
+    "name": "mpd",
+    "description": "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan).",
+    "protocol": "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match.",
+    "taskPlanning": "captain",
+    "reviewPolicy": {
+      "requiredReviewers": []
+    }
+  },
+  "reviewPolicy": {
+    "requiredReviewers": []
+  },
+  "captainSessionId": "session-5632b0ec-5195-4201-bf09-8bbbde795a6b",
+  "createdAt": 1789656335854,
+  "wave": {
+    "label": "w1",
+    "index": 1,
+    "openedAt": 1789656335854
+  },
+  "waveHistory": [],
+  "phase": "staged",
+  "planReviewState": "awaiting_review",
+  "members": [
+    {
+      "id": "",
+      "name": "Architect",
+      "role": "architecture review / deep debugging / self-review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789656335854,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Researcher",
+      "role": "code / open-source evidence search",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789656335854,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Reviewer",
+      "role": "correctness / risk review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789656335854,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Lead",
+      "role": "orchestration / integration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789656335854,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Deep Worker",
+      "role": "autonomous goal-driven implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789656335854,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Senior Engineer",
+      "role": "primary implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789656335854,
+      "status": "idle"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "subject": "Audit the orchestration surface: freeze the assignee-routing spec for auto-generated tasks",
+      "description": "READ-ONLY audit (your seat denies bash/write/edit — use the read, grep and glob tools with absolute paths). The surface under audit is the bundle /root/dshProj/my-power-dsh, which is READ-ONLY for this session. Deliverable is a seam map + a frozen acceptance spec for the T-93 routing change; evidence goes to evidence/routing-audit/seam-map.md (workspace-relative) and nowhere else.\n\nCaptain's already-measured readings (use them, do not re-run bash to reproduce):\n- `node scripts/patch-agent-teams-fixes.mjs --check` in the bundle exits 0 with \"already applied: 93 mpd delta region(s) across 10 adopted file(s)\".\n- `bun test packages/mpd-agent-teams-plugin` in the untouched bundle: 265 pass / 4 fail.\n- The bundle's .mpd/team/friction-p2-wave/team.json shows a LIVE wave (members agent-teams-engineer, packaging-engineer, citation-checker-engineer, watchdog-engineer, citation-reviewer in status working); lane A owns packages/mpd-agent-teams-plugin/lib/**.\n\nRequired output: every seam where an auto-generated task acquires an assignee, the capability source of truth the spawn surface uses, a trace of the measured defect instances to code, the delta-registry constraint, and the frozen spec (+ negative control) the implementation must satisfy.",
+      "status": "pending",
+      "assignee": "Architect",
+      "dependencies": [],
+      "attempt": 0,
+      "createdAt": 1789656558824,
+      "updatedAt": 1789656558824,
+      "kind": "requirements",
+      "objective": "Map every seam where the adopted agent-teams plugin assigns an auto-generated task (repair / review / requirements follow-up) to a seat, name the capability source of truth the spawn surface uses, and freeze the acceptance spec for the routing change — read-only, no writes outside evidence/routing-audit/**.",
+      "acceptance": [
+        "schedulableAssignee (packages/mpd-agent-teams-plugin/lib/quality-gates.js:807) and BOTH call sites — the repair implementer at :884 (`schedulableAssignee(source?.assignee, team)`) and the review seat at :910 — are quoted, and the fallback it returns (first member that is not removed, not captain, not `forbidden`) is shown to ignore capability entirely.",
+        "The capability source of truth is named with file:line: the seven-name READONLY_DENY carried as profile `toolDeny` (profiles.js ~:573-595) and the spawn-surface merge `toolFilter: { deny: [...CAPTAIN_TOOL_NAMES, ...(member.toolDeny ?? [])] }` (members.js ~:603) — i.e. what 'the way the spawn surface does' means concretely.",
+        "The measured instances are traced to this path: t18 (twice), t38 and t41 routed to the Architect, which is the first roster member; cite .mpd/plans/friction-p2-wave-2b.md row T-93 (line 159) and lane A (line 107), and .mpd/plans/friction-p2-wave-captain-log.md section A-55.",
+        "The delta-registry obligation is stated as a hard constraint: mpd-deltas.js:155 carries the line `const implementer = schedulableAssignee(source?.assignee, team);` as the repair-scope region's beforeContext, so editing that line changes region context and REQUIRES `--write-registry` plus a clean `--check`; mpd-deltas.js is generated and must never be hand-edited; the matching row belongs in agent-references/agent-teams-deltas.md.",
+        "A FROZEN acceptance spec covering at least: (a) write kinds (implementation, repair) select only a seat whose effective (merged) deny list permits writes; (b) the reviewed artifact's author is preferred when that author is such a seat; (c) review kinds never select the implementer; (d) the captain fallback survives; (e) maxRepairAttempts, hasOpenFollowUp, round numbering and dependency wiring semantics stay UNCHANGED; (f) capability is read through the same data/helper the spawn surface uses — no duplicated hard-coded seven-name list inside the generator.",
+        "A NEGATIVE CONTROL specified precisely enough to be seedable: on the unpatched bytes a repair generated for a captain-owned source routes to the read-only first roster member, including the fixture shape (team record, failed review, findings, source task).",
+        "Every claim carries a file:line or a quoted reading; an explicit statement lists what could NOT be established (and why)."
+      ],
+      "deliverables": [
+        "evidence/routing-audit/seam-map.md"
+      ],
+      "nonGoals": [
+        "Editing any file in /root/dshProj/my-power-dsh",
+        "Re-running bash commands (this seat has no shell)",
+        "Designing the implementation itself (that is the implementation task)"
+      ],
+      "coverageOf": [
+        "audit the orchestration surface"
+      ]
+    },
+    {
+      "id": "t2",
+      "subject": "Upstream alignment: the upstream routing behaviour and the fork's delta/vendor contract",
+      "description": "READ-ONLY investigation, LOCAL EVIDENCE ONLY (no network fetch; your seat denies bash/write/edit — use read, grep, glob with absolute paths). Subject: the bundle /root/dshProj/my-power-dsh (read-only for this session), which ADOPTS upstream @nanmicoder/dsh-agent-teams as a first-class package and re-applies local adaptations as registered `mpd-delta` regions.\n\nQuestion to answer: if the fork changes the auto-generated-task routing behaviour, what exactly must it do to stay ALIGNED with upstream rather than drifting? Name the upstream reference for the same seam and quote it; rule on whether the change needs a NEW region id or extends an existing region/context (candidate: `repair-scope`, mpd-deltas.js:155); state what VENDOR_LOCK.json / scripts/verify-vendor.mjs do and do NOT require for a lib-only change (argue from the scripts, do not assume); state what agent-references/agent-teams-deltas.md must carry.\n\nMeasured readings you may cite (do not re-run bash): `node scripts/patch-agent-teams-fixes.mjs --check` exits 0, \"93 mpd delta region(s) across 10 adopted file(s)\"; VENDOR_LOCK.json pins upstream code-yeongyu/oh-my-openagent commit 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29, version 5.0.0-beta.20, with assets skills (323 files, treeSha) and packages/mpd-agent-teams-plugin/_deps (635 files, treeSha).\n\nDeliverable: evidence/upstream-alignment/contract.md (workspace-relative), stating the alignment contract + the region ruling + explicit uncertainties.",
+      "status": "pending",
+      "assignee": "Researcher",
+      "dependencies": [],
+      "attempt": 0,
+      "createdAt": 1789656558833,
+      "updatedAt": 1789656558833,
+      "kind": "requirements",
+      "objective": "Establish what upstream does at the auto-generated-task routing seam and what this fork's upstream-alignment contract (mpd-delta regions, registry regeneration, vendor pin, delta table) demands of a local change to that code path — read-only, evidence only.",
+      "acceptance": [
+        "The upstream reference is located and quoted with its path: the adopted package identity (packages/mpd-agent-teams-plugin/package.json — adopted @nanmicoder/dsh-agent-teams 0.1.14 body with 0.1.16-rc.3 upstream deltas backported), the vendored runtime closure packages/mpd-agent-teams-plugin/_deps/**, and any pinned upstream tree present locally (e.g. .qa-reloc/upstream-pinned/**) — with a verdict on whether upstream has the same first-member fallback or a capability-aware chooser.",
+        "The alignment contract is stated with evidence: MPD_DELTA_MARKERS + context-pair anchoring from mpd-deltas.js, `--write-registry` vs `--check` semantics, and the argued (not assumed) impact on VENDOR_LOCK.json / scripts/verify-vendor.mjs for a lib-only change.",
+        "A ruling on region identity: NEW mpd-delta region id vs extending an existing region/its context, naming the exact seam and the evidence for the ruling.",
+        "The required agent-references/agent-teams-deltas.md row shape for a generator-behaviour change, quoting an existing comparable row.",
+        "Explicit statement that nothing was written to the bundle and no network access was used, plus a list of what remains uncertain."
+      ],
+      "deliverables": [
+        "evidence/upstream-alignment/contract.md"
+      ],
+      "nonGoals": [
+        "Changing VENDOR_LOCK.json or re-pinning anything",
+        "Fetching upstream over the network",
+        "Editing any file in /root/dshProj/my-power-dsh"
+      ],
+      "coverageOf": [
+        "align the bundle with upstream"
+      ]
+    },
+    {
+      "id": "t3",
+      "subject": "Implement the T-93 capability-aware routing change in a pinned workspace copy and emit the in-repo patch",
+      "description": "Implement the T-93 routing change on a workspace-resident, hash-pinned copy of the adopted plugin, prove it with tests, and emit a reviewable patch + apply instructions.\n\nHARD CONSTRAINT (verified by the captain, do not spend attempts fighting it): /root/dshProj/my-power-dsh is READ-ONLY for this session — a write there fails with \"Read-only file system\", and sandbox escalation is refused with \"no approval channel is available\". Additionally wave 2b's lane A is LIVE in that tree (team friction-p2-wave; agent-teams-engineer working; lane A owns packages/mpd-agent-teams-plugin/lib/**). Therefore NO file under /root/dshProj may be written, by anyone on this team, at any point. All work lands in this workspace.\n\nShape of the change (subject to t1's frozen spec): schedulableAssignee(preferred, team, forbidden) in packages/mpd-agent-teams-plugin/lib/quality-gates.js:807 currently falls back to the FIRST member that is not removed, not captain and not `forbidden` — no capability check — which is why auto-generated repairs landed on the read-only first roster member (Architect) in t18/t38/t41. Make write-kind routing (implementation/repair) capability-aware, reading a seat's effective deny set the way the spawn surface does (members.js:603 merges CAPTAIN_TOOL_NAMES with the profile-carried `toolDeny`), and keep the review-side call site (:910) from landing on the implementer.\n\nThe seam sits on the beforeContext of the registered `repair-scope` delta region (mpd-deltas.js:155), so the registry must be REGENERATED (`--write-registry`) and `--check` must end clean; never hand-edit mpd-deltas.js.",
+      "status": "pending",
+      "assignee": "Senior Engineer",
+      "dependencies": [
+        "t1",
+        "t2"
+      ],
+      "attempt": 0,
+      "createdAt": 1789656569190,
+      "updatedAt": 1789656569190,
+      "kind": "implementation",
+      "objective": "Implement the capability-aware auto-generated-task routing change (T-93) on a pinned workspace copy of the adopted agent-teams plugin, satisfy t1's frozen spec and t2's alignment contract, prove it with RED/GREEN tests, and emit a patch that applies to the bundle's current bytes — without writing anything under /root/dshProj.",
+      "inScope": [
+        "work/**",
+        "patches/**",
+        "evidence/routing-change/**"
+      ],
+      "acceptance": [
+        "A pinned copy of the touched files exists under work/ and the PINNED BASE HASHES are recorded before any edit: quality-gates.js = a05c2a24bec3f2f988f485a4f846a67d76e1a7cb43d23a249e598b382f8d74bd, mpd-deltas.js = a32aacdfc8a0c085d28199a2d6c2c3349dc640d37d56c5113628374d59da721d, members.js = b1b1ac53cc41f2265fcf5b4e0e4892ee24c617f0ae004ccdd4d8f28ce5289681 (taken 2026-09-17T14:48:48Z). If disk differs, re-pin from disk and record the new hashes with the reason.",
+        "The copy is a TARGETED copy (packages/mpd-agent-teams-plugin + the scripts/patch-agent-teams-fixes.mjs closure + package.json) with node_modules symlinked to the bundle read-only — do NOT copy the 4.5G tree (evidence/ is 639M, .qa-reloc/ 262M); `bun test packages/mpd-agent-teams-plugin` must run in the copy.",
+        "Capability-aware selection is implemented at BOTH call sites (quality-gates.js repair implementer :884 and review seat :910) exactly per t1's frozen spec, with capability read from the same profile/spawn-surface data (member.toolDeny) rather than a duplicated seven-name list; the captain fallback and all round/attempt/dependency semantics are preserved.",
+        "New tests are added that FAIL on the unpatched copy and PASS on the patched copy: (a) captain-owned source + read-only-first roster => repair routed to a writer; (b) the reviewed artifact's author preferred when that author is a writer; (c) a review never lands on the implementer; (d) when NO writer seat exists the outcome is explicit and reported (never a silent read-only assignment).",
+        "`node scripts/patch-agent-teams-fixes.mjs --check` exits 0 in the copy AFTER `--write-registry`; mpd-deltas.js is regenerated, never hand-edited; the agent-references/agent-teams-deltas.md row is drafted (in evidence if the copy lacks the file).",
+        "patches/ contains a unified diff against the PINNED base bytes plus the exact apply, regeneration and verification commands; `git apply --check` (or `patch --dry-run -p1`) succeeds against a pristine copy of those bytes.",
+        "Baseline honesty: the pinned copy's untouched suite result is recorded and the pre-existing failures are reported as pre-existing (the bundle read 265 pass / 4 fail at 14:48Z: t41 contract-tool test, T-13 deferred kind, T-44 text-surface approval, DEFECT 3 read-only surface) — none may be claimed as fixed or silently omitted.",
+        "Proof of no bundle write: the sha256 of the bundle's quality-gates.js, members.js and mpd-deltas.js re-read at the end equal the pinned values."
+      ],
+      "verify": [
+        "bun test packages/mpd-agent-teams-plugin  (from the workspace copy root work/)",
+        "node scripts/patch-agent-teams-fixes.mjs --check  (in the copy; must exit 0)",
+        "git apply --check patches/routing-change.patch  (against a pristine copy of the pinned bytes)"
+      ],
+      "deliverables": [
+        "work/ (pinned working copy)",
+        "patches/routing-change.patch",
+        "evidence/routing-change/result.md"
+      ],
+      "nonGoals": [
+        "Writing under /root/dshProj/my-power-dsh",
+        "Re-pinning VENDOR_LOCK.json or touching skills/**",
+        "Fixing the 4 pre-existing RED rows owned by the live wave",
+        "Committing anything (this session has no write access to the bundle's git)"
+      ],
+      "coverageOf": [
+        "implement the routing change"
+      ]
+    },
+    {
+      "id": "t4",
+      "subject": "Verify the routing change independently: seeded RED, GREEN, registry cleanliness, patch applicability",
+      "description": "Independently verify t3's change set from scratch: rebuild a copy from the bundle's current bytes, apply ONLY the delivered patch, reproduce the RED on the unpatched bytes, confirm GREEN with the patch, confirm registry cleanliness and patch applicability, and prove the bundle tree was not written.\n\nMethod requirements: do NOT inherit t3's working copy or its conclusions; re-derive the reading yourself. Record every command with its exit code and output excerpt. The pinned base readings at 2026-09-17T14:48:48Z were quality-gates.js a05c2a24bec3f2f988f485a4f846a67d76e1a7cb43d23a249e598b382f8d74bd, members.js b1b1ac53cc41f2265fcf5b4e0e4892ee24c617f0ae004ccdd4d8f28ce5289681, mpd-deltas.js a32aacdfc8a0c085d28199a2d6c2c3349dc640d37d56c5113628374d59da721d, and the untouched suite read 265 pass / 4 fail. If disk has drifted (the live wave is writing), re-pin and say so loudly.\n\nNote the asymmetry you must not paper over: the change cannot be verified IN the bundle, only against a copy of its bytes — so the verification verdict covers the change set, not an applied in-repo state.",
+      "status": "pending",
+      "assignee": "Deep Worker",
+      "dependencies": [
+        "t3"
+      ],
+      "attempt": 0,
+      "createdAt": 1789656580079,
+      "updatedAt": 1789656580079,
+      "kind": "verification",
+      "objective": "Independently re-derive the evidence for t3's routing change: seeded RED on unpatched bytes, GREEN with the patch, registry `--check` cleanliness, patch applicability against pristine bytes, and proof that the read-only bundle tree is byte-unchanged.",
+      "inScope": [
+        "verify/**",
+        "evidence/verify-routing/**"
+      ],
+      "acceptance": [
+        "A FRESH copy built from the bundle's current bytes (never reuse work/ from t3) is created under verify/, the applied input is ONLY patches/** from t3, and both the pre-patch and post-patch base hashes are recorded.",
+        "The negative control is observed FAILING on the unpatched bytes (a repair generated for a captain-owned source routes to the read-only first roster member) with the exact command and reading, and PASSING once the patch is applied.",
+        "The suite result in the patched copy is compared against the pinned baseline; every new failure is named with its reading, and the pre-existing failures (t41 contract-tool test, T-13 deferred kind, T-44 text-surface approval, DEFECT 3 read-only surface) are reported as pre-existing — neither as regressions nor as fixes.",
+        "`node scripts/patch-agent-teams-fixes.mjs --check` exits 0 in the patched copy and the registry diff is limited to the expected region(s), with the diff shown.",
+        "Patch applicability is demonstrated against pristine bytes of the pinned revision, and an end-state hash comparison proves /root/dshProj/my-power-dsh is byte-unchanged.",
+        "The report carries an explicit NOT-VERIFIED list naming what the read-only bundle left unmeasurable (at minimum: in-repo application, and interaction with the live wave's concurrent edits)."
+      ],
+      "verify": [
+        "bun test packages/mpd-agent-teams-plugin  (in the fresh verify/ copy, before and after applying the patch)",
+        "node scripts/patch-agent-teams-fixes.mjs --check  (in the patched verify/ copy; must exit 0)",
+        "sha256sum of the bundle's quality-gates.js / members.js / mpd-deltas.js, compared to the pinned values"
+      ],
+      "deliverables": [
+        "verify/ (independent copy)",
+        "evidence/verify-routing/verification.md"
+      ],
+      "nonGoals": [
+        "Editing t3's artifacts under work/ or patches/",
+        "Writing under /root/dshProj/my-power-dsh",
+        "Re-implementing the fix (report defects back instead)"
+      ]
+    },
+    {
+      "id": "t5",
+      "subject": "Review the routing change against the frozen spec",
+      "status": "pending",
+      "assignee": "Reviewer",
+      "dependencies": [
+        "t3"
+      ],
+      "attempt": 0,
+      "createdAt": 1789656580087,
+      "updatedAt": 1789656580087,
+      "kind": "review",
+      "round": 1,
+      "objective": "Judge t3's routing change against t1's frozen acceptance spec and t2's upstream-alignment contract, with findings that carry file/line or a re-runnable command, and a verdict that cannot pass while write-kind routing can still land on a read-only seat.",
+      "acceptance": [
+        "Verdict is pass ONLY if, judged against t1's frozen spec: write-kind auto-generated tasks (implementation/repair) can no longer be routed to a seat whose effective deny set forbids writes; the reviewed artifact's author is preferred when that author can write; a review never lands on the implementer; the captain fallback survives; and capability is read through the same data the spawn surface uses rather than a duplicated list.",
+        "Round semantics are confirmed intact: maxRepairAttempts, hasOpenFollowUp, round numbering, dependency wiring (repair -> source, review -> repair) and the repair-scope carve-out are unchanged, each with the code location that shows it.",
+        "The review judges t3's LATEST implementation state (re-read the artifacts at review time; state the hashes you judged), not an intermediate copy or a paraphrase.",
+        "An explicit statement on whether patches/routing-change.patch is self-contained and applicable to the pinned bytes, and whether the deliverable would leave the fork aligned with upstream per t2's contract."
+      ],
+      "nonGoals": [
+        "Editing the implementation or the patch",
+        "Re-running the whole suite as the primary judgement (that is t4's job; use the artifacts)",
+        "Approving work that meets only the letter of the spec while leaving write-kind routing capable of hitting a read-only seat"
+      ],
+      "reviewedTaskId": "t3"
+    },
+    {
+      "id": "t6",
+      "subject": "Integrate the handoff: audit, alignment, tested patch, and the blocked in-repo application",
+      "description": "Assemble the user-facing handoff for this session: the orchestration-surface audit, the upstream-alignment contract, the tested routing-change patch, the independent verification, and the review verdict — plus the honest statement of what is blocked and how to land it.\n\nThe handoff is written for a reader who will apply the change themselves (or in a session with write access to the bundle). It must therefore be executable: exact patch path, exact apply command, the registry regeneration and check commands, the test command, and what to expect (baseline pass/fail counts, the 4 pre-existing RED rows).\n\nTwo facts the handoff may not soften: (1) no write occurred under /root/dshProj — the bundle is byte-unchanged; (2) the routing change was verified against a copy of the bundle's bytes, never in the bundle itself.",
+      "status": "pending",
+      "assignee": "Lead",
+      "dependencies": [
+        "t4",
+        "t5"
+      ],
+      "attempt": 0,
+      "createdAt": 1789656588779,
+      "updatedAt": 1789656588779,
+      "kind": "integration",
+      "objective": "Assemble a complete, executable handoff of the audit + alignment contract + tested routing-change patch, stating exactly what was and was not done (no writes under /root/dshProj, in-repo application released to the live wave), with every claim re-checked against t4's evidence.",
+      "inScope": [
+        "handoff/**",
+        "evidence/handoff/**"
+      ],
+      "acceptance": [
+        "handoff/ carries an index listing every deliverable (audit, alignment contract, patch, verification, review verdict) with its path, sha256 and the provenance task id.",
+        "The handoff states plainly and without softening: NOTHING was written under /root/dshProj/my-power-dsh (hash evidence); wave 2b lane A in team friction-p2-wave is live and owns packages/mpd-agent-teams-plugin/lib/**; the change set is pinned to the 2026-09-17T14:48:48Z hashes; and the in-repo application step is deliberately UNPERFORMED, with the exact command sequence (apply patch -> --write-registry -> --check -> suite) handed off.",
+        "Residual risks are stated: patch base drift if the live wave edits the same seam, the 4 pre-existing RED rows, the unperformed in-repo application and the wave's own review gate, and the refused sandbox escalation (no approval channel).",
+        "No artifact claims an in-repo implementation, a green in-repo suite, or a fixed T-93 row; each such claim is checked against t4's evidence and removed if unsupported.",
+        "The workspace state is accounted for: which copies were kept deliberately (with their purpose) and which scratch was removed."
+      ],
+      "verify": [
+        "sha256sum of every file named in handoff/README.md, re-derived and matching the index",
+        "sha256sum of the bundle's quality-gates.js / members.js / mpd-deltas.js, still equal to the pinned values"
+      ],
+      "deliverables": [
+        "handoff/README.md",
+        "handoff/apply-routing-change.md"
+      ],
+      "nonGoals": [
+        "Applying the patch anywhere under /root/dshProj",
+        "Committing to git",
+        "Claiming the live wave's own T-93 row as closed (only the wave's own closure can do that)"
+      ]
+    }
+  ],
+  "taskSeq": 6
+}

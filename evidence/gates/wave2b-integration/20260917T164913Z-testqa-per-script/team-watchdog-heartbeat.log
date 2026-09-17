@@ -1,0 +1,14 @@
+[self-test] ok   healthy-observation: 13 checks passed on the healthy observation
+[self-test] ok   negative:install: the mutated observation FAILED its own check(s) ["H1"] — a row that installed no writers
+[self-test] ok   negative:event: the mutated observation FAILED its own check(s) ["H2:tools/post-execute"] — a missing tool hook
+[self-test] ok   negative:tool-stamp: the mutated observation FAILED its own check(s) ["H4"] — a tool stamp that is not post-completion-success
+[self-test] ok   negative:captain: the mutated observation FAILED its own check(s) ["H8"] — no captain stamp (AC-2 needs both)
+[self-test] ok   negative:fresh-read: the mutated observation FAILED its own check(s) ["H9"] — a read that did not come from a fresh process
+[self-test] ok   negative:pre-hook-absent: the mutated observation FAILED its own check(s) ["H5"] — the built bytes lost the pre-dispatch hook
+[self-test] ok   negative:pre-hook-not-subscribed: the mutated observation FAILED its own check(s) ["H5"] — the row never subscribed tools/pre-execute
+[self-test] ok   negative:observe-only-veto: the mutated observation FAILED its own check(s) ["H5"] — a hook that REPLACES the gate decision (veto)
+[self-test] ok   negative:observe-only-mutates: the mutated observation FAILED its own check(s) ["H5"] — a live execution object handed to the listener (it could mutate the call)
+[self-test] ok   negative:observe-only-write-lands: the mutated observation FAILED its own check(s) ["H5"] — a listener write that was not rejected by the frozen copy
+[self-test] ok   negative:observe-only-throws: the mutated observation FAILED its own check(s) ["H5"] — a throwing listener that breaks the call it observes
+[self-test] ok   negative:observe-only-after-body: the mutated observation FAILED its own check(s) ["H5"] — a pre stamp that arrived after the tool body started
+[self-test] PASS — team-watchdog-heartbeat (13 checks, 0 failed)

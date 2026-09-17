@@ -34,7 +34,7 @@
     "verify:rows": "node scripts/verify-rows-parity.mjs",
     "verify:docs": "node scripts/verify-docs-parity.mjs",
     "verify:dist": "node scripts/verify-dist-fresh.mjs",
-    "verify:gates": "node scripts/verify-vendor.mjs && node scripts/verify-dist-fresh.mjs && bun run verify:rows && bun run verify:docs && node skills/dsh-qa/scripts/preset-conformance.mjs --self-test",
+    "verify:gates": "node ./scripts/verify-gates.mjs",
     "repin:vendor": "node scripts/repin-vendor.mjs",
     "dump-config": "node scripts/dump-config.mjs",
     "bootstrap": "node scripts/bootstrap.mjs",

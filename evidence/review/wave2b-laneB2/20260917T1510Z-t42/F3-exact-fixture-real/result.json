@@ -1,0 +1,186 @@
+{
+  "task": "T-80 (t15, wave-2b lane B2): a driver header's `A<n>` claims vs its own assertion keys",
+  "run_at": "2026-09-17T15:14:44.506Z",
+  "mode": "driver-headers",
+  "parameters": {
+    "literal_string": "`A<n>` (claim) and `add(\"A<n>…\")` (key)",
+    "pattern_as_passed": "\\bA(\\d+)\\b + \\bA(\\d+)\\s*[–-]\\s*A?(\\d+)\\b + add\\(\\s*\"A(\\d+)[^\"]*\" (case-sensitive, unescaped)",
+    "tool_mode": "one process, offline, no children",
+    "unit": "one driver file (every finding names its PATH)",
+    "scope": "/tmp/t42-exact/dir",
+    "moment": "2026-09-17T15:14:44.506Z"
+  },
+  "policy": {
+    "claimed_but_unasserted": "VIOLATION",
+    "asserted_but_unclaimed": "VIOLATION (a header that under-claims is reported, never silent)",
+    "no_claim_set": "REPORTED, not a violation — the equality rule has no subject; the file and its keys are named",
+    "reference_lines": "an `A<n>` token on a line pointing at another artifact's numbering (acceptance/design/§/t<nn>) is a REFERENCE, counted and printed, never a claim",
+    "out_of_family": "a citation cited by POSITION (no literal string) and a BASENAME-ONLY path (no `/`) are OUT OF FAMILY: the six addressing parameters require a repo-relative literal, so neither shape is judged and both pass silently — a green run says nothing about them (t31/B2-F3)"
+  },
+  "audit": {
+    "moment": "2026-09-17T15:14:44.506Z",
+    "units": {
+      "files_scanned": "driver files under the scope (unit: FILES)",
+      "per_directory_split[].files": "driver files scanned in that directory (unit: FILES)",
+      "per_directory_split[].key_producers": "driver files producing at least one add(\"A<n>…\") key (unit: FILES)",
+      "per_directory_split[].keys": "DISTINCT A<n> key ids produced anywhere in that directory — deduped at DIRECTORY scope (the UNION of the directory's files' key ids), never the sum of per-file counts (t41/B2R3-F1; seeded shape in the arm `t80-directory-scope-dedup`)",
+      "per_directory_split[].claims": "DISTINCT A<n> key ids CLAIMED by that directory's headers — deduped at DIRECTORY scope, never summed per file (t41/B2R3-F1; same seeded arm)",
+      "per_directory_split[].violations": "DISTINCT mismatched A<n> key ids in that directory — claimed-but-unasserted ∪ asserted-but-unclaimed, deduped at DIRECTORY scope; never a sum of per-file counts and never a file count (t41/B2R3-F1; same seeded arm)",
+      "per_directory_split[].no_claim_set": "rows whose header claims nothing of its own (unit: ROWS/driver files)",
+      "claim_set_parsed": "driver rows whose header yields at least one claim (unit: ROWS/driver files)",
+      "no_claim_set": "driver rows whose header yields no claim of its own (unit: ROWS/driver files)",
+      "violations": "DISTINCT mismatched A<n> key ids across the scope — deduped at SCOPE (the union over the scanned rows), never a sum of per-row counts (unit: KEYS, never files)",
+      "third_direction.measured": "reference LINES carrying an A<n> token, summed over rows, and the distinct token ids they carry (unit: LINES, then token ids)",
+      "matcher_error_directions[].measured": "each direction states its alternative and its number WITH the unit inline (files / key producers / keys)"
+    },
+    "units_sweep": {
+      "round": "t41 (B2R3-F1) — the class requirement",
+      "seeded_this_round": {
+        "per_directory_split[].keys": "arm `t80-directory-scope-dedup`: three files in ONE directory, each producing A1–A2 → the SUMMING computation printed 6, the deduped count is 2",
+        "per_directory_split[].claims": "same seeded shape: the three files claim A1–A3 → the summing computation printed 8, the deduped count is 3",
+        "per_directory_split[].violations": "same seeded shape: two files claim A3 while asserting only A1–A2 → the summing computation printed 2, the deduped count is 1 (and the scope `violations` is the same union)"
+      },
+      "read_and_named_consistent": [
+        "directories[].files_scanned",
+        "per_directory_split[].files",
+        "per_directory_split[].key_producers",
+        "per_directory_split[].no_claim_set",
+        "claim_set_parsed",
+        "no_claim_set",
+        "third_direction.measured",
+        "matcher_error_directions[].measured"
+      ],
+      "falsifiable_now": "the three seeded fields can be RE-FALSIFIED by re-running that arm; the read-only list is an ASSERTION, named as such — a reader can tell which verdicts are falsifiable (t41)."
+    },
+    "directories": [
+      {
+        "path": "/tmp/t42-exact/dir",
+        "recursive": true,
+        "files_scanned": 3
+      }
+    ],
+    "per_directory_split": {
+      "../../../tmp/t42-exact/dir/": {
+        "files": 3,
+        "key_producers": 3,
+        "keys": 2,
+        "claims": 3,
+        "violations": 1,
+        "no_claim_set": 0
+      }
+    },
+    "claim_set_parsed": 3,
+    "no_claim_set": 0,
+    "violations": 1,
+    "third_direction": {
+      "name": "the line-wide REFERENCE exemption",
+      "unit": "reference LINES (not driver files): the sum, over the scanned rows, of their `reference_lines` entries that carry an `A<n>` token",
+      "measured": "0 reference LINE(s) carry 0 A<n> token(s) (none); the exemption skips the WHOLE line, so a claim sharing a line with an artifact reference is not claimed — declared and measured rather than silent (t31/B2-F4, unit corrected in t36)"
+    },
+    "matcher_error_directions": [
+      {
+        "direction": "over-report",
+        "alternative": "whole-header token scan (no claim-marker scope, no reference filter)",
+        "measured": "3 file(s) flagged and 3 key(s) reported as mismatched, against 3 with the precise rule"
+      },
+      {
+        "direction": "under-report",
+        "alternative": "non-recursive /tmp/t42-exact/dir*.mjs (misses lib/)",
+        "measured": "3 key producer(s) found against 3"
+      },
+      {
+        "direction": "under-report",
+        "alternative": "a file-type assumption (.js) instead of .mjs",
+        "measured": "0 key producer(s) found against 3"
+      },
+      {
+        "direction": "over-report",
+        "alternative": "a whole-repo literal scan for `add(\"A`",
+        "measured": "30 key-producing .mjs file(s) repo-wide against 3 in scope"
+      }
+    ],
+    "not_inherited": "lane A's T-92 audit split (25 self-fix-tests/** + 17 test/** = 42 `not.toContain(` occurrences; subject-scoped 3 with 0 reddened) measures a DIFFERENT audit — different literal, different subject — and is not reused here."
+  },
+  "drivers": [
+    {
+      "path": "../../../tmp/t42-exact/dir/a.mjs",
+      "keys": [
+        1,
+        2
+      ],
+      "claims": [
+        1,
+        2,
+        3
+      ],
+      "no_claim_set": false,
+      "claimed_but_unasserted": [
+        3
+      ],
+      "asserted_but_unclaimed": [],
+      "reference_lines": [],
+      "reference_tokens": [],
+      "claim_lines": [
+        "This driver CHECKS A1–A3."
+      ],
+      "phrases": {
+        "A3": "This driver CHECKS A1–A3."
+      }
+    },
+    {
+      "path": "../../../tmp/t42-exact/dir/b.mjs",
+      "keys": [
+        1,
+        2
+      ],
+      "claims": [
+        1,
+        2,
+        3
+      ],
+      "no_claim_set": false,
+      "claimed_but_unasserted": [
+        3
+      ],
+      "asserted_but_unclaimed": [],
+      "reference_lines": [],
+      "reference_tokens": [],
+      "claim_lines": [
+        "This driver CHECKS A1–A3."
+      ],
+      "phrases": {
+        "A3": "This driver CHECKS A1–A3."
+      }
+    },
+    {
+      "path": "../../../tmp/t42-exact/dir/c.mjs",
+      "keys": [
+        1,
+        2
+      ],
+      "claims": [
+        1,
+        2,
+        3
+      ],
+      "no_claim_set": false,
+      "claimed_but_unasserted": [
+        3
+      ],
+      "asserted_but_unclaimed": [],
+      "reference_lines": [],
+      "reference_tokens": [],
+      "claim_lines": [
+        "This driver CHECKS A1–A3."
+      ],
+      "phrases": {
+        "A3": "This driver CHECKS A1–A3."
+      }
+    }
+  ],
+  "violations": [
+    "CLAIMED-BUT-UNASSERTED ../../../tmp/t42-exact/dir/a.mjs A3 — header phrase: \"This driver CHECKS A1–A3.\"",
+    "CLAIMED-BUT-UNASSERTED ../../../tmp/t42-exact/dir/b.mjs A3 — header phrase: \"This driver CHECKS A1–A3.\"",
+    "CLAIMED-BUT-UNASSERTED ../../../tmp/t42-exact/dir/c.mjs A3 — header phrase: \"This driver CHECKS A1–A3.\""
+  ]
+}

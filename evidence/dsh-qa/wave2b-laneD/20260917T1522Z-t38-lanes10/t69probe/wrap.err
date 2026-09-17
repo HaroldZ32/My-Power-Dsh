@@ -1,0 +1,12 @@
+[dump-config] COMPOSITION ONLY — rows composed, no plugin code executed.
+[dump-config] The flag COMPOSES rows (base / bundle / patch / preset layers) and NEVER executes plugin code,
+[dump-config] so it CANNOT witness a plugin load, an apply abort or a schema rejection.
+[dump-config] Measured (AGENTS.md §4): `dsh --profile mpd --dump-config` exited 0 with the mpd-workmate row
+[dump-config] present while the real boot of the same profile could not load the tree.
+[dump-config] profile: w
+[dump-config] command: dsh --profile w --dump-config
+[dump-config] For a LOAD proof run a mounting boot instead: `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`,
+[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.
+[dump-config] ---- the composed rows below are the child's own output ----
+dsh: [@mpd-dsh/mpd] patch: entry "dsh-tui-agent-presets" not found
+[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).

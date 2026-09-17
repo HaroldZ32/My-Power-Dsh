@@ -1,0 +1,36 @@
+=== wave-2b lane B2 (t15) — run set, 2026-09-17T14:25:16Z ===
+
+-- 1: scoped citation run (acceptance-shaped, explicit --out) --
+exit=0
+
+[docs-claims] 13/13 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+-- retained revisions in that run dir --
+   checker.mjs
+   superseded.mjs
+
+-- 2: citation --self-test (arms) --
+exit=0
+
+[docs-claims] 25/25 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 3: T-80 fixture arms --
+exit=0
+
+[driver-headers self-test] 3/3 arms passed
+
+-- 4: ADDENDUM A(3) anchor scans over this lane's own run dir (pattern named, moment stated) --
+exit=0 (0 = no mailbox-record id)
+
+[anchor-scan] 0 match(es) in 11 file(s) under ./evidence/gates/wave2b-laneB2/20260917T142452Z
+exit=0 (0 = no mailbox-record field)
+
+[anchor-scan] 0 match(es) in 13 file(s) under ./evidence/gates/wave2b-laneB2/20260917T142452Z
+
+-- 5: the contract's verify command VERBATIM (writes the legacy default run dir, which is in this lane's write set) --
+exit=0
+
+[docs-claims] 13/13 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- hashes --
+fbdc02569a8be827745c13dadaec63eb2353ab1380d245ac6a275a2381779f28  scripts/check-citations.mjs
+dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c  evidence/extensions/docs-claims/check-citations.mjs

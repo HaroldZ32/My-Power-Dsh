@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wtm-dsh-FQh1mO",
+  "wmHome": "/tmp/mpd-wtm-home-NzS0XO",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "injection": {
+      "ok": true,
+      "sample": "eport. |  | Let me delete and then give the final report with DONE. |  | Actually — should I? Protocol: \"Present the team's results to the user, then agent_teams_delete the team unless the user wants to keep working with it.\" Work is done (t1 completed, all gates passed, no pending work). I'll delete. | dsh: reasoning: | Now report each result. End with DONE. |  | Summarize: | 1) mpd_workmate_init {base:\"hephaestus\", name:\"alice\"} → \"workmate alice initialized (base Deep Worker, deepseek-official/deepseek-v4-flash)\". Note base \"hephaestus\" resolved to Deep Worker. | 2) mpd_workmate_reflect → \"workmate alice reflected (uses=1, persona 1996B / memory 97B / note 159B)\". | 3) agent_teams_create "
+    },
+    "reflect": {
+      "ok": true,
+      "tokenCount": 2,
+      "uses": 2
+    },
+    "files": {
+      "ok": true,
+      "memory": "## 2026-09-17T14:49:04.609Z — memorize build token\nalice remembers the build token is PINEAPPLE42\n\n## 2026-09-17T14:49:21.519Z — report build token\nMy independent workmate memory says the build token "
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer"
+    }
+  }
+}

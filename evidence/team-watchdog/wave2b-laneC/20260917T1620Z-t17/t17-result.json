@@ -1,0 +1,122 @@
+{
+  "schema": "t17/lane-c-wave2b/1",
+  "task": "t17",
+  "attemptId": "0f28ac5d-bce4-4873-bbfe-922fd6c53b44",
+  "lane": "C",
+  "title": "T-79's decisive host-restart test + the instrument legs (T-25, T-41, ADDENDUM A)",
+  "record": "evidence/team-watchdog/wave2b-laneC/20260917T1620Z-t17/t17-record.md",
+  "writeSetUsed": ["evidence/team-watchdog/wave2b-laneC/20260917T1620Z-t17/**"],
+  "notWritten": {
+    "packages/mpd-team-watchdog-plugin/src/**": "no edit",
+    "packages/mpd-team-watchdog-plugin/test/**": "no edit",
+    "agent-references/troubleshooting.md": "read-only: sha256 5f0b4b3659bad48632254b0f2601c95dd385bd9d94aa91d7d82d9f6d0c1a4e58, mtime 2026-09-17 17:02:41 +0800 (09:02:41Z) — byte-identical to wave 2a's reading and older than this task's window",
+    "packages/*/dist/** and dist/mpd-package/**": "find -newermt 2026-09-17T14:15Z -type f => EMPTY (the only files newer in the derived trees are .mpd/plans/friction-p2-wave-2b.md and …-captain-log.md, the captain's)",
+    "scripts/** and skills/**": "run only, never edited (lane B's and lane D's files)"
+  },
+  "revisionPinsTakenAtWrite": {
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js": "4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68",
+    "skills/dsh-qa/scripts/lib/session-evidence.mjs": "73d06d44dcb781df…",
+    "scripts/mpd-bg.mjs": "0b294972b05f5e4e…",
+    "scripts/mpd-doctor.mjs": "21b1db27251d8d44…",
+    "skills/dsh-qa/scripts/team-watchdog-config.mjs": "f9f03ca7e048e207…",
+    "agent-references/agent-teams-deltas.md": "a2120d45fca43ef1…",
+    "liveRegionIds": 93,
+    "liveRegionIdsPredicate": "MPD_DELTAS entries in packages/mpd-agent-teams-plugin/lib/mpd-deltas.js, corroborated by the live //#region mpd-delta markers in the adopted files (the registry file's own header comment is NOT a region); re-taken 2026-09-17T14:51:13Z and independently corroborated by verify-docs-parity (93/10)",
+    "liveRegionIdsWas": { "value": 89, "why": "a loose grep predicate that also counted the registry file's own self-description, on a moving count read at 14:35Z — t23's finding, repaired by t33 (see t17-record.md ADDENDUM 2)" },
+    "t79ReplayCountAtThisMoment": "8 MEASURED EVENTS (.mpd/TODO.md row T-79: 'A SEVENTH MEASURED EVENT' + 'AN EIGHTH EVENT AND A MACHINE-CHECKABLE DISCRIMINATOR') — the count moves"
+  },
+  "t79DecisiveTest": {
+    "question": "does a fresh load of the current tree still hand a member a ticket for an already-TERMINAL task?",
+    "restartMeaning": "a NEW PROCESS importing the current tree fresh, started as a MANAGED background job with isolated DSH_HOME, sandboxed HOME and an explicit sandbox cwd (under T-21 the loaded revision is a process property)",
+    "fixture": "the recorded live shape named in the acceptance §3 (terminal task + idle member + a ticket-composing kick), attempt id 7c133ef3-5e5b-4d95-a3d7-86d0d5661efb",
+    "wrongReasonFixturesAvoided": ["a bare status read", "an idle-edge-only probe"],
+    "schedulerSha256": "4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68",
+    "legs": {
+      "control_pending_current_tree": { "ticketsComposed": 1, "deliveries": 1, "reading": "the same kick with a claimable task CAN wake — so the zeros below are readings, not a dead path" },
+      "pure_terminal_current_tree": { "ticketsComposed": 0, "deliveries": 0, "reading": "terminal work is filtered at SELECTION; no ticket is ever composed" },
+      "recorded_race_current_tree": { "ticketsComposed": 1, "forcedTerminal": true, "deliveries": 0, "namedDeclines": 1, "decline": "agent-teams: dispatch declined for decisive-probe/Architect: task t14 became completed before its assignment could be delivered — the member was NOT woken for it, and the task's own status was left exactly as it is" },
+      "recorded_race_region_stripped": { "ticketsComposed": 1, "forcedTerminal": true, "deliveries": 1, "reading": "RED SIDE: with the re-check region removed the same race delivers" }
+    },
+    "outcomeReadingBothWays": {
+      "observed": "NOT WOKEN on the kick route (0 deliveries + the NAMED decline) while the RED SIDE delivers",
+      "moves": "the kick route moves from UNTESTED to REFUSED-with-a-named-decline",
+      "doesNotMove": "the mechanism claim stays REFUTED-for-a-fresh-process as filed; the replays stay MEASURED EVENTS; the residual stays UNRESOLVED with the named probe cited on scheduler.js; every OTHER wake route (approval/spawn-time dispatch, the idle edge, memberSelections, a stale on-disk snapshot read outside the lock) is unmeasured",
+      "wordingAuthority": "captain log §A-28 + register row T-79 override the acceptance's OUTCOME-B bullet (the FORBIDDEN-WORDING block); neither forbidden framing is used anywhere in this lane's artifacts"
+    },
+    "discriminator": {
+      "predicate": "delivery.attempt_id == completion.attempt_id AND the task is terminal",
+      "completionAttemptId": "7c133ef3-5e5b-4d95-a3d7-86d0d5661efb",
+      "measuredTicketAttemptIds": ["48c3f297-206a-4956-8c0e-6d144a6d5a9b", "251420e9-5066-40f2-a0a0-7a09d4549691"],
+      "equalityHalfHolds": false,
+      "reading": "the compose MINTED A FRESH attempt id in both race legs, so the refusal this instrument observes is carried by the TERMINALITY half; a fix keyed only on `attempt_id equal AND terminal` would NOT have reddened on this construction, and the equality half stays unmeasured (it needs a route that delivers an UNROTATED stored attempt id)"
+    },
+    "hostRestartMechanics": {
+      "managedJob": "node ./scripts/mpd-bg.mjs run --log … --pid … --cwd … -- sh -c \"env DSH_HOME=… HOME=… node <driver> --out …\" (never nohup)",
+      "launchMoments": ["pass1 2026-09-17T22:28:14+08:00", "pass2 (authoritative) 2026-09-17T22:28:28+08:00"],
+      "restartMomentSource": "the driver's own result (`t79-decisive-result.json` → restart.moment)",
+      "liveness": { "whileAlive": "node ./scripts/mpd-bg.mjs probe <pidfile> → RUNNING pid=27", "afterExit": "→ DEAD pid=27" },
+      "jobExit": "T79-DRIVER-EXIT=0",
+      "passArchive": "raw/pass1-t79-restart-job.log (first pass) vs raw/t79-restart-job.log (pass2, authoritative)"
+    },
+    "prohibitionsHonoured": {
+      "noReclaimOrRerunOfTheTerminalTask": "the fixture is a synthetic team record in a per-leg temporary workspace, destroyed after the leg; the driver never calls agent_teams_claim_task/update_task and asserts the record's bytes are unchanged (teamBytesUnchanged: true in every leg)",
+      "noHostStartTimeClaim": "only the restart process's own moment and the two probe readings are recorded"
+    }
+  },
+  "t25InstrumentLeg": {
+    "reader": "skills/dsh-qa/scripts/lib/session-evidence.mjs (sha256 73d06d44dcb781df…, lane D's file, READ-ONLY import)",
+    "store": ".qa-reloc/home/sessions/--root-dshProj-my-power-dsh-.qa-reloc-ws--/session-e1799679-7918-4249-8b90-ccb13410d59c/session.v3.jsonl.zstd",
+    "sameStoreSameMoment": "byte- and mtime-stable across every reading; the store was selected by readSessionEvents itself so all four readers read the SAME file",
+    "readings": {
+      "naiveOneFrame": { "records": 1, "events": 0, "type": "session" },
+      "regressedControl": { "records": 1, "events": 0 },
+      "shippedFrameByFrame": { "records": 26, "events": 25, "frames": 10, "toolCalls": 1 },
+      "shippedHighLevel": { "records": 26, "frames": 10 }
+    },
+    "rowWording": "0 events from a naive reader is NOT proof of an empty log",
+    "negativeControl": "a reader regressed to a single-frame read returns exactly the naive reading, so the shipped assertion (events > 0) is the arm that reddens — executed, not asserted",
+    "corpusCensus": { "storesFound": 10, "multiFrame": 10, "naiveZeroEvent": 10 },
+    "manualReconciliation": "AGENTS.md §7 records '10 frames, 1 vs 25 records'; this store measures 10 frames, 1 header RECORD vs 25 EVENT records (26 raw records) — stated as a reconciliation, not as proof it is the same store"
+  },
+  "t41ProbeLeg": {
+    "instrument": "scripts/mpd-doctor.mjs (sha256 21b1db27251d8d44…, lane B's file, READ-ONLY)",
+    "baseline": { "command": "node ./scripts/mpd-doctor.mjs", "entries": { "node": "ok", "ast-grep": "ok", "codegraph": "ok", "lsp": "ok", "git-bash": "ok", "comment-checker": "ok" }, "verdict": "verdict=OK exit=0", "exit": 0 },
+    "pinned": { "command": "MPD_AST_GREP_SG_PATH=/nonexistent/ast-grep-absent node ./scripts/mpd-doctor.mjs", "absentEntryStatus": "MISSING", "degradeSentence": "⇒ degrades: the ast_grep MCP exposes no tools (mcp__ast_grep__search / mcp__ast_grep__scan / mcp__ast_grep__rewrite unavailable)", "namesThePin": true, "otherEntries": { "node": "ok", "codegraph": "ok", "lsp": "ok", "git-bash": "ok", "comment-checker": "ok" }, "verdict": "verdict=DEGRADED exit=2 … missingOPTIONAL=ast-grep", "exit": 2 },
+    "negativeControl": "the same assertion run against the same output with the absent binary's own line REMOVED reddens (executed) — so the green is not from a command that cannot fail",
+    "shapeNote": "the missing entry's status word is UPPERCASE `MISSING` while healthy entries read lowercase `ok` — a lowercase-only grep misses this reading",
+    "writingCollision": {
+      "issue": "clause (5) requires full untruncated output; clause (2) requires the forbidden framings to appear nowhere in artifacts this task touches; the doctor's static git-bash line carries the single forbidden token once per run",
+      "resolution": "captures kept verbatim and complete; a provenance note filed beside them (raw/t41-capture-note.md) names the occurrence with the token written split; the derived token-free per-entry census lives in t41-absent-binary-assert-result.json",
+      "clauseStatus": "passed with one named exception (a quoted third-party line, not a framing of T-79's residual)"
+    }
+  },
+  "addendumA": {
+    "instrument": "skills/dsh-qa/scripts/team-watchdog-config.mjs (sha256 f9f03ca7e048e207…, lane D's file — run only, never edited)",
+    "live": { "command": "bun ./skills/dsh-qa/scripts/team-watchdog-config.mjs --live --out <dir>/addendum-A/live", "reading": "mounted=90000 file=900000 sameInstance=900000 fileApplied=true restartRequired=false; liveWithoutRestart: true — the same instance reported the on-disk value with no restart; result: PASS", "exit": 0 },
+    "mutant": { "command": "bun ./skills/dsh-qa/scripts/team-watchdog-config.mjs --mutant restart-needed --out <dir>/addendum-A/mutant", "reading": "mutant restart-needed: DETECTED (the assertion reddened) — liveWithoutRestart: false — liveness LOST; KNOBS DIVERGE (§7.3): warnSilenceMs live=90000 file=900000", "exit": 0 },
+    "conclusion": "the knobs are truly live in-process (T-18's ruling) with the restart path still detectably broken when a value genuinely cannot be applied; the mutant arm is the part that must redden and it did"
+  },
+  "verify": [
+    { "command": "bun test ./packages/mpd-team-watchdog-plugin", "exit": 0, "evidence": "raw/verify-bun-test-watchdog.txt — 139 pass / 0 fail / 684 expect() calls / Ran 139 tests across 13 files; 13 *.test.ts files exist in the package, so the census matches (T-89: ./ is the control, the census is a hint)" },
+    { "command": "node ./evidence/team-watchdog/wave2b-laneC/20260917T1620Z-t17/t79-decisive-driver.mjs --out <dir>/verify-rerun", "exit": 0, "evidence": "raw/verify-t79-rerun.txt — independent second pass of the 4-leg matrix" },
+    { "command": "node ./evidence/team-watchdog/wave2b-laneC/20260917T1620Z-t17/t25-naive-vs-frame-reader.mjs --out <dir>/verify-rerun", "exit": 0, "evidence": "raw/verify-t25-rerun.txt" },
+    { "command": "node ./evidence/team-watchdog/wave2b-laneC/20260917T1620Z-t17/t41-absent-binary-assert.mjs --dir <dir>", "exit": 0, "evidence": "t41-absent-binary-assert-result.json" },
+    { "command": "node ./scripts/mpd-bg.mjs --self-test", "exit": 0, "evidence": "raw/verify-mpd-bg-selftest.txt" },
+    { "command": "node ./scripts/mpd-doctor.mjs --self-test", "exit": 0, "evidence": "raw/verify-mpd-doctor-selftest.txt" },
+    { "command": "node ./evidence/team-watchdog/wave2b-laneC/20260917T1620Z-t17/t79-decisive-driver.mjs --out <dir>  (immutability arm, same target)", "exit": 3, "evidence": "REFUSED: t79-decisive-result.json already exists (immutable evidence) — a re-run cannot silently clobber an archived reading" }
+  ],
+  "forbiddenCommandsNotRun": ["bun run test:qa", "bun run test:qa:all", "bun run verify:gates", "node scripts/verify-vendor.mjs", "node scripts/verify-dist-fresh.mjs", "bun run typecheck"],
+  "tokenCensus": {
+    "agent-references/troubleshooting.md": { "forbiddenTokenA": 0, "forbiddenPhraseB": 0 },
+    "laneOwnProseAndArtifacts": { "forbiddenTokenA": 0, "forbiddenPhraseB": 0 },
+    "thirdPartyCaptures": { "raw/t41-baseline.txt": 1, "raw/t41-pinned.txt": 1, "note": "the doctor's static git-bash line; named in raw/t41-capture-note.md and in the record §C.1" }
+  },
+  "nonCoverage": [
+    "the other wake routes (approval/spawn-time dispatch, the idle edge, memberSelections, a stale on-disk snapshot read outside the lock) are unmeasured",
+    "no full booted-dsh team lifecycle was run",
+    "the equality half of the discriminator is unmeasured",
+    "the probe's bound stands: no reading here says what a long-lived host has loaded",
+    "the T-41 leg asserts the doctor's output, not the resolver underneath it; the T-25 leg reads this workspace's QA corpus, not the harness in general"
+  ],
+  "finishedAt": "2026-09-17T14:45:00Z"
+}

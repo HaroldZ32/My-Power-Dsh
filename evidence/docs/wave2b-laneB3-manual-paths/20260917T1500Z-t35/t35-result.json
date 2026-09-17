@@ -1,0 +1,60 @@
+{
+  "schema": "t35/impl-B3-3-anticipatory-class/1",
+  "task": "t35",
+  "attemptId": "151b71d0-a870-45ec-8dee-4f90ff592f3e",
+  "objective": "teach scripts/verify-manual-paths.mjs the repository's DECLARED anticipatory class — named, reasoned, counted and printed like the docs gate's — so the checker exits 0 on the current clean tree while a genuinely unresolved path still fails",
+  "record": "evidence/docs/wave2b-laneB3-manual-paths/20260917T1500Z-t35/record.md",
+  "writeSetUsed": ["scripts/verify-manual-paths.mjs", "evidence/docs/wave2b-laneB3-manual-paths/20260917T1500Z-t35/**"],
+  "instrument": { "path": "scripts/verify-manual-paths.mjs", "sha256_prefix": "6b3095ce97e9d127", "bytes": 35668, "tracked": false, "gitPorcelain": "?? scripts/verify-manual-paths.mjs", "manualUntouched": { "path": "AGENTS.md", "sha256": "32a297191e12fdaba0021c35b732ab367d0828002564e426713a6a4cb8349d7a", "bytes": 53464 } },
+  "whatWasBuilt": [
+    "ANTICIPATORY_PATHS: the two rel paths mapped to their REASONS, with a header comment citing AGENTS.md §3's policy sentence and the docs gate's print form",
+    "two buckets: `anticipatory` (direction `declared`) and `declared-unreferenced` (the ROT GUARD)",
+    "one branch in audit(): a mention is classed anticipatory ONLY when existsSync says the file is absent AND the manual spells that exact rel path",
+    "the rot-guard loop + its print, and a `census family=declared` line + a `PASS … declared=N` clause + a `NOTE declared-unreferenced=N`",
+    "four self-test arms (class-green, does-not-widen, removed-fails, rot-guard) + `arm.args` passthrough + the test-only `--no-anticipatory` flag, documented in usage() as able only to REMOVE an exemption",
+    "NO matcher line touched: classify(), the candidate/shape/anchor rules and the existence test are unchanged; the class is consulted after the existence test"
+  ],
+  "readings": {
+    "before": { "instrument": "old", "exit": 1, "subjects": "audited=111 resolved=109 unresolved=2", "names": ["docs/adder4.md (AGENTS.md:14)", "docs/cnt8.md (AGENTS.md:14)"], "families": "over 65/6 · under 79/7", "capture": "evidence/docs/wave2b-laneB3-manual-paths/20260917T1455Z-t28/raw/verify-manual-paths-after2.log" },
+    "after": { "instrument": "this one", "exit": 0, "subjects": "audited=109 resolved=109 unresolved=0", "classPrinted": "anticipatory AGENTS.md:14 -> docs/adder4.md [ANTICIPATORY — not a live path: kept by design (AGENTS.md §3), printed by `scripts/verify-docs-parity.mjs` as its own class, and deliberately not created yet]", "families": "over 65/6 · under 79/7 · declared 2/2", "pass": "PASS resolved=109 over-report=65 under-report=79 declared=2", "capture": "raw/after-in-place.log" }
+  },
+  "redArms": {
+    "removal": { "command": "node ./scripts/verify-manual-paths.mjs --no-anticipatory", "exit": 1, "reading": "unresolved=2, both names — a path REMOVED from the class RETURNS to failing", "capture": "raw/removal-arm.log" },
+    "t28ArmReplayed": { "command": "node ./scripts/verify-manual-paths.mjs --manual /tmp/t35-red/t28-arm.md", "exit": 1, "reading": "unresolved=1, the injected docs/this-path-does-not-exist.md NAMED", "capture": "raw/red-arm-t28-arm.log" },
+    "newBadPath": { "command": "node ./scripts/verify-manual-paths.mjs --manual /tmp/t35-red/new-bad-path.md", "exit": 1, "reading": "unresolved=1, docs/this-path-was-never-there.md NAMED — the class does not widen", "capture": "raw/red-arm-new-bad-path.log" },
+    "selfTestArms": { "anticipatory-does-not-widen": "exit 1 (undeclared missing path still fails)", "anticipatory-removed-fails": "exit 1 (class emptied)", "anticipatory-class-green": "exit 0 with the class printed", "anticipatory-rot-guard": "exit 0 with a NOTE (declared-unreferenced=1)" }
+  },
+  "matcherNotLoosened": {
+    "method": "MEASURED, because the instrument is UNTRACKED (no byte diff exists and no pre-edit copy was archived)",
+    "driver": "t35-census-compare.mjs -> t35-census-equivalence.json (verdict PASS, 8/8 checks)",
+    "checks": {
+      "classEmptiedEqualsOldInstrument": "all 16 shared buckets equal (audited=111, resolved=109, unresolved=2, over-report:bare=13, :fragment=34, :notRoot=11, :npm=6, :trailing=1, :url=0, under-report:absolute=2, :elided=4, :glob=39, :home=10, :outside=1, :placeholder=23, :prose=0)",
+      "addedBucketsEmptyWhenClassEmptied": "anticipatory=0, declared-unreferenced=0",
+      "familiesEqual": "over 65 · under 79; declared=0 (the added family)",
+      "stillFailsOnTheSameTwoNames": "unresolved=2",
+      "classActiveRunGreen": "unresolved=0, PASS {resolved:109, over:65, under:79, declared:2}",
+      "movementFullyAccounted": "0 unresolved + 2 anticipatory + 0 unreferenced = 2 = before.unresolved",
+      "classTouchesNothingOutsideItself": "resolved 109->109, over 65->65, under 79->79, audited 111->109",
+      "bothEntriesNamedWithTheirReason": "anticipatory=2, declared-unreferenced=0, family declared=2"
+    }
+  },
+  "censusMovementExplained": {
+    "acceptanceNumbers": "over-report 65/6 buckets, placeholder 19, glob 37, under-report 73, audited 115 — these are the readings BEFORE t28's manual edits",
+    "step1_t28ManualEdits": { "placeholder": "19 -> 23 (+4)", "glob": "37 -> 39 (+2)", "underReport": "73 -> 79 (+6)", "audited": "115 -> 111 (-4)", "overReport": "65/6 unchanged", "unresolved": "7 -> 2" },
+    "step2_thisInstrumentChange": { "unresolved": "2 -> 0", "anticipatory": "added = 2", "declaredUnreferenced": "0", "audited": "111 -> 109", "resolved/over/under/placeholder/glob": "unchanged" },
+    "conclusion": "every delta is attributed to one of two steps; nothing was absorbed"
+  },
+  "verify": [
+    { "command": "node ./scripts/verify-manual-paths.mjs", "exit": 0, "evidence": "raw/after-in-place.log — resolved=109, unresolved=0, declared family=2, class printed with its reason" },
+    { "command": "node ./scripts/verify-manual-paths.mjs --self-test", "exit": 0, "evidence": "raw/selftest.log — 10/10 arms PASS (six pre-existing + four new)" },
+    { "command": "node t35-census-compare.mjs --out .", "exit": 0, "evidence": "t35-census-equivalence.json — verdict PASS, 8/8 checks" },
+    { "command": "bun run ./scripts/verify-docs-parity.mjs", "exit": 0, "evidence": "pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS (unaffected by this task, checked anyway)" }
+  ],
+  "nonGoalsHonoured": { "manualEdited": false, "silentIgnoreList": false, "matcherWidened": false, "anticipatoryMentionsRemoved": false },
+  "residualBounds": [
+    "the rot guard is a NOTE, not a failure — whether a declared-but-unreferenced entry should ever fail is a policy call this task did not take unilaterally",
+    "the --no-anticipatory hook exists for the removal arm and can only REMOVE an exemption",
+    "the non-loosening proof is census-level equivalence on this manual, not a byte diff (the instrument is untracked and no pre-edit copy exists)"
+  ],
+  "finishedAt": "2026-09-17T15:02:00Z"
+}

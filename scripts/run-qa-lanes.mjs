@@ -165,15 +165,73 @@ function laneScriptsOnDisk(root) {
     .map((name) => LANE_DIR + "/" + name)
 }
 
+/** EVERY `.mjs` entry in the lane directory, UNFILTERED and sorted — the independent walk the
+ * discovery is asserted against (T-89's RUNNER half, lane B). */
+function allMjsEntries(root) {
+  const dir = join(root, LANE_DIR)
+  if (!existsSync(dir)) return []
+  return readdirSync(dir)
+    .filter((name) => name.endsWith(".mjs"))
+    .sort()
+    .map((name) => LANE_DIR + "/" + name)
+}
+
 function collectDrift(root, manifest) {
   const declared = new Set(manifest.entries.filter((e) => e.kind !== "gate").map((e) => e.script))
-  const unlistedScripts = laneScriptsOnDisk(root).filter((script) => !declared.has(script))
+  const discovered = laneScriptsOnDisk(root)
+  const unlistedScripts = discovered.filter((script) => !declared.has(script))
   const missingScripts = manifest.entries
     .filter((e) => e.kind !== "gate" && e.script && !existsSync(join(root, e.script)))
     .map((e) => ({ case: e.case, script: e.script }))
   // A script that is on disk and in the manifest, but not in any suite, is a deliberate exclusion
   // and is NOT drift: the manifest states its reason (`outsideSuites`).
-  return { unlistedScripts, missingScripts, guard: collectGuard(root, manifest) }
+  const countDrift = collectCountDrift(root, manifest, discovered)
+  return { unlistedScripts, missingScripts, countDrift, guard: collectGuard(root, manifest) }
+}
+
+/**
+ * T-89's RUNNER half (lane B's obligation on this file): the discovery ASSERTS THE DISCOVERED FILE
+ * COUNT, so a silently-discovered copy reddens. `discovered` is what the runner will actually
+ * consider; `allMjs` is an INDEPENDENT walk of the same directory. They may differ only by the
+ * DOCUMENTED underscore exclusion — any other difference means the discovery dropped (or invented) a
+ * file, which is the shape the row names. Every number is re-derived from the tree on every run and
+ * is never a constant quoted from prose.
+ */
+function collectCountDrift(root, manifest, discovered) {
+  const allMjs = allMjsEntries(root)
+  const discoveredSet = new Set(discovered)
+  const excludedUnderscore = allMjs.filter((script) => !discoveredSet.has(script) && script.split("/").pop().startsWith("_"))
+  const unexpectedDrop = allMjs.filter((script) => !discoveredSet.has(script) && !script.split("/").pop().startsWith("_"))
+  const outsideSuites = manifest.entries
+    .filter((e) => e.kind !== "gate" && e.script && (e.suites ?? []).length === 0)
+    .map((e) => e.script)
+  const declaredSet = declaredScriptSet(manifest)
+  const listed = discovered.filter((script) => declaredSet.has(script))
+  const unlisted = discovered.filter((script) => !declaredSet.has(script))
+  const problems = []
+  if (unexpectedDrop.length > 0) problems.push("the discovery dropped " + unexpectedDrop.length + " .mjs entry(ies) that are neither underscore-excluded nor declared: " + unexpectedDrop.join(", "))
+  if (discovered.length + excludedUnderscore.length !== allMjs.length) {
+    problems.push("the discovery does not partition the directory: discovered=" + discovered.length + " + underscore-excluded=" + excludedUnderscore.length + " != .mjs entries=" + allMjs.length)
+  }
+  if (existsSync(join(root, LANE_DIR)) && discovered.length === 0 && allMjs.length > 0) {
+    problems.push("the lane directory holds " + allMjs.length + " .mjs entry(ies) but the discovery returned none (zero-subject discovery)")
+  }
+  return {
+    discovered: discovered.length,
+    allMjsEntries: allMjs.length,
+    listed: listed.length,
+    unlisted: unlisted.length,
+    outsideSuites: outsideSuites.length,
+    excludedUnderscore,
+    unexpectedDrop,
+    partition: { discoveredPlusExcludedEqualsAllMjs: discovered.length + excludedUnderscore.length === allMjs.length, ok: problems.length === 0 },
+    problems,
+  }
+}
+
+/** The DECLARED lane-script set, as a Set — shared by collectDrift and collectCountDrift. */
+function declaredScriptSet(manifest) {
+  return new Set(manifest.entries.filter((e) => e.kind !== "gate").map((e) => e.script))
 }
 
 /**
@@ -572,6 +630,9 @@ function runSuite(opts, manifest, ctx) {
     const value = ctx.drift[driftKind]
     if (value.length > 0) emit("[mpd-qa:" + run.suite + "] drift " + driftKind + "=" + value.length + " (run --list --check-drift for detail)")
   }
+  // T-89 runner half: the discovered COUNT is printed on every run, and any count problem is loud.
+  emit("[mpd-qa:" + run.suite + "] discovery=" + ctx.drift.countDrift.discovered + " lane script(s) (.mjs entries " + ctx.drift.countDrift.allMjsEntries + ", underscore-excluded " + ctx.drift.countDrift.excludedUnderscore.length + ", unlisted " + ctx.drift.countDrift.unlisted + ", outside-suite " + ctx.drift.countDrift.outsideSuites + ")")
+  for (const problem of ctx.drift.countDrift.problems) emit("[mpd-qa:" + run.suite + "] drift count: " + problem)
   // T-83: the resolved required set is printed on EVERY run — including `required=0`, which is a RED.
   emit("[mpd-qa:" + run.suite + "] immutability required=" + ctx.drift.guard.required.length + (ctx.drift.guard.required.length === 0 ? " (RED: no lane declares required)" : ": " + ctx.drift.guard.required.join(", ")) + " exempt=" + ctx.drift.guard.exemptCount)
   for (const problem of guardProblems(ctx.drift.guard)) emit("[mpd-qa:" + run.suite + "] immutability guard: " + problem)
@@ -630,6 +691,8 @@ function listRegistry(root, manifest, drift, asJson) {
   lines.push("immutabilityGuard exempt (" + drift.guard.exemptCount + ") — each with a declared reason; no lane may be silent")
   for (const problem of guardProblems(drift.guard)) lines.push("immutabilityGuard PROBLEM: " + problem)
   lines.push("")
+  lines.push("discovery (" + drift.countDrift.discovered + " lane script(s); .mjs entries " + drift.countDrift.allMjsEntries + ", underscore-excluded " + drift.countDrift.excludedUnderscore.length + ", outside-suite " + drift.countDrift.outsideSuites + ")")
+  for (const problem of drift.countDrift.problems) lines.push("discovery PROBLEM: " + problem)
   lines.push("drift unlistedScripts (" + drift.unlistedScripts.length + "): " + (drift.unlistedScripts.join(", ") || "none"))
   lines.push("drift missingScripts (" + drift.missingScripts.length + "): " + (drift.missingScripts.map((m) => m.case + " -> " + m.script).join(", ") || "none"))
   return lines.join("\n")
@@ -670,6 +733,11 @@ function selfTest() {
     "fx-hang.mjs": "setTimeout(() => {}, 5000)\n",
     "fx-outside.mjs": "console.log('fx-outside: declared in the manifest with suites=[] — a deliberate exclusion, not drift')\nprocess.exit(0)\n",
     "fx-truly-unlisted.mjs": "console.log('fx-truly-unlisted: on disk in NO manifest entry')\nprocess.exit(0)\n",
+    // T-89 runner half fixtures: one DOCUMENTED exclusion (underscore prefix) and one non-.mjs file.
+    // Neither is a lane; the count assertion must still account for the underscore one and never count
+    // the .txt one — a discovery that started counting either would redden the partition arm below.
+    "_fx-internal.mjs": "console.log('_fx-internal: a helper, not a lane — the underscore prefix is the documented exclusion')\nprocess.exit(0)\n",
+    "fx-notes.txt": "not a lane script; the discovery only considers .mjs entries\n",
     // Marker-less lanes are the majority in the real corpus (only ~6 of 44 implement the protocol),
     // so the runner must read their OWN recorded signatures: a missing provider credential makes the
     // lane UNAVAILABLE, while a 401 means the service answered and refused — the lane really failed.
@@ -913,13 +981,17 @@ function main() {
     if (opts.json) console.log(JSON.stringify(drift, null, 2))
     if (drift.unlistedScripts.length > 0) console.error("[run-qa-lanes] drift: " + drift.unlistedScripts.length + " lane script(s) on disk in no manifest entry: " + drift.unlistedScripts.join(", "))
     if (drift.missingScripts.length > 0) console.error("[run-qa-lanes] drift: " + drift.missingScripts.length + " manifest entry(ies) whose script is gone: " + drift.missingScripts.map((m) => m.case).join(", "))
+    // T-89 runner half: the discovered count is PRINTED and asserted — every number here came from this
+    // run's own walk of the lane directory, so a silently-discovered copy cannot stay invisible.
+    console.log("[run-qa-lanes] discovery: " + drift.countDrift.discovered + " lane script(s) discovered (" + drift.countDrift.listed + " listed, " + drift.countDrift.unlisted + " unlisted, " + drift.countDrift.outsideSuites + " outside every suite); .mjs entries " + drift.countDrift.allMjsEntries + ", underscore-excluded " + drift.countDrift.excludedUnderscore.length)
+    for (const problem of drift.countDrift.problems) console.error("[run-qa-lanes] drift: " + problem)
     for (const problem of problems) console.error("[run-qa-lanes] immutability guard: " + problem)
     // The resolved set is printed in the SAME canonical shape on every surface (check-drift, run, list).
     console.log("[run-qa-lanes] immutability required=" + drift.guard.required.length + (drift.guard.required.length === 0 ? " (RED: no lane declares required)" : ": " + drift.guard.required.join(", ")) + " exempt=" + drift.guard.exemptCount)
-    if (drift.unlistedScripts.length === 0 && drift.missingScripts.length === 0 && problems.length === 0) {
-      console.log("[run-qa-lanes] manifest and disk agree (" + manifest.entries.length + " entries) and the immutability guard is declared")
+    if (drift.unlistedScripts.length === 0 && drift.missingScripts.length === 0 && drift.countDrift.problems.length === 0 && problems.length === 0) {
+      console.log("[run-qa-lanes] manifest and disk agree (" + manifest.entries.length + " entries, " + drift.countDrift.discovered + " lane script(s) discovered) and the immutability guard is declared")
     }
-    process.exit(drift.unlistedScripts.length > 0 || drift.missingScripts.length > 0 || problems.length > 0 ? EXIT.FAILED : EXIT.GREEN)
+    process.exit(drift.unlistedScripts.length > 0 || drift.missingScripts.length > 0 || drift.countDrift.problems.length > 0 || problems.length > 0 ? EXIT.FAILED : EXIT.GREEN)
   }
   const ctx = makeContext(opts, drift)
   let run

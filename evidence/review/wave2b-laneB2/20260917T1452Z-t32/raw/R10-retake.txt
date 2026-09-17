@@ -1,0 +1,6 @@
+=== B2-F1 fresh re-take: the retained round-1 copy ===
+1146 evidence/gates/wave2b-laneB2/20260917T142452Z/citation-run/revisions/checker.mjs
+fbdc02569a8be827745c13dadaec63eb2353ab1380d245ac6a275a2381779f28  evidence/gates/wave2b-laneB2/20260917T142452Z/citation-run/revisions/checker.mjs
+=== the repaired checker, pinned (settle check) ===
+53ae5cbc387c95566fadaf6697cff6b31f9e759f6cdefb9e519d99f33bc8b41f  scripts/check-citations.mjs
+2026-09-17T14:53:58Z

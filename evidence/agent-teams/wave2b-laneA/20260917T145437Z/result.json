@@ -1,0 +1,48 @@
+{
+  "task": "t29 — repair r2 — close t19's SEVEN findings on lane A",
+  "agent": "agent-teams-engineer",
+  "attemptId": "86274e1c-e6d1-43e5-8d5e-aaf2758b216d",
+  "contract_revision": "2 (amended by the captain while pending)",
+  "source_task": "t13",
+  "reason_task": "t19",
+  "date": "2026-09-17T14:54Z",
+  "verify_contract": { "command": "bun test ./packages/mpd-agent-teams-plugin", "exit": 0, "result": "269 pass / 0 fail / 2380 expect() calls / 40 files" },
+  "review_read_first": "evidence/review/wave2b-laneA/20260917T142959Z/{README.md,result.json,PIN.txt,my-arm-before-revert.out.txt,my-adversarial.mjs}",
+  "captain_rulings_copied": "captain-rulings.md (T-90: the artifact is the anchor; the mailbox id is provenance)",
+  "findings": {
+    "R1": { "ruling": "scope: the ten unimplemented rows are OUT of t29 (item 1 of the captain's rulings)", "evidence": "captain-rulings.md; t27 landed T-13/T-27/T-44" },
+    "R2": { "status": "landed by t27 as deliverable + verify + review; nothing closed by rule", "evidence": "evidence/agent-teams/wave2b-laneA/20260917T1455Z/README.md" },
+    "R3": { "fix": "EXTEND (ruling 2): phantomDependencies() + dependencyCycle() in lib/state.js; the reader returns phantoms ∪ cycle members; the note reports `cycle c2→c1→c2`", "red": "arm-cycle-before.out.txt (10 failures, exit 1)", "green": "arm-cycle-after.out.txt (0, exit 0)" },
+    "R4": { "fix": "the committed driver's own revert-state run stored; the stale log KEPT and labelled", "red": "arm-before-committed.out.txt (6 failures, exit 1)", "label": "arm-before-SUPERSEDED.md (quotes the replaced assertion `dependencyStates names the unresolvable id separately`)", "pre_extension_driver": "arm.mjs.pre-cycle-extension = 36de7d01e48c441f393034d4034bb768fd7af58e249d38923fcdb7de8dbb4af0" },
+    "R5": { "fix": "NAME matching under a normalised comparison in verifyCovered + the near-miss named in the refusal", "measured": "no entry for bun run x; nearest provided: \"SOME OTHER COMMAND\" (matched 0 of 1)", "red": "repair-arms-before.out.txt", "green": "repair-arms-after.out.txt" },
+    "R6": { "fix": "the NAME reading in acceptanceCovered (whole function inside one region)", "measured": "a wrong-named ninth item of the right count is REFUSED; `nearest provided: \"item-9-UNDER-A-DIFFERENT-NAME\" (matched 8 of 9)`; a paraphrase (case+whitespace) still passes", "red": "repair-arms-before.out.txt", "green": "repair-arms-after.out.txt" },
+    "R7": { "fix": "the commandsRun description names `reported` + its required `reason` label (mpd-delta reported-red-description)", "measured": "read back from the REGISTERED tool's parameters.properties.commandsRun.description", "red": "repair-arms-before.out.txt", "green": "repair-arms-after.out.txt" }
+  },
+  "registry": {
+    "command": "node scripts/patch-agent-teams-fixes.mjs --write-registry && --check",
+    "check_exit": 0,
+    "count": "96 regions across 10 adopted files",
+    "registry_sha256": "464610bcad077c85aaeb98469a45c399fd08dd38ce9004e7bae45c59ad8d66c0",
+    "new_regions": ["mpd-delta coverage-name-match", "mpd-delta acceptance-name-match", "mpd-delta reported-red-description"],
+    "modified_in_place": ["mpd-delta dependency-failed-unblock", "mpd-delta coverage-gap-text", "mpd-delta reported-red-coverage"],
+    "trap_measured": "the first `acceptance-name-match` region SPLIT acceptanceCovered: --check and verify:docs were green, but the region-stripped skeleton was mangled and the strip/heal cycle could not place `reported-red-coverage` (269 -> 263 pass, 6 red). Wrapping the WHOLE function in the one region fixed it (21/21 heal tests). Both placement rules (never NEST, never SPLIT a function) are recorded in the deltas doc."
+  },
+  "derived_gate": { "command": "bun run verify:docs", "exit": 0, "result": "PASS — pairs=38 failed=0 violations=0 exempt=19 derived=3; carried **96**/10 vs derived 96/10; D-range A1–D42 unchanged", "evidence": "gate-verify-docs.log" },
+  "revisions": {
+    "lib/state.js": "85e579acf1441870335ba5a4f5e25e5ea92ac7394ed60ef24891afd7da926336",
+    "lib/quality-gates.js": "01ea2f92319a732f42d5a956c947b9b00fdba20640ec8c8ed77a037ae12ce929",
+    "lib/tools.js": "39d77fe6826d19375ea682dfc21aeb42995f1ff818aeb5d1e0ac96b1c1455ea1",
+    "lib/mpd-deltas.js": "464610bcad077c85aaeb98469a45c399fd08dd38ce9004e7bae45c59ad8d66c0",
+    "agent-references/agent-teams-deltas.md": "4d6cedd8fff33c803a73409f3fe2d02e718d84ae02a20aef22afb6e892b467f6",
+    "arm.mjs": "4a2a875abc72a08f39f2c0a210372ce5ad30e69cee7f150f5498ae8673ec66b0"
+  },
+  "bounds": [
+    "No repo-wide aggregate was run (verify:gates, test:qa, test:qa:all, verify-dist-fresh, typecheck; also not verify-vendor/verify-pack-closure).",
+    "The ten unimplemented rows are NOT closed here (the captain's scope ruling); their readings belong to their own tasks.",
+    "packages/*/dist/**, dist/mpd-package/**, VENDOR_LOCK.json and .mpd/plans/** are untouched.",
+    "The test/** hop was not needed and not requested: the two test/** pins the first attempt reddened were satisfied by in-scope design changes.",
+    "The cycle reader is deterministic and bounded to the task list; phantoms and cycles only."
+  ],
+  "evidence_dir": "evidence/agent-teams/wave2b-laneA/20260917T145437Z/",
+  "row_driver_dir": "evidence/agent-teams/wave2b-laneA/20260917T141608Z/"
+}

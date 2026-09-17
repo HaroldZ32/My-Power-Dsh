@@ -1,0 +1,13 @@
+bun test v1.3.14 (0d9b296a)
+
+self-fix-tests/t49-retention-prune.test.mjs:
+(pass) P1b: the three eligibility conditions, each armed on its own [6.21ms]
+(pass) P1b: archive-first — the sidecar holds the bytes, and the tombstone keeps its markers [1.29ms]
+(pass) P1b: the knob — 0 disables the prune, a per-call window is honoured, and the ACK path runs it automatically [2.21ms]
+[P1b] seeded 45 records at 1970-01-31T00:16:40.000Z → pruned 40, tombstones 40, live 5
+(pass) P1b: MEASURED before/after on a SEEDED mailbox, and the t43 clear guard still holds [14.66ms]
+
+ 4 pass
+ 0 fail
+ 26 expect() calls
+Ran 4 tests across 1 file. [66.00ms]

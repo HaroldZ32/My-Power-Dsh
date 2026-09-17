@@ -387,9 +387,9 @@ describe("T-05 / T-79 (delivery half) — a blocked or terminal task is never de
     const schedulerPath = join(scratch.libDir, "scheduler.js")
     writeFileSync(schedulerPath, spliceOnce(
       readFileSync(schedulerPath, "utf8"),
-      "return task.status === 'pending'\n        && task.reassigning !== true\n        && unsatisfiedDependencies([...tasks], task.dependencies).length === 0;",
-      "return task.status === 'pending'\n        && task.reassigning !== true;",
-      "drop the dependency test from the readiness predicate",
+      "\n        && unsatisfiedDependencies([...tasks], task.dependencies).length === 0",
+      "",
+      "drop the dependency test from the readiness predicate (anchor = the single dependency conjunct, so a SIBLING conjunct another lane adds to the predicate cannot silently break this arm — t33 repair)",
     ))
     const fix = await fixture(rosterTasks(), { members: roster, libDir: scratch.libDir, label: "predicate-control" })
     try {

@@ -1,0 +1,12 @@
+[verify-manual-paths] self-test fixtures /tmp/verify-manual-paths-msS8tT (temp only; nothing in the repo is written)
+[verify-manual-paths] arm 1/10 all-exist-green: exit=0/0 resolved=3 unresolved=0 over-report=0 under-report=0 declared=0 — PASS
+[verify-manual-paths] arm 2/10 missing-path-red: exit=1/1 resolved=1 unresolved=1 over-report=0 under-report=0 declared=0 — PASS
+[verify-manual-paths] arm 3/10 over-report-separate: exit=0/0 resolved=2 unresolved=0 over-report=5 under-report=0 declared=0 — PASS
+[verify-manual-paths] arm 4/10 under-report-separate: exit=0/0 resolved=1 unresolved=0 over-report=0 under-report=3 declared=0 — PASS
+[verify-manual-paths] arm 5/10 zero-subjects-degraded: exit=1/1 resolved=0 unresolved=0 over-report=0 under-report=0 declared=0 — PASS
+[verify-manual-paths] arm 6/10 missing-manual-cannot-run: exit=2/2 resolved=- unresolved=- over-report=- under-report=- declared=- — PASS
+[verify-manual-paths] arm 7/10 anticipatory-class-green: exit=0/0 resolved=1 unresolved=0 over-report=0 under-report=0 declared=2 — PASS
+[verify-manual-paths] arm 8/10 anticipatory-does-not-widen: exit=1/1 resolved=1 unresolved=1 over-report=0 under-report=0 declared=1 — PASS
+[verify-manual-paths] arm 9/10 anticipatory-removed-fails: exit=1/1 resolved=1 unresolved=2 over-report=0 under-report=0 declared=0 — PASS
+[verify-manual-paths] arm 10/10 anticipatory-rot-guard: exit=0/0 resolved=1 unresolved=0 over-report=0 under-report=0 declared=1 — PASS
+[verify-manual-paths] self-test PASS: 10/10 arms

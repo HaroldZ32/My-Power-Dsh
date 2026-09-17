@@ -1,0 +1,29 @@
+--- install ---
+Already up to date
+
+dependencies:
++ @mpd-dsh/mpd 0.9.1 <- ../../../../..
+
+Done in 193ms using pnpm v11.23.0
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 11.23.0 → 12.4.2.   │
+   │   Changelog: https://pnpm.io/v/12.4.2   │
+   │    To update, run: pnpm self-update     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+
+--- boot ---
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=fail binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/root/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-17T16-03-26.499Z
+
+--- remove ---
+✓ Lockfile passes supply-chain policies (verified 10s ago)
+Already up to date
+
+dependencies:
+- @mpd-dsh/mpd 0.9.1
+
+Done in 104ms using pnpm v11.23.0

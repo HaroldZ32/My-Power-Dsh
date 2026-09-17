@@ -1,0 +1,121 @@
+{
+  "task": "t30",
+  "kind": "review",
+  "round": 2,
+  "object": "wave-2b lane A (t13) after the t29 repair — the seven round-1 findings",
+  "done_when": "evidence/requirements/wave2b-laneA/20260917T1405Z-wave2b-laneA-acceptance.md",
+  "verdict": "needs_revision",
+  "verdict_reason": "ONE low finding introduced by the R3 extension: the cycle half of unresolvedDependencyNote reports a cycle whose members no longer block, so the model-facing status line claims an unresolved dependency for a task the scheduler will dispatch. Everything else in the repair is verified: all seven round-1 findings are closed, every reading reproduced, both semantic reverts redden the right assertions, and the registry family is green end-to-end at the current revision.",
+  "pins_round2": {
+    "settled": true,
+    "settle_window_s": 50,
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js": "01ea2f92319a732f",
+    "packages/mpd-agent-teams-plugin/lib/tools.js": "39d77fe6826d1937",
+    "packages/mpd-agent-teams-plugin/lib/state.js": "85e579acf1441870",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "464610bcad077c85",
+    "agent-references/agent-teams-deltas.md": "4d6cedd8fff33c80"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "problem": "The T-29 cycle extension reports a cycle without checking whether its members still block. Measured for T with deps ['B'] where B<->C cycle: with B and C both `failed` (or both `completed`), dependencyStates(T).blocking is [] — the task is CLAIMABLE, per OPT-1 'a FAILED dependency does not block' — yet unresolvedDependencyNote(T) returns ' [unresolved dep: cycle B\\u2192C\\u2192B]', and renderStatus appends that note to EVERY task line (lib/tools.js task-line template). So the model-facing status tells a reader that a dispatchable task has an unresolved dependency. A mutual pair of FAILED tasks is a natural record shape; the completed variant is reachable by force-completion, the family T-79 replays.",
+      "requiredFix": "Derive the cycle report from the same predicate the gate uses — report a cycle only while its members are still unsatisfied/non-terminal (e.g. skip cycle members whose status is terminal), or suppress the note when the task's own blocking set is empty. One condition, not a redesign; the phantom half is correct and unaffected.",
+      "file": "packages/mpd-agent-teams-plugin/lib/state.js",
+      "line": 181
+    }
+  ],
+  "observations": [
+    {
+      "id": "O1",
+      "severity": "low",
+      "note": "transitive deadlock is not named: with T deps ['A'] and A -> B -> C -> B, A is named ('cycle B→C→B') but T's note is empty although T can never be woken. The acceptance's observable is satisfied for every case it names (a nonexistent id, or a cycle through a dependency); naming T needs a reachability fixpoint, which the frozen row does not ask for."
+    },
+    {
+      "id": "O2",
+      "severity": "low",
+      "note": "both of the repair's 'before' sides are runs against git HEAD (pre-wave-2b), so they redden for a broader reason than the repaired line (its 6 failures include R7-era absences). My ARM F (count-only revert of just the name match) reddens exactly the 4 R5/R6 assertions, and ARM B (cycle half reverted) exactly the 4 cycle assertions — the sharper reds, recorded here."
+    },
+    {
+      "id": "O3",
+      "severity": "low",
+      "note": "a new region inserted INSIDE an existing region is silently absorbed (not registered) by --write-registry; my first end-to-end probe hit this and the instrument property was already recorded in the t19 review. A TOP-LEVEL region registers normally (96 -> 97 with --check green)."
+    }
+  ],
+  "finding_disposition_round1": {
+    "R1": "CLOSED by the captain's SCOPE ruling, read from the copied artifact captain-rulings.md (T-90: the artifact is the anchor); t29 closes findings, not rows, and t27 has since landed T-13/T-27/T-44",
+    "R2": "the A3 rows are t27's own task and evidence — not audited in this round (bound)",
+    "R3": "CLOSED for the named cases: 2-cycle names both members, 3-cycle names three, self-dependency detected, diamond and satisfied linear chain clean, phantom still named — with residual F1/O1 filed",
+    "R4": "CLOSED: both pair members reproduced by me — preserved pre-extension driver vs git HEAD = 6 failures; extended driver vs git HEAD = 10 failures; the stale log is kept and labelled with the replaced assertion quoted",
+    "R5": "CLOSED and attacked: wrong-named `reported` and wrong-named `passed` entries REFUSED with the near-miss named; legitimate labelled red completes; failed still fails; omitted commandsRun refused; tolerance limited to case/whitespace/trailing punctuation (internal punctuation refused)",
+    "R6": "CLOSED and attacked: wrong 9th name of the right count REFUSED with the near-miss named; duplicated provided name cannot cover two required names; one provided entry for two required items refused",
+    "R7": "CLOSED: the commandsRun description now names `reported` with its required `reason` label (read back from the driver's own output)"
+  },
+  "arms_run_by_me": [
+    {
+      "arm": "committed extended driver at the current revision",
+      "reading": "RED-SIDE FAILURES: 0"
+    },
+    {
+      "arm": "semantic revert of the CYCLE HALF only",
+      "reading": "4 failures — exactly the four [T-64/cycle] assertions; T-87/T-84 untouched"
+    },
+    {
+      "arm": "preserved pre-extension driver vs git-HEAD bytes",
+      "reading": "6 failures (matches arm-before-committed.out.txt)"
+    },
+    {
+      "arm": "extended driver vs git-HEAD bytes",
+      "reading": "10 failures (matches arm-cycle-before.out.txt)"
+    },
+    {
+      "arm": "semantic revert of the NAME match to count-only",
+      "reading": "4 failures — exactly the [R5/green] and [R6/green] assertions, with the failed-command control still PASS"
+    },
+    {
+      "arm": "registry drift inside an existing region, no regeneration",
+      "reading": "--check FAIL, exit 1, 'no longer matches this script's registered block — first difference at line 673'"
+    },
+    {
+      "arm": "NEW top-level region -> --write-registry -> --check (scratch mirror)",
+      "reading": "96 -> 97 regions, --check green at 97, probe id present in the registry"
+    }
+  ],
+  "reproduced": [
+    {
+      "reading": "plugin package suite",
+      "command": "bun test ./packages/mpd-agent-teams-plugin",
+      "value": "269 pass / 0 fail / 2380 expect() calls / 40 files, exit 0"
+    },
+    {
+      "reading": "self-fix-tests suite",
+      "command": "bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/",
+      "value": "112 pass / 0 fail / 16 files, exit 0"
+    },
+    {
+      "reading": "registry check",
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "value": "96 mpd delta region(s) across 10 adopted file(s), exit 0"
+    },
+    {
+      "reading": "docs gate + derived arm",
+      "command": "bun run verify:docs",
+      "value": "PASS — carried 96/10 vs derived 96/10 … markers agree: 96; derived D-range A1–D42"
+    },
+    {
+      "reading": "count sentence moved in the same change",
+      "value": "agent-references/agent-teams-deltas.md now reads 96 regions across 10 adopted files (was 93/10)"
+    },
+    {
+      "reading": "dist surfaces",
+      "value": "find packages/*/dist dist/mpd-package -newermt 2026-09-17T22:55Z -type f -> empty"
+    }
+  ],
+  "not_verified": [
+    "t27's own implementation of T-13/T-27/T-44 (R2's closure) — a different task's evidence, not audited here",
+    "the repair's split-region/heal-suite trap measurement (269 -> 263 pass) — I verified the parts I could (top-level region registers; drift reddens) but not that claim inside a mirror",
+    "whether the other rows the scope ruling left out have since been implemented",
+    "no mounted dsh boot: all readings are module-level plus the two CLI legs"
+  ],
+  "evidence_dir": "evidence/review/wave2b-laneA/round2/"
+}

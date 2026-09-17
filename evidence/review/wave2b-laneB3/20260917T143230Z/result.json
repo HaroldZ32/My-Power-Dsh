@@ -1,0 +1,62 @@
+{
+  "task": "t22 — rev-B3 — falsify wave-2b lane B3 (docs & doctrine, pre-pack gate)",
+  "reviewed": "t16 (impl-B3)",
+  "reviewer": "citation-checker-engineer (lane B2 author — independent of B3 by authorship)",
+  "attemptId": "02cb7834-028c-4e67-b0d8-884122b82a77",
+  "date": "2026-09-17T14:32–14:38Z",
+  "verdict": "pass",
+  "pinned_revision": {
+    "moment": "2026-09-17T14:32:30Z, re-pinned at 14:37:10Z after a settle window (settle-and-bytes.log)",
+    "scripts/verify-docs-parity.mjs": "4068616ac479a8601874f65eb5cfc04c23b34e39ce890c3acb502a953a09eb9d",
+    "AGENTS.md": "b1f1a28372ef4c018541378850e7628433e4e3e7750ad66fbb4460e569a75ec0",
+    "templates/mpd-extension/README.md": "8e1fbb893fcb428b4059bb04cceca6980aec7d8f9f104b3c76a85de2cf13e316",
+    "templates/mpd-extension/README.zh-CN.md": "832ad62f8099b20a55ef5914c2b511e90cfc26e049500360dfdbce7bbfb914f5",
+    "identical_after_settle": true
+  },
+  "reproduced_readings": {
+    "gate_live": { "command": "bun run verify:docs", "exit": 0, "verdictLine": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS", "raw": "gate-live.stdout" },
+    "gate_self_test": { "command": "node scripts/verify-docs-parity.mjs --self-test", "exit": 0, "reading": "27/27 checks passed — PASS", "raw": "gate-selftest.stdout" },
+    "census": { "command": "node scripts/verify-docs-parity.mjs --json ./evidence/review/wave2b-laneB3/20260917T143230Z/docs-parity.json", "exit": 0, "pairs": 38, "violations": 0, "exemptNotes": 19, "derivedNotes": 2, "template_pair_listed": true, "template_pair_record": { "pair": "templates/mpd-extension/README.md", "ok": true, "problems": [] }, "agent_references_among_pairs": 0, "raw": "docs-parity.json + census.stdout" },
+    "prober_T47": { "command": "node ./evidence/docs/wave2b-laneB3/20260917T141815Z-lane-implementation/verify-debranding-full.mjs --template-root ./templates/mpd-extension --json-out ./evidence/review/wave2b-laneB3/20260917T143230Z/debranding.json", "exit": 0, "reading": "template root: field-probes 13, quoted-verbatim 13, not-quoted 0, 0 findings; both targets 26/26 quoted", "raw": "debranding.stdout + debranding.json" },
+    "prober_self_test": { "command": "... verify-debranding-full.mjs --self-test", "exit": 0, "reading": "5/5 arms (the mutation arm reddens and names the field)", "raw": "debranding-selftest.stdout" },
+    "budget": { "command": "node ./evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs agents=AGENTS.md", "exit": 0, "reading": "sourceBytes 53283 / renderedBytes 53587 / maxBytes 65536 → underBudget true, verdict GREEN (full content injected)", "raw": "budget.stdout" },
+    "t30_anticipatory": "the gate prints docs/adder4.md and docs/cnt8.md as their own class with `[ANTICIPATORY — not a live path]` — carried with intent, not silently dropped (gate-live.stdout)"
+  },
+  "packer_facts_verified_at_source": {
+    "agents_md_not_packed": { "evidence": "dist/mpd-package/AGENTS.md does not exist (ls: No such file or directory); packer comment read at scripts/pack-mpd.mjs:128 — 'AGENTS.md itself deliberately stays out of the artifact (it is the repository's contributor manual)'" },
+    "templates_packed": { "evidence": "`\"templates\",` is a literal entry of ROOT_ASSET_DIRS (scripts/pack-mpd.mjs:110+); dist/mpd-package/templates/mpd-extension/ exists in the artifact" },
+    "amendment_A5": { "read": "verbatim from .mpd/plans/friction-p2-wave-2b.md (AMENDMENT A5: the plan's T-91 note that AGENTS.md is 'PACKED' is WRONG; templates/** IS packed, AGENTS.md is NOT; only the reason changes)", "raw": "plan-A5.txt" },
+    "landed_row_matches_A5": "AGENTS.md §4 carries the Pack-closure row (grepped by content) with NO packed/unpacked claim about the manual; the bound paragraph states the T-26 discriminator (freshness read from the expected-after-pack membership, timestamp order, --pack-stamp); §11's sweep line names the gate with the same reading rule. The lane's own record states the corrected reason verbatim ('MEASURED FALSE … AGENTS.md deliberately stays out of the artifact (amendment A5)') and its acceptance §3 carries it too."
+  },
+  "pre_pack_loud_and_quiet": {
+    "ownership": "agent_teams_path_owner (open_only): 'templates/mpd-extension/README.md' → no open task; 'scripts/verify-docs-parity.mjs' → no open task. t16 is terminal, so nothing the lane owns can still change before the pack.",
+    "settled": "all four lane hashes identical across the settle window (14:32:30Z → 14:37:10Z)",
+    "byte_check_source_vs_packed": { "source_README": "8e1fbb89…", "packed_README": "2943a10c…", "source_zh": "832ad62f…", "packed_zh": "8a11d7ac…", "state": "the pair DIFFERS from the artifact's copy — the expected pre-pack drift the integration re-pack must absorb" },
+    "closure_read_live": { "command": "node scripts/verify-pack-closure.mjs", "exit": 0, "artifactStamp": "2026-09-17T08:55:57.244Z", "summary": "1181 file(s) compared, 1167 identical, 0 drift, 14 expected-after-pack", "pair_lines": "templates/mpd-extension/README.md and README.zh-CN.md are BOTH printed as CONTENT-DRIFT-EXPECTED with their source mtimes (2026-09-17T14:26:10.128Z / .145Z) after the artifact stamp — LOUD (named, with writer + stamp + anchor) and QUIET (expected class, exit 0, not a violation)", "raw": "pack-closure-live.stdout" }
+  },
+  "seeded_parity_arms": {
+    "instrument": "seed-parity-arms.mjs (fixture roots under THIS evidence dir; the real tree was never seeded)",
+    "arms": [
+      { "id": "seedA-agent-references-no-twin", "expected": 0, "exit": 0, "reading": "an EN file with no twin under agent-references/ is NOT discovered (T-28)", "verdict": "as required" },
+      { "id": "seedB-docs-missing-twin", "expected": 1, "exit": 1, "reading": "FAIL docs/probe.md — missing zh-CN file", "verdict": "as required" },
+      { "id": "seedC-docs-stale-twin", "expected": 1, "exit": 1, "reading": "FAIL docs/probe.md — zh-CN switch link missing/not under the title; zh-CN file carries no CJK content (copy-paste of the EN file?)", "verdict": "as required" },
+      { "id": "seedD-docs-zh-only", "expected": 1, "exit": 1, "reading": "FAIL inverse:docs/probe.zh-CN.md — zh-CN file has no EN twin", "verdict": "as required" },
+      { "id": "seedE-templates-unmarked-asset", "expected": 0, "exit": 0, "reading": "an unmarked file in a packed asset band stays an ASSET (no twin demanded)", "verdict": "as required" },
+      { "id": "seedF-templates-promoted-doc", "expected": 1, "exit": 1, "reading": "FAIL templates/tpl/notes/misplaced.md — missing zh-CN file (the `<!-- docs-parity: doc -->` marker promotes a misplaced doc so it reddens instead of escaping)", "verdict": "as required" }
+    ],
+    "total": "6/6 arms behaved as required",
+    "raw": "seed-arms.json + one .stdout per arm + seed-arms.stdout"
+  },
+  "findings": [],
+  "notes_not_findings": [
+    "N1 (integration ordering): the artifact's pack stamp (2026-09-17T08:55:57.244Z) PREDATES the lane's template edits (source mtimes 14:26:10Z), so the artifact does not yet contain the T-47 pair; the closure gate reports both README files as expected-after-pack and exits 0. A2.6 is therefore satisfied in the direction that matters (the edits are in the tree BEFORE the pack that must absorb them) and the integration's re-pack has to be taken after this lane — the pair must DROP OUT of the expected list as the post-pack membership check.",
+    "N2 (declared ordering, F2 carried forward): the gate's derived half re-derives from the registry lane A regenerates; my readings were true at 14:32Z (A1–D42 pointer in both sites; region count 88/88 with live markers agreeing). A later lane-A regeneration without a re-take would move that reading, and the re-take belongs to the integration."
+  ],
+  "bound_what_i_did_not_verify": [
+    "The real pack (t18's act) and any post-pack membership reading — my closure read is the PRE-pack state only.",
+    "A byte comparison of the WHOLE artifact: only the template README pair (the acceptance's named pair) plus the artifact's stamp and summary line were compared.",
+    "Lane A's registry regeneration itself (the SOURCE of the derived value): I verified the gate's derived reading is true at my moment, not how `lib/mpd-deltas.js` is produced.",
+    "An independently seeded mutation of the template README: the prober's own mutation arm (`--self-test` 5/5) is the only mutation reading I reproduced.",
+    "Any edit to the REAL tree: every seeded failure lives in a fixture root under this evidence dir; I did not modify docs/, AGENTS.md, templates/ or the gate."
+  ]
+}

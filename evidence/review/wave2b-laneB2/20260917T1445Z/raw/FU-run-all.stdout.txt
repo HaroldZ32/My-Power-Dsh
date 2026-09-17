@@ -1,0 +1,43 @@
+== t21 follow-ups ==
+moment_utc 2026-09-17T14:37:52Z
+checker fbdc02569a8be827745c13dadaec63eb2353ab1380d245ac6a275a2381779f28 1146 lines
+  File "<stdin>", line 6
+    print(f"FU-1 strip: removed {len(before)-len(after)} bytes; 'rules: {{' still in source={'rules: {' in after}; 'doc_rewrite: {' still in source={'doc_rewrite: {' in after} (the header COMMENT still names it, on purpose)")
+                                                                                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: invalid syntax. Perhaps you forgot a comma?
+FU-1 stripped copy, real record run: exit=1
+FU-1 stripped record: bytes=3865 top_level_has_rules=True rule_string_present=True command_string_present=True
+FU-1 stripped record keys: ['anchored_citations_content_verified', 'checker', 'checks', 'citations_checked', 'citations_illustrative', 'citations_pending', 'failed', 'gates', 'illustrative', 'line_dependent_anchors_verified', 'output_root', 'output_target', 'passed', 'pending', 'revisions', 'rot', 'rot_line_number_only_anchors', 'rules', 'run_at', 'subjects', 'symbol_only_anchors_verified', 'task', 'total']
+FU-1 stripped self-test exit=1
+FU-1 t78 arm lines: 1
+  ok   negative-control:t78-record-carries-the-rule
+FU-2 head-revision driver hashes:
+f69c6f6136ef9589742d61e58c1bf40590094aaaabef5ee97b2e50becf4fce5f  /tmp/t21-followup/fu2/head-drivers/settings-bridge-lane.mjs
+91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f  /tmp/t21-followup/fu2/head-drivers/tui-team-surface.mjs
+FU-2 precise rule on the pre-claim corpus: exit=0
+FU-2 --naive (over-report direction)     : exit=0
+
+[driver-headers] 2 file(s) scanned, 2 key-producing driver(s), 0 claim set(s), 2 NO-CLAIM-SET, 0 violation(s)
+
+[driver-headers] 2 file(s) scanned, 2 key-producing driver(s), 0 claim set(s), 2 NO-CLAIM-SET, 0 violation(s)
+== FU-3 base rate, my own instrument, moment 2026-09-17T14:37:55Z ==
+-- files per directory (globbed, the same split the lane names) --
+top-level  *.mjs : 46
+top-level  all   : 47
+lib/       *.mjs : 8
+lib/       all   : 8
+recursive  *.mjs : 54
+-- key-producing drivers (literal 'add("A<n>' ...) --
+recursive in scope (.mjs)          : 2
+non-recursive in scope (top level) : 1
+'.js' file-type assumption in scope: 0
+whole-repo literal scan (.mjs)     : 27
+whole-repo literal scan (all files): 28
+-- the two drivers lane B2 named, and what they produce --
+./skills/dsh-qa/scripts/tui-team-surface.mjs
+./skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
+-- files added to the corpus since the lane's 53-file scan --
+ M skills/dsh-qa/scripts/lib/settings-bridge-lane.mjs
+ M skills/dsh-qa/scripts/tui-team-surface.mjs
+?? skills/dsh-qa/scripts/wave2b-lane-d.mjs
+FU scratch deleted: YES

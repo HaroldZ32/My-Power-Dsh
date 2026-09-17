@@ -1,0 +1,83 @@
+bun test v1.3.14 (0d9b296a)
+
+self-fix-tests/t51-reoffer-routing.test.mjs:
+52 |     const repair = result.created.find((task) => task.kind === "repair")
+53 |     expect(repair).toBeDefined()
+54 |     // The reviewed artifact's author IS the read-only seat, and the repair is a write-kind task:
+55 |     const gap = generatedTaskCapabilityGap(repair, team.members[0])
+56 |     expect(gap.length).toBeGreaterThan(0)
+57 |     expect(repair.assignee).toBe("Engineer")            // routed to the seat that can run it
+                                 ^
+error: expect(received).toBe(expected)
+
+Expected: "Engineer"
+Received: "Reviewer"
+
+      at <anonymous> (/tmp/t51-red2-aV7b/M3/self-fix-tests/t51-reoffer-routing.test.mjs:57:29)
+(fail) T-93 (1/4): the GENERATOR routes the repair to a seat that can EXECUTE it (never the read-only author) [3.92ms]
+73 | test("T-93 (2/4): NEG CONTROL — a team whose ONLY seat is read-only produces a CAPTAIN ROUTE, never an unexecutable repair", () => {
+74 |     const team = reviewFixture({ members: [member("Reviewer", READ_ONLY_DENY)] })
+75 |     const result = planQualityFollowUp(team, team.tasks[1])
+76 |     // No repair is created — the row's negative control ("never a repair that cannot complete") —
+77 |     // and the refusal is LOUD and names what the seat withholds.
+78 |     expect(result.created).toEqual([])
+                                ^
+error: expect(received).toEqual(expected)
+
+- []
++ [
++   {
++     "acceptance": [
++       "add the guard",
++     ],
++     "assignee": "Reviewer",
++     "dependencies": [
++       "t1",
++     ],
++     "id": "repair-round-2",
++     "inScope": [
++       "packages/foo/lib/**",
++     ],
++     "kind": "repair",
++     "objective": "review t1",
++     "reasonTaskId": "t2",
++     "round": 2,
++     "sourceFindingIds": [
++       "F1",
++     ],
++     "sourceTaskId": "t1",
++     "subject": "repair-round-2",
++     "verify": [
++       "bun test ./packages/foo",
++     ],
++   },
++   {
++     "acceptance": [
++       "findings are real",
++     ],
++     "assignee": undefined,
++     "dependencies": [
++       "repair-round-2",
++     ],
++     "id": "review-round-2",
++     "kind": "review",
++     "objective": "review t1",
++     "reasonTaskId": "t2",
++     "reviewedTaskId": "repair-round-2",
++     "round": 2,
++     "subject": "review-round-2",
++   },
++ ]
+
+- Expected  - 1
++ Received  + 43
+
+      at <anonymous> (/tmp/t51-red2-aV7b/M3/self-fix-tests/t51-reoffer-routing.test.mjs:78:28)
+(fail) T-93 (2/4): NEG CONTROL — a team whose ONLY seat is read-only produces a CAPTAIN ROUTE, never an unexecutable repair [0.39ms]
+(pass) T-93 (3/4): the DELIVERY routing class — keyed on BOTH halves, reproducing this wave's nine-instance shape [0.32ms]
+(pass) T-93 (4/4): the predicate is a PURE READER and the dispatch boundary CONSULTS it (wiring assert) [0.70ms]
+
+ 2 pass
+ 2 fail
+ 25 expect() calls
+Ran 4 tests across 1 file. [110.00ms]

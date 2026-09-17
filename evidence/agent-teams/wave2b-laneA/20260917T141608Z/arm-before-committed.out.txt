@@ -1,0 +1,19 @@
+[T-87] green: {"ok":true}
+  PASS [T-87/green] a NINE-item payload built from the CURRENT contract completes
+[T-87] red: implementation completion requires passed acceptanceResults for every acceptance item
+  PASS [T-87/red] the EIGHT-item payload is refused
+  FAIL [T-87/red] the refusal NAMES the unmatched item (item-9)
+  FAIL [T-87/red] the refusal NAMES a count (9 required)
+[T-84] green: {"ok":false,"error":"verification completion requires a passed commandsRun entry for every verify command"}
+  FAIL [T-84/green] a LABELLED reported red completes the task (no failed command)
+  FAIL [T-84/green] the recorded entry validates as a command result
+  PASS [T-84/red] a reported entry WITHOUT a reason is refused
+[T-84] red: {"ok":false,"error":"verify failure must fail the task","requiredStatus":"failed"}
+  PASS [T-84/red] a genuinely FAILED command still fails the task
+[T-64] green: {"blocking":["t99-phantom"],"failed":[]}
+  PASS [T-64/green] a phantom dependency still BLOCKS (nothing satisfied it - the two-bucket shape is unchanged)
+  FAIL [T-64/green] the exported reader names it
+  FAIL [T-64/green] the status note names the id in its output
+  PASS [T-64/red] a LIVE satisfied dependency is not reported as blocking (the legitimate state is not erased)
+
+RED-SIDE FAILURES: 6

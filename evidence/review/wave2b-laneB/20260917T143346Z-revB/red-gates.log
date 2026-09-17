@@ -1,0 +1,6 @@
+[verify-gates] running 2 member gate(s) (override table)
+[verify-gates] member ok :: true
+[verify-gates] member ok: exit=0 PASS - 3ms
+[verify-gates] member bad :: false
+[verify-gates] member bad: exit=1 FAIL - 4ms
+[verify-gates] FAIL - 1/2 member gate(s) failed: bad (exit=1)

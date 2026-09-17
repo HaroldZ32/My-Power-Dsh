@@ -1,0 +1,37 @@
+### ARM E — repair-arms.mjs at the CURRENT revision
+  PASS [R6/control] the exact-name payload still completes
+[R7] description: Verification evidence in contract order: {command, status:"passed"|"failed"|"reported", reason?, exitCode?, evidence?}. Supply one item per verify command. A "r
+  PASS [R7/green] the commandsRun description names the `reported` status
+  PASS [R7/green] the description names the required `reason` label
+
+RED-SIDE FAILURES: 0
+
+### ARM F — SEMANTIC REVERT of the NAME match (coverageNamesMatch -> count-only, the withdrawn reading)
+  name match reverted to count-only
+  FAIL [R5/green] a right-COUNT payload whose command is a DIFFERENT NAME no longer covers the required command
+  FAIL [R5/green] the refusal NAMES the near-miss
+  PASS [R5/control] a genuinely FAILED command still fails the task
+  FAIL [R6/green] a wrong-NAMED ninth item of the right COUNT is refused (the count-only reading is withdrawn)
+  FAIL [R6/green] the refusal NAMES the near-miss
+RED-SIDE FAILURES: 4
+
+### SUITES at the current revision
+
+ 269 pass
+ 0 fail
+ 2380 expect() calls
+Ran 269 tests across 40 files. [17.96s]
+--- self-fix-tests ---
+ 112 pass
+ 0 fail
+ 1639 expect() calls
+Ran 112 tests across 16 files. [13.03s]
+
+### REGISTRY + DOCS at the current revision
+[patch-agent-teams-fixes] already applied: 96 mpd delta region(s) across 10 adopted file(s)
+56:The live registry is **96** regions across **10** adopted files — the count MEASURED at this edit (2026-09-17, `node scripts/patch-agent-teams-fixes.mjs --
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **96**/10 vs derived 96/10 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (live `//#region mpd-delta` markers agree: 96)
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS
+
+### dist untouched?
+(empty = none since the repair)

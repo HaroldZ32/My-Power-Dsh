@@ -1,0 +1,17 @@
+[self-test] ok   healthy-observation: 21 checks passed on the healthy observation
+[self-test] ok   negative:row-silent-on-red: the mutated observation FAILED its own check(s) ["R-a"] — a RED row that reproduced nothing (the contrast is the contract's whole point)
+[self-test] ok   negative:green-warns: the mutated observation FAILED its own check(s) ["G-d"] — a GREEN ladder that warns below 600 000 and holds
+[self-test] ok   negative:early-warn: the mutated observation FAILED its own check(s) ["G-d"] — a first WARN before the frozen threshold
+[self-test] ok   negative:vacuous-hold-row: the mutated observation FAILED its own check(s) ["G-c"] — a hold row whose success could not be falsified (the re-injection control did not refuse)
+[self-test] ok   negative:guard-read-from-tools: the mutated observation FAILED its own check(s) ["G-c"] — a tool-boundary hold read that survived the redesign
+[self-test] ok   negative:pin-broken: the mutated observation FAILED its own check(s) ["G-e"] — the r6 pin repeating the tool-expired bound or applying a hold
+[self-test] ok   negative:red-drifted: the mutated observation FAILED its own check(s) ["PIN-RED"] — a RED tree that no longer matches the contract's frozen hashes
+[self-test] ok   negative:settle-moved: the mutated observation FAILED its own check(s) ["SETTLED"] — a tree that changed under the run
+[self-test] ok   negative:fold-not-authoritative: the mutated observation FAILED its own check(s) ["FOLD-AUTHORITY"] — a GREEN reading whose suppression came from the §4 fallback, not the fold
+[self-test] ok   negative:knobs-drifted: the mutated observation FAILED its own check(s) ["KNOBS"] — a working tree still carrying the legacy tuple
+[self-test] ok   negative:replay-missing: the mutated observation FAILED its own check(s) ["REPLAY"] — no incident replay (contract §9 item 3)
+[self-test] ok   negative:replay-regression: the mutated observation FAILED its own check(s) ["REPLAY"] — a fold predicate that would have reproduced every historical hold
+[self-test] ok   negative:report-only-escalates: the mutated observation FAILED its own check(s) ["REPLAY"] — a §4 report-only replay that escalates (the fallback is not permitted to)
+[self-test] ok   negative:replay-unfaithful: the mutated observation FAILED its own check(s) ["REPLAY"] — a reconstruction that cannot even reproduce the recorded escalations
+[self-test] ok   negative:row-missing: the mutated observation FAILED its own check(s) ["CLEAN","R-b","G-b","FOLD-AUTHORITY"] — a contract row that never ran
+[self-test] PASS — watchdog-redesign (16 checks, 0 failed)

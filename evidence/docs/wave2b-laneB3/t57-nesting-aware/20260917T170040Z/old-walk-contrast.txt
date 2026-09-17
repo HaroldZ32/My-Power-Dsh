@@ -1,0 +1,2 @@
+OLD-WALK count for the seeded tools.js: 63 (the NEW walk reports 63)
+on the SAME seeded tools.js -> OLD nesting-blind walk: 63 | NEW stack walk: 64

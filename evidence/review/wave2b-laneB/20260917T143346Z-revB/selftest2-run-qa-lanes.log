@@ -1,0 +1,1 @@
+[run-qa-lanes self-test] ok: classification (pass/unavailable/fail), continue-past-failure, per-lane logs, exit codes 0/1/2/3, drift detection, the T-83 immutability-guard declaration rule (both falsifications + the empty-set RED) and the timeout guard verified on fixtures

@@ -1,0 +1,132 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-c1-tvtwHA",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        [
+          "captain.jsonl"
+        ]
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-303f7304-448c-4345-b1cf-3231a814b852",
+          "createdAt": 1789660683468,
+          "members": [
+            {
+              "id": "b2e6bc63-a526-4271-a09b-f24a4598e093",
+              "name": "librarian",
+              "role": "researcher",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "executionPrompt": "You are the librarian. Claim only the task assigned to you, do exactly what it asks, write a concise result into the task output, and complete it. Do not edit workspace files. Keep it to one short turn.",
+              "joinedAt": 1789660684912,
+              "status": "removed"
+            },
+            {
+              "id": "8845a638-2c5c-4eb7-bbd0-0a88e8cf9316",
+              "name": "oracle",
+              "role": "reviewer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "executionPrompt": "You are the oracle. Claim only the task assigned to you once its dependency is complete, judge the summary you were given, and complete the task with an output that explicitly says APPROVED or REJECTED plus a one-line reason. Do not edit workspace files. Keep it to one short turn.",
+              "joinedAt": 1789660684945,
+              "status": "removed"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Read the team goal (\"C1 adoption QA\") and the team description, then produce a single-line summary of the QA goal. Deliverable: one line, under 25 words, in the task output. No file edits.",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1789660686333,
+              "updatedAt": 1789660695229,
+              "kind": "work",
+              "attemptId": "f0d891ed-74f0-4a6d-a230-ffcb5ccf8bc0",
+              "reassigning": false,
+              "output": "QA goal in one line: Verify that C1 has actually been adopted — exercise C1's behavior end-to-end and report any adoption gaps or failures found."
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Read librarian's t1 output (the one-line QA goal summary). Judge whether it is an accurate one-line summary of \"C1 adoption QA\". In the task output state explicitly \"APPROVED: <line>\" or \"REJECTED: <line>\" with a one-line reason. No file edits.",
+              "status": "completed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1789660688153,
+              "updatedAt": 1789660705808,
+              "kind": "work",
+              "attemptId": "c9b029f0-32ef-4c43-abc9-70ce1d858a56",
+              "reassigning": false,
+              "output": "APPROVED: \"Verify that C1 has actually been adopted — exercise C1's behavior end-to-end and report any adoption gaps or failures found.\"\nReason: it faithfully renders \"C1 adoption QA\" as verifying C1 is genuinely adopted/in use (not merely present), exercising behavior end-to-end to surface adoption gaps, and fits the one-line/under-25-words constraint (19 words) with no added or contradictory claims. No file edits made."
+            }
+          ],
+          "taskSeq": 2,
+          "revision": 14
+        }
+      ]
+    },
+    "archive": {
+      "ok": true,
+      "archiveIds": [
+        "c1qa"
+      ]
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "arm": "fence-refusal",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T15-57-40.512Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

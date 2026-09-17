@@ -1,0 +1,14 @@
+{
+  "task": "T-90 anchor scan",
+  "run_at": "2026-09-17T14:36:56.325Z",
+  "pattern": "ee9ec16",
+  "scope": "/tmp/t21-revb2-scratch/d-mailbox",
+  "files_scanned": 1,
+  "matches": [
+    {
+      "path": "../../../tmp/t21-revb2-scratch/d-mailbox/note.md",
+      "line": 2,
+      "phrase": "The finding is in inbox message ee9ec16-4a2b-4c8d-9f01-2de3f4a5b6c7 (read while present)."
+    }
+  ]
+}

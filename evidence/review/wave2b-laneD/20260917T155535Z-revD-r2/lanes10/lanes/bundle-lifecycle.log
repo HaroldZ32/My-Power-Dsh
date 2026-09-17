@@ -1,0 +1,7 @@
+[bundle-lifecycle] ok=false -> /root/dshProj/my-power-dsh/evidence/dsh-qa/bundle-lifecycle/2026-09-17T16-03-26.499Z
+  install: {"ok":true,"exit":0,"dependency":"link:/root/dshProj/my-power-dsh","bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"],"oneCommand":"dsh plugin --profile w add <repo root>"}
+  composed: {"ok":true,"exit":0}
+  boot: {"ok":false,"http":true,"corpus":null,"preset":null,"trust":null,"bundleReal":"/root/dshProj/my-power-dsh","adapterSeams":null}
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
