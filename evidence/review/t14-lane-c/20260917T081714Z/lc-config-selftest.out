@@ -1,0 +1,12 @@
+[self-test] ok   live-live: pass/0
+[self-test] ok   live-restart-needed: fail/1
+[self-test] ok   live-not-same-instance: fail/1
+[self-test] ok   healthy-observation: 10 checks passed on the healthy observation
+[self-test] ok   negative:missing-knob: the mutated observation FAILED its own check(s) ["C4"] — a knob missing from one front door
+[self-test] ok   negative:two-declarations: the mutated observation FAILED its own check(s) ["C2"] — a second declaration (the doors would drift)
+[self-test] ok   negative:row-ignored: the mutated observation FAILED its own check(s) ["C6"] — a row config that is not the effective default
+[self-test] ok   negative:namespace-loses: the mutated observation FAILED its own check(s) ["C7"] — a namespace that does not outrank the row config
+[self-test] ok   negative:restart-needed: the mutated observation FAILED its own check(s) ["C8"] — a re-read that only a restart could deliver
+[self-test] ok   negative:no-clamp: the mutated observation FAILED its own check(s) ["C9"] — an unclamped cadence beyond the silence threshold
+[self-test] ok   negative:halt-action: the mutated observation FAILED its own check(s) ["C10"] — an escalation wired to the halt path
+[self-test] PASS — team-watchdog-config (8 checks, 0 failed)

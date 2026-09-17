@@ -9,8 +9,11 @@
 //         (the `CAPTAIN_TOOL_NAMES` constant in tool-names.js, spread into the spawn
 //         `toolFilter` in members.js; and the same filter recomputed in capabilities.js) and
 //         both must stop denying it.
-//   T-19 — `agent_teams_status` names BOTH pause mechanisms and explicitly defers the team
-//         watchdog's hold to `session-watchdog-status`; it adds no resume verb.
+//   T-19 — `agent_teams_status` names ONE pause mechanism (`agent_teams_halt`); the team
+//         watchdog's PRESERVING hold is reported as its INTERNAL implementation, read for
+//         DISPLAY through the watchdog's own service (fail-open, gates nothing); it adds no
+//         resume verb. REQUALIFIED by wave 2 (t21) from the wave-1 two-peer pin, which the
+//         user's T-19 ruling abolished — the peer wording is now asserted ABSENT (drift guard).
 //
 // Falsifiability: the hold is injected through the REAL reader shape (`ctx.get('mpdWatchdog',
 // false)` → `isHeld(teamId, workspace)`) so the same stub is a WORKING hold. The
@@ -277,25 +280,71 @@ test("T-49: the contract tool is a MEMBER tool in BOTH deny computations", async
     expect(restrictions[0].deny).toContain("agent_teams_approve")
 })
 
-test("T-19: the status surface names BOTH pause mechanisms and defers the hold", async () => {
+test("T-19: the status surface names ONE pause mechanism and reports the hold as its INTERNAL implementation", async () => {
     const { workspace, captain, member } = fixture()
     try {
         const { tools } = registerTools(workspace, captain, member)
         const status = tools.get("agent_teams_status")
-        const running = await status.execute({}, { agent: member })
-        const rendered = status.output.render({}, running)[0].text
-        expect(rendered).toContain("Pause: agent-teams halt not active")
-        expect(rendered).toContain("team watchdog hold")
-        expect(rendered).toContain("session-watchdog-status")
-        // no NEW resume verb on this surface: the hold is released by the watchdog's own action
-        expect(rendered).not.toContain("agent_teams_resume")
-        expect(rendered).not.toContain("session-watchdog-resume`-like")
+        // The stub's hold is LIVE (HOLD_VIEW), so this render is the state the OLD surface got
+        // wrong: it printed `agent-teams halt not active` while the team was held.
+        const held = await status.execute({}, { agent: member })
+        const heldText = status.output.render({}, held)[0].text
+        expect(heldText, "one mechanism, named once").toContain("Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt")
+        expect(heldText, "the hold is the mechanism's internal implementation, not a peer").toContain("PRESERVING hold is its INTERNAL implementation")
+        // Diagnostics survive the collapse: the operator still gets WHICH hold and WHY.
+        expect(heldText).toContain("hold-probe-1")
+        expect(heldText).toContain("silence probe")
+        expect(heldText).toContain("released only by its own session-watchdog-resume")
+        // DRIFT GUARDS: the wave-1 peer wording and its deferral stay ABSENT.
+        expect(heldText).not.toContain("\u00b7 team watchdog hold:")
+        expect(heldText).not.toContain("run session-watchdog-status")
+        // no NEW resume verb on this surface (the unchanged wave-1 guarantee)
+        expect(heldText).not.toContain("agent_teams_resume")
+        expect(heldText).not.toContain("session-watchdog-resume`-like")
 
+        // The structured payload carries the same single-mechanism view.
+        expect(held.pause.mechanism).toBe("agent_teams_halt")
+        expect(held.pause.active).toBe(true)
+        expect(held.pause.halt).toBe(false)
+        expect(held.pause.internal_implementation.kind).toBe("team-watchdog-preserving-hold")
+        expect(held.pause.internal_implementation.hold_id).toBe("hold-probe-1")
+        expect(held.pause.internal_implementation.released_by).toBe("session-watchdog-resume")
+
+        // A HALTED record (no hold) reads ACTIVE with the same framing — the pre-existing
+        // assertion shape is kept, so this half stays guarded too.
         const halted = await status.execute({}, { agent: captain })
         halted.halted = true
-        const haltedText = status.output.render({}, halted)[0].text
-        expect(haltedText).toContain("Pause: agent-teams halt ACTIVE")
-        expect(haltedText).toContain("session-watchdog-status")
+        const haltOnlyText = status.output.render({}, halted)[0].text
+        expect(haltOnlyText).toContain("Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt")
+    }
+    finally {
+        rmSync(workspace, { recursive: true, force: true })
+    }
+})
+
+test("T-19: with NO watchdog service the status says the hold is NOT READABLE — never a guessed hold", async () => {
+    const { workspace, captain, member } = fixture()
+    try {
+        // A registration whose service store answers nothing: the read must FAIL OPEN and must not
+        // invent `no hold is set` (a false negative an operator would trust).
+        const tools = new Map()
+        const ctx = {
+            tools: { register: (definition) => { tools.set(definition.name, definition) } },
+            agents: { get: (id) => (id === captain.id ? captain : id === member.id ? member : undefined), list: () => [captain, member] },
+            subagents: { prompt: async () => ({ messageId: "m1" }), followup: () => {}, sendMessage: () => {} },
+            effect: () => () => undefined,
+            on: () => () => undefined,
+            logger: { warn: () => {}, info: () => {}, error: () => {}, debug: () => {} },
+            get: () => undefined,
+        }
+        registerAgentTeamsTools(ctx, { stateDir: STATE_DIR })
+        const status = tools.get("agent_teams_status")
+        const value = await status.execute({}, { agent: member })
+        const rendered = status.output.render({}, value)[0].text
+        expect(rendered).toContain("hold state not readable on this host")
+        expect(rendered).not.toContain("no hold is set")
+        expect(value.pause.internal_implementation.state).toBe("not-readable")
+        expect(value.pause.active).toBe(false)
     }
     finally {
         rmSync(workspace, { recursive: true, force: true })
@@ -400,6 +449,90 @@ test("t41: the contract tool refuses a NON-PARTICIPANT and an UNKNOWN id NAMING 
         // ...so the pinned matchers go RED on it. THIS is the falsifiability proof.
         expect(scratchOutsider).not.toContain("you do not lead or belong to any active team yet")
         expect(scratchUnknown).not.toMatch(/\(known tasks: t1\)/)
+    }
+    finally {
+        rmSync(workspace, { recursive: true, force: true })
+        rmSync(scratch, { recursive: true, force: true })
+    }
+})
+
+// ---------------------------------------------------------------------------------------------
+// t37 (wave 2, lane A) — THE SEEDED NEGATIVE CONTROL for the T-19 pin above.
+//
+// WHY IT EXISTS: the reddening proof for that pin was measured once and lived only in a MESSAGE —
+// and this wave established that a reading whose only home is a message is rotted-in-waiting, and
+// that every claim should ship an instrument with a NEGATIVE CONTROL that reddens on revert. This
+// lane is that instrument: it SEEDS the wave-1 two-peer wording into a scratch copy of the module
+// and asserts that the pin's own matchers go RED there.
+//
+// THE SEED IS THE TRUE WAVE-1 LINE (not a hybrid): its condition is `team.halted` — NOT the new
+// `team.pause.active` — which is exactly why the old surface printed `agent-teams halt not active`
+// while a PRESERVING hold was set. The scratch copy lives OUTSIDE the workspace (T-89: a copy under
+// the repo is discoverable by a substring-filtered `bun test`) and is deleted in `finally`.
+//
+// THE PREFIX LEG, restated correctly: both wordings SHARE the `Pause: agent-teams halt ` prefix,
+// which is why the pin needs more than a prefix assertion. The prefix therefore stays true on the
+// seeded copy; the single-mechanism framing and BOTH drift guards go false.
+// ---------------------------------------------------------------------------------------------
+
+/** The shipped pause line, matched without line numbers or a remembered offset (T-55). */
+const SHIPPED_PAUSE_LINE = /`Pause: agent-teams halt \$\{[^`]*?`,\n/u
+/** The wave-1 two-peer line, restored verbatim from the registry's own history of the region. */
+const WAVE_ONE_PAUSE_LINE = "`Pause: agent-teams halt ${team.halted ? 'ACTIVE' : 'not active'} · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)`,\n"
+
+test("T-19 SEEDED NEGATIVE CONTROL: the pin's matchers go RED on the restored wave-1 wording", async () => {
+    const { workspace, captain, member } = fixture()
+    const scratch = mkdtempSync(join(tmpdir(), "mpd-t19-seed-"))
+    try {
+        // 1. the scratch copy: the adopted module OUTSIDE the workspace, with its runtime closure
+        cpSync(libDir, join(scratch, "lib"), { recursive: true })
+        symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "dir")
+        const copyTools = join(scratch, "lib", "tools.js")
+        const source = readFileSync(copyTools, "utf8")
+        expect((source.match(SHIPPED_PAUSE_LINE) ?? []).length, "the shipped pause line must occur exactly once in the copy").toBe(1)
+        writeFileSync(copyTools, source.replace(SHIPPED_PAUSE_LINE, WAVE_ONE_PAUSE_LINE))
+        expect(readFileSync(copyTools, "utf8"), "the seed must actually be in the copy").toContain("team watchdog hold: not read on this surface")
+
+        // 2. drive the SEEDED copy through the same registration shape the pins use, with a LIVE hold
+        const seeded = await import(pathToFileURL(copyTools).href)
+        const tools = new Map()
+        const ctx = {
+            tools: { register: (definition) => { tools.set(definition.name, definition) } },
+            agents: { get: (id) => (id === captain.id ? captain : id === member.id ? member : undefined), list: () => [captain, member] },
+            subagents: { prompt: async () => ({ messageId: "m1" }), followup: () => {}, sendMessage: () => {} },
+            effect: () => () => undefined,
+            on: () => () => undefined,
+            logger: { warn: () => {}, info: () => {}, error: () => {}, debug: () => {} },
+            get: (name) => (name === "mpdWatchdog" ? { isHeld: () => ({ ...HOLD_VIEW }) } : undefined),
+        }
+        seeded.registerAgentTeamsTools(ctx, { stateDir: STATE_DIR })
+        const status = tools.get("agent_teams_status")
+        const value = await status.execute({}, { agent: member })
+        const seededText = status.output.render({}, value)[0].text
+
+        // 3. the diagnostic falsehood the collapse fixed: the OLD line says "not active" while held
+        expect(seededText, "the seeded line is the wave-1 one").toContain("· team watchdog hold: not read on this surface")
+        expect(seededText, "wave-1 wording printed 'not active' while the team was HELD").toContain("Pause: agent-teams halt not active")
+
+        // 4. THE MATCHERS — the same strings the shipped pin asserts, run against the seeded text.
+        const prefixPresent = seededText.includes("Pause: agent-teams halt ")
+        const singleMechanismFraming = seededText.includes("(one mechanism: agent_teams_halt")
+        const peerWordingAbsent = !seededText.includes("· team watchdog hold:")
+        const deferralAbsent = !seededText.includes("run session-watchdog-status")
+        expect(prefixPresent, "the shared prefix must stay TRUE — which is why the pin needs the extra matchers").toBe(true)
+        expect(singleMechanismFraming, "the single-mechanism framing matcher must go FALSE on the seeded wording").toBe(false)
+        expect(peerWordingAbsent, "the peer-wording drift guard must go FALSE on the seeded wording").toBe(false)
+        expect(deferralAbsent, "the deferral drift guard must go FALSE on the seeded wording").toBe(false)
+
+        // 5. and the SHIPPED module still satisfies all four (so this lane cannot pass by the pin
+        // having drifted away from the strings asserted here).
+        const { tools: liveTools } = registerTools(workspace, captain, member)
+        const liveStatus = liveTools.get("agent_teams_status")
+        const liveText = liveStatus.output.render({}, await liveStatus.execute({}, { agent: member }))[0].text
+        expect(liveText.includes("Pause: agent-teams halt ")).toBe(true)
+        expect(liveText.includes("(one mechanism: agent_teams_halt")).toBe(true)
+        expect(!liveText.includes("· team watchdog hold:")).toBe(true)
+        expect(!liveText.includes("run session-watchdog-status")).toBe(true)
     }
     finally {
         rmSync(workspace, { recursive: true, force: true })

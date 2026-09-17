@@ -1,0 +1,57 @@
+ M agent-references/agent-teams-deltas.md
+ M agent-references/index.md
+ M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+ M packages/mpd-agent-teams-plugin/lib/quality-gates.js
+ M packages/mpd-agent-teams-plugin/lib/state.js
+ M packages/mpd-agent-teams-plugin/lib/tools.js
+ M packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs
+ M packages/mpd-ext-plugin/package.json
+ M packages/mpd-ext-plugin/test/adapter-identity.test.ts
+ M packages/mpd-roles-plugin/test/adapter-identity.test.ts
+ M packages/mpd-team-watchdog-plugin/package.json
+ M packages/mpd-team-watchdog-plugin/src/actions.ts
+ M packages/mpd-team-watchdog-plugin/src/engine.ts
+ M packages/mpd-team-watchdog-plugin/src/machine.ts
+ M packages/mpd-tui-plugin/package.json
+ M scripts/run-qa-lanes.mjs
+ M scripts/verify-dist-fresh.mjs
+ M scripts/verify-docs-parity.mjs
+ M scripts/verify-pack-closure.mjs
+ M skills/dsh-qa/cases.json
+ M skills/dsh-qa/scripts/extension-lifecycle.mjs
+ M skills/dsh-qa/scripts/team-watchdog-boot.mjs
+ M skills/dsh-qa/scripts/team-watchdog-config.mjs
+ M skills/dsh-qa/scripts/team-watchdog-fault.mjs
+ M skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+ M skills/dsh-qa/scripts/team-watchdog-notify.mjs
+ M skills/dsh-qa/scripts/team-watchdog-scene.mjs
+?? .qa-before-dir
+?? .qa-run-stamp
+?? .qa-t15-dir
+?? .qa-t17-after
+?? .qa-t17-after-runner
+?? .qa-t17-dir
+?? .qa-t17-final
+?? .qa-t21-dir
+?? evidence/agent-teams/registry-rows/
+?? evidence/agent-teams/repair-source-deadlock/
+?? evidence/agent-teams/stale-dist-arm/
+?? evidence/agent-teams/stale-snapshot-revert/
+?? evidence/agent-teams/t8-lane-a/
+?? evidence/agent-teams/terminal-redispatch/
+?? evidence/agent-teams/unknown-args/
+?? evidence/dsh-qa/lane-d-t83-t85-t86/
+?? evidence/extensions/docs-claims/SUPERSEDED-check-citations.md
+?? evidence/extensions/docs-claims/runs/run-2026-09-17T07-29-54.177Z/
+?? evidence/extensions/docs-claims/runs/run-2026-09-17T07-29-55.542Z/
+?? evidence/extensions/docs-claims/t72-symbol-first-20260917T072356Z/
+?? evidence/extensions/extension-lifecycle/2026-09-17T07-30-20.128Z/
+?? evidence/gates/t75-derived-values/
+?? evidence/pack-closure/preflight/
+?? evidence/pack-closure/wave2-laneB/
+?? evidence/planning/
+?? packages/mpd-agent-teams-plugin/self-fix-tests/repair-source-deadlock.test.mjs
+?? packages/mpd-agent-teams-plugin/self-fix-tests/strict-task-arguments.test.mjs
+?? packages/mpd-agent-teams-plugin/self-fix-tests/terminal-rearm-refusal.test.mjs
+?? scripts/check-citations.mjs
+?? scripts/reconcile-register.py

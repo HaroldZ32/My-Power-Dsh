@@ -1,0 +1,67 @@
+{
+  "task": "t15 — review-D — falsify lane D's QA instruments and certify the single skills/** writer",
+  "reviewedTask": "t11",
+  "kind": "review",
+  "attemptId": "fe1cff98-c1ef-47c0-a71e-16ed36b0aea4",
+  "reviewer": "code-reviewer",
+  "date": "2026-09-17",
+  "verdict": "pass",
+  "pinnedRevisions": {
+    "pinnedAtUtc": "2026-09-17T07:50:15Z",
+    "settleReadingsUtc": ["2026-09-17T07:50:35Z", "2026-09-17T07:51:39Z", "2026-09-17T07:54:00Z", "2026-09-17T07:56:47Z"],
+    "writeSet": "evidence/dsh-qa/lane-d-t83-t85-t86/20260917T072811Z/lane-d-write-set.sha256 — sha256sum -c: 12/12 OK at 07:50:35Z",
+    "secondWriterFile": { "path": "skills/dsh-qa/scripts/lib/immutable-output.mjs", "sha256Prefix": "412f0cdf9e466774", "mtimeUtc": "2026-09-17T07:51:28Z", "author": "lane D seat (qa-lane-engineer) under the captain's 07:42:34Z ruling 'ONE LINE INSIDE YOUR TREE … before my single re-pin'; the sole skills/** owner per agent_teams_path_owner (t11 completed, t28 claimed by the same seat). NOT a second writer." }
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "Every claim in t11's output is REPRODUCED independently on the pinned revision (quote command + reading)",
+      "status": "passed",
+      "evidence": "T-83: 45 lanes carry the mandatory field, Counter required=9/exempt=36 (my own parse of skills/dsh-qa/cases.json); runner --check-drift exit 0 with the resolved set printed verbatim and 'manifest and disk agree (51 entries)'; the 9 required drivers each measured import=1 / refuseOverwrite=1 / exitOnRefusal=1 with sha prefixes equal to the write set, watchdog-redesign pre-existing (98519dad94c5, not in the set). T-85: my own full lane run exit 0, six arms ok (install/main/failure/isolation/packed/isolationFinal). T-86: script sha 840edb279f662b3d…, py_compile OK, sealed wave-1 copy b777b2741c04415c… byte-untouched. Falsifications (a)/(b) reproduced on MY fixture and my own extra empty-set RED. Pre-change run-qa-lanes.mjs = 44774 B / 6bea2b38de2a4ac7 at HEAD vs 55282 B / e1335c9d8394722e now. Copy-route anchor pair (author's run) 79563bc5fdd6518e -> patched 3a104788f72a4765 confirmed in that run's result.json; my run's route = the sanctioned --out flag with packerSupportsOut true, packer sha 95d55ab9fda96baf. extension-lifecycle --self-test exit 0 with 'live packer route = flag (recorded, not asserted)'."
+    },
+    {
+      "criterion": "T-85: the canonical artifact's stamp and anchor are IDENTICAL before and after a lane run (the readings are quoted, not summarised)",
+      "status": "passed",
+      "evidence": "Quoted, both sides: BEFORE (07:50:35Z) files=1190, manifestSha256(package.json)=eaa0919702bf5b334332d5b701b6a2a85ab5aa0a84cc4ccd9b4faa6636ebf61c, patchSha256(cordis.patch.yml)=a9891438e87d3dec1fc0e4ac91554cfa5881eecb120d93120a5a11767a03f270, root mtime 2026-09-17 13:19:48.265 +0800. AFTER (07:51:39Z) identical on all four readings. My lane run's own canonical block: unmoved=true, before/after 1190 / eaa09197… / a9891438…; route='sanctioned --out <dir> flag … no copy, no rewritten constant'; packExit=0; packerSupportsOut=true; scratch out-dir holds 1190 files (a FULL pack). Anchor: packer sha 95d55ab9fda96baf recorded (not asserted); copy route (author's 07:30 run) anchor pair 79563bc5fdd6518e -> 3a104788f72a4765."
+    },
+    {
+      "criterion": "T-86: a reconciliation run AFTER the team is archived exits 0 and writes CURRENT artifacts — and the reviewer deliberately attempts the stale-artifact failure mode",
+      "status": "passed",
+      "evidence": "Archived team friction-p1-wave -> exit 0, prints '.mpd/team/archive/friction-p1-wave/team.json (archive, team friction-p1-wave)'; re-run at 07:55Z against the then-current register: artifact todo_sha256_prefix a69e5667c29b71b9 == sha256(.mpd/TODO.md) a69e5667c29b71b9 (MATCH) and artifact new_row_ids == my independent parse of §8.6 (27/27 MATCH) -> the artifacts are CURRENT, not cached. Stale attempts: (i) my own fixture seed (a §8.2 row renamed to T-86, no archived coverage) -> exit 1, 3 disagreements, 'T-86: called FIXED but no implementation task claims coverageOf it', marker register-partition-check.FAILED written beside the artifacts; (ii) re-run into the populated --out -> exit 3 'pass --allow-existing to supersede them'; (iii) clean state + --allow-existing into the same dir -> exit 0 and the marker REMOVED; (iv) live team -> exit 1 + marker (61 disagreements at register bb7bd158, 36 at a69e5667 — a moving register reading, not a script defect); (v) --team nope -> exit 3. Relocation: my fixture at a different depth resolved ITS OWN tree (root/register/team paths printed inside the fixture)."
+    },
+    {
+      "criterion": "T-83: one un-migrated driver demonstrably produces the loud runner-level reading, and the migrated key drivers' imports are shown",
+      "status": "passed",
+      "evidence": "On a fixture root + manifest copy I built myself (--root/--manifest): baseline exit 0 with 'immutability required=9: <the 9, named> exempt=36'; (a) deleting ONE import line from the fixture's team-watchdog-fault.mjs -> exit 1, '[run-qa-lanes] immutability guard: required driver skills/dsh-qa/scripts/team-watchdog-fault.mjs (team-watchdog-fault) does not import ./lib/immutable-output.mjs' (restore -> exit 0); (b) deleting ONE immutabilityGuard declaration -> exit 1 naming the lane; (c) my own extra: flipping all 9 to exempt -> exit 1 with 'the resolved required set is EMPTY … (RED: no lane declares required)'. Migrated drivers' imports shown in t83-required-drivers.txt (9 rows, import/refuseOverwrite/exitOnRefusal = 1/1/1 each)."
+    },
+    {
+      "criterion": "The skills/** corpus reading (files + raw-bytes digest) is quoted for the captain's single re-pin, and the reviewer confirms no second writer touched that tree",
+      "status": "passed",
+      "evidence": "MY reading at 07:56:47Z (settled; nothing under skills/** newer than 07:51:28Z): fileCount=323, computed (LF) treeSha=2c748d482fd8bb9dae877133e81c959e4c64a6e04a216c85f6b504fa0854e045, raw-bytes=fb0d4ce35f75c18b598c14c53558631f604659bbff15939a393ced1311131680, 1 file LF-normalized; locked=68318157344aafec…/323; verify-vendor exit 1 (treeSha mismatch) = the re-pin is owed. Cross-validated two ways: the real tool (node scripts/repin-vendor.mjs, dry run — VENDOR_LOCK.json byte-unchanged) and my own independent fold implementation (my-tree-fold.py) give identical values; the lane's own post-edit re-measurement (07:53:51Z, quoted in the team record) gives the same pair. NO SECOND WRITER: git census = exactly 11 modified files under skills/** = lane D's 10 corpus files + skills/dsh-qa/scripts/lib/immutable-output.mjs, the comment-ride the captain ruled into lane D at 07:42:34Z ('ONE LINE INSIDE YOUR TREE … before my single re-pin') and which lane D landed and re-measured; agent_teams_path_owner lists only t11 (completed) and t28 (claimed) — both qa-lane-engineer — as owners of skills/dsh-qa/**; t27's contract forbids skills/**; my fold of a scratch copy with only that one file reverted to HEAD reproduces t11's pre-edit pair EXACTLY (7aef5fd2b8c5…/8ea212ebb36c…), so the delta is that single sanctioned line and nothing else. The corpus cause is therefore 11 files, not 10."
+    }
+  ],
+  "reproducedClaims": [
+    "12-file write set: sha256sum -c 12/12 OK",
+    "45/45 lanes declare the field; required=9/exempt=36; runner prints the resolved set on every surface",
+    "check-drift exit 0, 'manifest and disk agree (51 entries)'",
+    "T-85 real run: exit 0, six arms, 1190-file FULL scratch pack, canonical unmoved, route = --out flag",
+    "T-85 arm 7 de-brittled: 'live packer route = flag (recorded, not asserted)' + self-test exit 0",
+    "T-86 archived exit 0 / live exit 1 + marker / unknown exit 3 / populated --out exit 3 / success removes a stale marker",
+    "reconcile script sha 840edb279f662b3d…, py_compile OK; sealed wave-1 copy b777b2741c04415c… untouched",
+    "T-83 falsifications (a) and (b) reproduced verbatim in message shape (on my fixture)",
+    "pre-change run-qa-lanes.mjs 44774 B / 6bea2b38de2a…",
+    "bridge lanes reach --out through lib/settings-bridge-lane.mjs (argv.indexOf('--out') at :421/:651, outDir at :422/:652)"
+  ],
+  "observations": [
+    { "id": "O1", "severity": "low", "file": "evidence/dsh-qa/lane-d-t83-t85-t86/20260917T072811Z/README.md", "line": 106, "problem": "README §4 quotes the PRE-EDIT corpus pair (7aef5fd2b8c5…/8ea212ebb36c…, 10 corpus files) as the re-pin reading; the captain-ruled comment-ride landed at 07:51:28Z after the README was written, so the durable record the captain reads is one revision behind. The lane published the corrected pair (2c748d482fd8…/fb0d4ce35f75…, 11 files) in the team channel at 07:53:51Z, and t28's acceptance already declares the preview moment-bound.", "requiredFix": "append the post-edit pair and the 11-file cause to the README (or a nested correction beside it) when lane D next touches its tree." },
+    { "id": "O2", "severity": "low", "file": "evidence/dsh-qa/lane-d-t83-t85-t86/20260917T072811Z/README.md", "line": 62, "problem": "The tui/web bridge route is cited as lib/settings-bridge-lane.mjs ':421'/:650'; measured: argv.indexOf('--out') at :421 and :651, outDir at :422 and :652 (the lib is duplicated per arm, not a shared module with two sites).", "requiredFix": "cite the symbol (the outIndex/outDir pair) rather than the line, per T-55." },
+    { "id": "O3", "severity": "low", "file": "evidence/dsh-qa/lane-d-t83-t85-t86/20260917T072811Z/README.md", "line": 112, "problem": "The corpus cause is stated as '10 corpus files' at one moment and the wave's routing text says '11 drivers + cases.json'; the measured tree carries 11 modified skills files (9 drivers + cases.json + the comment-ride).", "requiredFix": "none for the instruments; the captain re-derives the digest at the write, and the 11-file cause is already on record." },
+    { "id": "O4", "severity": "low", "file": "scripts/verify-dist-fresh.mjs", "line": 1, "problem": "t11 §5.2's declared red (STALE packages/mpd-team-watchdog-plugin/dist/index.js, attributed to lane C in flight) is GREEN at my revision: exit 0, 20/20 targets fresh, 7 NOT COVERED. The reading was honest at its time; lane C rebuilt the dist afterwards.", "requiredFix": "none; recorded so the state move is not read as a contradiction later." },
+    { "id": "O5", "severity": "info", "file": "skills/dsh-qa/cases.json", "line": 1, "problem": "Bound: the full 'bun run test:qa — 45 lanes, exactly 1 failing' sweep was NOT reproduced (cost); its single red's ROOT CAUSE is reproduced directly (verify-vendor exit 1, skills treeSha mismatch), and the runner's own --self-test exits 0.", "requiredFix": "none; stated as a bound, not a defect." }
+  ],
+  "bounds": [
+    "The corpus digest is a MOMENT-BOUND reading: t28 (lane D follow-up, inScope skills/dsh-qa/**, claimed) will move it again, so the single re-pin must be derived at the write, not from this file.",
+    "The write attribution rests on the team record (captain's ruling in qa-lane-engineer's inbox, the lane's own acknowledgement, path ownership t11/t28 only) — no git attribution is possible in a shared dirty tree.",
+    "My lane run was triggered by `extension-lifecycle.mjs --help` (the driver has no help flag and runs); that run IS my T-85 reproduction, with the stamp captured 1 s before it.",
+    "Reviewer writes: evidence/review/t15-lane-d/20260917T075015Z/ only, plus the lane's own evidence dir for MY run (evidence/extensions/extension-lifecycle/2026-09-17T07-50-36.168Z/). No product file edited; the fixture falsifications were restored from the repo copies."
+  ]
+}

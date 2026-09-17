@@ -1,0 +1,25 @@
+=== T-72 settled-hash verification — 2026-09-17T07:29:54Z ===
+
+-- revision hashes BEFORE the verification pass --
+dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c  evidence/extensions/docs-claims/check-citations.mjs
+d64dfeb52d3b6c9d18acee5c7e9d8685c82b847e44a4f6f4ef94f21eb1f45c13  scripts/check-citations.mjs
+
+-- 1/3: node scripts/check-citations.mjs --self-test --
+exit=0
+
+[docs-claims] 21/21 checks passed, 0 failed, 249 citation(s) resolved, 17 symbol-first, 32 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 2/3: node scripts/check-citations.mjs (repo-wide, default run dir) --
+exit=0
+[docs-claims] evidence -> evidence/extensions/docs-claims/runs/run-2026-09-17T07-29-55.542Z
+
+[docs-claims] 13/13 checks passed, 0 failed, 249 citation(s) resolved, 17 symbol-first, 32 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative
+
+-- 3/3: bun run verify:docs --
+exit=1
+error: script "verify:docs" exited with code 1
+
+-- revision hashes AFTER the verification pass (no drift) --
+dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c  evidence/extensions/docs-claims/check-citations.mjs
+d64dfeb52d3b6c9d18acee5c7e9d8685c82b847e44a4f6f4ef94f21eb1f45c13  scripts/check-citations.mjs
+=== end 2026-09-17T07:29:55Z ===

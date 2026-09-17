@@ -1,0 +1,13 @@
+docs-claims checker (t21: existence + range + CONTENT claims + negative control)
+repo /root/dshProj/my-power-dsh/evidence/review/t17-symbol-first/20260917T074037Z/fixtures/rot-pending-annotated
+
+  ok   citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 0: path 0, dir 0, command 0; pending 1, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-authoring-guide.zh-CN.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:EXTENSIONS-FOR-AGENTS.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.zh-CN.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   annotations:pending — 1 documented pending citation(s): docs/extension-authoring-guide.md:4 path src/reviewprobe.ts — T-99 (IT RESOLVES NOW: remove the pending annotation)
+  ok   annotations:illustrative — none
+  ok   content:anchors — 0 anchored citation(s) verified against their claimed symbol/phrase on the cited line; 0 anchor(s) without a content claim
+
+[docs-claims] 8/8 checks passed, 0 failed, 0 citation(s) resolved, 1 pending, 0 illustrative

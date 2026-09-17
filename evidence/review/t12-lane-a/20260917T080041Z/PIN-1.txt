@@ -1,0 +1,25 @@
+== PIN 2026-09-17T08:00:41Z ==
+5fe18cdf62af6801e7fe52512920c023ac591adc2c0449a09ecd78f157bc68dd  packages/mpd-agent-teams-plugin/lib/tools.js
+6092febdb28e66c8f02889b6e0ae25d430f2e8c4fef2daac24b5c7bdb8d14230  packages/mpd-agent-teams-plugin/lib/state.js
+1b0eb60e61765f5eb55dfab94bdeed5fff916a4b8d2fb9081fde5ec9ed4f4ad6  packages/mpd-agent-teams-plugin/lib/quality-gates.js
+3db729cd999376595a5b8c7ff8ceb4821b572d36d0e2701bc9f50a586cebf2ba  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+fc534afdd0102314c3d24bf7b468e958295a29c26a9b91c4ddaa5b9fcbe3a365  packages/mpd-agent-teams-plugin/lib/snapshot.js
+1a901602f7975d7d358b26b52c9c0bf8b331ae1483f95d43ef5d6afb700613be  packages/mpd-agent-teams-plugin/self-fix-tests/strict-task-arguments.test.mjs
+4c77cf321e32b9270271989ca84aa97d83a22786d3fad8829547adf76e39d4fe  packages/mpd-agent-teams-plugin/self-fix-tests/terminal-rearm-refusal.test.mjs
+92bcb5db9bc76f85f3190bd1b4738e16b8cf3588516a4b0519842e01ee452c98  packages/mpd-agent-teams-plugin/self-fix-tests/repair-source-deadlock.test.mjs
+63949b6706572de27cef129fb42da082d516553febaf93b187c14698eee1f70d  packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs
+e6bb57cb964f1fefac7f33854c786e3cb080c368fbba8d09fcfbdad9ff652e4c  packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs
+4969831008db2a2a8fd48a5c51882e406071d744b35e6bd9622b457edc99b031  packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs
+df2d2935c341c8867bcb611de9cbf5b66fc4d98ba66fa7f110b5f64146ba0d45  packages/mpd-roles-plugin/test/adapter-identity.test.ts
+81b2c55e99c234e370766b40e70c4dfb0642ea013456d8d4dec3f23fcd9a77cd  packages/mpd-ext-plugin/test/adapter-identity.test.ts
+f142a271c9124753f69a4cc700b95b3e1c7d30fe547a85ea6bd1f96f4762d3ec  scripts/patch-agent-teams-fixes.mjs
+2fd0099a47fa9a27c5ae0e36cf80e2b642b839e4e86f57936d56611b115b85b9  agent-references/agent-teams-deltas.md
+-- mtimes --
+2026-09-17 15:23:16 packages/mpd-agent-teams-plugin/lib/tools.js
+2026-09-17 15:57:51 packages/mpd-agent-teams-plugin/lib/state.js
+2026-09-17 15:20:18 packages/mpd-agent-teams-plugin/lib/quality-gates.js
+2026-09-17 15:26:59 packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+2026-09-17 15:38:51 packages/mpd-agent-teams-plugin/self-fix-tests/strict-task-arguments.test.mjs
+2026-09-17 15:24:53 packages/mpd-agent-teams-plugin/self-fix-tests/terminal-rearm-refusal.test.mjs
+2026-09-17 15:21:00 packages/mpd-agent-teams-plugin/self-fix-tests/repair-source-deadlock.test.mjs
+2026-09-17 15:41:00 packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs

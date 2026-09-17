@@ -1,0 +1,18 @@
+node:fs:441
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open 'evidence/pack-closure/review-B/20260917T081003Z-t13/t67-build-form-diff.json'
+    at readFileSync (node:fs:441:20)
+    at file:///root/dshProj/my-power-dsh/evidence/pack-closure/wave2-laneB/20260917T072544Z-laneB/run-laneB-evidence.mjs:120:21
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:633:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'evidence/pack-closure/review-B/20260917T081003Z-t13/t67-build-form-diff.json'
+}
+
+Node.js v24.16.0
+driver exit=1

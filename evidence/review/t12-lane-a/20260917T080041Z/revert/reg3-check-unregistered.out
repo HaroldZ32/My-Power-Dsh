@@ -1,0 +1,17 @@
+file:///root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/lib/mpd-deltas.js:637
+    ",
+    ^^
+
+SyntaxError: Invalid or unexpected token
+    at compileSourceTextModule (node:internal/modules/esm/utils:318:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:90:18)
+    at #translate (node:internal/modules/esm/loader:435:20)
+    at afterLoad (node:internal/modules/esm/loader:491:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:496:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:549:36)
+    at afterResolve (node:internal/modules/esm/loader:597:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:12)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:253:17)
+
+Node.js v24.16.0

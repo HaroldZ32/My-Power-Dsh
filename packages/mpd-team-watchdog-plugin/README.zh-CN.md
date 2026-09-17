@@ -244,7 +244,7 @@ hold 同样可以 `session-watchdog-resume` 立即清除（或从 hold sidecar �
 
 * `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt, ttlMs}`。写入采用
   临时文件 + rename，以 `id` 幂等，并且是一个**保留式** hold：它的存在是为阻止向某一个团队
-  派发**新**工作，绝不用于取消已有工作。它不是 `agent_teams_halt`（后者会取消所有未终结任务）。
+  派发**新**工作，绝不用于取消已有工作。它是团队暂停的**内部实现**——唯一的外部暂停是 `agent_teams_halt`（后者会取消所有未终结任务）。
 * **T-17 —— hold 会自行释放，由两个上界触发。** 每个 hold 都携带 `ttlMs`（看门狗自动写下的 hold
   取解析后的 `watchdog.holdTtlMs`；手工调用 `session-watchdog-hold` 可用 `ttl_ms` 覆盖，`0` 表示
   “无 TTL”）。满足**任一**条件即自动释放：`now - since >= ttlMs`（且 `ttlMs > 0`），**或**该团队出现
@@ -265,12 +265,12 @@ hold 同样可以 `session-watchdog-resume` 立即清除（或从 hold sidecar �
 
 ### T-19 —— 同一个暂停面，并指明当前生效的机制
 
-团队可以被两种方式暂停：`agent_teams_halt`（会**取消**所有未终结任务）与本包自己的**保留式** hold。
-`session-watchdog-status` 打印两者的**并集**并指明谁在生效——`team-a: PAUSED — halted
-(agent_teams_halt)`、`team-a: PAUSED — held (watchdog hold)`、或 `team-a: not paused`——既出现在
-渲染文本中，也以每团队一个 `pause: {active, mechanism, halted, held}` 对象出现在 JSON 中。**不**新增
-任何 resume 动作：两种清除保持各自独立（`agent_teams_resume` / `session-watchdog-resume`），由该界面
-告诉用户该用哪一个。
+外部暂停只有一种：`agent_teams_halt`（会**取消**所有未终结任务），由 `agent_teams_resume` 清除。
+本包自己的**保留式** hold 是这次暂停的**内部实现**，绝不是供调用方二选一的第二种机制。
+因此状态视图只报告**一种**暂停状态并指明外部机制——`team-a: PAUSED —
+mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation
+active`，或 `team-a: not paused`——既出现在渲染文本中，也以每团队一个 `pause: {paused, mechanism,
+implementation, halted, held}` 对象出现在 JSON 中，其中 `halted`/`held` 只是诊断字段。
 
 ### §7.2/§7.3 —— 旋钮的实时值与**文件**值
 

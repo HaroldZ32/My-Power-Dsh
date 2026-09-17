@@ -37,6 +37,9 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_ROOT = resolve(HERE, "..")
 const DEFAULT_MANIFEST = "skills/dsh-qa/cases.json"
 const LANE_DIR = "skills/dsh-qa/scripts"
+// T-83: the ONE specifier a `"required"` lane's driver must carry, asserted as a literal (never the
+// export list — drivers legitimately import different members of the helper).
+const GUARD_SPECIFIER = "./lib/immutable-output.mjs"
 const EXIT = { GREEN: 0, UNAVAILABLE: 2, FAILED: 1, RUNNER_ERROR: 3 }
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000
 // Two spellings are in use: the full grammar with a quoted remedy, and a shorter one without.
@@ -170,7 +173,63 @@ function collectDrift(root, manifest) {
     .map((e) => ({ case: e.case, script: e.script }))
   // A script that is on disk and in the manifest, but not in any suite, is a deliberate exclusion
   // and is NOT drift: the manifest states its reason (`outsideSuites`).
-  return { unlistedScripts, missingScripts }
+  return { unlistedScripts, missingScripts, guard: collectGuard(root, manifest) }
+}
+
+/**
+ * T-83: every lane DECLARES its `immutabilityGuard` in the manifest (`"required"` or
+ * `"exempt: <reason>"`) — the same declare-never-omit rule as `outsideSuites`. The declaration is
+ * mandatory, an omitted or malformed one is drift, and a `"required"` lane whose driver does not
+ * import the immutability helper is drift too. Nothing here is DERIVED from a predicate: measured,
+ * `result.json` matches 45/45 drivers, `writeFileSync` 40/45, and a `--out` grep matched 12 files of
+ * which only 2 really parse the flag (3 were `--outfile` remedy text, 5 usage comments) — so a
+ * derived set would be either the forbidden 45-driver sweep or simply wrong.
+ */
+function collectGuard(root, manifest) {
+  const lanes = manifest.entries.filter((e) => e.kind !== "gate" && e.script)
+  const required = []
+  const exempt = []
+  const undeclared = []
+  const malformed = []
+  const missingImports = []
+  for (const entry of lanes) {
+    const value = entry.immutabilityGuard
+    if (typeof value !== "string" || value.trim() === "") {
+      undeclared.push(entry.case)
+      continue
+    }
+    if (value === "required") {
+      required.push(entry.case)
+      const path = join(root, entry.script)
+      if (existsSync(path) && !readFileSync(path, "utf8").includes(GUARD_SPECIFIER)) {
+        missingImports.push({ case: entry.case, script: entry.script, expected: GUARD_SPECIFIER })
+      }
+      continue
+    }
+    if (/^exempt:\s*\S/.test(value)) {
+      exempt.push(entry.case)
+      continue
+    }
+    malformed.push({ case: entry.case, value })
+  }
+  return {
+    required: required.sort(),
+    exemptCount: exempt.length,
+    undeclared,
+    malformed,
+    missingImports,
+    empty: lanes.length > 0 && required.length === 0,
+  }
+}
+
+/** Every way the guard declaration can be wrong, as printable lines. Empty array = clean. */
+function guardProblems(guard) {
+  return [
+    ...guard.undeclared.map((name) => "lane " + name + " carries no immutabilityGuard declaration (declare `required` or `exempt: <reason>`)"),
+    ...guard.malformed.map((entry) => "lane " + entry.case + " has a malformed immutabilityGuard: " + JSON.stringify(entry.value)),
+    ...guard.missingImports.map((entry) => "required driver " + entry.script + " (" + entry.case + ") does not import " + entry.expected),
+    ...(guard.empty ? ["the resolved required set is EMPTY — a declaration set that requires nothing is a RED"] : []),
+  ]
 }
 
 function selectEntries(manifest, opts) {
@@ -513,6 +572,9 @@ function runSuite(opts, manifest, ctx) {
     const value = ctx.drift[driftKind]
     if (value.length > 0) emit("[mpd-qa:" + run.suite + "] drift " + driftKind + "=" + value.length + " (run --list --check-drift for detail)")
   }
+  // T-83: the resolved required set is printed on EVERY run — including `required=0`, which is a RED.
+  emit("[mpd-qa:" + run.suite + "] immutability required=" + ctx.drift.guard.required.length + (ctx.drift.guard.required.length === 0 ? " (RED: no lane declares required)" : ": " + ctx.drift.guard.required.join(", ")) + " exempt=" + ctx.drift.guard.exemptCount)
+  for (const problem of guardProblems(ctx.drift.guard)) emit("[mpd-qa:" + run.suite + "] immutability guard: " + problem)
   for (const entry of selected) {
     const lane = runEntry(entry, ctx)
     lane.suite = run.suite
@@ -545,6 +607,7 @@ function listRegistry(root, manifest, drift, asJson) {
     args: entry.args ?? [],
     prereq: entry.prereq ?? [],
     outsideSuites: entry.outsideSuites ?? null,
+    immutabilityGuard: entry.immutabilityGuard ?? null,
   }))
   if (asJson) {
     return JSON.stringify({ manifest: relative(root, manifest.path), manifestSha256: manifest.sha256, entries, drift }, null, 2)
@@ -562,6 +625,10 @@ function listRegistry(root, manifest, drift, asJson) {
   const outside = entries.filter((e) => e.suites.length === 0)
   lines.push("outside every suite (" + outside.length + ") — explicit, with reason:")
   for (const entry of outside) lines.push("  - " + entry.case + ": " + (entry.outsideSuites ?? "(no reason recorded — drift)"))
+  lines.push("")
+  lines.push("immutabilityGuard required (" + drift.guard.required.length + "): " + (drift.guard.required.join(", ") || "NONE — a resolved required set that is empty is a RED"))
+  lines.push("immutabilityGuard exempt (" + drift.guard.exemptCount + ") — each with a declared reason; no lane may be silent")
+  for (const problem of guardProblems(drift.guard)) lines.push("immutabilityGuard PROBLEM: " + problem)
   lines.push("")
   lines.push("drift unlistedScripts (" + drift.unlistedScripts.length + "): " + (drift.unlistedScripts.join(", ") || "none"))
   lines.push("drift missingScripts (" + drift.missingScripts.length + "): " + (drift.missingScripts.map((m) => m.case + " -> " + m.script).join(", ") || "none"))
@@ -589,6 +656,7 @@ function makeContext(opts, drift) {
 }
 
 function selfTest() {
+  const FIXTURE_EXEMPT = "exempt: fixture lane — takes no caller-supplied output target"
   const fixtureRoot = mkdtempSync(join(tmpdir(), "mpd-qa-runner-selftest-"))
   const laneDir = join(fixtureRoot, LANE_DIR)
   mkdirSync(laneDir, { recursive: true })
@@ -620,26 +688,60 @@ function selfTest() {
       "process.exit(1)",
       "",
     ].join("\n"),
+    // T-83 arm fixtures: one required lane that REALLY imports the guard and drives it over a fresh
+    // target (load-bearing, not a decorative import), and one that deliberately does not import it.
+    "fx-guard-ok.mjs": [
+      "import { mkdtempSync } from 'node:fs'",
+      "import { tmpdir } from 'node:os'",
+      "import { join } from 'node:path'",
+      "import { exitOnRefusal, refuseOverwrite } from './lib/immutable-output.mjs'",
+      "const dir = mkdtempSync(join(tmpdir(), 'fx-guard-ok-'))",
+      "try { refuseOverwrite(join(dir, 'result.json'), { label: 'fixture result.json' }) } catch (error) { exitOnRefusal(error, '[fx-guard-ok]') }",
+      "console.log('fx-guard-ok: the guard accepted a fresh target')",
+      "process.exit(0)",
+      "",
+    ].join("\n"),
+    "fx-guard-bad.mjs": "console.log('fx-guard-bad: a required fixture lane WITHOUT the guard import — present only to drive the missing-import arm')\nprocess.exit(0)\n",
   }
+  // The fixture's own stub of the helper, so fx-guard-ok's import is real and resolvable.
+  mkdirSync(join(laneDir, "lib"), { recursive: true })
+  writeFileSync(join(laneDir, "lib", "immutable-output.mjs"), [
+    "import { existsSync } from 'node:fs'",
+    "export const IMMUTABLE_EXIT_CODE = 3",
+    "export class ImmutableOutputError extends Error {",
+    "  constructor(message) { super(message); this.name = 'ImmutableOutputError'; this.exitCode = IMMUTABLE_EXIT_CODE }",
+    "}",
+    "export function refuseOverwrite(target, { label = 'output' } = {}) {",
+    "  if (existsSync(target)) throw new ImmutableOutputError('refusing to overwrite the existing ' + label + ': ' + target)",
+    "  return target",
+    "}",
+    "export function exitOnRefusal(error, prefix) {",
+    "  if (error instanceof ImmutableOutputError) { console.error(prefix + ' ' + error.message); process.exit(error.exitCode) }",
+    "  throw error",
+    "}",
+    "",
+  ].join("\n"))
   for (const [name, body] of Object.entries(fixtures)) writeFileSync(join(laneDir, name), body)
   const fixtureManifest = join(fixtureRoot, DEFAULT_MANIFEST)
   mkdirSync(dirname(fixtureManifest), { recursive: true })
   writeFileSync(fixtureManifest, JSON.stringify({
     manifestVersion: 1,
     lanes: [
-      { case: "fx-fail", script: LANE_DIR + "/fx-fail.mjs", suites: ["all"] },
-      { case: "fx-pass", script: LANE_DIR + "/fx-pass.mjs", suites: ["all"] },
-      { case: "fx-skip", script: LANE_DIR + "/fx-skip.mjs", suites: ["all"] },
-      { case: "fx-short", script: LANE_DIR + "/fx-short.mjs", suites: ["all"] },
-      { case: "fx-unavailable", script: LANE_DIR + "/fx-unavailable.mjs", suites: ["all"] },
-      { case: "fx-usage", script: LANE_DIR + "/fx-usage.mjs", suites: ["all"] },
-      { case: "fx-hang", script: LANE_DIR + "/fx-hang.mjs", suites: ["all"], args: ["--no-skip"], timeoutMs: 400 },
-      { case: "fx-credential", script: LANE_DIR + "/fx-credential.mjs", suites: ["all"] },
-      { case: "fx-401", script: LANE_DIR + "/fx-401.mjs", suites: ["all"] },
-      { case: "fx-both", script: LANE_DIR + "/fx-both.mjs", suites: ["all"] },
-      { case: "fx-expected-fence", script: LANE_DIR + "/fx-expected-fence.mjs", suites: ["all"] },
-      { case: "fx-missing", script: LANE_DIR + "/fx-missing-does-not-exist.mjs", suites: ["all"] },
-      { case: "fx-outside", script: LANE_DIR + "/fx-outside.mjs", suites: [], outsideSuites: "fixture: deliberately outside every suite" },
+      { case: "fx-fail", script: LANE_DIR + "/fx-fail.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-pass", script: LANE_DIR + "/fx-pass.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-skip", script: LANE_DIR + "/fx-skip.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-short", script: LANE_DIR + "/fx-short.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-unavailable", script: LANE_DIR + "/fx-unavailable.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-usage", script: LANE_DIR + "/fx-usage.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-hang", script: LANE_DIR + "/fx-hang.mjs", suites: ["all"], args: ["--no-skip"], timeoutMs: 400, immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-credential", script: LANE_DIR + "/fx-credential.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-401", script: LANE_DIR + "/fx-401.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-both", script: LANE_DIR + "/fx-both.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-expected-fence", script: LANE_DIR + "/fx-expected-fence.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-missing", script: LANE_DIR + "/fx-missing-does-not-exist.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-guard-ok", script: LANE_DIR + "/fx-guard-ok.mjs", suites: ["all"], immutabilityGuard: "required" },
+      { case: "fx-guard-bad", script: LANE_DIR + "/fx-guard-bad.mjs", suites: ["all"], immutabilityGuard: FIXTURE_EXEMPT },
+      { case: "fx-outside", script: LANE_DIR + "/fx-outside.mjs", suites: [], outsideSuites: "fixture: deliberately outside every suite", immutabilityGuard: FIXTURE_EXEMPT },
     ],
     gates: [
       { case: "fx-gate-ok", kind: "gate", argv: ["node", "-e", "process.exit(0)"], suites: [] },
@@ -651,8 +753,33 @@ function selfTest() {
   const cleanManifest = "fixtures-clean-manifest.json"
   writeFileSync(join(fixtureRoot, cleanManifest), JSON.stringify({
     manifestVersion: 1,
-    lanes: Object.keys(fixtures).map((name) => ({ case: name.replace(/\.mjs$/, ""), script: LANE_DIR + "/" + name, suites: [] })),
+    lanes: Object.keys(fixtures).map((name) => ({
+      case: name.replace(/\.mjs$/, ""),
+      script: LANE_DIR + "/" + name,
+      suites: [],
+      // fx-guard-ok is the ONE required fixture lane (its import is real); fx-guard-bad is declared
+      // exempt here on purpose — it drives the missing-import arm through the separate manifest below.
+      immutabilityGuard: name === "fx-guard-ok.mjs" ? "required" : FIXTURE_EXEMPT,
+    })),
   }, null, 2))
+  // Three deliberately broken guard manifests: (a) a required lane with no import, (b) an undeclared
+  // lane, (c) an all-exempt set whose resolved required count is zero. Each must redden --check-drift.
+  const guardManifests = {
+    "fixtures-guard-missing-import.json": [
+      { case: "fx-guard-ok", script: LANE_DIR + "/fx-guard-ok.mjs", suites: [], immutabilityGuard: "required" },
+      { case: "fx-guard-bad", script: LANE_DIR + "/fx-guard-bad.mjs", suites: [], immutabilityGuard: "required" },
+    ],
+    "fixtures-guard-undeclared.json": [
+      { case: "fx-guard-ok", script: LANE_DIR + "/fx-guard-ok.mjs", suites: [], immutabilityGuard: "required" },
+      { case: "fx-pass", script: LANE_DIR + "/fx-pass.mjs", suites: [] },
+    ],
+    "fixtures-guard-empty.json": [
+      { case: "fx-pass", script: LANE_DIR + "/fx-pass.mjs", suites: [], immutabilityGuard: FIXTURE_EXEMPT },
+    ],
+  }
+  for (const [name, lanes] of Object.entries(guardManifests)) {
+    writeFileSync(join(fixtureRoot, name), JSON.stringify({ manifestVersion: 1, lanes }, null, 2))
+  }
   const failures = []
   const runChild = (args) => {
     const proc = spawnSync(process.execPath, [fileURLToPath(import.meta.url), ...args], { encoding: "utf8", cwd: fixtureRoot })
@@ -673,8 +800,21 @@ function selfTest() {
   if (driftResult.status !== 1) failures.push("--check-drift exited " + driftResult.status + " on a drifted fixture (expected 1)")
   const cleanDrift = runChild(["--root=" + fixtureRoot, "--manifest=" + cleanManifest, "--check-drift"])
   if (cleanDrift.status !== 0) failures.push("--check-drift exited " + cleanDrift.status + " on a fixture where every on-disk script is declared (expected 0)")
+  // ── T-83 guard arms: the mandatory declaration, both frozen falsifications, and the empty-set RED ──
+  if (!/immutability required=1: fx-guard-ok/.test(cleanDrift.stdout)) failures.push("a clean --check-drift did not print the resolved required set (required=1: fx-guard-ok): " + cleanDrift.stdout.slice(-200))
+  const guardMissingImport = runChild(["--root=" + fixtureRoot, "--manifest=fixtures-guard-missing-import.json", "--check-drift"])
+  if (guardMissingImport.status !== 1) failures.push("--check-drift exited " + guardMissingImport.status + " when a required driver does not import the guard (expected 1)")
+  if (!guardMissingImport.stderr.includes("fx-guard-bad.mjs")) failures.push("the missing-import arm did not NAME the driver: " + guardMissingImport.stderr.slice(0, 300))
+  if (!guardMissingImport.stderr.includes(GUARD_SPECIFIER)) failures.push("the missing-import arm did not name the missing specifier: " + guardMissingImport.stderr.slice(0, 300))
+  const guardUndeclared = runChild(["--root=" + fixtureRoot, "--manifest=fixtures-guard-undeclared.json", "--check-drift"])
+  if (guardUndeclared.status !== 1) failures.push("--check-drift exited " + guardUndeclared.status + " when a lane carries no guard declaration (expected 1)")
+  if (!guardUndeclared.stderr.includes("fx-pass")) failures.push("the undeclared arm did not NAME the case: " + guardUndeclared.stderr.slice(0, 300))
+  const guardEmpty = runChild(["--root=" + fixtureRoot, "--manifest=fixtures-guard-empty.json", "--check-drift"])
+  if (guardEmpty.status !== 1) failures.push("--check-drift exited " + guardEmpty.status + " on an all-exempt manifest whose required set resolves to zero (expected 1)")
+  if (!/required set is EMPTY/.test(guardEmpty.stderr)) failures.push("the empty-set arm did not say the required set is EMPTY: " + guardEmpty.stderr.slice(0, 300))
   const green = runChild(["--root=" + fixtureRoot, "--manifest=" + DEFAULT_MANIFEST, "--only=fx-pass,fx-gate-ok", "--evidence-dir=ev-green"])
   if (green.status !== 0) failures.push("all-green subset exited " + green.status + " (expected 0): " + green.stdout.slice(-300))
+  if (!/immutability required=1: fx-guard-ok/.test(green.stdout)) failures.push("a normal suite run did not print the resolved required set — it must be printed on EVERY run: " + green.stdout.slice(0, 300))
   // The space-separated spelling is the one the task contracts and SKILL.md document: pin it.
   const spaceForm = runChild(["--root", fixtureRoot, "--manifest", DEFAULT_MANIFEST, "--only", "fx-pass", "--evidence-dir", "ev-space"])
   if (spaceForm.status !== 0) failures.push("the space-separated flag spelling exited " + spaceForm.status + " (expected 0) — the documented invocations use it")
@@ -737,7 +877,7 @@ function selfTest() {
     for (const failure of failures) console.error("  - " + failure)
     process.exit(1)
   }
-  console.log("[run-qa-lanes self-test] ok: classification (pass/unavailable/fail), continue-past-failure, per-lane logs, exit codes 0/1/2/3, drift detection and the timeout guard verified on fixtures")
+  console.log("[run-qa-lanes self-test] ok: classification (pass/unavailable/fail), continue-past-failure, per-lane logs, exit codes 0/1/2/3, drift detection, the T-83 immutability-guard declaration rule (both falsifications + the empty-set RED) and the timeout guard verified on fixtures")
 }
 
 function main() {
@@ -769,11 +909,17 @@ function main() {
     process.exit(EXIT.GREEN)
   }
   if (opts.checkDrift) {
+    const problems = guardProblems(drift.guard)
     if (opts.json) console.log(JSON.stringify(drift, null, 2))
     if (drift.unlistedScripts.length > 0) console.error("[run-qa-lanes] drift: " + drift.unlistedScripts.length + " lane script(s) on disk in no manifest entry: " + drift.unlistedScripts.join(", "))
     if (drift.missingScripts.length > 0) console.error("[run-qa-lanes] drift: " + drift.missingScripts.length + " manifest entry(ies) whose script is gone: " + drift.missingScripts.map((m) => m.case).join(", "))
-    if (drift.unlistedScripts.length === 0 && drift.missingScripts.length === 0) console.log("[run-qa-lanes] manifest and disk agree (" + manifest.entries.length + " entries)")
-    process.exit(drift.unlistedScripts.length > 0 || drift.missingScripts.length > 0 ? EXIT.FAILED : EXIT.GREEN)
+    for (const problem of problems) console.error("[run-qa-lanes] immutability guard: " + problem)
+    // The resolved set is printed in the SAME canonical shape on every surface (check-drift, run, list).
+    console.log("[run-qa-lanes] immutability required=" + drift.guard.required.length + (drift.guard.required.length === 0 ? " (RED: no lane declares required)" : ": " + drift.guard.required.join(", ")) + " exempt=" + drift.guard.exemptCount)
+    if (drift.unlistedScripts.length === 0 && drift.missingScripts.length === 0 && problems.length === 0) {
+      console.log("[run-qa-lanes] manifest and disk agree (" + manifest.entries.length + " entries) and the immutability guard is declared")
+    }
+    process.exit(drift.unlistedScripts.length > 0 || drift.missingScripts.length > 0 || problems.length > 0 ? EXIT.FAILED : EXIT.GREEN)
   }
   const ctx = makeContext(opts, drift)
   let run

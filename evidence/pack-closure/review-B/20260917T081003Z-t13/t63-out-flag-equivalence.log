@@ -1,0 +1,76 @@
+{
+  "schema": "laneB/t63-out-flag-equivalence/1",
+  "captured_at": "2026-09-17T08:10:24.345Z",
+  "readings": [
+    {
+      "arm": "default invocation (no flags) vs --out",
+      "default_run": {
+        "exitCode": 0,
+        "staged": "/root/dshProj/my-power-dsh/.mpd/laneB-outflag/repo-copy/dist/mpd-package",
+        "banner": "[pack-mpd] staged package -> /root/dshProj/my-power-dsh/.mpd/laneB-outflag/repo-copy/dist/mpd-package  (out-dir source: default (<repo>/dist/mpd-package))"
+      },
+      "out_flag_run": {
+        "exitCode": 0,
+        "staged": "/root/dshProj/my-power-dsh/.mpd/laneB-outflag/pack-out-flag",
+        "banner": "[pack-mpd] staged package -> /root/dshProj/my-power-dsh/.mpd/laneB-outflag/pack-out-flag  (out-dir source: command line (--out /root/dshProj/my-power-dsh/.mpd/laneB-outflag/pack-out-flag))"
+      }
+    },
+    {
+      "arm": "the canonical artifact is never written",
+      "before": {
+        "files": 1190,
+        "newestMs": 1789622388265.9717,
+        "iso": "2026-09-17T05:19:48.265Z"
+      },
+      "after": {
+        "files": 1190,
+        "newestMs": 1789622388265.9717,
+        "iso": "2026-09-17T05:19:48.265Z"
+      },
+      "identical": true
+    },
+    {
+      "arm": "default-path pack vs --out pack (same sources)",
+      "files": 1190,
+      "set_equal": true,
+      "differing_files": [],
+      "differing_count": 0
+    },
+    {
+      "arm": "fresh pack vs the canonical artifact",
+      "changed_count": 25,
+      "changed_sample": [
+        "EXTENSIONS-FOR-AGENTS.md",
+        "agent-references/agent-teams-deltas.md",
+        "agent-references/index.md",
+        "agent-references/troubleshooting.md",
+        "docs/extension-adaptation-report.md",
+        "docs/extension-adaptation-report.zh-CN.md",
+        "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+        "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+        "packages/mpd-agent-teams-plugin/lib/state.js",
+        "packages/mpd-agent-teams-plugin/lib/tools.js",
+        "packages/mpd-team-watchdog-plugin/README.md",
+        "packages/mpd-team-watchdog-plugin/README.zh-CN.md",
+        "packages/mpd-team-watchdog-plugin/dist/index.js",
+        "skills/dsh-qa/cases.json"
+      ],
+      "only_in_canonical": [],
+      "only_in_fresh": [],
+      "unexplained_by_a_post_pack_writer": []
+    },
+    {
+      "arm": "flag guards",
+      "missing_value": {
+        "exitCode": 2,
+        "refused": true
+      },
+      "repo_root_value": {
+        "exitCode": 2,
+        "refused": true
+      }
+    }
+  ],
+  "ok": true,
+  "verdict": "ALL READINGS BEHAVED AS SPECIFIED"
+}

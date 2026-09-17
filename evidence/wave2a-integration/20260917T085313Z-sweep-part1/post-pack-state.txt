@@ -1,0 +1,12 @@
+=== POST-PACK STATE (captured 2026-09-17T08:56:10Z) ===
+--- artifact stamp:
+pack stamp 2026-09-17T08:55:57.244Z
+--- EXPECTED-after-pack SET (after):
+0
+--- counts:
+content bytes: 1181 file(s) compared, 1181 identical, 0 drift, 0 expected-after-pack
+completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent
+--- any violation/FAIL lines:
+0
+--- membership check (must be EMPTY):
+(end membership check)

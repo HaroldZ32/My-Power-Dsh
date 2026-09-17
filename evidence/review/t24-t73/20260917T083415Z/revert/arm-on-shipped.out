@@ -1,0 +1,14 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/composed-ticket-output-preserved.test.mjs:
+(pass) T-73: the deterministic probe — a composed ticket no longer WIPES the stored deliverable [18.34ms]
+(pass) T-73 negative control: with the new condition neutralised, the SAME fixture is WIPED [24.47ms]
+(pass) T-73 control: a HANDOVER still clears (the fix is not 'never clear') [0.44ms]
+(pass) T-73 control: a PENDING task's first dispatch still clears (a NEW generation) [1.93ms]
+(pass) T-73 ∩ T-79: the SAME function still refuses terminal work, and the terminal deliverable is untouched [0.96ms]
+(pass) T-73: the region is REGISTERED in the delta registry and lives in state.js [10.59ms]
+
+ 6 pass
+ 0 fail
+ 25 expect() calls
+Ran 6 tests across 1 file. [164.00ms]

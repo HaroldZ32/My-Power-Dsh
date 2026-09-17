@@ -1,0 +1,17 @@
+=== typecheck (verify 2) — 2026-09-17T08:35:39Z
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+
+=== the watchdog tool-list pin (acceptance item 3): holds-lifecycle.test.ts
+ 20 pass
+ 0 fail
+ 101 expect() calls
+Ran 20 tests across 1 file. [150.00ms]
+
+=== the D2 boundary pins (unchanged by the collapse)
+(pass) D2: the two tool-boundary guards and tools.js's reader copy are gone; scheduler keeps its own [11.42ms]
+(pass) D2: with a LIVE hold present, claim_task and update_task SUCCEED (the hold no longer blocks a write) [37.90ms]
+(pass) D2 NEGATIVE CONTROL: the deleted guard re-injected into a scratch copy makes the same call FAIL [56.32ms]
+(fail) T-19: the status surface names BOTH pause mechanisms and defers the hold [18.97ms]
+ 5 pass
+ 1 fail

@@ -1,0 +1,2 @@
+[run-qa-lanes] immutability required=9: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, web-settings-bridge exempt=36
+[run-qa-lanes] manifest and disk agree (51 entries) and the immutability guard is declared

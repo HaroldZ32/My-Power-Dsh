@@ -20,10 +20,14 @@ import { heldTeamIds, type HoldRegistry } from "./holds.js"
 import {
   candidateFor,
   knobReadings,
+  overlayWatchdogSection,
   readKnobs,
+  sectionDigest,
   WatchdogMachine,
+  watchdogSectionOf,
   type ChannelState,
   type Decision,
+  type KnobIssue,
   type KnobReading,
   type ResolvedKnobs,
   type SilenceCandidate,
@@ -140,18 +144,30 @@ export interface EngineContext {
 }
 
 /** A settings namespace read through the adapter, never a direct service call. */
+function readNamespaceValue(dsh: DshAdapter): { value: unknown; error: string | null } {
+  try {
+    const reader = dsh.settingsReader("mpd")
+    return { value: reader?.get(), error: null }
+  } catch (error) {
+    return { value: undefined, error: message(error) }
+  }
+}
+
+/** The §7.2 issue one failed namespace read leaves behind (the row defaults are used instead). */
+function namespaceReadIssue(error: string): KnobIssue {
+  return { path: "watchdog", problem: "settings read failed: " + error, fallback: "defaults" }
+}
+
+/** A settings namespace read through the adapter, never a direct service call. */
 function readNamespaceKnobs(
   dsh: DshAdapter,
   env: Record<string, string | undefined>,
   defaults: WatchdogKnobs,
 ): ResolvedKnobs {
-  try {
-    const reader = dsh.settingsReader("mpd")
-    return readKnobs(reader?.get(), env, defaults)
-  } catch (error) {
-    const base = readKnobs(undefined, env, defaults)
-    return { ...base, issues: [...base.issues, { path: "watchdog", problem: "settings read failed: " + message(error), fallback: "defaults" }] }
-  }
+  const { value, error } = readNamespaceValue(dsh)
+  const base = readKnobs(value, env, defaults)
+  if (error === null) return base
+  return { ...base, issues: [...base.issues, namespaceReadIssue(error)] }
 }
 
 /** Unwrap the value a harness tool call returns. */
@@ -254,13 +270,26 @@ export class WatchdogEngine {
   /** §7.3: whether the once-per-process knob-divergence warning was made. */
   private divergenceAnnounced = false
   /** §7.2: the last computed per-knob live-vs-file reading (for the status view). */
-  private knobView: { readings: KnobReading[]; divergent: string[]; restartRequired: boolean; file: string | null; fileFound: boolean } = {
+  private knobView: { readings: KnobReading[]; divergent: string[]; restartRequired: boolean; file: string | null; fileFound: boolean; fileApplied: boolean; liveLayer: "namespace" | "file" } = {
     readings: [],
     divergent: [],
     restartRequired: false,
     file: null,
     fileFound: false,
+    fileApplied: false,
+    liveLayer: "namespace",
   }
+  /**
+   * T-18 (wave 2, user ruling): the knob layers as LAST OBSERVED, so the engine can tell a file
+   * edit from a settings edit and let the layer that MOVED win (the settings front door stays the
+   * tie-breaker, and the mount-time rule is unchanged: the resolved namespace is authoritative).
+   */
+  private readonly layerDigests: { namespace: string | null; file: string | null } = { namespace: null, file: null }
+  /** Whether both layer digests have been observed at least once (the mount call seeds them). */
+  private layersSeen = false
+  /** The layer the running values came from, and the file that supplied them when it is `file`. */
+  private liveLayer: "namespace" | "file" = "namespace"
+  private liveFile: string | null = null
   /** Set by `apply` so a live cadence change can rebuild the single timer. */
   onKnobsChanged: ((knobs: ResolvedKnobs) => void) | undefined
   private readonly stats: EngineStats = {
@@ -357,9 +386,50 @@ export class WatchdogEngine {
     return [...roots].sort()
   }
 
-  /** Re-read the knob set (called at apply and on `settings/document-updated`). */
+  /**
+   * Re-read the knob set (called at apply, on `settings/document-updated`, and once per tick).
+   *
+   * T-18 (wave 2, user ruling): `knobs are DATA, so T-21's module-cache limit does not apply`.
+   * The namespace VALUE is the frozen part — a settings registration resolves a snapshot at mount
+   * and a `.mpd/mpd.jsonc` edit reaches it only at the next boot (`mpd-config`'s own note). The
+   * window's OWN file is parsed live by `config-file.ts` on every call, so this method lets the
+   * layer that MOVED win:
+   *
+   *   * the settings namespace moved and the file did not  ⇒ the settings front door wins;
+   *   * the FILE moved and the namespace did not           ⇒ the file's stated leaves win, live,
+   *     in THIS process, with no restart (the measured T-18 case: `watchdog.warnSilenceMs = 600000`
+   *     written to `.mpd/mpd.jsonc` and ignored until a boot);
+   *   * neither, or BOTH (a settings write that also rewrites the file) ⇒ the last winner stays;
+   *     on the very first call the namespace wins, so the mount-time rule is unchanged.
+   *
+   * The winner is sticky rather than re-decided per read, which is what keeps a file value from
+   * being dropped on the next tick when neither layer moved again.
+   */
   refreshKnobs(env: Record<string, string | undefined> = process.env): ResolvedKnobs {
-    this.knobs = readNamespaceKnobs(this.dsh, env, this.knobDefaults())
+    const { value: namespaceValue, error } = readNamespaceValue(this.dsh)
+    const namespaceDigest = sectionDigest(watchdogSectionOf(namespaceValue))
+    const file = readWatchdogSection(this.workspaceOf(undefined))
+    const fileDigest = file.found ? sectionDigest(file.section) : null
+    if (this.layersSeen) {
+      const namespaceChanged = namespaceDigest !== this.layerDigests.namespace
+      const fileChanged = fileDigest !== this.layerDigests.file
+      if (fileChanged && !namespaceChanged) {
+        this.liveLayer = "file"
+        this.liveFile = file.path
+      } else if (namespaceChanged) {
+        // A settings write (alone, or together with its own write-back) is the front door and
+        // outranks a file that did not move in the same window.
+        this.liveLayer = "namespace"
+        this.liveFile = null
+      }
+    } else {
+      this.layersSeen = true
+    }
+    this.layerDigests.namespace = namespaceDigest
+    this.layerDigests.file = fileDigest
+    const base = this.liveLayer === "file" && fileDigest !== null ? overlayWatchdogSection(namespaceValue, file.section) : namespaceValue
+    const resolved = readKnobs(base, env, this.knobDefaults())
+    this.knobs = error === null ? resolved : { ...resolved, issues: [...resolved.issues, namespaceReadIssue(error)] }
     return this.knobs
   }
 
@@ -706,7 +776,13 @@ export class WatchdogEngine {
       // row-config defaults until somebody edited settings. A per-tick read is one
       // tiny lookup and makes live tuning independent of the mount order.
       try {
-        this.onKnobsChanged?.(this.refreshKnobs())
+        // T-18 (wave 2): the re-read is NOT conditional on a wired `onKnobsChanged`. The
+        // optional call `this.onKnobsChanged?.(this.refreshKnobs())` never evaluates its
+        // argument when the field is unset, so a directly constructed engine (a lane, a test)
+        // silently kept its boot values while the row-mounted one re-read — measured while
+        // building this lane's instruments. Read first, hand the value out second.
+        const next = this.refreshKnobs()
+        this.onKnobsChanged?.(next)
       } catch (error) {
         this.warn("knob re-read failed: " + message(error))
       }
@@ -845,9 +921,10 @@ export class WatchdogEngine {
    *     member that demonstrably worked has disproved the wedge the hold was raised for.
    *
    * Both paths write ONE durable `hold-auto-released` incident, log ONE line, and leave every
-   * team byte untouched — the pause stays PRESERVING (the same promise `session-watchdog-resume`
-   * keeps). The hold sidecar is cleared through the plugin's own `applyResume`, so the
-   * synchronous reader the w7 gates consult is updated in the same step the file is.
+   * team byte untouched — the internal hold stays PRESERVING (the same promise the plugin's own
+   * `session-watchdog-resume` command keeps). The hold sidecar is cleared through that same
+   * `applyResume`, so the synchronous reader the w7 gates consult is updated in the same step the
+   * file is.
    *
    * A hold that cannot be cleared is COUNTED and reported, never silently retried forever.
    */
@@ -878,7 +955,7 @@ export class WatchdogEngine {
       const resumed = applyResume(workspace, this.config.stateDir, { team_id: teamId }, this.registry)
       if (!resumed.resumed) {
         this.stats.holdsAutoReleaseFailures += 1
-        this.warn("hold auto-release FAILED for " + teamId + " (" + String(resumed.reason) + "): the hold is still persisted, so the team stays paused")
+        this.warn("hold auto-release FAILED for " + teamId + " (" + String(resumed.reason) + "): the internal hold is still persisted, so new dispatch into the team stays stopped")
         continue
       }
       this.stats.holdsAutoReleased += 1
@@ -906,7 +983,7 @@ export class WatchdogEngine {
           " age=" + age + "ms" +
           " ttl=" + (hold.ttlMs === 0 ? "none" : hold.ttlMs + "ms") +
           " since=" + hold.since +
-          " — the pause lifted itself; every team byte is untouched (PRESERVING)" +
+          " — the internal hold lifted itself; every team byte is untouched (PRESERVING)" +
           (logged.ok ? " record=" + logged.path : " record=FAILED"),
       )
     }
@@ -924,17 +1001,20 @@ export class WatchdogEngine {
   /**
    * §7.2/§7.3 — the per-knob live-vs-file reading, refreshed on every tick.
    *
-   * The FILE value is the workspace's own `.mpd/mpd.jsonc` (never `DSH_HOME`), read for
-   * DIVERGENCE only: `.mpd/mpd.jsonc` reaches a process's `mpd` namespace once, at mount, so a
-   * file edit is invisible until the next boot. Saying that out loud — per knob, with a
-   * `restartRequired` flag — is the honest fix; re-registering the namespace would be a lie.
+   * The FILE value is the workspace's own `.mpd/mpd.jsonc` (never `DSH_HOME`). T-18 (wave 2) made
+   * that file a LIVE layer when it is the layer that moved (see `refreshKnobs`), so what remains
+   * here is the honest residue: a knob whose file value the running process is NOT using, with the
+   * `restartRequired` flag. It is still reachable — a file edit that lands in the same observation
+   * window as a settings write, or a file whose values arrived before this process observed them —
+   * and when it fires, the bound it states is real.
    */
   private noteKnobDivergence(): void {
     const workspace = this.workspaceOf(undefined)
     const { found, path, section } = readWatchdogSection(workspace)
     const readings = knobReadings(this.knobs, section)
     const divergent = readings.filter((reading) => reading.differs).map((reading) => reading.knob)
-    this.knobView = { readings, divergent, restartRequired: divergent.length > 0, file: path, fileFound: found }
+    const fileApplied = this.liveLayer === "file" && this.liveFile === path
+    this.knobView = { readings, divergent, restartRequired: divergent.length > 0, file: path, fileFound: found, fileApplied, liveLayer: this.liveLayer }
     if (divergent.length === 0 || this.divergenceAnnounced) return
     this.divergenceAnnounced = true
     const detail = readings
@@ -943,12 +1023,22 @@ export class WatchdogEngine {
       .join(", ")
     this.warn(
       "KNOBS DIVERGE (§7.3): " + path + " states " + divergent.length + " value(s) the running process is NOT using (" + detail +
-        ") — a .mpd/mpd.jsonc edit applies at the NEXT dsh boot, never mid-process",
+        ") — " + (fileApplied
+          ? "the file layer was applied live for its other values; these could not be applied and wait for the next dsh boot"
+          : "a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise"),
     )
   }
 
   /** §7.2: the last per-knob live-vs-file reading (the status view prints it). */
-  knobDivergence(): { readings: KnobReading[]; divergent: string[]; restartRequired: boolean; file: string | null; fileFound: boolean } {
+  knobDivergence(): {
+    readings: KnobReading[]
+    divergent: string[]
+    restartRequired: boolean
+    file: string | null
+    fileFound: boolean
+    fileApplied: boolean
+    liveLayer: "namespace" | "file"
+  } {
     return { ...this.knobView, readings: this.knobView.readings.map((reading) => ({ ...reading })) }
   }
 

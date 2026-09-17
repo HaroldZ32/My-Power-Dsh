@@ -1,0 +1,8 @@
+# settle re-check at 2026-09-17T07:22:35Z (50s after the first reading; same hashes, same verdict)
+7780cf853becf8829abf6c4251b7543adb5520ff70e10c94d053fe3a14dd9b89  scripts/verify-docs-parity.mjs
+a5ba27f66aec2b5549df0fcbe66f97f1f258054f3f3f2b400f3c49b3d32ce0aa  AGENTS.md
+1485be855df9adccc9f7e9c91f6596e073d03caec4276bb06fe887d6a9b49a1f  agent-references/agent-teams-deltas.md
+5388c56fe4e9d061dacb5973df411ed7a10a1f1559454b65169148a2f6109e2d  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+verify:docs exit=0 pairs=37 failed=0 violations=0 derived=2 — PASS
+verify:rows exit=0
+self-test 20/20 PASS

@@ -1,0 +1,4 @@
+arms compared: 9 x 2 revisions
+MOVED  symbol-first-right-then-wrong [durable] 0 -> 1
+total exit-code movements: 1
+frozen revision movement (must be 0): 0

@@ -1,0 +1,41 @@
+{
+  "driver": "unknown-args/pre-fix (HEAD tools.js)",
+  "headCommit": "c826f16",
+  "variants": [
+    {
+      "label": "HEAD (pre-fix)",
+      "toolsPath": "/tmp/mpd-t61-head-mod-KcrqsR/lib/tools.js",
+      "outcome": {
+        "threw": false,
+        "returned": {
+          "task_id": "t1",
+          "status": "in_progress",
+          "attempt": 1,
+          "attempt_id": "att-1",
+          "output": "PART 1/2"
+        }
+      },
+      "recordSha256Before": "d4f00e810e3aa5132dfeaa3e4898cee0afca259395a02c9ce161a981b3b53783",
+      "recordSha256After": "c6055b2e2421699afc0de603cc0b9293d02fb4d757b5360a42f65e1555491438",
+      "recordByteIdentical": false,
+      "storedAcceptanceResults": null,
+      "storedOutput": "PART 1/2",
+      "storedStatus": "in_progress"
+    },
+    {
+      "label": "fixed tree",
+      "toolsPath": "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/tools.js",
+      "outcome": {
+        "threw": true,
+        "message": "agent_teams_update_task: unknown argument name(s) \"acceptance_results\" — the call was REFUSED and NOTHING was stored. Declared arguments: task_id, status, output, output_append, artifact, replace_output, attempt_id, verdict, findings, changedPaths, acceptanceResults, commandsRun, amend. A snake_case payload (e.g. \"acceptance_results\" for \"acceptanceResults\") used to be accepted as a successful no-op; rename the key(s) and repeat the call."
+      },
+      "recordSha256Before": "ce23c960007aa287361e2c0cdf27c7510b825533d62133307a8e2b4d01200ddb",
+      "recordSha256After": "ce23c960007aa287361e2c0cdf27c7510b825533d62133307a8e2b4d01200ddb",
+      "recordByteIdentical": true,
+      "storedAcceptanceResults": null,
+      "storedOutput": "PART 1/2",
+      "storedStatus": "in_progress"
+    }
+  ],
+  "headToolsSha256": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f"
+}

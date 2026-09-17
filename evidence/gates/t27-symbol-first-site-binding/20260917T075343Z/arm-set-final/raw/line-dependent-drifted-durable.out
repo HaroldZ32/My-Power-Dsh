@@ -1,0 +1,14 @@
+docs-claims checker (t72: existence + range + SITE-PAIRED content claims + symbol-first enforcement + negative control)
+repo /root/dshProj/my-power-dsh/evidence/gates/t27-symbol-first-site-binding/20260917T075343Z/arm-set-final/fixtures/line-dependent-drifted
+
+  FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: the cited line/range does not carry the claim `reviewProbeWidget` (src/reviewprobe.ts:2)
+  ok   citations:docs/extension-authoring-guide.zh-CN.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:EXTENSIONS-FOR-AGENTS.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.zh-CN.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   annotations:pending — none
+  ok   annotations:illustrative — none
+  ok   content:anchors — 0 citation(s) verified against their claim: 0 symbol-first (line-free, whole file), 0 line-dependent (the line is a hint — rot risk); 0 line-number-only anchor(s) FLAGGED as rot
+  ok   content:rot — no line-number-only anchors
+
+[docs-claims] 8/9 checks passed, 1 failed, 1 citation(s) resolved, 0 symbol-first, 0 line-dependent, 0 rot-flagged, 0 pending, 0 illustrative

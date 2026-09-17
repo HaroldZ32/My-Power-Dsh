@@ -1,0 +1,7 @@
+== PRE-SEED dist/src sha256 (settled revision, 2026-09-17T07:15:47Z) ==
+38d4a459f64d1dbd650a58f29011a4a69cf55a9268abbdf8eb426a7c7ebf338f  packages/mpd-roles-plugin/dist/index.js
+f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  packages/mpd-ext-plugin/dist/index.js
+4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195  packages/mpd-ext-plugin/dist/sdk.js
+0ecd4ea33e7b6ce065da887dfc70d9795d43f8b11d489fbc6a46b32671fe64ab  packages/mpd-roles-plugin/src/index.ts
+a5167018d25a3544894380ba9d8a3f34c73effe9742e32d44b6a181e310e2fb8  packages/mpd-ext-plugin/src/index.ts
+f42941d53ffedf3c243afeb3414a59a6a767d03981b7c3c522a4b7c3d9cef686  packages/mpd-ext-plugin/src/sdk.ts

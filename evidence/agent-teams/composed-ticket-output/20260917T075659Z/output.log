@@ -1,0 +1,77 @@
+{
+  "driver": "composed-ticket-output (T-73)",
+  "headCommit": "c826f16",
+  "cases": {
+    "HEAD (pre-fix state.js)": {
+      "in_progress + SAME owner (the wave-1 fixture)": {
+        "case": "in_progress/same-owner",
+        "outputBefore": "THE STORED DELIVERABLE — 9000 bytes of findings the member already recorded",
+        "outputAfter": null,
+        "wiped": true,
+        "statusBefore": "in_progress",
+        "statusAfter": "claimed",
+        "attemptBefore": 1,
+        "attemptAfter": 2,
+        "deliveries": 1
+      },
+      "in_progress + HANDOVER to another seat": {
+        "case": "in_progress/handover",
+        "outputBefore": "THE STORED DELIVERABLE — 9000 bytes of findings the member already recorded",
+        "outputAfter": "THE STORED DELIVERABLE — 9000 bytes of findings the member already recorded",
+        "wiped": false,
+        "statusBefore": "in_progress",
+        "statusAfter": "in_progress",
+        "attemptBefore": 1,
+        "attemptAfter": 1,
+        "deliveries": 0
+      },
+      "pending task (a NEW generation) dispatched": {
+        "case": "pending/same-owner",
+        "outputBefore": "THE STORED DELIVERABLE — 9000 bytes of findings the member already recorded",
+        "outputAfter": null,
+        "wiped": true,
+        "statusBefore": "pending",
+        "statusAfter": "claimed",
+        "attemptBefore": 1,
+        "attemptAfter": 2,
+        "deliveries": 1
+      }
+    },
+    "fixed tree": {
+      "in_progress + SAME owner (the wave-1 fixture)": {
+        "case": "in_progress/same-owner",
+        "outputBefore": "THE STORED DELIVERABLE — 9000 bytes of findings the member already recorded",
+        "outputAfter": null,
+        "wiped": true,
+        "statusBefore": "in_progress",
+        "statusAfter": "claimed",
+        "attemptBefore": 1,
+        "attemptAfter": 2,
+        "deliveries": 1
+      },
+      "in_progress + HANDOVER to another seat": {
+        "case": "in_progress/handover",
+        "outputBefore": "THE STORED DELIVERABLE — 9000 bytes of findings the member already recorded",
+        "outputAfter": "THE STORED DELIVERABLE — 9000 bytes of findings the member already recorded",
+        "wiped": false,
+        "statusBefore": "in_progress",
+        "statusAfter": "in_progress",
+        "attemptBefore": 1,
+        "attemptAfter": 1,
+        "deliveries": 0
+      },
+      "pending task (a NEW generation) dispatched": {
+        "case": "pending/same-owner",
+        "outputBefore": "THE STORED DELIVERABLE — 9000 bytes of findings the member already recorded",
+        "outputAfter": null,
+        "wiped": true,
+        "statusBefore": "pending",
+        "statusAfter": "claimed",
+        "attemptBefore": 1,
+        "attemptAfter": 2,
+        "deliveries": 1
+      }
+    }
+  },
+  "headStateBytes": 69027
+}

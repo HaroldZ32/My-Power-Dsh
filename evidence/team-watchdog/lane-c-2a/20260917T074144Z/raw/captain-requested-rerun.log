@@ -1,0 +1,35 @@
+== CAPTAIN-REQUESTED RE-MEASUREMENT (reds 1 + 2) — Thu Sep 17 07:56:15 AM UTC 2026 ==
+-- revision measured on:
+2026-09-17 15:40:09.359025127 +0800  packages/mpd-team-watchdog-plugin/src/engine.ts
+2026-09-17 15:26:52.967289065 +0800  packages/mpd-team-watchdog-plugin/src/machine.ts
+2026-09-17 15:30:22.257478647 +0800  packages/mpd-team-watchdog-plugin/src/actions.ts
+2026-09-17 15:40:20.988310130 +0800  packages/mpd-team-watchdog-plugin/dist/index.js
+2026-09-17 15:50:22.116211710 +0800  packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts
+a82913cc7566dae26e436b57e7b9615e22c5ca54c8ed74304e07f08165a08ece  packages/mpd-team-watchdog-plugin/src/engine.ts
+47511b5d415477e28208da5d6da2b6c62d4c69eb1d0bc9788623c0bf0e494a52  packages/mpd-team-watchdog-plugin/src/machine.ts
+6aa3069c5cb89f97c2491fbc739aca9d034485b8a078c5703058e99911db76dd  packages/mpd-team-watchdog-plugin/dist/index.js
+8ffc36053f5f98ef18bd130ecff8b55eadd4e3d571fc847345d85e07ffa7121d  packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts
+
+-- RED 1 remedy in place: the type-import line lane A named --
+30:  type KnobIssue,
+11:  type KnobIssue,
+12:  type KnobReading,
+
+-- RED 1 reading: bun run typecheck --
+$ tsgo --noEmit
+typecheck exit=0
+
+-- RED 2 reading: node scripts/verify-dist-fresh.mjs --
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha 6aa3069c5cb8… 85ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 1006ms
+verify-dist-fresh exit=0
+
+-- the full verify triple on this revision --
+ 139 pass
+ 0 fail
+ 684 expect() calls
+Ran 139 tests across 1053 files. [7.87s]
+bun test exit=0
+[PASS] T-24: the helper never uses stdio:'pipe' — pipeHits=0
+[mpd-bg self-test] 13/13 arms passed — PASS
+mpd-bg exit=0

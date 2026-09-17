@@ -1,0 +1,3 @@
+FAIL(1) skills/dsh-qa/scripts/agent-teams-messaging.mjs
+    [agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=323/68318157344a tree=323/2c748d482fd8 (re-pin in the same commit, AGENTS.md §9)
+lanes=45 failing=1

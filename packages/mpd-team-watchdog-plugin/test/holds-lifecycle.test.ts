@@ -8,8 +8,9 @@
 //              stays permissive, which is what keeps the r7 pin green (§0/A3).
 //   T-17 (§6)  every hold carries `ttlMs` and releases itself on the TTL or on ACTIVITY, with a
 //              durable `hold-auto-released` incident and NOT ONE BYTE of team.json touched.
-//   T-19 (§8)  the status view prints the UNION of both pause mechanisms and names the active
-//              one (`halted` from agent_teams_halt vs `held` from this plugin), text and json.
+//   T-19 (§8)  the status view prints ONE pause state and ONE external mechanism
+//              (`agent_teams_halt`), with the watchdog's preserving hold named ONLY as that
+//              pause's INTERNAL implementation — text and json (wave-2 user ruling, t10).
 //   T-20 (§8)  a member whose only open tasks wait on unfinished dependencies is PARKED, not
 //              silent — derived from team.json alone; no new member-facing wait tool exists.
 //   §7.2/§7.3  per knob: LIVE value, FILE value when it differs, `restartRequired`; ONE warning
@@ -311,17 +312,17 @@ describe("T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING", 
   })
 })
 
-describe("T-19 (§8) — one pause surface, naming the ACTIVE mechanism", () => {
+describe("T-19 (§8) — ONE pause state, ONE external mechanism, the hold as its implementation", () => {
   /** Drive the real registered status tool and return both the payload and its rendered text. */
   async function statusOf(box: Sandbox, ctx: ReturnType<typeof pluginCtx>) {
     const definition = ctx.__stub.tools.get(STATUS_TOOL)
     expect(definition).toBeDefined()
     const payload = (await definition!.execute({}, {})) as Record<string, unknown>
     const blocks = definition!.output?.render?.({}, payload) as Array<{ text: string }>
-    return { payload, text: blocks.map((block) => block.text).join("\n"), teams: payload.teams as Array<{ teamId: string; pause: { active: string | null; mechanism: string | null } }> }
+    return { payload, text: blocks.map((block) => block.text).join("\n"), teams: payload.teams as Array<{ teamId: string; pause: { paused: boolean; mechanism: string; implementation: string; halted: boolean; held: boolean } }> }
   }
 
-  test("halted (agent_teams_halt) and held (watchdog hold) are reported as ONE union", async () => {
+  test("halted and held render as ONE pause mechanism with the hold as its implementation (T-19 ruling)", async () => {
     const box = sandbox()
     try {
       writeTeam(box, {
@@ -337,12 +338,16 @@ describe("T-19 (§8) — one pause surface, naming the ACTIVE mechanism", () => 
       try {
         applyHold(box.workspace, box.stateDir, { team_id: "team-b" })
         const { payload, text, teams } = await statusOf(box, ctx)
-        expect(teams.find((team) => team.teamId === "team-a")?.pause).toMatchObject({ active: "halted", mechanism: "agent_teams_halt" })
-        expect(teams.find((team) => team.teamId === "team-b")?.pause).toMatchObject({ active: "held", mechanism: "watchdog hold" })
-        expect(text).toContain("team-a: PAUSED — halted (agent_teams_halt)")
-        expect(text).toContain("team-b: PAUSED — held (watchdog hold)")
+        // ONE mechanism on both teams; the hold is never a second mechanism name.
+        expect(teams.find((team) => team.teamId === "team-a")?.pause).toMatchObject({ paused: true, mechanism: "agent_teams_halt", implementation: "none", halted: true, held: false })
+        expect(teams.find((team) => team.teamId === "team-b")?.pause).toMatchObject({ paused: true, mechanism: "agent_teams_halt", implementation: "watchdog-hold", halted: false, held: true })
+        expect(text).toContain("team-a: PAUSED — mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation none")
+        expect(text).toContain("team-b: PAUSED — mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation active")
         expect(text).toContain("halted since 1700000000000")
-        // Both mechanisms at once: the union reports BOTH and names the active one.
+        // FALSIFIABLE: the OLD two-mechanism wording must be gone from the surface.
+        for (const old of ["PAUSED — halted (agent_teams_halt)", "PAUSED — held (watchdog hold)", "both (agent_teams_halt + watchdog hold)"]) {
+          expect(text).not.toContain(old)
+        }
         const haltedTeam = (payload.teams as Array<{ teamId: string; halted: boolean | null; held: boolean }>).find((team) => team.teamId === "team-a")
         expect(haltedTeam?.halted).toBe(true)
         expect(haltedTeam?.held).toBe(false)

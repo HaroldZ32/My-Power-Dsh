@@ -1,0 +1,4 @@
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/lane-c-live-QwSnXh/.mpd/mpd.jsonc states 1 value(s) the running process is NOT using (warnSilenceMs: live=90000 file=900000) — the file layer was applied live for its other values; these could not be applied and wait for the next dsh boot
+[lane-c-live] mutant restart-needed (seeded revert of the live overlay): mounted=90000 file=900000 sameInstance=90000 restartRequired=true
+[lane-c-live] the `--live` assertion on this tree: FAIL (exit 1) — liveness LOST: mounted=90000 file=900000 observed=90000 fileApplied=true restartRequired=true
+[lane-c-live] mutant DETECTED (the assertion reddened)

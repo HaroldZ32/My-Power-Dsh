@@ -1,0 +1,39 @@
+{
+  "schema": "review-B/t13-falsification/2",
+  "captured_at": "2026-09-17T08:17:06.717Z",
+  "method_note": "differential + PINNED STAMP: every leg runs with --pack-stamp set to the canonical artifact's own inferred moment, so the only difference between the clean control and a mutated copy is the mutation. Two superseded methods are recorded: (v0) pinning the stamp to NOW reddened the clean control for a valid reason (all real post-pack writers became hard drifts); (v1) letting the copy infer its own stamp meant the mutation itself moved the stamp forward and reclassified the honest drifts — falsification.v1.json keeps that pass.",
+  "pinned_stamp": "2026-09-17T05:19:48.265Z",
+  "question": "was any moved rule made green by weakening it?",
+  "repo_head": "c826f16",
+  "gate_script_sha256": "c0814334013c0da50317e8e64a4b6a341ae31cb6402cdc9dbf937dfd1b745e7d",
+  "artifact_read_only": {
+    "before": {
+      "digest": "ff5f96da7c43a056",
+      "files": 1190,
+      "method": "sha256 over the UNSORTED `find dist/mpd-package -type f -printf '%P\\t%s\\t%T@\\n'` listing (+ file count)"
+    },
+    "after": {
+      "digest": "ff5f96da7c43a056",
+      "files": 1190,
+      "method": "sha256 over the UNSORTED `find dist/mpd-package -type f -printf '%P\\t%s\\t%T@\\n'` listing (+ file count)"
+    },
+    "identical": true
+  },
+  "control": {
+    "candidates_unchanged_since_pack": [
+      {
+        "rel": "templates/mpd-extension/server.mjs",
+        "sourceMtime": "2026-09-16T08:24:20.513Z"
+      },
+      {
+        "rel": "templates/mpd-extension/server.mjs",
+        "sourceMtime": "2026-09-16T08:24:20.513Z"
+      },
+      {
+        "rel": "templates/mpd-extension/personas/mpd-extension-template-reviewer.md",
+        "sourceMtime": "2026-09-16T08:24:20.513Z"
+      }
+    ],
+    "artifact_newest_mtime": "2026-09-17T05:19:48.265Z",
+    "control_exit": 0,
+    "control_content_bytes": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/t13-falsify-6AxWex/clean (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 pr

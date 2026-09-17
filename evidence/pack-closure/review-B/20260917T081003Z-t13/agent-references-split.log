@@ -1,0 +1,12 @@
+== t13 review: the agent-references BYTES-vs-PRESENCE split (pinned stamp 2026-09-17T05:19:48.265Z) ==
+-- leg 1: BYTES mutated, presence intact
+  exit=0
+  [verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/tmp.qv7qj2mMGL/bytes (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+  [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/troubleshooting.md: source mtime 2026-09-17T08:03:05.204Z is AFTER the artifact stamp 2026-09-17T05:19:48.265Z (anchor: command line (--pack-stamp)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+-- leg 2: the SAME file DELETED (presence broken)
+  exit=1
+  [verify-pack-closure] FAIL - 2 closure violation(s)
+    TREE-DRIFT - agent-references/ differs from the source tree - dropped by the pack: troubleshooting.md; not in the source: (none)
+    REFERENCES - the packed tree does not carry agent-references/troubleshooting.md - an external author loses the reference the artifact is supposed to be self-sufficient for
+    packed tree: /tmp/tmp.qv7qj2mMGL/absent (378 asset files); content bytes: 1180 file(s) compared, 1156 identical, 0 drift, 24 expected-after-pack; completeness: 406 declared source file(s) compared, 404 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp))
+  [verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/troubleshooting.md: source mtime 2026-09-17T08:03:05.204Z is AFTER the artifact stamp 2026-09-17T05:19:48.265Z (anchor: command line (--pack-stamp)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation

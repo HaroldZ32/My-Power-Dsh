@@ -1,0 +1,73 @@
+{
+  "task": "t17 — review-B2 — falsify the symbol-first anchor change on the reviewer's own fixture",
+  "reviewedTask": "t16",
+  "kind": "review",
+  "attemptId": "497f4695-e318-4e95-a675-fe803bea8c13",
+  "reviewer": "code-reviewer",
+  "date": "2026-09-17",
+  "verdict": "pass",
+  "pinnedRevisions": {
+    "durable": { "path": "scripts/check-citations.mjs", "sha256": "d64dfeb52d3b6c9d18acee5c7e9d8685c82b847e44a4f6f4ef94f21eb1f45c13", "bytes": 38946, "mtimeUtc": "2026-09-17T07:28:00Z" },
+    "frozen": { "path": "evidence/extensions/docs-claims/check-citations.mjs", "sha256": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c", "bytes": 30345, "mtimeUtc": "2026-09-17T05:42:47Z" },
+    "settle": "PIN-1 07:40:37Z == PIN-3 07:46:10Z for both files (identical hashes); subject docs hashed before and after my final run, identical; durable mtime predates the pin by 12 min and t16 closed at ~07:37Z",
+    "subjectsAtPin": {
+      "docs/extension-authoring-guide.md": "1bfcf5b7f3b2ba7d41fea75ce685585da8f7fede29afb00d67bf0f9fdb097c80",
+      "docs/extension-authoring-guide.zh-CN.md": "dc3c9ea60825959fdb96cd832d31c69b936cfc59bf70f3d27ddb6ffd0b853c35",
+      "EXTENSIONS-FOR-AGENTS.md": "a7e57dec8e8017b5c76b035798a17df56619cb5e27fcb3a0c16e63ef6562beb5",
+      "docs/extension-adaptation-report.md": "1bef8e6c6ec8044205872789730f783912998bbed35a5fde715450c1aa9d1fbb",
+      "docs/extension-adaptation-report.zh-CN.md": "7f1f7d3b9f3a78619e9ffaef2ee710d2a3bfaff635112d2bb8f8d5d4b1b4b1a1"
+    }
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "Every claim in t16's output is REPRODUCED independently on the pinned revision (quote command + reading)",
+      "status": "passed",
+      "evidence": "node scripts/check-citations.mjs --self-test -> exit 0, 21/21, 8 negative-control arms; node evidence/extensions/docs-claims/check-citations.mjs --self-test -> exit 0, 16/16, 4 arms (both run by me at 07:41Z/07:44Z). Plain runs: exit 0, 13/13 (durable) vs 12/12 (frozen), 249 citations, 19 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative. record-id set diff: 11 common, 5 added (content:rot + 4 negative-control arms), 0 removed. Run record carries checker{path,sha256,supersedes} exactly as claimed. Splice: t72-patch.mjs --check -> 'all 19 ranges assert, nothing written'; redirected rebuild of the author's own splice logic produced sha256 d64dfeb5... byte-identical to the committed durable file."
+    },
+    {
+      "criterion": "The rotten line-number anchor is observed REDDENING the checker, and the symbol-first anchor is observed PASSING — both on the reviewer's own fixture, not the author's",
+      "status": "passed",
+      "evidence": "evidence/review/t17-symbol-first/20260917T074037Z/my-fixture-runner.mjs (my names: src/reviewprobe.ts / reviewProbeWidget; my 5-subject layout; --citations-only + DOCS_CLAIMS_REPO). rot-bare -> durable exit 1 (line-number-only anchor) ; rot-shadowed -> frozen exit 0 / durable exit 1 (the ONLY flip of 9 arms) ; baseline-symbol-first -> 9/9 exit 0 ; line-dependent-accepted -> 9/9 exit 0 (no mass re-anchoring) ; symbol-first-survives-shift -> exit 0 ; line-dependent-drifted -> exit 1 content miss on both."
+    },
+    {
+      "criterion": "The checker's revision hash is quoted before and after on settled bytes, and the durable-home decision is checked against the evidence-immutability rule",
+      "status": "passed",
+      "evidence": "Hashes identical at PIN-1/PIN-3. Frozen sha256 equals the pre-t16 recorded hash in evidence/dsh-qa/red-lanes/20260917T023000Z-t21/out-033846Z/checker-sha256.txt (02:38Z) and evidence/gates/extensions-unanchored-refs/20260917T033233Z-recheck-dfe26090/result.json (03:32Z); its mtime (05:42:47Z) predates t16's window -> byte-untouched, nested correction beside it (SUPERSEDED-check-citations.md), never edited in place. T-53 behaviour measured: a repeated --out lands exit 3 with 'evidence is immutable by default (T-53)' and the existing result.json keeps its hash (2f47ad11...); a plain run writes a fresh evidence/extensions/docs-claims/runs/<ts>/ dir; t72-patch refuses to overwrite the durable file."
+    },
+    {
+      "criterion": "The before/after anchor counts are recomputed by the reviewer",
+      "status": "passed",
+      "evidence": "Independent recount: 30 line-bearing clauses today (docs/extension-adaptation-report.md 5, .zh-CN 5, both guides 10+10, EXTENSIONS 0); git show HEAD: of the two report twins has 6 line-bearing + 0 line-free each -> 32 line-bearing before the T-72 repair; the two repaired anchors are the only changed lines (git diff --stat = 2 lines) and are now line-free -> 32-2=30. Symbol-first: frozen revision (unchanged metric, same bytes) counts 17 on t16's before-run and 19 today; 19-17=2 = the same two repaired anchors. Cross-check: frozen anchored_citations_content_verified 49 = durable 19+30 = 49 today; on the pre-repair HEAD docs both revisions report 47 verified and fail the SAME 2 cpDist anchors."
+    }
+  ],
+  "reproducedClaims": [
+    "self-test 16/16 (frozen) -> 21/21 (durable), exit 0 on both",
+    "four new self-test arms (rot bare / rot shadowed / rot drifted / symbol-first survives a shift) exist and pass; the shadowed shape is the ONLY form that flips (my own 9-arm fixture set: exactly one exit-code flip, rot-shadowed 0->1)",
+    "repo-wide: exit 0, 249 citations, 17->19 symbol-first, 32->30 line-dependent, 0 rot-flagged (exact)",
+    "residual was ENFORCEMENT: the bare path:line was accepted on the frozen revision whenever a sibling claim named the same path:line (my fixture rot-shadowed: frozen 8/8 checks, exit 0)",
+    "LIVE ROT: at HEAD the cited range scripts/pack-mpd.mjs:120-132 contains 'cpDist' (1 hit, the line-122 comment); the concurrent lane's edit moved it (comment 122->154, function 144->176), so the range now contains 0 hits -> the content test reddens. Repair sites read `cpDist`, `scripts/pack-mpd.mjs` (line-free) at docs/extension-adaptation-report.md:405 and .zh-CN.md:207; git diff vs HEAD is exactly those 2 lines",
+    "checker{path,sha256,supersedes} recorded per run (my own run's result.json quoted verbatim)",
+    "content:rot record + line_dependent_anchors_verified / rot_line_number_only_anchors counters present and observed",
+    "carry-forward 'EXTENSIONS-FOR-AGENTS.md:48-49 names the frozen path' was TRUE against HEAD (HEAD:49 = evidence/extensions/docs-claims/check-citations.mjs); another writer consumed it at 07:43:40Z and the working tree now names scripts/check-citations.mjs (diff vs HEAD = that one line)"
+  ],
+  "failureModeMoveCheck": {
+    "method": "both revisions run over a fixture whose docs/ carry the PRE-REPAIR (HEAD) report twins and whose cited tree is the live repo (symlinks), --citations-only",
+    "reading": "identical failure sets: 2 unresolved per doc, doc lines 405/207 'the cited line/range does not carry the claim `cpDist` (scripts/pack-mpd.mjs:120-132)'",
+    "diff": "frozen vs durable output differs in 3 places only (header line, content:anchors wording, added content:rot record + summary counts); no new red class fires on the real documents",
+    "conclusion": "the change did NOT simply move the failure mode: previously-green content stays green (both revisions exit 0 on today's docs), the previously-silently-accepted shadowed anchor is now red, and no document that passed before fails now for a different reason"
+  },
+  "findings": [
+    { "id": "F1", "severity": "low", "file": "scripts/check-citations.mjs", "line": 616, "problem": "attempt_id is hard-coded to \"d1cf78ee-43ed-4ec3-8bdc-5d1aee8c6740\" (inherited verbatim from the frozen revision's line 524). That value is t21's attempt id (evidence/dsh-qa/red-lanes/20260917T023000Z-t21/out-033846Z/result.json), so every future run writes a foreign attempt id into its result.json — my own run at 07:41Z does too, while my attempt is 497f4695-e318-4e95-a675-fe803bea8c13.", "requiredFix": "drop the field or resolve it per run (env/argv); a durable checker must not stamp another task's attempt id onto its evidence." },
+    { "id": "F2", "severity": "low", "file": "scripts/check-citations.mjs", "line": 548, "problem": "symbol_only_anchors_verified reads as a count of anchors but counts line-free path CITATIONS verified by a document-wide claim: my own replication of the counter rule matches 19 exactly and splits it into 17 citations with a line-free claim at their own site and 2 without any clause of their own (EXTENSIONS-FOR-AGENTS.md doc lines 13 and 17, table rows whose path a sibling claim verifies). The 17->19 delta statement stays sound (same metric at both ends), but the absolute 19 must not be read as '19 anchors written symbol-first'.", "requiredFix": "rename/split the counter (own-site vs document-wide) or site-bind the line-free arm (see F3)." },
+    { "id": "F3", "severity": "medium", "file": "scripts/check-citations.mjs", "line": 248, "problem": "PRE-EXISTING, not a t16 regression: line-free claims are still matched per PATH over the whole document (`symbolOnlyClaimCheck` -> `claims.find(...)`, unchanged), so a WRONG line-free claim is accepted when an earlier line-free claim for the same path exists. Measured on my fixture 'symbol-first-right-then-wrong': exit 0 with 2 symbol-first verified, on BOTH the frozen and the durable revision. It is the same shadowing mechanism T-72 closed for line-bearing anchors, left live next door.", "requiredFix": "site-bind the line-free arm with the same claimForSite window and add the matching negative-control arm; roll it to the register as a T-72 follow-up rather than repairing t16 (behaviour is byte-identical to the frozen revision)." },
+    { "id": "F4", "severity": "low", "file": "scripts/check-citations.mjs", "line": 490, "problem": "The new rot verdict is silenced by the documented `<!-- citation-check: pending|illustrative -->` annotation: my fixture 'rot-pending-annotated' exits 0 with 1 pending and 0 rot-flagged, so 'a line-number-only anchor is FLAGGED as rot' has this explicit exception.", "requiredFix": "document the boundary in the self-test/README text (or refuse the pending form for the rot class); the pending set is reported in result.json, so the gap is visible, not silent." },
+    { "id": "F5", "severity": "low", "file": "evidence/extensions/docs-claims/t72-symbol-first-20260917T072356Z/assemble-result.stdout", "line": 1, "problem": "Cosmetic: the splice log says '661 lines' while the SUPERSEDED table says the durable file is 660 lines (trailing-newline split artifact; wc -l = 660).", "requiredFix": "none required; align the two numbers if the page is ever touched." }
+  ],
+  "bounds": [
+    "The exact working-tree state at t16's 07:29Z run is not reconstructable (dirty shared tree); the delta is bounded by the single recorded diff (2 lines) and by the frozen revision's own counter on the current docs (19).",
+    "PRE-REPAIR fixture artefact: .mpd/TODO.md does not resolve in the fixture because I symlinked only the visible top-level dirs; that red is my fixture's, not the checker's. The cpDist red is the checker's and is identical across revisions.",
+    "I did not re-run t16's own probe scripts; the probe arm set was re-derived from probe-before/after.json and from my own fixture equivalents.",
+    "My first durable plain run (07:41Z) ran against the HEAD content of EXTENSIONS-FOR-AGENTS.md (hash 5d935524...); the file was edited at 07:43:40Z (pointer frozen->durable) and my final pass (07:46Z) ran against a7e57dec...; both runs exit 0 with identical counters, so no reading depends on that edit.",
+    "Reviewer writes: only under evidence/review/t17-symbol-first/ (plus no product file touched). The lane's own runs/ dir was NOT written: every repo run used --out into my review dir."
+  ]
+}

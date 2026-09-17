@@ -1,0 +1,122 @@
+bun test v1.3.14 (0d9b296a)
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+55 |     const { team, repairInput } = deadlockFixture()
+56 |     const gate = validateCreateTask(team, repairInput)
+57 |     expect(gate.ok).toBe(true)
+58 |     // Provenance survives; the dependency does not.
+59 |     expect(gate.task.sourceTaskId).toBe("A")
+60 |     expect(gate.task.dependencies).toEqual([])
+                                        ^
+error: expect(received).toEqual(expected)
+
+- []
++ [
++   "A",
++ ]
+
+- Expected  - 1
++ Received  + 3
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:60:36)
+(fail) T-81: a repair on an OPEN source does NOT acquire the deadlock edge, and is claimable at once [6.13ms]
+(pass) T-81 regression control: a review of an OPEN source still wires the edge [0.65ms]
+82 |         symlinkSync(DEPS_DIR, join(scratch, "_deps"), "dir")
+83 |         const copyPath = join(scratch, "lib", "quality-gates.js")
+84 |         const original = readFileSync(copyPath, "utf8")
+85 |         const condition = "\n        && (repairSource === undefined || !OPEN_STATUSES.includes(repairSource.status))"
+86 |         const occurrences = original.split(condition).length - 1
+87 |         expect(occurrences, "the condition was not found in the scratch copy — the control would test the FIXED code").toBe(1)
+                                                                                                                           ^
+error: the condition was not found in the scratch copy — the control would test the FIXED code
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:87:119)
+(fail) T-81 negative control: with the pre-fix unconditional edge, the SAME fixture PARKS [4.32ms]
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T81-pkg/self-fix-tests/repair-source-deadlock.test.mjs:
+
+ 1 pass
+ 2 fail
+ 7 expect() calls
+Ran 3 tests across 41 files. [6.02s]

@@ -1,0 +1,11 @@
+=== READING 1 (the contract's exact text): bun test packages/mpd-agent-teams-plugin/self-fix-tests/ — 2026-09-17T08:10:16Z
+
+packages/mpd-agent-teams-plugin/self-fix-tests/composed-ticket-output-preserved.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-agent-teams-plugin/self-fix-tests/ownership-and-wave.test.mjs:
+EXIT_FORM_A=0
+
+--- which trees it discovered (grep of the run's file headers, deduped by tree) ---
+   1215 packages/mpd-agent-teams-plugin/self-fix-tests/
+
+=== READING 2 (isolated path form): bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/ ===

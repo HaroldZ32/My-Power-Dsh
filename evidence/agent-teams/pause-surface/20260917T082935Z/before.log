@@ -1,0 +1,38 @@
+{
+  "driver": "pause-surface (T-19 surface 2 / t21)",
+  "tool": "agent_teams_status (registered by registerAgentTeamsTools, lib/tools.js)",
+  "states": [
+    {
+      "label": "1 running (halt: no, hold: none)",
+      "pause_line": [
+        "Pause: agent-teams halt not active · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)"
+      ],
+      "payload_halted": false,
+      "payload_pause": "(absent)"
+    },
+    {
+      "label": "2 halted (halt: yes, hold: none)",
+      "pause_line": [
+        "Pause: agent-teams halt ACTIVE · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)"
+      ],
+      "payload_halted": true,
+      "payload_pause": "(absent)"
+    },
+    {
+      "label": "3 held internally (hold id + reason set)",
+      "pause_line": [
+        "Pause: agent-teams halt not active · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)"
+      ],
+      "payload_halted": false,
+      "payload_pause": "(absent)"
+    },
+    {
+      "label": "4 watchdog service absent (fail-open read)",
+      "pause_line": [
+        "Pause: agent-teams halt not active · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)"
+      ],
+      "payload_halted": false,
+      "payload_pause": "(absent)"
+    }
+  ]
+}

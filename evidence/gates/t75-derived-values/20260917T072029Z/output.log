@@ -1,0 +1,88 @@
+=== node scripts/verify-docs-parity.mjs --self-test
+ok   clean tree passes — pairs=6 exempt=16 violations=0
+ok   recursive discovery: nested docs/ and extensions/ pairs are checked (nesting cannot hide a pair) — found: docs/guides/nested.md, extensions/deep/README.md
+ok   an extensions ASSET (.md that is not a README) is not demanded a twin — extensions/deep/skills/thing/SKILL.md left out of the pair set
+ok   EVERY documented exemption is asserted (reported with its reason, never a silent skip) — 16 exemption paths reported
+ok   negative: missing switch link — docs/guide.md: EN switch link missing/not under the title
+ok   negative: re-levelled heading — docs/guide.md: heading tree differs: EN [1,2,3,2] vs zh [1,2,3,1]
+ok   negative: pure-ASCII zh file — README.md: zh-CN file carries no CJK content (copy-paste of the EN file?)
+ok   negative: nested pair with a mis-pointed switch link — docs/guides/nested.md: EN switch link missing/not under the title
+ok   exempt file gaining a zh twin is checked (its missing heading parity fails) — {"pair":"docs/decisions.md","ok":false,"problems":["EN switch link missing/not under the title","heading tree differs: EN [1] vs zh [1,2]"]}
+ok   exempt file with a CONFORMANT twin passes
+ok   negative: a zh-CN file with no EN twin is a VIOLATION (inverse scan) — [{"id":"inverse:docs/orphan.zh-CN.md","detail":"zh-CN file has no EN twin (docs/orphan.md is missing)"}]
+ok   an inverse orphan whose EN path is an exempt record is reported as an exemption, not a violation — [{"path":"docs/plan-orphan.md","reason":"process record (AGENTS.md §3: plan-*.md) — its zh file exists, but an exempt record requires no EN twin"}]
+ok   negative: a non-exempt package directory without a README is a FAILURE — [{"id":"package-no-readme:packages/silent","detail":"package directory silent has no README (not an exempt package)"},{"id":"inverse:docs/orphan.zh-CN.md","detail":"zh-CN file has no EN twin (docs/orphan.md is missing)"}]
+ok   the exempt package (mpd-mcp-shared) is a reported note, not a violation — packages/mpd-mcp-shared stays on the exemption list
+ok   T-75 arm 1 (positive): the artifact-derived range and counts PASS and are REPORTED — [{"path":"AGENTS.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (live `//#region mpd-delta` markers agree: 3)"}]
+ok   T-75 arm 2 (NEGATIVE CONTROL): the pre-t39 pointer A1–D26 REDDENS and NAMES the file/value — derived-value:delta-range:AGENTS.md:3 — AGENTS.md:3 carries "A1–D26" but the ARTIFACT derives "A1–D7" (3 table ids in agent-references/agent-teams-deltas.md, first A1, last D7) — the artifact wins, never the newer pointer (wave-1 L78); regenerate the range by transcribing the table
+ok   T-75 arm 3 (NEGATIVE CONTROL): a stale region count REDDENS and NAMES the deltas doc — derived-value:region-count:agent-references/agent-teams-deltas.md:9 — agent-references/agent-teams-deltas.md:9 claims **65** regions across **9** adopted files but packages/mpd-agent-teams-plugin/lib/mpd-deltas.js derives 3 regions across 2 files — regenerate the registry with: node scripts/patch-agent-teams-fixes.mjs --write-registry
+ok   T-75 zero-subject guard: a site whose claim is GONE is a VIOLATION, not a silent pass — [{"id":"derived-value:delta-range:AGENTS.md:missing-claim","detail":"AGENTS.md carries NO \"A1–D<n>\" registry pointer while agent-references/agent-teams-deltas.md derives \"A1–D7\" (zero-subject run: refusing to report PASS with nothing compared). If the pointer was deliberately removed, update this rule in the same change."}]
+ok   T-75 bound: registry-vs-LIVE-marker drift is REPORTED (note, naming the file), never a violation — the applier's --check owns it — [{"path":"AGENTS.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; live markers in those files: 4 — adopted/b.js (registry 1 vs markers 2) is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   T-75 bound: an ABSENT site file (packed artifact, no AGENTS.md) is a NOTE, never a violation — [{"path":"AGENTS.md","reason":"site file not present in this root (packed artifact / partial copy) — delta-range claims skipped"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (live `//#region mpd-delta` markers agree: 3)"}]
+
+[verify-docs-parity self-test] 20/20 checks passed — PASS
+
+=== bun run verify:docs
+$ node scripts/verify-docs-parity.mjs
+ok   README.md
+ok   docs/architecture.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/index.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept verbatim as provenance
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D38 checked against "A1–D38" derived from agent-references/agent-teams-deltas.md
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **73**/9 vs derived 73/9 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; live markers in those files: 76 — packages/mpd-agent-teams-plugin/lib/quality-gates.js (registry 8 vs markers 9), packages/mpd-agent-teams-plugin/lib/tools.js (registry 35 vs markers 37) is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 derived=2 — PASS
+
+=== bun run verify:rows
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)

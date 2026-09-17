@@ -1,0 +1,59 @@
+{
+  "task": "t37 — seeded negative-control lane for the T-19 pin (re-dispatch of the cancelled t36)",
+  "lane": "A (agent-teams plugin)",
+  "owner": "agent-teams-engineer",
+  "attempt": "attempt 1, attempt_id 41bff480-5089-47f2-85ea-c11a1e894970",
+  "why": "the reddening proof for the requalified T-19 pin existed only in a MESSAGE; this wave established that a reading whose only home is a message is rotted-in-waiting, and that every claim should ship an instrument with a NEGATIVE CONTROL that reddens on revert. This lane is that instrument: it SEEDS the wave-1 two-peer wording into a scratch copy of the module and asserts that the pin's own matchers go RED there.",
+  "change": {
+    "file": "packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs",
+    "shape": "ADDITIVE tail lane (85 lines / 6,108 bytes) + no helper outside the file",
+    "additive_only_proof": {
+      "prefix_before_lane_sha256": "afb3233519db7fac08822379bf21c198d6c311ca9b249269bbee4948f44baa49",
+      "t32_pinned_sha_of_the_reviewed_revision": "afb3233519db7fac08822379bf21c198d6c311ca9b249269bbee4948f44baa49",
+      "identical": true,
+      "method": "cut the file at the lane's header marker and hash everything before it (the lane was appended as `rstrip + lane`), so the shipped assertions and the five-state coverage are shown byte-identical to the revision t32 reviewed rather than promised unchanged"
+    },
+    "file_sha256_after": "1145f15bcc52765c9bc51cd7dfbc28e52335b6943d3c055a2d3dc589bb157c52"
+  },
+  "seeded_lane_readings": {
+    "seed": "the TRUE wave-1 line (condition `team.halted`, NOT the new `team.pause.active`) restored verbatim into a scratch copy of `lib/`, matched by a backtick regex with a ONE-OCCURRENCE assert before the replace (and a post-replace assert that the seeded text is present)",
+    "scratch_copy_derivation": "`mkdtempSync(join(tmpdir(), 'mpd-t19-seed-'))` -> `cpSync(libDir, scratch/lib)` -> `symlinkSync(<plugin>/_deps, scratch/_deps)`; the copy lives OUTSIDE the workspace (T-89: a copy under the repo is discoverable by a substring-filtered `bun test`) and is deleted in `finally`",
+    "driver": "the copy's own `registerAgentTeamsTools` with the same ctx shape the pins use and a LIVE watchdog stub (`isHeld` -> HOLD_VIEW), then `agent_teams_status` render",
+    "old_wording": {
+      "diagnostic_falsehood_reproduced": "the seeded copy renders `Pause: agent-teams halt not active` WHILE the team is HELD (the defect the collapse fixed), and contains `· team watchdog hold: not read on this surface`",
+      "matchers": {
+        "shared prefix `Pause: agent-teams halt `": true,
+        "single-mechanism framing `(one mechanism: agent_teams_halt`": false,
+        "drift guard: peer wording absent": false,
+        "drift guard: deferral absent": false
+      }
+    },
+    "shipped_wording": {
+      "matchers": {
+        "shared prefix": true,
+        "single-mechanism framing": true,
+        "drift guard: peer wording absent": true,
+        "drift guard: deferral absent": true
+      },
+      "why_this_leg_matters": "the shipped module is driven through the same four predicates in the same test, so the lane cannot pass by the pin having drifted away from the strings the lane asserts"
+    },
+    "revert_behaviour": "reverting the fix in the shipped module makes the lane redden at the SEED step itself (the shipped-line regex would no longer occur exactly once), so the lane is falsifiable in both directions"
+  },
+  "measurement_correction_disclosed": {
+    "what_i_said_before": "in the message-level seeding I reported the prefix leg as reading TRUE on the restored old wording",
+    "what_was_wrong": "that seeded line was a HYBRID — the OLD tail with the NEW condition (`team.pause.active`), so it rendered ACTIVE because the hold was live; the true wave-1 line keys on `team.halted` and therefore renders `not active`",
+    "effect_on_the_conclusion": "none for the three drift-guard matchers (they are independent of the ACTIVE/not-active half) — the drift guards did and do read false; the prefix leg is restated in the lane and in this file: both wordings SHARE the `Pause: agent-teams halt ` prefix, which is exactly why the pin needs more than a prefix assertion",
+    "where_the_corrected_form_lives": "the lane's own comment and `seeded_lane_readings.old_wording.diagnostic_falsehood_reproduced`"
+  },
+  "verify": {
+    "log": "evidence/agent-teams/seeded-negative-control/20260917T085849Z/verify.log",
+    "the_pin_file_alone": "8 pass / 0 fail, 79 expect() calls (was 7 tests / 67 expects before the lane)",
+    "bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/": "109 pass / 0 fail, exit 0 (was 108)",
+    "bun test ./packages/mpd-agent-teams-plugin/": "266 pass / 0 fail, exit 0 (was 265)"
+  },
+  "bounds": {
+    "no_shipped_assertion_touched": "proved by the additive-only hash equality above",
+    "no_out_of_scope_file": "the only product file touched is the pin test; nothing under lib/ moved (tools.js still 6021bf6dfce594ed, registry still 6dce6f1f3598c77b)",
+    "scratch_copy": "outside the workspace, deleted after the run; its path template and derivation are recorded here"
+  }
+}

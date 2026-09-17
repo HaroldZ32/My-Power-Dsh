@@ -1,0 +1,18 @@
+{
+  "source": "8c57e46",
+  "sourceDir": "packages/git-bash-mcp",
+  "builtAt": "2026-09-14T10:08:15.390Z",
+  "build": [
+    "bun build src/cli.ts --outdir dist --target node --format esm"
+  ],
+  "externalDeps": {
+    "js-yaml": "js-yaml@5.3.0@@repo.huaweicloud.com@@@1",
+    "jsonc-parser": "jsonc-parser@3.3.1@@repo.huaweicloud.com@@@1",
+    "zod": "zod@4.4.3@@repo.huaweicloud.com@@@1"
+  },
+  "artifact": {
+    "file": "cli.js",
+    "sha256": "6458a82ee2cfcec319a03d2ffe8100c695d0980e7a366408fa5ef1467ca157b5",
+    "bytes": 22137
+  }
+}

@@ -1,0 +1,9 @@
+=== settle re-check 2026-09-17T07:35:04Z ===
+e18fdf06a878cf4dd25e56aafd16fe5770be37a44d86d1a289e3fe1ba7d0b9cb  scripts/verify-docs-parity.mjs
+8d0dd92980c353ada87ef0e7360ec4c185d47eb09295a8d06f40f109c3833fa8  AGENTS.md
+adec21da1ac178a5e61859ddd70b1d8d6fa83999645382e698e3ad068b1b6478  agent-references/index.md
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 derived=3 — PASS
+verify:docs exit=0
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+verify:rows exit=0
+[verify-docs-parity self-test] 21/21 checks passed — PASS

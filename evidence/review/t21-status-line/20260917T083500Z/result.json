@@ -1,0 +1,68 @@
+{
+  "task": "t32 — review — falsify t21: the pause-status surface must present ONE mechanism (the last unverified surface of the T-19 ruling)",
+  "reviewedTask": "t21",
+  "kind": "review",
+  "attemptId": "98d88d6d-44a1-433b-9716-4a9b394702d7",
+  "reviewer": "code-reviewer",
+  "date": "2026-09-17",
+  "verdict": "pass",
+  "pinnedRevisions": {
+    "pin1Utc": "2026-09-17T08:42:28Z",
+    "pin2Utc": "2026-09-17T08:46:22Z",
+    "stable": {
+      "packages/mpd-agent-teams-plugin/lib/tools.js": "6021bf6dfce594ed (PIN-1 == PIN-2)",
+      "packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs": "afb3233519db7fac (PIN-1 == PIN-2)",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "6dce6f1f3598c77b (PIN-1 == PIN-2)"
+    },
+    "preChangeBaseline": "frozen in PRE-REGISTRATION.md: pre-t21 tools.js 5fe18cdf62af6801 (mtime 07:23:16Z, my t12 pins) and the pre-change region text verbatim from git HEAD (0e0908e5b002c934)"
+  },
+  "rulingQuotedVerbatim": {
+    "userRulingAsCarriedByRC": "\"`agent_teams_halt` becomes the SOLE external mechanism; the watchdog's PRESERVING hold is demoted to its internal implementation. Surface, tools and docs expose one mechanism.\"",
+    "captainThreeSurfaceRuling": ".mpd/plans/friction-p2-wave-captain-log.md:180 — '(i) SEMANTICS in t10; (ii) the STATUS LINE in packages/mpd-agent-teams-plugin/lib/tools.js (lane A's file) → new task t21 …; (iii) the README pair → t20. Both tools stay REGISTERED (holds-lifecycle.test.ts pins the three tool names).'",
+    "registerRows": ".mpd/TODO.md:155 (the friction + §Fix 'one pause surface with one resume, or a status line that says which mechanism is active') and :517 (wave-2 status 'two pause mechanisms coexist — PARTIAL … the surface names the active mechanism (t13)').",
+    "helperRegionSelfQuotes": "lib/tools.js region mpd-delta pause-surface-helper quotes the ruling verbatim in its comment — checked against the r-C text: identical."
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "The rendered pause STATUS text and the structured payload each present ONE mechanism, with the two-mechanism wording GONE from both — quoted before and after",
+      "status": "passed",
+      "evidence": "MY OWN render driver (`my-render-driver.mjs`) drives the SHIPPED lib/tools.js in-process in FIVE states; every state passes all four clause checks (one mechanism named / hold = INTERNAL implementation / old peer wording ABSENT / old deferral ABSENT). AFTER (held): `Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold hold-review-1 set since 2023-11-14T22:13:20.000Z — review probe (released only by its own session-watchdog-resume))`; payload `{mechanism: agent_teams_halt, active: true, halt: false, internal_implementation: {kind: team-watchdog-preserving-hold, state: held, hold_id: hold-review-1, at: 1700000000000, reason: review probe, source: service, released_by: session-watchdog-resume}}`. Other states: not-held -> ': no hold is set'; service absent -> ': hold state not readable on this host (the watchdog service is not loaded)'; service THROWING -> same not-readable (fail-open); halt-only -> ACTIVE with the internal state not-readable. BEFORE: the two-peer line quoted verbatim in PRE-REGISTRATION.md (`Pause: agent-teams halt ${halted} · team watchdog hold: not read on this surface — run session-watchdog-status …`) and, for the payload, a measured ABSENCE — HEAD's tools.js carries no `pause` key in the status path at all, so there was no two-mechanism payload wording to remove; the shipped structured field is additive."
+    },
+    {
+      "criterion": "BOTH TOOLS STAY REGISTERED — agent_teams_halt, session-watchdog-hold and session-watchdog-status remain in the tool list (the holds-lifecycle tool-name pin stays green); a tool removed without a mounted-boot tool-list reading is a FINDING",
+      "status": "passed",
+      "evidence": "MEASURED, with one correction (observation O1): the watchdog plugin registers exactly `['session-watchdog-hold','session-watchdog-resume','session-watchdog-status']` — lane-c arm 12 'apply() keeps exactly the three tools registered' green (12 pass / 0 fail, 1 file) and holds-lifecycle.test.ts:372 pins that same sorted list. The adopted plugin registers 20 tools at runtime under my driver (agent_teams_add_member … agent_teams_update_task) and `agent_teams_halt` is NOT among them. NO tool was removed by t21 (nor by anyone in this review window), so the acceptance's removal-clause never fires."
+    },
+    {
+      "criterion": "Diagnostics survive the collapse: the status still names WHICH mechanism is active and the hold's id/reason when one is",
+      "status": "passed",
+      "evidence": "My render, held state: the line carries the hold id (`hold hold-review-1`), the ISO `since` timestamp, the reason (`review probe`) and the release verb (`released only by its own session-watchdog-resume`); the payload carries `hold_id`, `at`, `reason`, `source` and `released_by`. The two degraded states are explicit rather than guessed: absent/throwing service -> 'hold state not readable on this host (the watchdog service is not loaded)' with `state: 'not-readable'`; a present service reporting no hold -> 'no hold is set' with `state: 'not-held'`."
+    },
+    {
+      "criterion": "The pinning test actually fails if the wording drifts back (reproduce it RED by reverting the collapse in a scratch copy, and keep both readings)",
+      "status": "passed",
+      "evidence": "BOTH readings kept. Shipped: `bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs` -> 7 pass / 0 fail, 1 file, exit 0. MY out-of-band revert: a copy of the package at `evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg` (self-fix-tests renamed arms-hidden; the shipped template replaced with the wave-1 two-peer template, occurrence count asserted 1) -> exit 1, 5 pass / 2 fail, with BOTH T-19 cases failing ('names ONE pause mechanism …' and 'with NO watchdog service … never a guessed hold'). The copy was deleted after the run. The pin also carries drift guards asserting the old peer wording and the deferral are ABSENT — those are what my revert reddened."
+    },
+    {
+      "criterion": "The user's T-19 ruling is quoted VERBATIM in the review evidence and each of its clauses is checked against the shipped text, not against the author's summary",
+      "status": "passed",
+      "evidence": "Ruling quoted verbatim from three sources (r-C acceptance, captain-log:180, register rows :155/:517) — see rulingQuotedVerbatim. Clause 1 (ONE external pause; the hold is its INTERNAL implementation) checked against the shipped rendered text AND the structured payload (my render above); clause 2 checked as a tool-list measurement (previous item). The helper region in the shipped file also quotes the ruling, and its text matches the r-C wording word for word."
+    },
+    {
+      "criterion": "Findings, if any, are structured and FAIL this task; the review is independent (no self-approval)",
+      "status": "passed",
+      "evidence": "No blocking finding: nothing in t21's output was falsified. Three non-blocking observations are recorded below. I implemented nothing in t21 or its subjects; every reading came from the shipped bytes with my own driver or the shipped pin, and my revert copy was my own and was deleted."
+    }
+  ],
+  "observations": [
+    { "id": "O1", "severity": "low", "file": "packages/mpd-agent-teams-plugin/lib/tools.js", "problem": "The t32 acceptance's clause 2 names `agent_teams_halt` as a tool that must 'remain in the tool list'. Measured: no package registers a tool with that name — the watchdog registers the three `session-watchdog-*` names, the adopted plugin registers 20 `agent_teams_*` tools at runtime (my driver's list), and `agent_teams_halt` appears only in tool DESCRIPTIONS and the pause-surface strings, where it is called 'the external pause a user operates (the web Stop-team route)'. Nothing was removed, so the removal-clause never fires and no finding is due — the clause's premise should be corrected in a future contract copy.", "requiredFix": "reword clause 2 as: the watchdog's three tool names stay registered (pinned) and the agent-teams tool list is unchanged; `agent_teams_halt` is the external mechanism, not a registered tool name." },
+    { "id": "O2", "severity": "info", "file": "packages/mpd-agent-teams-plugin/lib/tools.js", "problem": "The pause read is DISPLAY-ONLY, fail-open and non-throwing: an absent reader and a THROWING reader both render 'hold state not readable on this host' (never a guessed 'no hold is set'), and the read gates nothing (the tool-boundary guards stay deleted and the dispatch gate stays in the scheduler). This is consistent with the ruling and with lane C's structure — recorded so a reader does not mistake the display read for a gate.", "requiredFix": "none." },
+    { "id": "O3", "severity": "info", "file": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js", "problem": "The three regions t21 landed (`pause-surface-helper`, `pause-surface-apply`, the rewritten `status-pause-mechanisms`) are each present in the registry AND in the source (1/1/1 and 1/1/1), `node scripts/patch-agent-teams-fixes.mjs --check` exits 0 with 81 regions across 9 adopted files, and `bun run verify:docs` exits 0 (pairs=37 failed=0 violations=0 exempt=17 derived=3). Recorded as the derived-value check for this surface.", "requiredFix": "none." }
+  ],
+  "bounds": [
+    "The BEFORE payload is a measured absence (HEAD's tools.js has no `pause` key in the status path), so 'quoted before and after' applies fully to the rendered line and as an absence->additive-field for the payload.",
+    "I did not run a mounted dsh boot for the tool list: no tool was removed, so the acceptance's mounted-reading requirement is not triggered; the registration evidence is the runtime tool map from my driver plus the shipped pins.",
+    "My revert copy lived under `evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg` with `self-fix-tests` renamed `arms-hidden` (T-89 discipline) and was deleted after the run; both readings are kept as `pin-green.out` and `revert/pin-on-reverted.out`.",
+    "The transient red I measured while t21 was mid-flight (unregistered region -> heal arms red) is resolved and was reported under t33; it is not part of this verdict."
+  ]
+}

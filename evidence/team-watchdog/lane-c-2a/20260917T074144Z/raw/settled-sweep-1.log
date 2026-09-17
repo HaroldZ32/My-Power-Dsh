@@ -1,0 +1,45 @@
+== SETTLED-HASH SWEEP — Thu Sep 17 07:45:48 AM UTC 2026 ==
+-- hashes BEFORE the 50 s settle window:
+69ca5fa9f63f80df397b987b packages/mpd-team-watchdog-plugin/src/actions.ts
+b9d7acaf6350eff96365d75f packages/mpd-team-watchdog-plugin/src/channel.ts
+c535df9eb04decf2b27056c3 packages/mpd-team-watchdog-plugin/src/config-file.ts
+a82913cc7566dae26e436b57 packages/mpd-team-watchdog-plugin/src/engine.ts
+c66f0ffc55af41f6157fdad1 packages/mpd-team-watchdog-plugin/src/holds.ts
+31f6dfbd9d15acd8c38e94b4 packages/mpd-team-watchdog-plugin/src/index.ts
+47511b5d415477e28208da5d packages/mpd-team-watchdog-plugin/src/machine.ts
+7dfb4caa2be6c255afa07cbd packages/mpd-team-watchdog-plugin/src/paths.ts
+c293b752d1190fd88e345b8c packages/mpd-team-watchdog-plugin/src/scene.ts
+febae8f4a2debc73f5dd85bf packages/mpd-team-watchdog-plugin/src/sidecars.ts
+1df4f92d69656cc82e57d4a0 packages/mpd-team-watchdog-plugin/src/store.ts
+c3f495118d547abb7b658062 packages/mpd-team-watchdog-plugin/src/team.ts
+d4384a0f26255ab11b47d262 packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts
+6aa3069c5cb89f97c2491fbc packages/mpd-team-watchdog-plugin/dist/index.js
+c8ebe4755a00acf3c3020710 agent-references/troubleshooting.md
+-- hashes AFTER the 50 s settle window (must be identical):
+69ca5fa9f63f80df397b987b packages/mpd-team-watchdog-plugin/src/actions.ts
+b9d7acaf6350eff96365d75f packages/mpd-team-watchdog-plugin/src/channel.ts
+c535df9eb04decf2b27056c3 packages/mpd-team-watchdog-plugin/src/config-file.ts
+a82913cc7566dae26e436b57 packages/mpd-team-watchdog-plugin/src/engine.ts
+c66f0ffc55af41f6157fdad1 packages/mpd-team-watchdog-plugin/src/holds.ts
+31f6dfbd9d15acd8c38e94b4 packages/mpd-team-watchdog-plugin/src/index.ts
+47511b5d415477e28208da5d packages/mpd-team-watchdog-plugin/src/machine.ts
+7dfb4caa2be6c255afa07cbd packages/mpd-team-watchdog-plugin/src/paths.ts
+c293b752d1190fd88e345b8c packages/mpd-team-watchdog-plugin/src/scene.ts
+febae8f4a2debc73f5dd85bf packages/mpd-team-watchdog-plugin/src/sidecars.ts
+1df4f92d69656cc82e57d4a0 packages/mpd-team-watchdog-plugin/src/store.ts
+c3f495118d547abb7b658062 packages/mpd-team-watchdog-plugin/src/team.ts
+d4384a0f26255ab11b47d262 packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts
+6aa3069c5cb89f97c2491fbc packages/mpd-team-watchdog-plugin/dist/index.js
+c8ebe4755a00acf3c3020710 agent-references/troubleshooting.md
+-- the three contract verify commands, re-run on the settled revision:
+ 139 pass
+ 0 fail
+ 682 expect() calls
+Ran 139 tests across 1053 files. [7.69s]
+bun test exit=0
+$ tsgo --noEmit
+typecheck exit=0
+[PASS] T-24: the helper never uses stdio:'pipe' — pipeHits=0
+[mpd-bg self-test] 13/13 arms passed — PASS
+mpd-bg exit=0
+== SWEEP DONE — Thu Sep 17 07:46:48 AM UTC 2026 ==

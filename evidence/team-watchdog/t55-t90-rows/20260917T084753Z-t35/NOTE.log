@@ -1,0 +1,49 @@
+== t35 — the two offered rows landed in agent-references/troubleshooting.md ==
+file before: sha256 c8568855302a1ee4  39763 B  73 lines  60 rows
+file after : sha256 5f0b4b3659bad486  41863 B  75 lines  62 rows
+
+-- the diff (two inserted rows; nothing else changed):
+44a45,46
+> | a search or glob returns nothing and you are about to report a file as ABSENT / MISSING | **A search that returns no
+> | a path or number quoted in a REPORT does not resolve / does not reproduce | **Cite the reading AND the sentence that
+
+-- the two rows as landed, verbatim:
+| a search or glob returns nothing and you are about to report a file as ABSENT / MISSING | **A search that returns nothing is a reading of the SEARCH, not of the tree.** A null result is not evidence of absence: report it as *"no match under pattern `<the pattern>`"* and NAME the pattern, because absence is a claim about the tree and needs a search that could have found it. Measured instance (2026-09-17): the glob `evidence/{team-watchdog,review}/**/{20260917T081003Z-t13/REVIEW.md,20260917T084000Z-t30/result.json}` returned nothing while BOTH files existed at `evidence/pack-closure/review-B/20260917T081003Z-t13/REVIEW.md` (15,381 B, sha256 `810830adda53…`) and `evidence/pack-closure/review-B/20260917T084000Z-t30/result.json` (11,600 B, sha256 `f6b06c5c1e13…`) — the narrow pattern was the error, and widening it before reporting is what kept a false "missing" out of the record. *Attribution: the operational phrasing ("no match under pattern `<…>`", never "absent") is the Architect's; the measured instances and this row's text are lane C's.* |
+| a path or number quoted in a REPORT does not resolve / does not reproduce | **Cite the reading AND the sentence that carries it; when the sentence is not the reader's, say whose it is.** The reading and the sentence that carries it are separate facts, so a provenance record names all three owners — first-party reading, first-party runs, second-hand wording. Worked example on disk: `evidence/team-watchdog/lane-c-2a/20260917T074144Z/raw/readings.log` ADDENDUM 11 (a first-party reading of `scripts/mpd-bg.mjs` by the Architect) + ADDENDUM 14 (the ownership split: first-party reading / first-party runs by lane C / the second-hand sentence, marked as not reviewed by its subject). For anything destined for a REPORT, the companion rule is FULL PATH OR NO CITATION: the abbreviations `review-B/…` and `lane-c-2a/…` fail `-e` while the three full paths above resolve (measured 2026-09-17). *Attribution: the rule sentence is the Architect's; the ADDENDUM 11/14 split, the `-e` measurement and this row's text are lane C's.* |
+
+-- row-and-line integrity: every row is a two-column markdown row? (0 malformed)
+== RECORDING READING (NOT a gate): node scripts/verify-pack-closure.mjs ==
+closure exit=0
+content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent
+  EXPECTED lines total: 25
+  writer mtime quoted: source mtime 2026-09-17T07:35:55.372Z
+
+== ADDENDUM (correction to this note's own probe, appended not rewritten) ==
+The first grep for the file's EXPECTED line in closure.log printed NOTHING and I nearly read that as
+'the gate does not name this file'. It is a PATTERN artifact, the same class ADDENDUM 1 recorded in the
+t13 review evidence: my pattern used a negated class that cannot cross the '-' inside the filename
+('agent-references/troubleshooting.md'). The reading that actually exists is closure.log line 18:
+
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/troubleshooting.md: source mtime 2026-09-17T08:48:26.379Z is AFTER the artifact stamp 2026-09-17T05:19:48.265Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+
+So the task's RECORDING READING is confirmed: closure exit 0, 25 EXPECTED lines, and THIS file named as
+CONTENT-DRIFT-EXPECTED with its writer mtime 2026-09-17T08:48:26.379Z against the artifact stamp
+2026-09-17T05:19:48.265Z — the line the captain's re-pack will absorb because the rows landed BEFORE it.
+
+== ADDENDUM 2 (appended after t35 completed; nested correction beside the sealed record) ==
+Two provenance facts settled after completion, with owners named in the rule's own form:
+  * PER-FILE GRANULARITY — lane C's claim was MEASURED: the closure counter read 25
+    expected-after-pack both before and after this task's edit, i.e. adding rows to a file already in
+    the class added no line. The IMPLEMENTATION READING that explains why is the Architect's: the drift
+    class is built one entry per relative path (content.expected.push({ ...entry, provenance })) and the
+    counter prints content.expected.length.
+  * VENDOR_LOCK's assets — lane C verified the keys by reading the lock (skills 323, agent-teams _deps
+    635, four sha-pinned MCP dist files; no agent-references entry); the Architect verified the same at
+    the source. Two first-party readings of one fact, independently.
+  * PRICING — the Architect's original 'costs one closure-gate line' was corrected by the per-file
+    finding to 'free pre-re-pack'; the corrected pricing was relayed to the captain by the Architect.
+    NOTE: by the time that relay was sent, this task already existed and was COMPLETE, so the relay is
+    superseded by the executed result rather than pending.
+  * FROZEN REVISION FOR THE RE-PACK — agent-references/troubleshooting.md sha256
+    5f0b4b3659bad486... 41,863 B, 75 lines, 62 rows, mtime 2026-09-17T08:48:26.379Z, cmp-identical to
+    troubleshooting.after.txt (no writer since).

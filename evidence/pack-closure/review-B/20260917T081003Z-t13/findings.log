@@ -1,0 +1,18 @@
+== t13 review-B: FINDING F1 — the designated entry point does not run re-homed ==
+command: node evidence/pack-closure/wave2-laneB/20260917T072544Z-laneB/run-laneB-evidence.mjs evidence/pack-closure/review-B/20260917T081003Z-t13
+Error: ENOENT: no such file or directory, open 'evidence/pack-closure/review-B/20260917T081003Z-t13/t67-build-form-diff.json'
+    at readFileSync (node:fs:441:20)
+    at file:///root/dshProj/my-power-dsh/evidence/pack-closure/wave2-laneB/20260917T072544Z-laneB/run-laneB-evidence.mjs:120:21
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+  driver exit=1 (recorded at the top of driver.stdout.log)
+  static half: the four harness scripts END in console.log(JSON.stringify(...)) + process.exit (tails quoted
+  in this dir's notes); none of them writes a .json. The driver captures their stdout into <name>.log and
+  then reads <name>.json — files its own steps do not produce. In the sealed dir those four .json files
+  predate the driver's own runs (captured_at 07:28:12 / 07:36:57 / 07:37:13 / 07:37:52 vs the .log files
+  written 07:38), so the assembled readings are read, not regenerated.
+
+== t13 review-B: FINDING F2 — a recorded digest that does not describe the file on disk ==
+  result.json.digests['driver-summary.json'] = e3b0c44298fc1c14
+  actual sha256[:16] of the 4362-byte file    = 8d066764e62752eb
+  empty-string sha256[:16]                    = e3b0c44298fc1c14
+  -> the recorded digest is the digest of the EMPTY file the shell redirection had created at that moment: CONFIRMED

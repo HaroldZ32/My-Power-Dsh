@@ -1,0 +1,5 @@
+ffece49fd8820f9b26a07d14de41c325c51c45ebba79d307d85361426eed12a3  packages/mpd-team-watchdog-plugin/README.md
+e09a021bdaf52000f797dd574ff8148dee244995f81a7c168c76d63da695d7b2  packages/mpd-team-watchdog-plugin/README.zh-CN.md
+bd887558cdc833db0bae1e3c8a1a6a0ea130636c0d7dbb8447f01b9044d24793  -
+README.zh-CN.md before (git HEAD):
+a5cd1023620e9ba698c2c5e2f2d8d0beeba4d58fb951a9a235e61dafe54a6a4b  -

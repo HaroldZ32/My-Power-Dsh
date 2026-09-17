@@ -1,0 +1,13 @@
+e1335c9d8394722e5358346d85339a6184b5fa27f7c8cfc40873109ef38ef81f  scripts/run-qa-lanes.mjs
+840edb279f662b3d02678b002def081815f65dd24807fb4084a410bd4a0f4fe8  scripts/reconcile-register.py
+5dcaffb99b9153cfb1249bcd716e8dca900fe2dd30ac0d209ef0ee81b85ebdb0  skills/dsh-qa/cases.json
+10f593a84deb3e66d1677cfd8730f1cdeb3c1f54eeb2e44273d6182dab1a9b75  skills/dsh-qa/scripts/extension-lifecycle.mjs
+412f0cdf9e466774c8c2ba1bac9ee37d4d28ecb8e6ce483f04485b6ff4d843f6  skills/dsh-qa/scripts/lib/immutable-output.mjs
+0f9f0f4b6811f901a54e22c663530b42fcf7dd8f8c52c0fd9cdef3cb1c8b4000  skills/dsh-qa/scripts/team-watchdog-boot.mjs
+47ae8245cef1ffb122d4db9b054dfc166cdbed1ca8daac96cf08c72a278a572e  skills/dsh-qa/scripts/team-watchdog-config.mjs
+1ae0df63d8d60e62bf68bbf45acca4b370c0cb15ce8c426ff7ddefb27d1fcee2  skills/dsh-qa/scripts/team-watchdog-fault.mjs
+d8daab91d5ce74e93104739c7937ea7ffc49475b8ad79a3a8805787b584bd5ac  skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+66f032034a97d74a77b4a41a0e07855b6f4599d0b395141991ef93ccde9026e3  skills/dsh-qa/scripts/team-watchdog-notify.mjs
+e608ec67440268f4e68a557de3fa0d4ee5a6f34d034a86fdd70077092f3192ec  skills/dsh-qa/scripts/team-watchdog-scene.mjs
+e7c3c00f6c58b08807d1a41bbdc314025f06a0c04dcefc51ca5ba7cc1a0639d8  skills/dsh-qa/scripts/tui-settings-bridge.mjs
+c56e4970d42a28ce000d58a7db32fc578100d31c3cdd2365a12bed0e2161758e  skills/dsh-qa/scripts/web-settings-bridge.mjs

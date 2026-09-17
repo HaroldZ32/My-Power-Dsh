@@ -1,0 +1,6 @@
+SAME  packages/mpd-agent-teams-plugin/lib/state.js  (6092febdb28e66c8 -> 6092febdb28e66c8)
+SAME  packages/mpd-agent-teams-plugin/self-fix-tests/composed-ticket-output-preserved.test.mjs  (82f578cfd4857f46 -> 82f578cfd4857f46)
+SAME  packages/mpd-agent-teams-plugin/lib/scheduler.js  (4b824797195996fa -> 4b824797195996fa)
+MOVED packages/mpd-agent-teams-plugin/lib/mpd-deltas.js  (21226fb694ff7f26 -> 6dce6f1f3598c77b)
+MOVED agent-references/agent-teams-deltas.md  (7c12851990f5f6b1 -> 8716eaf51b0e32b8)
+MOVED packages/mpd-agent-teams-plugin/lib/tools.js  ( -> 6021bf6dfce594ed)

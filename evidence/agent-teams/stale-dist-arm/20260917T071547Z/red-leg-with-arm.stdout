@@ -1,0 +1,83 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.39ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [1.88ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdRoles service field [0.58ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.31ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.36ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the three tools are registered THROUGH the mounted adapter, not beside it [0.24ms]
+184 |     const detail = `${run.stdout ?? ""}${run.stderr ?? ""}`
+185 |     expect(
+186 |       run.status,
+187 |       `the committed dist does not match a fresh canonical build of its src — rebuild from the repo root:\n`
+188 |         + `  bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js\n${detail}`,
+189 |     ).toBe(0)
+            ^
+error: the committed dist does not match a fresh canonical build of its src — rebuild from the repo root:
+  bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js
+  STALE: packages/mpd-roles-plugin/dist/index.js — committed packages/mpd-roles-plugin/dist/index.js (39829 B, 7b9fa6a899c79b3b…) != fresh build of packages/mpd-roles-plugin/src/index.ts (39810 B, 38d4a459f64d1dbd…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] FAIL - 1 of 1 targets not fresh (STALE: 1) — 32ms
+
+
+Expected: 0
+Received: 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/test/adapter-identity.test.ts:189:7)
+(fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [95.28ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.35ms]
+
+packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.23ms]
+(pass) F1 vocabulary (standing pin) > the sibling row reports the SAME vocabulary (cross-package equality) [0.08ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [10.01ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdExtensions service field [1.51ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [1.05ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [1.58ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the four tools are registered THROUGH the mounted adapter, not beside it [1.14ms]
+215 |     expect(
+216 |       run.status,
+217 |       `a committed dist does not match a fresh canonical build of its src — rebuild from the repo root:\n`
+218 |         + `  bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js\n`
+219 |         + `  bun build packages/mpd-ext-plugin/src/sdk.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/sdk.js\n${detail}`,
+220 |     ).toBe(0)
+            ^
+error: a committed dist does not match a fresh canonical build of its src — rebuild from the repo root:
+  bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js
+  bun build packages/mpd-ext-plugin/src/sdk.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/sdk.js
+  STALE: packages/mpd-ext-plugin/dist/index.js — committed packages/mpd-ext-plugin/dist/index.js (152874 B, 840137a6407640c8…) != fresh build of packages/mpd-ext-plugin/src/index.ts (152855 B, f6097fd3383f2fa7…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js
+  STALE: packages/mpd-ext-plugin/dist/sdk.js — committed packages/mpd-ext-plugin/dist/sdk.js (1727 B, 0b49fecf5e0159ea…) != fresh build of packages/mpd-ext-plugin/src/sdk.ts (1708 B, 4117a1d5d11dbbda…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-ext-plugin/src/sdk.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/sdk.js
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] FAIL - 2 of 2 targets not fresh (STALE: 2) — 92ms
+
+
+Expected: 0
+Received: 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-ext-plugin/test/adapter-identity.test.ts:220:7)
+(fail) F1 shipped artifact > the committed dists are the byte-identical products of a canonical build (T-62) [154.76ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.81ms]
+
+packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+
+packages/mpd-ext-plugin/test/adapter-identity.test.ts:
+
+ 15 pass
+ 2 fail
+ 54 expect() calls
+Ran 17 tests across 4 files. [466.00ms]

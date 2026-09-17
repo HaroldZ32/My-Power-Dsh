@@ -1,0 +1,5 @@
+== pin at 2026-09-17T07:40:37Z ==
+d64dfeb52d3b6c9d18acee5c7e9d8685c82b847e44a4f6f4ef94f21eb1f45c13  scripts/check-citations.mjs
+dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c  evidence/extensions/docs-claims/check-citations.mjs
+scripts/check-citations.mjs 38946 1789630080 2026-09-17 15:28:00.931973936 +0800
+evidence/extensions/docs-claims/check-citations.mjs 30345 1789623767 2026-09-17 13:42:47.183943428 +0800

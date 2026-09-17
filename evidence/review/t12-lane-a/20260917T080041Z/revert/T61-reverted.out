@@ -1,0 +1,120 @@
+bun test v1.3.14 (0d9b296a)
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+113 | 
+114 |         // The exact wave-1 shape: a repair payload whose structured keys are snake_case.
+115 |         await expect(update.execute(
+116 |             { task_id: "t1", status: "in_progress", attempt_id: "att-1", acceptance_results: [{ criterion: "x", status: "passed" }] },
+117 |             { agent: box.member },
+118 |         )).rejects.toThrow(/"acceptance_results"/)
+                         ^
+error: 
+
+Expected promise that rejects
+Received promise that resolved: Promise { <resolved> }
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:118:20)
+(fail) T-61: an unknown snake_case argument name is REFUSED, named, and stores NOTHING [55.48ms]
+(pass) T-61 control: every DECLARED argument name still works (a guard that refuses everything is red) [7.21ms]
+(pass) T-61 drift pin: the declared-name list EQUALS the registered tool's compiled schema keys [10.95ms]
+184 |         symlinkSync(DEPS_DIR, join(scratch, "_deps"), "dir")
+185 |         const copyPath = join(scratch, "lib", "tools.js")
+186 |         const original = readFileSync(copyPath, "utf8")
+187 |         const guardCall = "            assertKnownToolArguments('agent_teams_update_task', UPDATE_TASK_ARGUMENT_NAMES, args);\n"
+188 |         const occurrences = original.split(guardCall).length - 1
+189 |         expect(occurrences, "the guard call was not found in the scratch copy — the control would test the FIXED code").toBe(1)
+                                                                                                                             ^
+error: the guard call was not found in the scratch copy — the control would test the FIXED code
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:189:120)
+(fail) T-61 negative control: with the guard call removed, the SAME payload succeeds and stores nothing [6.55ms]
+(pass) T-61 append channel (ii): the registered schema carries the key and a TERMINAL append GROWS the bytes [21.48ms]
+(pass) T-61 append channel (i): the wave-1 shape is a STALE-SCHEMA drop — success returned, nothing stored [0.95ms]
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T61-pkg/self-fix-tests/strict-task-arguments.test.mjs:
+
+ 4 pass
+ 2 fail
+ 18 expect() calls
+Ran 6 tests across 41 files. [5.71s]

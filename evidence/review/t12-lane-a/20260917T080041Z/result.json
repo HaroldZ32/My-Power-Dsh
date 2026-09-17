@@ -1,0 +1,69 @@
+{
+  "task": "t12 — review-A — falsify lane A's five fixes and their arms",
+  "reviewedTask": "t8",
+  "kind": "review",
+  "attemptId": "6d5491c8-dcda-4b6f-a589-08420d0f5a9f",
+  "reviewer": "code-reviewer",
+  "date": "2026-09-17",
+  "verdict": "pass",
+  "pinnedRevisions": {
+    "pin1Utc": "2026-09-17T08:00:41Z",
+    "pin2Utc": "2026-09-17T08:13:40Z",
+    "pin3Utc": "2026-09-17T08:14:15Z",
+    "note": "pin2 == pin3; pin1 differs on state.js/mpd-deltas.js/agent-teams-deltas.md — those moved BEFORE my first read (t24, in progress), not during this review",
+    "files": {
+      "packages/mpd-agent-teams-plugin/lib/tools.js": { "now": "5fe18cdf62af6801", "vsT8": "SAME" },
+      "packages/mpd-agent-teams-plugin/lib/state.js": { "now": "6092febdb28e66c8", "vsT8": "DRIFTED from 1cba27fe8c8cda1a (t24 / T-73, in progress)" },
+      "packages/mpd-agent-teams-plugin/lib/quality-gates.js": { "now": "1b0eb60e61765f5e", "vsT8": "SAME" },
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": { "now": "21226fb694ff7f26", "vsT8": "DRIFTED from 3db729cd99937659 (t24's region regenerated: 78 -> 79)" },
+      "agent-references/agent-teams-deltas.md": { "now": "7c12851990f5f6b1", "vsT8": "DRIFTED from 2fd0099a47fa9a27 (count chain 78 -> 79 documented)" },
+      "arms": {
+        "strict-task-arguments.test.mjs": "1a901602f7975d7d",
+        "terminal-rearm-refusal.test.mjs": "4c77cf321e32b927",
+        "repair-source-deadlock.test.mjs": "92bcb5db9bc76f85",
+        "registry-context-heal.test.mjs": "63949b6706572de2",
+        "composed-ticket-output-preserved.test.mjs (t24)": "82f578cfd4857f46"
+      }
+    }
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "Every claim in t8's output is REPRODUCED independently on the pinned revision (quote the command and the reading, not the author's summary)",
+      "status": "passed",
+      "evidence": "T-61 `bun test .../strict-task-arguments.test.mjs` -> 6 pass / 0 fail, exit 0, incl. BOTH mandated append-channel cases ((i) stale-schema drop reproduces success+nothing stored; (ii) a terminal append GROWS the bytes). T-62 `bun test packages/mpd-roles-plugin/test/adapter-identity.test.ts packages/mpd-ext-plugin/test/adapter-identity.test.ts` -> 17 pass / 0 fail, exit 0. T-79 arm -> 6 pass / 0 fail; the accepted replay fixture id 35503430-5a3b-4306-b6f2-d38d416cb438 is present in the live record evidence/agent-teams/terminal-redispatch/20260917T072501Z/. T-81 arm -> 3 pass / 0 fail. Registry: `node scripts/patch-agent-teams-fixes.mjs --check` -> exit 0, 'already applied: 79 mpd delta region(s) across 9 adopted file(s)'; all five t8 regions exist in BOTH the registry and their source files (strict-tool-arguments, strict-tool-arguments-apply, terminal-task-rearm-refusal, terminal-stale-attempt-refusal, repair-source-open-edge) and agent-references/agent-teams-deltas.md carries D39-D42 with the measured chain (t8's five: 73->78; t24's one: 78->79). Suites: self-fix dir 107 pass / 0 fail exit 0; heal arm 21 / 0; plugin-wide 264 pass / 0 fail exit 0; t24's new arm 6 / 0 (t8's own readings were 101 / 256 — the growth is t24's, all green). Instruments: the claimed 30 s timeout IS committed (`}, 30_000)` ending the t2 partial-insertion test at line 220); the `warnings` binding IS committed (+6/-1 vs HEAD). The T-61 root-cause mechanism is a READING, verified by me in the vendored code: `parameterSchemaSpecToJsonSchema` (_deps/dsh-tools/lib/index.js:800) builds {type, properties, required?} with NO additionalProperties:false, so an unknown key passed validation. Cross-lane typecheck: now exit 0 (t8 measured it red on lane C's engine.ts at 07:29/07:33Z; a state move, correctly attributed and correctly excluded from the lane's verify)."
+    },
+    {
+      "criterion": "Each of the five items' arms was actually run in its revert-state and observed RED (the negative control is evidence, not an intention)",
+      "status": "passed",
+      "evidence": "Reverts applied by ME in scratch copies of the package (no product file edited), each arm then run against the reverted copy: T-61 (guard call `assertKnownToolArguments('agent_teams_update_task', ...)` removed, 1 occurrence asserted) -> exit 1, 'an unknown snake_case argument name is REFUSED...' FAILED. T-79 (both `assertTaskRearmable(task);` calls removed, 2 occurrences asserted) -> exit 1 (T-79(a) + the restart leg FAILED); with the second hunk reverted too (the stale-capability condition in tools.js neutralised, 1 occurrence asserted) -> 4 FAIL (a, d, negative control, restart leg). T-81 (the open-source exemption `&& (repairSource === undefined || !OPEN_STATUSES.includes(repairSource.status))` removed, 1 occurrence asserted) -> exit 1, the primary repair arm FAILED. T-62 in a faithful full mirror (16 MB copy of packages/ + scripts/verify-dist-fresh.mjs): pristine -> 17 pass / 0 fail; with a stale line appended to the mirror's dist/index.js + dist/sdk.js -> exit 1, 16 pass / 1 fail (the ext byte-check FAILED); the PRE-FIX (git HEAD) versions of both test files on the SAME seeded mirror -> 15 pass / 0 fail, exit 0 = the FALSE GREEN reproduced exactly as the row claims. T-75: NOT APPLICABLE (see the next item). The arms' own in-arm controls (which strip the same anchors in a scratch copy and assert the pre-fix behaviour) were exercised too, and they FAIL LOUDLY on an already-reverted tree ('the guard call was not found in the scratch copy — the control would test the FIXED code'), so they cannot silently test fixed code."
+    },
+    {
+      "criterion": "T-75's NOT-APPLICABLE reporting is judged against the authority (captain log §A-1 Ruling 2)",
+      "status": "passed",
+      "evidence": ".mpd/plans/friction-p2-wave-captain-log.md:59 'Ruling 2 — T-75 has NO lane-A surface; it is RE-SCOPED to t19 (docs-parity-engineer)' and :64-65 'do not fabricate a plugin-side surface for T-75 and do not soften its acceptance. Report T-75 in your completion as NOT APPLICABLE TO THIS LANE, citing this section as the reason and t19 as its carrier.' t8's output says exactly that, cites §A-1, names t19, and fabricates nothing; the same log (:414) later records t19 (T-75) COMPLETE and GREEN."
+    },
+    {
+      "criterion": "The delta registry still re-applies after the change (the plugin's own self-fix suite passes on the final bytes)",
+      "status": "passed",
+      "evidence": "`node scripts/patch-agent-teams-fixes.mjs --check` -> exit 0, 79 regions across 9 adopted files; `bun test packages/mpd-agent-teams-plugin/self-fix-tests/` -> 107 pass / 0 fail exit 0 on the final bytes (settle-checked: the hashes in pinnedRevisions/files did not move between pin2 and pin3); `bun test packages/mpd-agent-teams-plugin` -> 264 pass / 0 fail. The five regions are ADDITIVE-shaped in the registry (beforeContext/afterContext pairs) as the deltas doc states."
+    },
+    {
+      "criterion": "Any inferred mechanism is labelled as an inference",
+      "status": "passed",
+      "evidence": "t8's record uses no 'inference' label, so I checked the load-bearing mechanisms instead of the vocabulary: (a) T-61's root cause is a verified code reading (see item 1); (b) T-79's 'the terminal record was rewritten by the dispatch itself' is arm-measured (the negative control observes status=claimed, attempt+1, output WIPED); (c) T-81's deadlock is arm-measured (unsatisfiedDependencies(team.tasks, gate.task.dependencies) === ['A'] on the pre-fix path); (d) the cross-lane typecheck red is presented as an ATTRIBUTION (file ownership + mtimes), not as a mechanism, and carries its bound ('a reading taken while a writer is active is a reading of a DIFFERENT tree'). No unlabelled mechanism found."
+    }
+  ],
+  "observations": [
+    { "id": "O1", "severity": "low", "file": "evidence/agent-teams/t8-lane-a/20260917T071056Z/changed-hashes.txt", "problem": "The hash record covers 5 of the 13 paths listed in result.json.changed_paths: the 8 arm/test files (the two adapter-identity tests, quality-loop, registry-context-heal, terminal-dispatch and the three new arms) carry no recorded hash in that file.", "requiredFix": "record the arm hashes too, or state in the file that only the lib/doc paths are hashed; I re-hashed the arms myself for this review (see pinnedRevisions)." },
+    { "id": "O2", "severity": "low", "file": "evidence/agent-teams/t8-lane-a/20260917T071056Z/result.json", "problem": "The terminal-dispatch instrument-repair entry says 'the file is byte-identical to HEAD' while its own change list says the `warnings` binding was ADDED. Measured: the file differs from HEAD by +6/-1 (the binding), so the sentence is true only of the PRE-FIX state and reads as a contradiction.", "requiredFix": "reword to 'the failure is pre-existing at HEAD (the missing binding is what HEAD carries)'." },
+    { "id": "O3", "severity": "info", "file": "packages/mpd-agent-teams-plugin/lib/state.js", "problem": "Post-t8 drift by t24 (in progress) on state.js, lib/mpd-deltas.js and agent-references/agent-teams-deltas.md. All my readings are on that LATER revision and are green; the counts grew (self-fix 101->107, plugin 256->264, regions 78->79).", "requiredFix": "none; the drift is disclosed so no reader compares my numbers against t8's without the delta." },
+    { "id": "O4", "severity": "info", "file": "evidence/review/t12-lane-a/20260917T080041Z/suites.out", "problem": "MY OWN artifact, disclosed: my first suite run was polluted by my scratch mirror because `bun test <path>` matches test files by SUBSTRING project-wide, and the mirror's path contained 'packages/mpd-agent-teams-plugin/self-fix-tests/'. That run read 167 pass / 164 fail / 324 errors; after renaming the scratch dirs the SAME commands read 107/0, 21/0, 17/0, 264/0.", "requiredFix": "none for the lane; recorded so the polluted run is never mistaken for a regression (and so other reviewers keep scratch copies out of filter-matching paths)." },
+    { "id": "O5", "severity": "info", "file": "scripts/patch-agent-teams-fixes.mjs", "problem": "BOUND: I did not reproduce t8's '--check is blind to an UNREGISTERED region; the heal suite is the instrument' leg — my fixture edit crashed the registry module (my own artifact), so that reading stays the author's. The code path supports it: --check iterates the REGISTRY ('every registered region must be present and byte-identical', line 13) and MPD_DELTA_MARKERS is built from the registry ids (line 531), so a source region absent from the registry is invisible to it; t8's logs record 18 pass / 3 fail red vs 21 pass / 0 fail green.", "requiredFix": "none; stated as a bound." },
+    { "id": "O6", "severity": "info", "file": "packages/mpd-team-watchdog-plugin/src/engine.ts", "problem": "t8's cross-lane typecheck red is no longer reproducible: `bun run typecheck` exits 0 now. The attribution (lane C's in-flight engine.ts) was correct at its time and the exclusion of the aggregate from lane A's verify follows §AC2 regardless.", "requiredFix": "none; a state move, recorded as such." }
+  ],
+  "bounds": [
+    "All my readings are anchored to the pinned revisions above; the tree has a writer active (t24) on state.js/registry, so counts may grow again.",
+    "I edited no product file: every revert was applied in a scratch copy under evidence/review/t12-lane-a/20260917T080041Z/revert/. The package copies were DELETED after the runs (48 MB -> 668 KB) to remove the bun-filter pollution vector I had accidentally created, while the raw arm outputs and the exact revert anchors are kept there and in commandsRun; the arms' own scratch-copy controls are self-contained.",
+    "t8's 'three consecutive full-suite runs: 101 pass / 0 fail' is not reproducible as a historical statement (the tree moved); I reproduced the green state on the final bytes (107/0) instead."
+  ]
+}

@@ -1,0 +1,185 @@
+bun test v1.3.14 (0d9b296a)
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.36ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [1.79ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdRoles service field [0.43ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.37ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.40ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the three tools are registered THROUGH the mounted adapter, not beside it [0.27ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.37ms]
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.25ms]
+(pass) F1 vocabulary (standing pin) > the sibling row reports the SAME vocabulary (cross-package equality) [0.08ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [4.28ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdExtensions service field [0.53ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches stdout even when the ctx exposes no logger [0.41ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.64ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the four tools are registered THROUGH the mounted adapter, not beside it [0.36ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.75ms]
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-roles-plugin/test/adapter-identity.prefix.test.ts:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T62-full/packages/mpd-ext-plugin/test/adapter-identity.prefix.test.ts:
+
+ 15 pass
+ 0 fail
+ 52 expect() calls
+Ran 15 tests across 82 files. [8.76s]

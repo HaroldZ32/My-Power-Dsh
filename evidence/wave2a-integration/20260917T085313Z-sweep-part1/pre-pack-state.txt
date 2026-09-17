@@ -1,0 +1,32 @@
+=== PRE-PACK STATE (captured 2026-09-17T08:55:45Z) ===
+--- artifact stamp + manifest:
+pack stamp 2026-09-17T05:19:48.265Z
+--- EXPECTED-after-pack SET (before):
+agent-references/agent-teams-deltas.md
+agent-references/index.md
+agent-references/troubleshooting.md
+docs/extension-adaptation-report.md
+docs/extension-adaptation-report.zh-CN.md
+EXTENSIONS-FOR-AGENTS.md
+packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+packages/mpd-agent-teams-plugin/lib/quality-gates.js
+packages/mpd-agent-teams-plugin/lib/state.js
+packages/mpd-agent-teams-plugin/lib/tools.js
+packages/mpd-team-watchdog-plugin/dist/index.js
+packages/mpd-team-watchdog-plugin/README.md
+packages/mpd-team-watchdog-plugin/README.zh-CN.md
+skills/dsh-qa/cases.json
+skills/dsh-qa/scripts/extension-lifecycle.mjs
+skills/dsh-qa/scripts/lib/immutable-output.mjs
+skills/dsh-qa/scripts/team-watchdog-boot.mjs
+skills/dsh-qa/scripts/team-watchdog-config.mjs
+skills/dsh-qa/scripts/team-watchdog-fault.mjs
+skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+skills/dsh-qa/scripts/team-watchdog-notify.mjs
+skills/dsh-qa/scripts/team-watchdog-scene.mjs
+skills/dsh-qa/scripts/tui-settings-bridge.mjs
+skills/dsh-qa/scripts/watchdog-redesign.mjs
+skills/dsh-qa/scripts/web-settings-bridge.mjs
+--- counts:
+content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack
+completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent

@@ -1,0 +1,53 @@
+{
+  "task": "t21 — T-19 surface 2: the pause-status line must present ONE mechanism",
+  "lane": "A (agent-teams plugin)",
+  "owner": "agent-teams-engineer",
+  "attempt": "attempt 2, attempt_id ced22a30-5e8b-431a-8979-87c1eacbf624",
+  "state_at_this_record": "COMPLETE — all six acceptance items satisfied on the merged tree; contract revision 3 (the captain's amend added the three companion paths and re-pinned verify to the `./` path form)",
+  "ruling": "user (frozen by t3): '`agent_teams_halt` becomes the SOLE external mechanism; the watchdog's PRESERVING hold is demoted to its internal implementation. Surface, tools and docs expose one mechanism.'",
+  "change": {
+    "file": "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "regions": [
+      "mpd-delta status-pause-mechanisms (REWRITTEN body — the ONE rendered line)",
+      "mpd-delta pause-surface-helper (NEW, ADDITIVE — `pauseSurfaceOf` + `describePause`, module scope before `renderStatus`)",
+      "mpd-delta pause-surface-apply (NEW, ADDITIVE — the display read inside the status execute)"
+    ],
+    "payload": "additive `pause` field: {mechanism, active, halt, internal_implementation:{kind, state, hold_id, at, reason, source, released_by}}; the tool's declared output schema is unchanged (`additionalProperties: true`), so no mounted-boot reading is required",
+    "hold_read": "DISPLAY ONLY, through the watchdog's own service (`ctx.get('mpdWatchdog', false)` -> `isHeld(teamId, workspace)`), fail-open and non-throwing; gates nothing — the tool-boundary guards stay deleted (D25-D26) and the dispatch gate stays in lib/scheduler.js"
+  },
+  "readings": {
+    "driver": "evidence/agent-teams/pause-surface/20260917T082935Z/driver.mjs (the REAL agent_teams_status tool, four states; before.log / after.log)",
+    "before_state_3_live_hold": "Pause: agent-teams halt not active · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)",
+    "after_state_3_live_hold": "Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold hold-7f3a set since 2026-09-17T07:26:40.000Z — the wave's writers must quiesce before the re-pack (released only by its own session-watchdog-resume))",
+    "after_state_4_service_absent": "Pause: agent-teams halt not active (one mechanism: agent_teams_halt — … : hold state not readable on this host (the watchdog service is not loaded))",
+    "why_state_3_matters": "the wave-1 line printed `not active` while the team was held — a true sentence that reads as 'the team is running'"
+  },
+  "verify_readings_so_far": {
+    "bun run typecheck": "exit 0",
+    "bun test ./packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts": "20 pass / 0 fail (acceptance item 3: both tools stay registered, no schema change)",
+    "bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs": "5 pass / 1 fail — the D2 boundary pins (hold gating, reader absent) are GREEN; the ONE failure is the OLD T-19 pin that must be requalified",
+    "bun test packages/mpd-agent-teams-plugin (the contract's verify)": "RED: 16 registry/heal failures from the un-regenerated block + 1 old-pin failure (both below). Green after the amend + regeneration.",
+    "one collision found and fixed in-scope": "the D2 pin asserts `tools.js` does NOT contain the string `watchdog-hold-reader`; my first comment named the scheduler's region by that id — reworded (0 occurrences now), D2 green again"
+  },
+  "companions_outside_inScope": {
+    "status": "ALL LANDED after the revision-3 amend",
+    "landed": [
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js — --write-registry reported 81 regions; --check exit 0",
+      "packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs — the old T-19 two-peer pin REQUALIFIED into TWO pins (single-mechanism + fail-open) and the file header updated",
+      "agent-references/agent-teams-deltas.md — the D27 row rewritten (THREE regions documented in it; the many-to-one note included) and the count sentence moved 79 -> 81"
+    ]
+  },
+  "final_verify_readings": {
+    "log": "evidence/agent-teams/pause-surface/20260917T082935Z/final-verify.log",
+    "bun test ./packages/mpd-agent-teams-plugin": "265 pass / 0 fail, 2207 expect() calls, 39 files, exit 0 (was 264 before this task; +1 new pin)",
+    "bun run typecheck": "exit 0",
+    "node scripts/patch-agent-teams-fixes.mjs --check": "81 regions across 9 adopted files, exit 0",
+    "bun run verify:docs": "PASS — pairs=37 failed=0 violations=0 exempt=17 derived=3; carried 81/9 vs derived 81/9; both pointer sites A1–D42",
+    "holds-lifecycle.test.ts (acceptance item 3)": "20 pass / 0 fail — the three watchdog tools stay registered"
+  },
+  "pins": {
+    "requalified": "T-19: the status surface names ONE pause mechanism and reports the hold as its INTERNAL implementation — keeps the prefix + no-new-resume-verb guarantees, adds the single-mechanism framing, the LIVE-hold id/reason reading (the stub's hold is live), and DRIFT GUARDS asserting the peer wording ('· team watchdog hold:' / 'run session-watchdog-status') stays absent",
+    "added": "T-19: with NO watchdog service the status says the hold is NOT READABLE — never a guessed hold (fail-open; asserts the string is absent and the payload state is 'not-readable')",
+    "why": "the acceptance asks for a test that pins the collapsed wording so it cannot drift back; requalifying the old pin is the wave's own T-81 discipline (an existing pin that encodes the OLD behaviour must be requalified, not left lying)"
+  }
+}

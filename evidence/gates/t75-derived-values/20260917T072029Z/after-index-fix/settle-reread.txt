@@ -1,0 +1,9 @@
+
+# settle re-check (2026-09-17T07:27:08Z) — script hash must be unchanged
+4b87934c5a32fab4fe00918cfb72337df88704c85007b8a67e1cabcecd7e12df  scripts/verify-docs-parity.mjs
+67696cfe3bb2fa444506a19f0a1bec81f01a0aa27dc9c26d657eedb3cdacef7e  agent-references/index.md
+error: script "verify:docs" exited with code 1
+verify:docs exit=1
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+verify:rows exit=0
+[verify-docs-parity self-test] 21/21 checks passed — PASS

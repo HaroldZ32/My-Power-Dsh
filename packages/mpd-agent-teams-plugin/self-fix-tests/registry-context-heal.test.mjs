@@ -169,6 +169,13 @@ test("t2: quality-gates.js strip-heal stays byte-identical (no trade between the
 })
 
 // ---------- insertion-count exactness: any insertion history, not just a full strip ----------
+// NOTE (wave 2, lane A / t8): this case walks EVERY registered region of EVERY adopted file through
+// four strip-and-heal plans, so its runtime scales with the registry (73 → 78 regions when lane A
+// added five) and it is the heaviest case in this file: measured 3.3 s alone and 5.66 s under a
+// full-suite parallel run, where bun's 5 s default turns a slow-but-correct heal into "(fail) …
+// timed out". The explicit timeout below is the remedy for exactly that conflation — NOT one
+// assertion in this case was relaxed: a heal that loses its canonical position still fails on the
+// byte comparison, and the non-vacuity check at the end still guards the fixture.
 test("t2: a region heals to its canonical position under partial insertion histories", () => {
     let filesWithRegions = 0
     for (const name of ADOPTED_FILES) {
@@ -210,7 +217,7 @@ test("t2: a region heals to its canonical position under partial insertion histo
     // Non-vacuity: the fixture must still exercise real insertion histories, so a registry
     // that lost every region would fail here instead of passing silently.
     expect(filesWithRegions).toBeGreaterThan(0)
-})
+}, 30_000)
 
 // ---------- the marker prefix fix: one fixture per colliding pair ----------
 /** The three ids that are prefixes of a sibling, with the file that carries them. */

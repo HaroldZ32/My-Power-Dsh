@@ -1,0 +1,51 @@
+{
+  "name": "@mpd-dsh/mpd",
+  "version": "0.9.1",
+  "private": true,
+  "type": "module",
+  "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream baseline: oh-my-openagent 8c57e46, pinned)",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "main": "packages/mpd-bundle-plugin/dist/index.js",
+  "exports": {
+    ".": "./packages/mpd-bundle-plugin/dist/index.js",
+    "./package.json": "./package.json",
+    "./packages/*": "./packages/*",
+    "./skills/*": "./skills/*",
+    "./presets/*": "./presets/*",
+    "./extensions/*": "./extensions/*",
+    "./templates/*": "./templates/*",
+    "./docs/*": "./docs/*",
+    "./agent-references/*": "./agent-references/*",
+    "./client": "./packages/mpd-bundle-plugin/client.js"
+  },
+  "files": [
+    "packages/**",
+    "skills/**",
+    "presets/**",
+    "extensions/**",
+    "templates/**",
+    "docs/**",
+    "agent-references/**",
+    "scripts/**",
+    "cordis.patch.yml",
+    "LICENSE.md",
+    "LICENSE-NOTICES.md",
+    "README.md",
+    "README.zh-CN.md",
+    "EXTENSIONS-FOR-AGENTS.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "optionalDependencies": {
+    "@ast-grep/cli": "0.45.2",
+    "@colbymchenry/codegraph": "1.5.0",
+    "@code-yeongyu/comment-checker": "0.8.0"
+  }
+}

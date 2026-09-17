@@ -1,0 +1,224 @@
+{
+  "startedAt": "2026-09-17T08:29:41.583Z",
+  "finishedAt": "2026-09-17T08:29:48.108Z",
+  "scope": {
+    "rows": [
+      "g"
+    ],
+    "full": false
+  },
+  "red": {
+    "root": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+    "generation": "legacy",
+    "defaults": {
+      "enabled": true,
+      "warnSilenceMs": 90000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 3,
+      "actionOnEscalate": "pause",
+      "toolInFlightMaxMs": 900000
+    },
+    "fingerprints": {
+      "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+      "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+      "channel": "(absent)",
+      "team": "02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58",
+      "dist": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4",
+      "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+    }
+  },
+  "green": {
+    "root": "/root/dshProj/my-power-dsh",
+    "generation": "fold",
+    "defaults": {
+      "enabled": true,
+      "warnSilenceMs": 600000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 6,
+      "actionOnEscalate": "warn-only",
+      "toolInFlightMaxMs": 900000,
+      "holdTtlMs": 900000
+    },
+    "fingerprints": {
+      "machine": "47511b5d415477e28208da5d6da2b6c62d4c69eb1d0bc9788623c0bf0e494a52",
+      "engine": "a82913cc7566dae26e436b57e7b9615e22c5ca54c8ed74304e07f08165a08ece",
+      "channel": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+      "team": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+      "dist": "6aa3069c5cb89f97c2491fbc739aca9d034485b8a078c5703058e99911db76dd",
+      "tools": "5fe18cdf62af6801e7fe52512920c023ac591adc2c0449a09ecd78f157bc68dd"
+    }
+  },
+  "fingerprints": {
+    "before": {
+      "red": {
+        "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+        "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+        "channel": "(absent)",
+        "team": "02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58",
+        "dist": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4",
+        "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+      },
+      "green": {
+        "machine": "47511b5d415477e28208da5d6da2b6c62d4c69eb1d0bc9788623c0bf0e494a52",
+        "engine": "a82913cc7566dae26e436b57e7b9615e22c5ca54c8ed74304e07f08165a08ece",
+        "channel": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+        "team": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+        "dist": "6aa3069c5cb89f97c2491fbc739aca9d034485b8a078c5703058e99911db76dd",
+        "tools": "5fe18cdf62af6801e7fe52512920c023ac591adc2c0449a09ecd78f157bc68dd"
+      }
+    },
+    "after": {
+      "red": {
+        "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+        "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+        "channel": "(absent)",
+        "team": "02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58",
+        "dist": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4",
+        "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+      },
+      "green": {
+        "machine": "47511b5d415477e28208da5d6da2b6c62d4c69eb1d0bc9788623c0bf0e494a52",
+        "engine": "a82913cc7566dae26e436b57e7b9615e22c5ca54c8ed74304e07f08165a08ece",
+        "channel": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+        "team": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+        "dist": "6aa3069c5cb89f97c2491fbc739aca9d034485b8a078c5703058e99911db76dd",
+        "tools": "5fe18cdf62af6801e7fe52512920c023ac591adc2c0449a09ecd78f157bc68dd"
+      }
+    }
+  },
+  "settleMs": 0,
+  "settled": null,
+  "redPinned": true,
+  "rows": [
+    {
+      "id": "g",
+      "title": "the KICK arm (T-48, frozen D-2): a HOLD stops NEW DELIVERY only",
+      "required": "while held: the kick is ANSWERED with a NAMED decline, ZERO deliveries, the team bytes untouched, and claim/update still SUCCEED; after the release the SAME kick delivers exactly ONCE",
+      "redPrediction": "the two negative controls: neutering the hold read delivers while held, and the re-injected pre-redesign tool guard REFUSES the same calls",
+      "kind": "suite",
+      "redVerdict": "red",
+      "greenVerdict": "green",
+      "red": {
+        "tree": "instrument-suite (tree-independent: the plugin's own test/** arm IS the instrument)",
+        "treeIndependent": true,
+        "instrument": "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts",
+        "instrumentSha256": "8ffc36053f5f98ef18bd130ecff8b55eadd4e3d571fc847345d85e07ffa7121d",
+        "exit": 0,
+        "tests": {
+          "readings": {
+            "name": "held: the kick is ANSWERED with a NAMED decline, zero deliveries, team bytes untouched; claim+update still SUCCEED",
+            "present": true,
+            "passed": true
+          },
+          "kickControl": {
+            "name": "CONTROL (kick): neutering the hold read site delivers while held — the KICK arm REDDENS",
+            "present": true,
+            "passed": true
+          },
+          "claimUpdateControl": {
+            "name": "CONTROL (claim/update): re-injecting the pre-redesign tool guard REFUSES the same calls",
+            "present": true,
+            "passed": true
+          }
+        },
+        "readingsHeld": "pass",
+        "controlsDetected": [
+          "pass",
+          "pass"
+        ],
+        "suiteTail": "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts: |  |  12 pass |  0 fail |  72 expect() calls | Ran 12 tests across 81 files. [5.70s]"
+      },
+      "green": {
+        "tree": "instrument-suite (tree-independent: the plugin's own test/** arm IS the instrument)",
+        "treeIndependent": true,
+        "instrument": "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts",
+        "instrumentSha256": "8ffc36053f5f98ef18bd130ecff8b55eadd4e3d571fc847345d85e07ffa7121d",
+        "exit": 0,
+        "tests": {
+          "readings": {
+            "name": "held: the kick is ANSWERED with a NAMED decline, zero deliveries, team bytes untouched; claim+update still SUCCEED",
+            "present": true,
+            "passed": true
+          },
+          "kickControl": {
+            "name": "CONTROL (kick): neutering the hold read site delivers while held — the KICK arm REDDENS",
+            "present": true,
+            "passed": true
+          },
+          "claimUpdateControl": {
+            "name": "CONTROL (claim/update): re-injecting the pre-redesign tool guard REFUSES the same calls",
+            "present": true,
+            "passed": true
+          }
+        },
+        "readingsHeld": "pass",
+        "controlsDetected": [
+          "pass",
+          "pass"
+        ],
+        "suiteTail": "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts: |  |  12 pass |  0 fail |  72 expect() calls | Ran 12 tests across 81 files. [5.70s]"
+      }
+    }
+  ],
+  "replay": null,
+  "contractRed": {
+    "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+    "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+    "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+  },
+  "reconstructionOf": {
+    "incidents": "/root/dshProj/my-power-dsh/.mpd/team/watchdog/incidents.jsonl"
+  },
+  "ok": true,
+  "checks": [
+    {
+      "id": "CLEAN",
+      "ok": true,
+      "detail": "every row in scope ran exactly once, both trees (g of a,b,c,d,e,f,g)"
+    },
+    {
+      "id": "R-g",
+      "ok": true,
+      "detail": "row (g) RED red: instrument=packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts exit=0 readings=pass kickControl=pass claimUpdateControl=pass"
+    },
+    {
+      "id": "G-g",
+      "ok": true,
+      "detail": "row (g) GREEN green: instrument=packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts exit=0 readings=pass kickControl=pass claimUpdateControl=pass"
+    },
+    {
+      "id": "SCOPE",
+      "ok": true,
+      "detail": "SUBSET run: only rows g were verdicts — this is NOT the contract's full §9 verdict"
+    },
+    {
+      "id": "KNOBS",
+      "ok": true,
+      "detail": "the two trees carry the two tuples the contract names: RED {\"enabled\":true,\"warnSilenceMs\":90000,\"tickIntervalMs\":15000,\"warnStreakToEscalate\":3,\"actionOnEscalate\":\"pause\",\"toolInFlightMaxMs\":900000} vs §3 {\"enabled\":true,\"warnSilenceMs\":600000,\"tickIntervalMs\":15000,\"warnStreakToEscalate\":6,\"actionOnEscalate\":\"warn-only\",\"toolInFlightMaxMs\":900000,\"holdTtlMs\":900000}"
+    },
+    {
+      "id": "PIN-RED",
+      "ok": true,
+      "detail": "the RED tree reproduces the contract's §0/A2 hashes and carries NO channel.ts ({\"machine\":\"fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef\",\"engine\":\"f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b\",\"channel\":\"(absent)\",\"team\":\"02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58\",\"dist\":\"09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4\",\"tools\":\"49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2\"})"
+    },
+    {
+      "id": "SETTLED",
+      "ok": true,
+      "detail": "no settle window requested (--settle-ms 0): the fingerprints were taken once"
+    },
+    {
+      "id": "FOLD-AUTHORITY",
+      "ok": true,
+      "detail": "no fold-decided row in this subset"
+    },
+    {
+      "id": "REPLAY",
+      "ok": true,
+      "detail": "not applicable: no incident replay in a --row subset (contract §9 item 3 is a full-run section)"
+    }
+  ],
+  "evidenceDir": "/root/dshProj/my-power-dsh/evidence/review/t14-lane-c/20260917T081714Z/row-g-bun",
+  "notClaimed": [
+    "a --row subset run verdicts only the requested rows (g); it is NOT the contract's full §9 verdict"
+  ]
+}

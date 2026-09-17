@@ -273,9 +273,11 @@ test("T-52: a terminal output is repaired APPEND-ONLY; every other terminal writ
             { task_id: "t1", status: "in_progress", attempt_id: "att-1", output_append: "PART 2/4" },
             { agent: running.member },
         )
-        // asserted on the CALL's return: the tool's own post-lock kick may re-dispatch this team
-        // (t36's recoverOwned route) and `activateTaskAttempt` clears a stored output, so the
-        // disk value is not a stable witness of THIS call's effect.
+        // asserted on the CALL's return: the tool's own post-lock kick may still re-dispatch this
+        // team (t36's recoverOwned route). Wave 2 (t24 / T-73) stopped `activateTaskAttempt` from
+        // clearing a SAME-generation re-dispatch's output, so the disk value would now normally
+        // agree — but the return value is what isolates THIS call's effect from any later
+        // re-dispatch, which is why the assertion stays where it is.
         expect(runningAppend.output).toBe("PART 2/4")
 
         // CONTROL 3: a blank append is refused (no silent no-op)

@@ -6,6 +6,7 @@
 //   · MOUNTED  — a mounted `mpdDsh`: NO warning, identity `mounted:mpdDsh`, and the
 //     three roster tools are registered THROUGH the mounted adapter, not beside it.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { spawnSync } from "node:child_process"
 import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -162,8 +163,34 @@ describe("F1 healthy arm: a mounted mpdDsh", () => {
 })
 
 describe("F1 shipped artifact", () => {
-  // The bundle loads `dist/index.js`, so a src-only edit ships DEAD — the same
-  // dist-marker discipline the roster's existing extension-role guard uses.
+  // T-62 (wave 2, lane A) — the marker greps below prove the dist CONTAINS the fix's
+  // strings; they cannot prove the dist is the PRODUCT of the current src. Measured
+  // 2026-09-17: with a stale line appended to `dist/index.js` all four greps still
+  // pass, so a src-only edit could ship DEAD while this file stayed green.
+  //
+  // This arm delegates the BYTE comparison to the canonical freshness gate
+  // (`scripts/verify-dist-fresh.mjs`), which rebuilds the package from `src/` TWICE
+  // into a temp dir in the canonical repo-root form and compares byte-for-byte — the
+  // same reading `bun run verify:gates` takes. A `--only` filter that matches no
+  // target is a zero-subject FAILURE in that script, so a red here can never be a
+  // silent skip.
+  test("the committed dist is the byte-identical product of a canonical build (T-62)", () => {
+    const repoRoot = join(import.meta.dir, "../../..")
+    const run = spawnSync("node", [join(repoRoot, "scripts/verify-dist-fresh.mjs"), "--only", "mpd-roles-plugin", "--quiet"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      timeout: 120_000,
+    })
+    const detail = `${run.stdout ?? ""}${run.stderr ?? ""}`
+    expect(
+      run.status,
+      `the committed dist does not match a fresh canonical build of its src — rebuild from the repo root:\n`
+        + `  bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js\n${detail}`,
+    ).toBe(0)
+    expect(detail).toContain("ok: 1/1 targets fresh")
+  })
+
+  // The dist-marker discipline stays: it names WHAT the artifact must carry.
   test("the built dist carries the adapter-identity fix", () => {
     const dist = readFileSync(join(import.meta.dir, "../dist/index.js"), "utf8")
     expect(dist, "dist does not warn on the fallback").toContain("ADAPTER FALLBACK")

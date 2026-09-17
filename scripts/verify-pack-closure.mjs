@@ -59,7 +59,8 @@
 // on the real tree and negative controls that replay the historical defect on a TEMP
 // fixture, so the checker's falsifiability is proven without touching the real packer).
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import { createHash } from "node:crypto"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -99,6 +100,49 @@ const REQUIRED_REFERENCE_FILES = ["index.md", "troubleshooting.md", "agent-teams
 // `scripts/pack-mpd.mjs` carries the matching ROOT_FILES table the static half compares it to.
 const REQUIRED_ROOT_FILES = ["EXTENSIONS-FOR-AGENTS.md"]
 const ROOT_FILE_KIND = "ROOT-FILE"
+
+// T-63 (CONTENT staleness) + T-65 (COMPLETENESS) + T-76 (agent-references by BYTES) - wave 2, lane B.
+// Every rule above compares SETS: a file that arrives under the right NAME passes whether or not its
+// BYTES are the ones the source tree holds, and - outside docs/templates/agent-references - a declared
+// source file that never arrived has no row anywhere. Two rules close that, and they are the ONLY two
+// that read file contents:
+//   * CONTENT      - every file present on BOTH sides of a verbatim copy must be byte-identical
+//                    (`packages/**` and each ROOT_ASSET_DIRS tree). The packer REWRITES three files
+//                    and they sit outside the sweep by construction, not by an exemption: the packed
+//                    `package.json` (generated), `<packed>/cordis.patch.yml` (dev-flavor rewrite) and
+//                    `packages/mpd-ext-plugin/dist/validator.js` (generated shim). Measured 2026-09-17
+//                    against the real artifact: 1182 files compared / 1181 identical, the one
+//                    difference being the generated `package.json`; under `packages/**` alone 801/801.
+//   * COMPLETENESS - every file the packer's own tables say it ships (the ROOT_ASSET_DIRS trees and
+//                    every `packages/<pkg>/dist/**` file in the tree) must HAVE an artifact
+//                    counterpart. This is the direction no set rule can see: a file with no row.
+//                    `packages/mpd-qa-roles-probe` is the ONE declared exemption and it is COUNTED in
+//                    the verdict line, so an exemption can never become a silent skip. Measured:
+//                    1180 declared source files, 1179 present, 1 exempt, 0 absent.
+//
+// EXPECTED drift (captain ruling 2026-09-17, frozen in t2): the byte rules run against the REAL
+// artifact while the wave's other lanes legitimately write the source tree. A divergence whose source
+// file was written AFTER the artifact's stamp is printed as a provenance-NAMED expected reading (the
+// path, both digests, the writer's mtime, the stamp and the anchor the stamp came from) and does NOT
+// redden the gate - a silent pass would hide exactly the drift this rule exists to expose. Every other
+// divergence is a hard CONTENT-DRIFT. The stamp is INFERRED, never asserted (see artifactStamp).
+const CONTENT_KIND = "CONTENT-DRIFT"
+const COMPLETENESS_KIND = "COMPLETENESS"
+const EXPECTED_KIND = "CONTENT-DRIFT-EXPECTED"
+// A divergence is expected only when the source is STRICTLY newer than the stamp: no slack, because a
+// slack window is indistinguishable from a real stale artifact that was simply written moments later.
+// BOUND, stated because the claim is weaker than "the artifact is authentic": the discriminator is the
+// TIMESTAMP ORDER, not content provenance — the artifact carries no per-file digest manifest, so a
+// mutation INSIDE an artifact whose source file also carries a post-pack mtime is classified expected
+// (reported loudly, never silently). Pin the stamp with `--pack-stamp <iso>` when the inference cannot
+// hold: an artifact somebody wrote into since the pack, or a copy whose mtimes were not preserved.
+const EXPECTED_SLACK_MS = 0
+const PACK_EXEMPT_PATHS = [
+  {
+    prefix: "packages/mpd-qa-roles-probe/",
+    why: "QA-only probe, mounted by a QA overlay and never by the shipped patch - the packer's own PLUGIN_PKGS comment says so verbatim (scripts/pack-mpd.mjs, mpd-team-compact-plugin entry): \"mpd-qa-roles-probe is deliberately absent because it is QA-only and mounted by an overlay, never by the shipped patch\"",
+  },
+]
 
 // Package path references of the bundle patch, in both spellings it uses:
 // `@mpd-dsh/mpd/packages/<pkg>/<rel>` and the CLI form
@@ -223,9 +267,172 @@ function patchPackageRefs(patchText) {
  * (`npm run pack` exits 0 while the tree silently lacks an asset) can never be a summary line
  * again. Pushes findings into the caller's array; returns the stats it measured.
  */
+/** Every immediate subdirectory name of `dir`, sorted; [] when it does not exist. */
+function listDirs(dir) {
+  if (!existsSync(dir)) return []
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+}
+
+/**
+ * The pack's own write time, INFERRED from the artifact - never asserted as a fact: `cpSync` gives
+ * every copied file the moment of its copy, so the newest mtime among the artifact's files is the end
+ * of the pack. `--pack-stamp <iso>` overrides it for a reviewer who knows the real cut time. The
+ * reading's SOURCE travels with it into every report, so no drift verdict borrows an unstated anchor.
+ */
+function artifactStamp(packed, overrideMs) {
+  if (typeof overrideMs === "number" && Number.isFinite(overrideMs)) {
+    return { ms: overrideMs, source: "command line (--pack-stamp)", files: null }
+  }
+  let ms = 0
+  let files = 0
+  for (const rel of treeFiles(packed)) {
+    files += 1
+    const mtime = statSync(join(packed, rel)).mtimeMs
+    if (mtime > ms) ms = mtime
+  }
+  return { ms, source: "inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)", files }
+}
+
+function exemptFor(rel) {
+  return PACK_EXEMPT_PATHS.find((entry) => rel.startsWith(entry.prefix))
+}
+
+/**
+ * CONTENT (T-63, T-76) + COMPLETENESS (T-65) over the produced tree. Pure comparison over explicit
+ * inputs, so `--self-test` drives the same code at a fixture. Every divergence is classified against
+ * the artifact's stamp and the EXPECTED class is returned for the report - reported loudly, never
+ * silently dropped, and never counted as a closure violation.
+ */
+function checkContentHalf(opts, findings, asked, packed) {
+  const stamp = artifactStamp(packed, opts.packStampMs ?? null)
+  const content = { compared: 0, identical: 0, drift: [], expected: [] }
+  const completeness = { compared: 0, present: 0, absent: [], exempt: [], expected: [] }
+  const stats = { stamp: { iso: new Date(stamp.ms).toISOString(), source: stamp.source, files: stamp.files }, content, completeness }
+  if (stamp.ms === 0) return stats
+
+  const observe = (srcAbs) => {
+    const mtimeMs = statSync(srcAbs).mtimeMs
+    return { iso: new Date(mtimeMs).toISOString(), after: mtimeMs > stamp.ms + EXPECTED_SLACK_MS }
+  }
+  const provenance = (rel, observed) =>
+    rel + ": source mtime " + observed.iso + " is AFTER the artifact stamp " + stats.stamp.iso + " (anchor: " + stats.stamp.source + ") - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation"
+
+  const compareBytes = (rel, srcAbs, artAbs, kind = CONTENT_KIND) => {
+    content.compared += 1
+    const srcBuf = readFileSync(srcAbs)
+    const artBuf = readFileSync(artAbs)
+    // The gate's EXISTING byte idiom (the ROOT_FILES rule) is a buffer comparison; the digests below
+    // are for the REPORT only and never decide anything.
+    if (srcBuf.equals(artBuf)) {
+      content.identical += 1
+      return
+    }
+    const srcSha = createHash("sha256").update(srcBuf).digest("hex")
+    const artSha = createHash("sha256").update(artBuf).digest("hex")
+    const observed = observe(srcAbs)
+    const entry = {
+      path: rel,
+      sourceSha256: srcSha,
+      artifactSha256: artSha,
+      sourceBytes: srcBuf.length,
+      artifactBytes: artBuf.length,
+      sourceMtime: observed.iso,
+    }
+    if (observed.after) {
+      content.expected.push({ ...entry, provenance: provenance(rel, observed) })
+      return
+    }
+    content.drift.push(entry)
+    findings.push({
+      kind,
+      packages: [],
+      detail:
+        rel + " differs byte-wise from " + join(opts.sourceRoot, rel) + " (source " + srcSha.slice(0, 12) + "… / " + entry.sourceBytes + " B, artifact " + artSha.slice(0, 12) + "… / " + entry.artifactBytes + " B) and the source was NOT written after the artifact stamp " + stats.stamp.iso + " (source mtime " + observed.iso + ") - the artifact ships bytes no reading was taken on " + (kind === ROOT_FILE_KIND ? "(T-70)" : "(T-63)"),
+    })
+  }
+
+  const requireCounterpart = (rel, srcAbs, scope) => {
+    completeness.compared += 1
+    const observed = observe(srcAbs)
+    const exempt = exemptFor(rel)
+    if (exempt !== undefined) {
+      completeness.exempt.push({ path: rel, scope, why: exempt.why, sourceMtime: observed.iso })
+      return
+    }
+    if (observed.after) {
+      completeness.expected.push({ path: rel, scope, sourceMtime: observed.iso, sourceBytes: statSync(srcAbs).size, provenance: provenance(rel, observed) })
+      return
+    }
+    completeness.absent.push({ path: rel, scope, sourceMtime: observed.iso, sourceBytes: statSync(srcAbs).size })
+    findings.push({
+      kind: COMPLETENESS_KIND,
+      packages: [],
+      detail:
+        rel + " is declared by the packer (" + scope + ") and exists in the tree it copies from (" + statSync(srcAbs).size + " B, mtime " + observed.iso + ") but the packed tree has NO counterpart - a shipped file with no artifact counterpart (T-65). Comparison so far: " + completeness.compared + " declared source file(s), " + completeness.present + " present, " + completeness.exempt.length + " declared exemption(s)",
+    })
+  }
+
+  // (a) the ROOT_ASSET_DIRS trees: name AND bytes, one pair at a time. agent-references lives inside
+  //     this loop, so T-76's byte rule is the same rule that covers docs/templates/skills/presets.
+  for (const dir of asked.rootAssets) {
+    const shipped = new Set(treeFiles(join(packed, dir)))
+    for (const rel of treeFiles(join(opts.sourceRoot, dir))) {
+      const relPath = dir + "/" + rel
+      const srcAbs = join(opts.sourceRoot, dir, rel)
+      if (!shipped.has(rel)) {
+        requireCounterpart(relPath, srcAbs, "ROOT_ASSET_DIRS:" + dir)
+        continue
+      }
+      completeness.compared += 1
+      completeness.present += 1
+      compareBytes(relPath, srcAbs, join(packed, dir, rel))
+    }
+  }
+
+  // (b) `packages/**`: BYTES only, and only where BOTH sides hold the file. Source-side absences in
+  //     this tree are by design (src/, tests, the adopted plugin's filtered dirs), so completeness for
+  //     packages is the `dist/**` contract below - never a bare tree comparison.
+  for (const rel of treeFiles(join(opts.sourceRoot, "packages"))) {
+    const relPath = "packages/" + rel
+    const artAbs = join(packed, relPath)
+    if (!existsSync(artAbs)) continue
+    compareBytes(relPath, join(opts.sourceRoot, "packages", rel), artAbs)
+  }
+
+  // (c) the packer's dist contract - the direction T-65 is about: every `packages/<pkg>/dist/**` file
+  //     in the tree must have an artifact counterpart, with the ONE declared exemption COUNTED.
+  for (const pkg of listDirs(opts.packagesDir)) {
+    for (const rel of treeFiles(join(opts.packagesDir, pkg, "dist"))) {
+      const relPath = "packages/" + pkg + "/dist/" + rel
+      if (!existsSync(join(packed, relPath))) {
+        requireCounterpart(relPath, join(opts.packagesDir, pkg, "dist", rel), "packages/*/dist")
+        continue
+      }
+      completeness.compared += 1
+      completeness.present += 1
+    }
+  }
+
+  // (d) the named ROOT FILES (t9-R1 repair): the byte claim is CLASSIFIED here, next to the trees and
+  //     `packages/**`, so a drift caused by a POST-PACK WRITER is the provenance-named EXPECTED reading
+  //     instead of a bare red with no writer named. The EXISTENCE half stays in the packed half
+  //     (rule 5b) — a root file missing from the artifact is still a hard finding there.
+  for (const file of REQUIRED_ROOT_FILES) {
+    const srcAbs = join(opts.sourceRoot, file)
+    const artAbs = join(packed, file)
+    if (!existsSync(srcAbs) || !existsSync(artAbs)) continue
+    compareBytes(file, srcAbs, artAbs, ROOT_FILE_KIND)
+  }
+
+  return stats
+}
+
 function checkPackedHalf(opts, findings, asked) {
   const packed = opts.packedDir
-  const stats = { packedDir: packed, packed: "skipped", rootAssets: [], template: asked.template, files: 0, referenceFiles: 0, rootFiles: 0, packedPackages: { present: 0, declared: 0 } }
+  const stats = { packedDir: packed, packed: "skipped", rootAssets: [], template: asked.template, files: 0, referenceFiles: 0, rootFiles: 0, packedPackages: { present: 0, declared: 0 }, content: null, completeness: null, stamp: null }
   if (!existsSync(packed)) {
     if (opts.requirePacked) {
       findings.push({ kind: "PACKED-MISSING", packages: [], detail: "no packed tree at " + packed + " and --require-packed was given: run `npm run pack` first" })
@@ -340,20 +547,17 @@ function checkPackedHalf(opts, findings, asked) {
   }
   stats.referenceFiles = REQUIRED_REFERENCE_FILES.filter((file) => existsSync(join(packed, "agent-references", file))).length
 
-  // 5b. the named ROOT FILES: existence AND byte equality against the tree the packer copies from.
-  // Existence alone is not the claim — a packed copy that differs from its source is the same class
-  // of failure (the artifact would ship bytes no reading was taken on). The list lives in the GATE
+  // 5b. the named ROOT FILES: EXISTENCE here; BYTE equality is owned by the content sweep (rule 7d),
+  // because only that engine holds the artifact's stamp and can tell a POST-PACK WRITER from a genuine
+  // mismatch. Before the t9-R1 repair the byte half lived here and hard-reddened with no writer named —
+  // measured: `ROOT-FILE … EXTENSIONS-FOR-AGENTS.md` went red for t25's 07:43:40Z rewrite against the
+  // 05:19:48Z artifact, i.e. a legitimate in-flight state with no provenance. The list lives in the GATE
   // rather than being derived from the packer, precisely because a file nobody declared has to be
   // expected from the source side before the artifact can be asked for it (T-70).
   for (const file of REQUIRED_ROOT_FILES) {
     const packedFile = join(packed, file)
-    const sourceFile = join(opts.sourceRoot, file)
     if (!existsSync(packedFile)) {
       findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed tree does not carry " + file + " - the artifact's own README/docs link to it by relative path, so those links break for an author who holds only the artifact (T-70)" })
-      continue
-    }
-    if (existsSync(sourceFile) && !readFileSync(packedFile).equals(readFileSync(sourceFile))) {
-      findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed " + file + " differs byte-wise from " + sourceFile + " - the artifact would ship bytes no reading was taken on" })
     }
   }
   stats.rootFiles = REQUIRED_ROOT_FILES.filter((file) => existsSync(join(packed, file))).length
@@ -385,6 +589,14 @@ function checkPackedHalf(opts, findings, asked) {
   if (!existsSync(validatorEntry)) {
     findings.push({ kind: "CLI-VALIDATOR", packages: [], detail: "the packed tree ships scripts/mpd-ext.mjs but no " + relative(packed, validatorEntry) + " — validate/scaffold/--self-test would all die on the missing validator (T-51)" })
   }
+
+  // 7. CONTENT (bytes) + COMPLETENESS — the two rules that read file CONTENTS rather than names
+  //    (T-63 / T-65 / T-76). Both run against the tree that was actually produced, and the EXPECTED
+  //    class is returned for the report instead of being folded into the verdict.
+  const contentStats = checkContentHalf(opts, findings, asked, packed)
+  stats.content = contentStats.content
+  stats.completeness = contentStats.completeness
+  stats.stamp = contentStats.stamp
   return stats
 }
 
@@ -551,36 +763,49 @@ function offendingPackages(findings) {
 
 function printReport(report, opts) {
   const s = report.stats
-  const packedLine = "packed tree: " + (s.packedStats.packed === "checked" ? report.stats.packedStats.packedDir + " (" + report.stats.packedStats.files + " asset files)" : s.packedStats.packed)
+  const packedStats = s.packedStats
+  const packedLine = "packed tree: " + (packedStats.packed === "checked" ? packedStats.packedDir + " (" + packedStats.files + " asset files)" : packedStats.packed)
+  const content = packedStats.content
+  const completeness = packedStats.completeness
+  const stamp = packedStats.stamp
+  const contentLine = content === null || content === undefined ? "" : "; content bytes: " + content.compared + " file(s) compared, " + content.identical + " identical, " + content.drift.length + " drift, " + content.expected.length + " expected-after-pack"
+  const completenessLine = completeness === null || completeness === undefined ? "" : "; completeness: " + completeness.compared + " declared source file(s) compared, " + completeness.present + " present, " + completeness.exempt.length + " declared exemption(s), " + completeness.absent.length + " absent"
+  const stampLine = stamp === null || stamp === undefined ? "" : "; pack stamp " + stamp.iso + " (" + stamp.source + ")"
+  const exemptLine = completeness === null || completeness === undefined || completeness.exempt.length === 0 ? "" : "; exemption exercised: " + completeness.exempt.map((e) => e.path).join(", ")
+  const expected = [...(content?.expected ?? []), ...(completeness?.expected ?? [])]
   if (report.findings.length === 0) {
-    console.log(PREFIX + " ok: " + s.classA + " dist/index.js row(s) + " + s.classB + " adopted lib/index.js row(s) + " + s.classC + " mcp row(s) of the bundle patch all resolve; " + s.pluginCount + " PLUGIN_PKGS + " + s.mcpCount + " MCP_PKGS entries all exist; root assets " + s.rootAssets.join("/") + " declared and present; CLI validator surface " + s.shimExports.length + " exports in step; " + packedLine + (s.packedStats.packed === "checked" ? "; agent references " + s.packedStats.referenceFiles + "/" + REQUIRED_REFERENCE_FILES.length + "; root files " + s.packedStats.rootFiles + "/" + REQUIRED_ROOT_FILES.length + "; declared packages " + s.packedStats.packedPackages.present + "/" + s.packedStats.packedPackages.declared + " present in the artifact" : ""))
-    return
+    console.log(PREFIX + " ok: " + s.classA + " dist/index.js row(s) + " + s.classB + " adopted lib/index.js row(s) + " + s.classC + " mcp row(s) of the bundle patch all resolve; " + s.pluginCount + " PLUGIN_PKGS + " + s.mcpCount + " MCP_PKGS entries all exist; root assets " + s.rootAssets.join("/") + " declared and present; CLI validator surface " + s.shimExports.length + " exports in step; " + packedLine + (packedStats.packed === "checked" ? "; agent references " + packedStats.referenceFiles + "/" + REQUIRED_REFERENCE_FILES.length + "; root files " + packedStats.rootFiles + "/" + REQUIRED_ROOT_FILES.length + "; declared packages " + packedStats.packedPackages.present + "/" + packedStats.packedPackages.declared + " present in the artifact" + contentLine + completenessLine + stampLine + exemptLine : ""))
+  } else {
+    console.error(PREFIX + " FAIL - " + report.findings.length + " closure violation(s)")
+    for (const f of report.findings) {
+      const who = f.packages.length ? " [" + f.packages.join(", ") + "]" : ""
+      console.error("  " + f.kind + who + " - " + f.detail)
+    }
+    const bad = offendingPackages(report.findings)
+    if (bad.length) console.error("  offending packages: " + bad.join(", "))
+    console.error("  packer: " + opts.packerPath)
+    console.error("  cli: " + opts.cliPath)
+    console.error("  packages dir: " + opts.packagesDir)
+    console.error("  patch: " + opts.patchPath)
+    console.error("  " + packedLine + contentLine + completenessLine + stampLine)
   }
-  console.error(PREFIX + " FAIL - " + report.findings.length + " closure violation(s)")
-  for (const f of report.findings) {
-    const who = f.packages.length ? " [" + f.packages.join(", ") + "]" : ""
-    console.error("  " + f.kind + who + " - " + f.detail)
-  }
-  const bad = offendingPackages(report.findings)
-  if (bad.length) console.error("  offending packages: " + bad.join(", "))
-  console.error("  packer: " + opts.packerPath)
-  console.error("  cli: " + opts.cliPath)
-  console.error("  packages dir: " + opts.packagesDir)
-  console.error("  patch: " + opts.patchPath)
-  console.error("  " + packedLine)
+  // The EXPECTED class is printed in BOTH branches. A red run must not hide the drift a later writer
+  // caused, and a green run must never present an expected divergence as if nothing had moved.
+  for (const e of expected) console.log(PREFIX + " " + EXPECTED_KIND + " (expected, provenance-named, NOT a closure violation) - " + e.provenance)
 }
 
 function printUsage() {
-  console.log("usage: node scripts/verify-pack-closure.mjs [--self-test] [--packer <path>] [--cli <path>] [--packages-dir <dir>] [--patch <path>] [--packed <dir>] [--source-root <dir>] [--require-packed]")
+  console.log("usage: node scripts/verify-pack-closure.mjs [--self-test] [--packer <path>] [--cli <path>] [--packages-dir <dir>] [--patch <path>] [--packed <dir>] [--source-root <dir>] [--pack-stamp <iso>] [--require-packed]")
   console.log("  no flags        check the real tree AND the real dist/mpd-package/ artifact (exit 0 = closed)")
   console.log("  --self-test     run the positive control and the negative controls on TEMP fixtures")
   console.log("  --packed <dir>  check another packed tree (default " + DEFAULT_PACKED + ")")
   console.log("  --source-root <dir>  the tree the assets are copied FROM (default the repo root)")
   console.log("  --require-packed     treat an absent packed tree as a failure instead of a printed skip")
+  console.log("  --pack-stamp <iso>  pin the artifact's cut time (default: INFERRED as the newest mtime among the artifact's files); a source file written after it is reported as an EXPECTED, provenance-named reading instead of a CONTENT-DRIFT")
 }
 
 function parseArgs(argv) {
-  const opts = { selfTest: false, packerPath: DEFAULT_PACKER, cliPath: DEFAULT_CLI, packagesDir: DEFAULT_PACKAGES_DIR, patchPath: DEFAULT_PATCH, packedDir: DEFAULT_PACKED, sourceRoot: repoRoot, requirePacked: false }
+  const opts = { selfTest: false, packerPath: DEFAULT_PACKER, cliPath: DEFAULT_CLI, packagesDir: DEFAULT_PACKAGES_DIR, patchPath: DEFAULT_PATCH, packedDir: DEFAULT_PACKED, sourceRoot: repoRoot, requirePacked: false, packStampMs: null }
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === "--self-test") opts.selfTest = true
@@ -591,6 +816,15 @@ function parseArgs(argv) {
     else if (a === "--packed") opts.packedDir = resolve(argv[++i] ?? "")
     else if (a === "--source-root") opts.sourceRoot = resolve(argv[++i] ?? "")
     else if (a === "--require-packed") opts.requirePacked = true
+    else if (a === "--pack-stamp") {
+      const raw = argv[++i] ?? ""
+      const ms = Date.parse(raw)
+      if (Number.isNaN(ms)) {
+        console.error(PREFIX + " FAIL - --pack-stamp needs an ISO-8601 timestamp, got: " + JSON.stringify(raw))
+        process.exit(2)
+      }
+      opts.packStampMs = ms
+    }
     else if (a === "--help" || a === "-h") { printUsage(); process.exit(0) }
     else { console.error(PREFIX + " FAIL - unknown argument: " + a); printUsage(); process.exit(2) }
   }
@@ -745,8 +979,13 @@ function selfTest() {
     put(fxSource, "docs/guide.md", "# guide\n")
     put(fxSource, "docs/guide.zh-CN.md", "# 指南\n")
     for (const file of REQUIRED_REFERENCE_FILES) put(fxSource, "agent-references/" + file, "# fixture reference\n")
+    // The CONTENT/COMPLETENESS rules compare the tree the packer copies FROM, so this fixture needs
+    // its OWN `packages/` dir: borrowing the real one would judge the fixture artifact against a tree
+    // it was never packed from (measured: all 27 real dist files would be "absent"). Mirror the packed
+    // side byte for byte, then point `--packages-dir` at it.
+    for (const pkg of fixturePkgs) put(fxSource, "packages/" + pkg + "/" + (adoptedPkgs.includes(pkg) ? "lib/index.js" : "dist/index.js"), "export {}\n")
     buildPacked()
-    const fixtureArgs = ["--source-root", fxSource, "--packed", fxPacked]
+    const fixtureArgs = ["--source-root", fxSource, "--packages-dir", join(fxSource, "packages"), "--packed", fxPacked]
 
     arm("positive-control (fixture packed tree, exit 0)", runChecker(fixtureArgs), (c) => c.status === 0 && /packed tree: .*fixture-packed/.test(c.all))
 
@@ -846,6 +1085,130 @@ function selfTest() {
       arm("negative-control (declared package dir absent from the artifact, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes("PACKED-MISSING") && c.all.includes(pkgToDrop))
       buildPacked()
     }
+
+    // Arm 15b (T-63, the captain's PACKER ROUTE ruling) — the arms build a REAL scratch pack through the
+    // packer's own `--out`, instead of rewriting the packer's constants: a fresh pack must be GREEN (every
+    // byte it ships equals the source it copied — the "byte-identical re-pack stays green" half of T-63),
+    // a ONE-BYTE change inside that pack must redden at unchanged presence, and the canonical artifact must
+    // not move across either run (the one-writer-at-a-time control).
+    const scratchPack = join(scratch, "scratch-pack")
+    const canonicalStamp = (dir) => {
+      let newest = 0
+      const files = treeFiles(dir)
+      for (const rel of files) {
+        const mtime = statSync(join(dir, rel)).mtimeMs
+        if (mtime > newest) newest = mtime
+      }
+      return { files: files.length, newest }
+    }
+    const canonicalBefore = canonicalStamp(DEFAULT_PACKED)
+    const packRun = spawnSync(process.execPath, [DEFAULT_PACKER, "--out", scratchPack], { encoding: "utf8" })
+    if (packRun.status !== 0) {
+      arms.push({ name: "scratch pack via --out (fixture build)", ok: false, exitCode: packRun.status, firstLine: "the packer refused --out: " + String(packRun.stderr ?? "").trim().split("\n").slice(-2).join(" | ") })
+    } else {
+      arm("positive-control (real scratch pack staged with --out, exit 0)", runChecker(["--packed", scratchPack, "--require-packed"]), (c) => c.status === 0 && /ok:/.test(c.all))
+      const scratchRef = join(scratchPack, "agent-references", "troubleshooting.md")
+      const scratchMtime = statSync(scratchRef).mtime
+      const scratchMutated = Buffer.from(readFileSync(scratchRef))
+      scratchMutated[0] = scratchMutated[0] === 0x23 ? 0x20 : 0x23
+      writeFileSync(scratchRef, scratchMutated)
+      utimesSync(scratchRef, scratchMtime, scratchMtime)
+      arm("negative-control (one byte changed in a real scratch pack, exit 1)", runChecker(["--packed", scratchPack, "--require-packed"]), (c) => c.status === 1 && c.all.includes(CONTENT_KIND) && c.all.includes("agent-references/troubleshooting.md"))
+    }
+    const canonicalAfter = canonicalStamp(DEFAULT_PACKED)
+    arms.push({
+      name: "control (the canonical artifact did not move across the pack)",
+      ok: canonicalBefore.files === canonicalAfter.files && canonicalBefore.newest === canonicalAfter.newest,
+      exitCode: null,
+      firstLine: "files " + canonicalBefore.files + " -> " + canonicalAfter.files + ", newest mtime " + new Date(canonicalBefore.newest).toISOString() + " -> " + new Date(canonicalAfter.newest).toISOString(),
+    })
+
+    // Arm 16 (T-63 + T-76) — CONTENT drift at UNCHANGED presence: bytes inside a shipped
+    // agent-references file change while the file is still there. Every presence rule must stay green
+    // (`REFERENCES` must NOT appear anywhere) and the BYTE rule must name the file. This is the
+    // discrimination T-76 is about: the old rule could only see that the file arrived.
+    const driftFile = join(fxPacked, "agent-references", "troubleshooting.md")
+    const driftBody = readFileSync(driftFile, "utf8")
+    writeFileSync(driftFile, driftBody.replace("# fixture", "# seeded"))
+    arm("negative-control (artifact byte drift at unchanged presence, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes(CONTENT_KIND) && c.all.includes("agent-references/troubleshooting.md") && !/REFERENCES/.test(c.all))
+    writeFileSync(driftFile, driftBody)
+
+    // Arm 17 (the captain's expected-drift ruling) — the same divergence caused by a writer that
+    // landed AFTER the pack: the artifact is untouched and the SOURCE file is strictly newer. It must
+    // be REPORTED as a provenance-named expected reading and must NOT redden the gate. The packed tree
+    // is backdated first so "after the pack" is a fact of the fixture, not of millisecond timing.
+    const postPackFile = join(fxSource, "agent-references", "index.md")
+    const postPackBody = readFileSync(postPackFile, "utf8")
+    const packedMtimes = treeFiles(fxPacked).map((rel) => [join(fxPacked, rel), statSync(join(fxPacked, rel)).mtime])
+    const backdate = new Date(Date.now() - 3_600_000)
+    for (const [abs] of packedMtimes) utimesSync(abs, backdate, backdate)
+    writeFileSync(postPackFile, postPackBody + "<!-- post-pack writer: self-test arm 17 -->\n")
+    arm("negative-control (post-pack source writer -> reported, exit 0)", runChecker(fixtureArgs), (c) => c.status === 0 && c.all.includes(EXPECTED_KIND) && c.all.includes("agent-references/index.md"))
+    // Arm 17b — the SAME divergence with the stamp pinned AHEAD of the writer: the expected class must
+    // flip to a hard CONTENT-DRIFT, which is what proves the classification reads the stamped time and
+    // not merely "the source is newer than the copy" (a distinction `cpSync` would otherwise erase).
+    const future = new Date(Date.now() + 3_600_000).toISOString()
+    arm("negative-control (same drift, stamp pinned ahead of the writer, exit 1)", runChecker([...fixtureArgs, "--pack-stamp", future]), (c) => c.status === 1 && c.all.includes(CONTENT_KIND) && c.all.includes("agent-references/index.md"))
+    writeFileSync(postPackFile, postPackBody)
+    for (const [abs, mtime] of packedMtimes) utimesSync(abs, mtime, mtime)
+
+    // Arm 17c (t9-R1 repair) — the ROOT-FILES byte rule must join the SAME classification: with the
+    // fixture packed tree backdated and the fixture's SOURCE root file written afterwards, the drift is
+    // the provenance-named EXPECTED class (exit 0, writer named), never a bare ROOT-FILE red. The hard
+    // shape is untouched and still asserted above (a packed-side change with an older source).
+    const packedMtimesRoot = treeFiles(fxPacked).map((rel) => [join(fxPacked, rel), statSync(join(fxPacked, rel)).mtime])
+    for (const [abs] of packedMtimesRoot) utimesSync(abs, backdate, backdate)
+    const fxRootFile = join(fxSource, REQUIRED_ROOT_FILES[0])
+    const fxRootBody = readFileSync(fxRootFile, "utf8")
+    writeFileSync(fxRootFile, fxRootBody + "<!-- post-pack writer: self-test arm 17c -->\n")
+    arm("negative-control (post-pack writer of a ROOT FILE -> expected, exit 0)", runChecker(fixtureArgs), (c) => c.status === 0 && c.all.includes(EXPECTED_KIND) && c.all.includes(REQUIRED_ROOT_FILES[0]))
+    writeFileSync(fxRootFile, fxRootBody)
+    for (const [abs, mtime] of packedMtimesRoot) utimesSync(abs, mtime, mtime)
+
+    // Arm 18 (T-65, narrow) — a package whose `dist/` file sits in the SOURCE with no artifact
+    // counterpart must be REPORTED by name: the exemption is ONE entry, never a class of pardons. Its
+    // mtime is set BEFORE the pack because that is the realistic shape (the package predates the pack);
+    // a file written after the pack is the expected class above, not an absence.
+    put(fxSource, "packages/ghost-plugin/dist/index.js", "export {}\n")
+    const ghost = join(fxSource, "packages", "ghost-plugin", "dist", "index.js")
+    utimesSync(ghost, backdate, backdate)
+    arm("negative-control (source dist with no artifact counterpart, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes(COMPLETENESS_KIND) && c.all.includes("packages/ghost-plugin/dist/index.js"))
+    rmSync(join(fxSource, "packages", "ghost-plugin"), { recursive: true, force: true })
+
+    // Arm 19 (T-65, the exemption) — the SAME shape for the one declared exempt package must stay
+    // green AND the verdict line must name it, so an exemption can never become a silent skip.
+    put(fxSource, "packages/mpd-qa-roles-probe/dist/index.js", "export {}\n")
+    arm("negative-control (the one declared exemption is exercised, not a silent skip)", runChecker(fixtureArgs), (c) => c.status === 0 && c.all.includes("exemption exercised: packages/mpd-qa-roles-probe/dist/index.js"))
+    rmSync(join(fxSource, "packages", "mpd-qa-roles-probe"), { recursive: true, force: true })
+
+    // Arm 20 (T-63 on the REAL artifact, the seeded mutation the evidence files) — a byte-copy of the
+    // canonical artifact is green; flipping ONE byte of one shipped file reddens at unchanged presence.
+    // The copy is only ever READ from: the canonical `dist/mpd-package` is never written here.
+    const realCopy = join(scratch, "real-artifact-copy")
+    // preserveTimestamps: the copy must carry the REAL artifact's stamp, otherwise `cpSync`'s fresh
+    // mtimes would re-date the pack to "now" and every post-pack writer would read as a hard drift —
+    // measured: the first version of this arm reddened on exactly that artefact of the copy.
+    cpSync(DEFAULT_PACKED, realCopy, { recursive: true, preserveTimestamps: true })
+    arm("positive-control (byte-copy of the real artifact, exit 0)", runChecker(["--packed", realCopy, "--require-packed"]), (c) => c.status === 0)
+    const realRef = join(realCopy, "agent-references", "troubleshooting.md")
+    const realRefMtime = statSync(realRef).mtime
+    const mutated = Buffer.from(readFileSync(realRef))
+    mutated[0] = mutated[0] === 0x23 ? 0x20 : 0x23
+    writeFileSync(realRef, mutated)
+    // The write above would become the copy's newest mtime and therefore its INFERRED stamp — a
+    // mutation of the artifact re-dates the pack it is measured against. Restoring the mtime keeps the
+    // stamp at the real pack time. (A reviewer who edits an artifact copy and does NOT restore mtimes
+    // must pass `--pack-stamp`: the inference is only valid for an artifact nobody wrote into since the
+    // pack.) The bound this exposes is stated where the claim lives: the discriminator is the
+    // TIMESTAMP ORDER, not content provenance, so a mutation inside an artifact whose source file also
+    // carries a post-pack mtime is reported as the expected class — loudly, never silently.
+    utimesSync(realRef, realRefMtime, realRefMtime)
+    arm("negative-control (real artifact copy, one byte changed -> reported, not silent)", runChecker(["--packed", realCopy, "--require-packed"]), (c) => c.all.includes(EXPECTED_KIND) && c.all.includes("agent-references/troubleshooting.md"))
+    // Arm 20c — the same mutated copy with the stamp PINNED at the source file's own mtime: now the
+    // writer cannot be "after the pack", so the mutated byte is a hard CONTENT-DRIFT and the gate
+    // reddens. This is the falsifiable pair for "a content mutation reddens": 20a green, 20c red.
+    const sourceRefMtime = statSync(join(repoRoot, "agent-references", "troubleshooting.md")).mtime
+    arm("negative-control (same mutation, stamp pinned -> hard CONTENT-DRIFT, exit 1)", runChecker(["--packed", realCopy, "--require-packed", "--pack-stamp", sourceRefMtime.toISOString()]), (c) => c.status === 1 && c.all.includes(CONTENT_KIND) && c.all.includes("agent-references/troubleshooting.md"))
 
   } finally {
     rmSync(scratch, { recursive: true, force: true })

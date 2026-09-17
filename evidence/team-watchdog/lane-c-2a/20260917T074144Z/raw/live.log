@@ -1,0 +1,20 @@
+== T-18 --live (pinned revision) ==
+Thu Sep 17 07:42:42 AM UTC 2026
+[lane-c-live self-test] live: PASS (pass/0)
+[lane-c-live self-test] restart-needed: PASS (fail/1)
+[lane-c-live self-test] not-same-instance: PASS (fail/1)
+[lane-c-live self-test] 3/3 arms passed — PASS
+self-test exit=0
+
+[lane-c-live] legs: in-process mount → on-disk .mpd/mpd.jsonc write → same-instance readback on the next tick
+[lane-c-live] mounted=90000 file=900000 sameInstance=900000 fileApplied=true liveLayer=file restartRequired=false
+[lane-c-live] liveWithoutRestart: true — the same instance reported the on-disk value with no restart
+[lane-c-live] result: PASS
+[lane-c-live] wrote /root/dshProj/my-power-dsh/evidence/team-watchdog/lane-c-2a/20260917T074144Z/raw/live/live-result.json
+live exit=0
+
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/lane-c-live-P6p1Fi/.mpd/mpd.jsonc states 1 value(s) the running process is NOT using (warnSilenceMs: live=90000 file=900000) — the file layer was applied live for its other values; these could not be applied and wait for the next dsh boot
+[lane-c-live] mutant restart-needed (seeded revert of the live overlay): mounted=90000 file=900000 sameInstance=90000 restartRequired=true
+[lane-c-live] the `--live` assertion on this tree: FAIL (exit 1) — liveness LOST: mounted=90000 file=900000 observed=90000 fileApplied=true restartRequired=true
+[lane-c-live] mutant DETECTED (the assertion reddened)
+mutant exit=0

@@ -1,0 +1,201 @@
+{
+  "instrument": "reviewer's own fixtures (mine, under evidence/review/...)",
+  "frozen": "/root/dshProj/my-power-dsh/evidence/extensions/docs-claims/check-citations.mjs",
+  "durable": "/root/dshProj/my-power-dsh/scripts/check-citations.mjs",
+  "arms": {
+    "baseline-symbol-first": {
+      "guide": "# reviewer fixture guide\n\nSee `reviewProbeWidget`, `src/reviewprobe.ts` for the widget.\n",
+      "source": "// review fixture source — mine (t17)\nexport const reviewProbeWidget = 41\nexport function reviewProbeHelper() { return reviewProbeWidget }\n",
+      "frozen": {
+        "exitCode": 0,
+        "summary": "[docs-claims] 8/8 checks passed, 0 failed, 1 citation(s) resolved, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/baseline-symbol-first-frozen.out"
+      },
+      "durable": {
+        "exitCode": 0,
+        "summary": "[docs-claims] 9/9 checks passed, 0 failed, 1 citation(s) resolved, 1 symbol-first, 0 line-dependent, 0 rot-flagged, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/baseline-symbol-first-durable.out"
+      }
+    },
+    "rot-bare": {
+      "guide": "# reviewer fixture guide\n\nSee `src/reviewprobe.ts:2` for the widget.\n",
+      "source": "// review fixture source — mine (t17)\nexport const reviewProbeWidget = 41\nexport function reviewProbeHelper() { return reviewProbeWidget }\n",
+      "frozen": {
+        "exitCode": 1,
+        "summary": "[docs-claims] 6/8 checks passed, 2 failed, 1 citation(s) resolved, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [
+          "FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: no content claim: write `SYMBOL`, `src/reviewprobe.ts:2` so the anchor can be check"
+        ],
+        "raw": "raw/rot-bare-frozen.out"
+      },
+      "durable": {
+        "exitCode": 1,
+        "summary": "[docs-claims] 6/9 checks passed, 3 failed, 1 citation(s) resolved, 0 symbol-first, 0 line-dependent, 1 rot-flagged, 0 pending, 0 illustrative",
+        "rot": [
+          "FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: line-number-only anchor `src/reviewprobe.ts:2`: a line number is not a citation (T-",
+          "FAIL content:anchors — 0 citation(s) verified against their claim: 0 symbol-first (line-free, whole file), 0 line-dependent (the line is a hint — rot risk); 1 line-number-only anchor(s) FLAGGED as rot",
+          "FAIL content:rot — 1 line-number-only anchor(s): docs/extension-authoring-guide.md:3 src/reviewprobe.ts:2"
+        ],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/rot-bare-durable.out"
+      }
+    },
+    "rot-shadowed": {
+      "guide": "# reviewer fixture guide\n\nSee `src/reviewprobe.ts:2` for the widget.\n\nThe factory is named `reviewProbeWidget`, `src/reviewprobe.ts:2`.\n",
+      "source": "// review fixture source — mine (t17)\nexport const reviewProbeWidget = 41\nexport function reviewProbeHelper() { return reviewProbeWidget }\n",
+      "frozen": {
+        "exitCode": 0,
+        "summary": "[docs-claims] 8/8 checks passed, 0 failed, 2 citation(s) resolved, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/rot-shadowed-frozen.out"
+      },
+      "durable": {
+        "exitCode": 1,
+        "summary": "[docs-claims] 6/9 checks passed, 3 failed, 2 citation(s) resolved, 0 symbol-first, 1 line-dependent, 1 rot-flagged, 0 pending, 0 illustrative",
+        "rot": [
+          "FAIL citations:docs/extension-authoring-guide.md — 2 citation(s) (checked 2: path 2, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: line-number-only anchor `src/reviewprobe.ts:2`: a line number is not a citation (T-",
+          "FAIL content:anchors — 1 citation(s) verified against their claim: 0 symbol-first (line-free, whole file), 1 line-dependent (the line is a hint — rot risk); 1 line-number-only anchor(s) FLAGGED as rot",
+          "FAIL content:rot — 1 line-number-only anchor(s): docs/extension-authoring-guide.md:3 src/reviewprobe.ts:2"
+        ],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/rot-shadowed-durable.out"
+      }
+    },
+    "line-dependent-accepted": {
+      "guide": "# reviewer fixture guide\n\nSee `reviewProbeWidget`, `src/reviewprobe.ts:2` for the widget.\n",
+      "source": "// review fixture source — mine (t17)\nexport const reviewProbeWidget = 41\nexport function reviewProbeHelper() { return reviewProbeWidget }\n",
+      "frozen": {
+        "exitCode": 0,
+        "summary": "[docs-claims] 8/8 checks passed, 0 failed, 1 citation(s) resolved, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/line-dependent-accepted-frozen.out"
+      },
+      "durable": {
+        "exitCode": 0,
+        "summary": "[docs-claims] 9/9 checks passed, 0 failed, 1 citation(s) resolved, 0 symbol-first, 1 line-dependent, 0 rot-flagged, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/line-dependent-accepted-durable.out"
+      }
+    },
+    "symbol-first-survives-shift": {
+      "guide": "# reviewer fixture guide\n\nSee `reviewProbeWidget`, `src/reviewprobe.ts` for the widget.\n",
+      "source": "// review fixture source — mine (t17)\n// a later edit inserted this line\nexport const reviewProbeWidget = 41\nexport function reviewProbeHelper() { return reviewProbeWidget }\n",
+      "frozen": {
+        "exitCode": 0,
+        "summary": "[docs-claims] 8/8 checks passed, 0 failed, 1 citation(s) resolved, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/symbol-first-survives-shift-frozen.out"
+      },
+      "durable": {
+        "exitCode": 0,
+        "summary": "[docs-claims] 9/9 checks passed, 0 failed, 1 citation(s) resolved, 1 symbol-first, 0 line-dependent, 0 rot-flagged, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/symbol-first-survives-shift-durable.out"
+      }
+    },
+    "line-dependent-drifted": {
+      "guide": "# reviewer fixture guide\n\nSee `reviewProbeWidget`, `src/reviewprobe.ts:2` for the widget.\n",
+      "source": "// review fixture source — mine (t17)\n// a later edit inserted this line\nexport const reviewProbeWidget = 41\nexport function reviewProbeHelper() { return reviewProbeWidget }\n",
+      "frozen": {
+        "exitCode": 1,
+        "summary": "[docs-claims] 7/8 checks passed, 1 failed, 1 citation(s) resolved, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [
+          "FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: the cited line/range does not carry the claim `reviewProbeWidget` (src/reviewprobe."
+        ],
+        "noClaim": [],
+        "raw": "raw/line-dependent-drifted-frozen.out"
+      },
+      "durable": {
+        "exitCode": 1,
+        "summary": "[docs-claims] 8/9 checks passed, 1 failed, 1 citation(s) resolved, 0 symbol-first, 0 line-dependent, 0 rot-flagged, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [
+          "FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: the cited line/range does not carry the claim `reviewProbeWidget` (src/reviewprobe."
+        ],
+        "noClaim": [],
+        "raw": "raw/line-dependent-drifted-durable.out"
+      }
+    },
+    "rot-pending-annotated": {
+      "guide": "# reviewer fixture guide\n\n<!-- citation-check: pending T-99 -->\nSee `src/reviewprobe.ts:2` for the widget.\n",
+      "source": "// review fixture source — mine (t17)\nexport const reviewProbeWidget = 41\nexport function reviewProbeHelper() { return reviewProbeWidget }\n",
+      "frozen": {
+        "exitCode": 0,
+        "summary": "[docs-claims] 8/8 checks passed, 0 failed, 0 citation(s) resolved, 1 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/rot-pending-annotated-frozen.out"
+      },
+      "durable": {
+        "exitCode": 0,
+        "summary": "[docs-claims] 9/9 checks passed, 0 failed, 0 citation(s) resolved, 0 symbol-first, 0 line-dependent, 0 rot-flagged, 1 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/rot-pending-annotated-durable.out"
+      }
+    },
+    "symbol-first-wrong-then-right": {
+      "guide": "# reviewer fixture guide\n\nSee `definitelyNotASymbol`, `src/reviewprobe.ts` for the widget.\n\nThe factory is `reviewProbeWidget`, `src/reviewprobe.ts`.\n",
+      "source": "// review fixture source — mine (t17)\nexport const reviewProbeWidget = 41\nexport function reviewProbeHelper() { return reviewProbeWidget }\n",
+      "frozen": {
+        "exitCode": 1,
+        "summary": "[docs-claims] 7/8 checks passed, 1 failed, 2 citation(s) resolved, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/symbol-first-wrong-then-right-frozen.out"
+      },
+      "durable": {
+        "exitCode": 1,
+        "summary": "[docs-claims] 8/9 checks passed, 1 failed, 2 citation(s) resolved, 0 symbol-first, 0 line-dependent, 0 rot-flagged, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/symbol-first-wrong-then-right-durable.out"
+      }
+    },
+    "symbol-first-right-then-wrong": {
+      "guide": "# reviewer fixture guide\n\nThe factory is `reviewProbeWidget`, `src/reviewprobe.ts`.\n\nSee `definitelyNotASymbol`, `src/reviewprobe.ts` for the widget.\n",
+      "source": "// review fixture source — mine (t17)\nexport const reviewProbeWidget = 41\nexport function reviewProbeHelper() { return reviewProbeWidget }\n",
+      "frozen": {
+        "exitCode": 0,
+        "summary": "[docs-claims] 8/8 checks passed, 0 failed, 2 citation(s) resolved, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/symbol-first-right-then-wrong-frozen.out"
+      },
+      "durable": {
+        "exitCode": 0,
+        "summary": "[docs-claims] 9/9 checks passed, 0 failed, 2 citation(s) resolved, 2 symbol-first, 0 line-dependent, 0 rot-flagged, 0 pending, 0 illustrative",
+        "rot": [],
+        "contentMiss": [],
+        "noClaim": [],
+        "raw": "raw/symbol-first-right-then-wrong-durable.out"
+      }
+    }
+  }
+}

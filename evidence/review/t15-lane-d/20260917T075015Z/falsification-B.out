@@ -1,0 +1,2 @@
+[run-qa-lanes] immutability guard: lane team-watchdog-scene carries no immutabilityGuard declaration (declare `required` or `exempt: <reason>`)
+[run-qa-lanes] immutability required=8: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, web-settings-bridge exempt=36

@@ -1,0 +1,38 @@
+{
+  "schema": "laneB/post-completion-addendum/1",
+  "captured_at": "2026-09-17T07:42:46.358Z",
+  "supersedes_note": "the parent directory stays the record of what was measured AT completion; these readings are LATER and are filed BESIDE it, never over it",
+  "readings": {
+    "closure": {
+      "exitCode": 0,
+      "line": "content bytes: 1180 file(s) compared, 1160 identical, 0 drift, 20 expected-after-pack"
+    },
+    "closureSelftest": {
+      "exitCode": 0,
+      "line": "self-test PASS: 33/33 arms",
+      "expected_fail_lines": 16
+    },
+    "distFreshRepoWide": {
+      "exitCode": 0,
+      "line": "[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 486ms",
+      "was_red_at_completion": "STALE packages/mpd-team-watchdog-plugin/dist/index.js (committed 7b821135d24a9bdd != fresh 6aa3069c5cb89f97), caused by t10 (lane C) editing src/{engine,machine,actions}.ts",
+      "cleared_by": "lane C rebuilt packages/mpd-team-watchdog-plugin/dist/index.js at 07:40:20Z (its src/engine.ts landed 07:40:09Z); path comments identical to a canonical build, so the form was never implicated"
+    },
+    "verifyGates": {
+      "exitCode": 1,
+      "line": "[verify-vendor] FAIL - asset skills treeSha mismatch",
+      "note": "cross-lane red by design; the single skills/** re-pin is the captain step at t18"
+    }
+  },
+  "artifact_stamp": {
+    "value": "ff5f96da7c43a056",
+    "files": 1190,
+    "unchanged_since_completion": true
+  },
+  "digests": {
+    "closure-selftest.log": "a4a969189634aa1e",
+    "closure.log": "394518d607a401f2",
+    "dist-fresh-repo-wide.log": "5fa3eb4b49902c6f",
+    "verify-gates.log": "b006a92d7fbdfa5f"
+  }
+}

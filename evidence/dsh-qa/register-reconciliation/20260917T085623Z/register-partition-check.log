@@ -1,0 +1,13 @@
+=== register partition re-check (three directions) — .mpd/TODO.md sha256 34c7fedcc8ea86fe ===
+§8.2 FIXED rows            = 36
+§8.3 ALREADY-FIXED rows    = 3  -> T-04 T-07 T-38
+§8.4 PARTIAL rows          = 5  -> T-05 T-16 T-18 T-19 T-48
+touched (union, originals) = 44
+§8.5 untouched originals   = 16
+§8.5 also lists            = T-67
+ARITHMETIC                 = 36 + 3 + 5 + 16 = 60 (must be 60)
+§8.6 new rows              = 32; ids: T-61 T-62 T-63 T-64 T-65 T-66 T-67 T-68 T-69 T-70 T-71 T-72 T-75 T-76 T-77 T-78 T-79 T-80 T-81 T-82 T-83 T-73 T-74 T-84 T-85 T-86 T-87 T-88 T-89 T-90 T-91 T-92
+DIRECTION 1 (internal)     = CLEAN
+DIRECTION 2 (coverage list from the team record) = CLEAN — every FIXED item carries an implementation task, no UNTOUCHED item does
+DIRECTION 3 (§8.1 prose vs the sections) = {'fixed': 36, 'touched': 44, 'untouched': 16, 'new rows': 32}
+DISAGREEMENTS              = 0

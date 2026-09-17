@@ -1,0 +1,13 @@
+docs-claims checker (t21: existence + range + CONTENT claims + negative control)
+repo /root/dshProj/my-power-dsh/evidence/gates/t27-symbol-first-site-binding/20260917T075343Z/arm-set-before/fixtures/symbol-first-right-then-wrong
+
+  ok   citations:docs/extension-authoring-guide.md — 2 citation(s) (checked 2: path 2, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-authoring-guide.zh-CN.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:EXTENSIONS-FOR-AGENTS.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.zh-CN.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   annotations:pending — none
+  ok   annotations:illustrative — none
+  ok   content:anchors — 2 anchored citation(s) verified against their claimed symbol/phrase on the cited line; 0 anchor(s) without a content claim
+
+[docs-claims] 8/8 checks passed, 0 failed, 2 citation(s) resolved, 0 pending, 0 illustrative

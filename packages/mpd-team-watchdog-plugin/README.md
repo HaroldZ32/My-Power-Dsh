@@ -291,8 +291,8 @@ Two fields are honest projections rather than the adopted plugin's own state:
 
 * `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt, ttlMs}`. It
   is written temp+rename, idempotent by `id`, and it is a **preserving** hold: it exists to
-  stop NEW dispatch into one team, never to cancel work. It is NOT `agent_teams_halt`
-  (which cancels every non-terminal task).
+  stop NEW dispatch into one team, never to cancel work. It is the **INTERNAL implementation**
+  of a team pause — the ONE external pause is `agent_teams_halt` (which cancels every non-terminal task).
 * **T-17 — a hold releases itself, on two bounds.** Every hold carries `ttlMs` (the resolved
   `watchdog.holdTtlMs` for a hold the watchdog raises; a manual `session-watchdog-hold` may
   override it with `ttl_ms`, and `0` means "no TTL"). A hold is auto-released when EITHER
@@ -318,13 +318,13 @@ still recorded.
 
 ### T-19 — one pause surface, naming the ACTIVE mechanism
 
-A team can be paused two ways: `agent_teams_halt` (which CANCELS every non-terminal task) and
-this package's own **preserving** hold. `session-watchdog-status` prints the **union** and names
-which one is active — `team-a: PAUSED — halted (agent_teams_halt)` vs `team-a: PAUSED — held
-(watchdog hold)` vs `team-a: not paused` — in the rendered text AND as a `pause: {active,
-mechanism, halted, held}` object per team in the JSON. No new resume verb is introduced: the two
-clears stay distinct (`agent_teams_resume` / `session-watchdog-resume`) and the surface tells the
-user which one applies.
+There is ONE external pause: `agent_teams_halt` (which CANCELS every non-terminal task),
+cleared by `agent_teams_resume`. This package's own **preserving** hold is that pause's
+**INTERNAL implementation**, never a second mechanism a caller picks between. The status view
+therefore reports ONE pause state and names the external mechanism — `team-a: PAUSED —
+mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation
+active` vs `team-a: not paused` — in the rendered text AND as a `pause: {paused, mechanism,
+implementation, halted, held}` object per team in the JSON, whose `halted`/`held` stay diagnostics.
 
 ### §7.2/§7.3 — the knobs' live value vs the FILE's
 

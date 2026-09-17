@@ -1,0 +1,27 @@
+sweep part 1 (static gates) — stamp 2026-09-17T08:53:13Z
+=== node scripts/verify-vendor.mjs
+exit=0
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+=== node scripts/verify-dist-fresh.mjs
+exit=0
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 469ms
+=== node scripts/verify-rows-parity.mjs
+exit=0
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+=== node scripts/verify-docs-parity.mjs
+exit=0
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **81**/9 vs derived 81/9 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js (live `//#region mpd-delta` markers agree: 81)
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 derived=3 — PASS
+=== node skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+exit=0
+[preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+=== bun scripts/mpd-ext.mjs --self-test
+exit=0
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (53 checks) [validator: source]

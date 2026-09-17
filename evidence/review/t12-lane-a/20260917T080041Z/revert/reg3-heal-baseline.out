@@ -1,0 +1,129 @@
+bun test v1.3.14 (0d9b296a)
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+(pass) t2: strip-healing ALL adopted files from the same state is byte-identical [365.62ms]
+(pass) t2: a stripped tools.js heals byte-for-byte and the task-contract region lands at its canonical line [207.52ms]
+(pass) t2: quality-gates.js strip-heal stays byte-identical (no trade between the two files) [144.28ms]
+(pass) t2: a region heals to its canonical position under partial insertion histories [3817.75ms]
+(pass) t2: every colliding pair is a real prefix collision (the fixture is meaningful) [4.70ms]
+(pass) t2: a nested colliding pair resolves the OUTER region to its OWN end marker [0.24ms]
+(pass) t2: intact control — the resolved span equals the independently grepped lines [7.06ms]
+(pass) t2: a dangling outer END marker is a partially stripped region, never a half-open pair [28.93ms]
+(pass) t2: a dangling outer BEGIN marker is a partially stripped region, never a half-open pair [28.73ms]
+(pass) t2: --write re-brackets a partially stripped region byte-faithfully (both dangling shapes) [930.02ms]
+(pass) t2: the registry carries context pairs and no line-keyed anchor fields [0.77ms]
+(pass) t9 R1: both markers present but inverted is the ONLY row that may say 'half-open marker pair' [3.96ms]
+(pass) t9 R2: begin present + end absent + body byte-equal re-brackets in place (all three pairs) [412.56ms]
+(pass) t9 R3: begin present + end absent + body DRIFTED refuses, naming the region and the line [5.61ms]
+(pass) t9 R4: end present + begin absent + body byte-equal re-brackets in place (all three pairs) [352.28ms]
+(pass) t9 R5: end present + begin absent + NOTHING survived drops the orphan line and heals [141.31ms]
+(pass) t9 (A): assertRegistryFormat refuses the OLD anchor format with the migration message [0.63ms]
+(pass) t9 (A): the CLI refuses a pre-migration registry by name, and --write-registry still migrates [548.45ms]
+(pass) t9: all four states of the ONLY shared seam heal byte-identically [483.71ms]
+58 |  * Read a PRISTINE upstream fixture. Never `git show HEAD:` — HEAD carries the mpd delta bodies,
+59 |  * so it is no longer pristine by construction (t8 / F2). The pinned sha256 makes any fixture
+60 |  * edit fail here instead of silently weakening an assertion.
+61 |  */
+62 | function pristineUpstream(name) {
+63 |     const text = readFileSync(join(pluginRoot, "self-fix-tests", "fixtures", "upstream", name), "utf8")
+                      ^
+error: ENOENT: no such file or directory, open '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/self-fix-tests/fixtures/upstream/tools.js'
+      at pristineUpstream (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:63:18)
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:585:30)
+(fail) t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts unchanged [1.76ms]
+58 |  * Read a PRISTINE upstream fixture. Never `git show HEAD:` — HEAD carries the mpd delta bodies,
+59 |  * so it is no longer pristine by construction (t8 / F2). The pinned sha256 makes any fixture
+60 |  * edit fail here instead of silently weakening an assertion.
+61 |  */
+62 | function pristineUpstream(name) {
+63 |     const text = readFileSync(join(pluginRoot, "self-fix-tests", "fixtures", "upstream", name), "utf8")
+                      ^
+error: ENOENT: no such file or directory, open '/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/self-fix-tests/fixtures/upstream/tools.js'
+      at pristineUpstream (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:63:18)
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:614:31)
+(fail) t9: the targeted re-materialize shape (upstream twins restored at the literal) is REFUSED too [1.41ms]
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/reg-mirror/packages/mpd-agent-teams-plugin/arms-hidden/registry-context-heal.test.mjs:
+
+ 19 pass
+ 2 fail
+ 877 expect() calls
+Ran 21 tests across 41 files. [13.37s]

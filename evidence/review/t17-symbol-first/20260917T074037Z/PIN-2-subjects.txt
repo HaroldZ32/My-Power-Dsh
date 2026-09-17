@@ -1,0 +1,11 @@
+== subject hashes at 2026-09-17T07:46:10Z ==
+1bfcf5b7f3b2ba7d41fea75ce685585da8f7fede29afb00d67bf0f9fdb097c80  docs/extension-authoring-guide.md
+dc3c9ea60825959fdb96cd832d31c69b936cfc59bf70f3d27ddb6ffd0b853c35  docs/extension-authoring-guide.zh-CN.md
+a7e57dec8e8017b5c76b035798a17df56619cb5e27fcb3a0c16e63ef6562beb5  EXTENSIONS-FOR-AGENTS.md
+1bef8e6c6ec8044205872789730f783912998bbed35a5fde715450c1aa9d1fbb  docs/extension-adaptation-report.md
+7f1f7d3b9f3a78619e9ffaef2ee710d2a3bfaff635112d2bb8f8d5d4b1b4b1a1  docs/extension-adaptation-report.zh-CN.md
+docs/extension-authoring-guide.md 2026-09-17 13:42:47.106941468 +0800
+docs/extension-authoring-guide.zh-CN.md 2026-09-17 13:42:47.106941468 +0800
+EXTENSIONS-FOR-AGENTS.md 2026-09-17 15:43:40.983231646 +0800
+docs/extension-adaptation-report.md 2026-09-17 15:36:15.474246223 +0800
+docs/extension-adaptation-report.zh-CN.md 2026-09-17 15:36:22.792427501 +0800

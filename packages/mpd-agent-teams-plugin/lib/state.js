@@ -163,20 +163,80 @@ export function transitionError(current, next) {
     }
     return undefined;
 }
+//#region mpd-delta terminal-task-rearm-refusal (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// T-79 STATE HALF (wave 2, lane A) — a terminal task must never be RE-ARMED.
+//
+// MEASURED (wave 1 and again in wave 2, `.mpd/plans/friction-p2-wave-captain-log.md` A-1): the
+// scheduler re-dispatched the already-`completed` `t1` carrying the SAME stored attempt id
+// (`35503430-…`); the member correctly refused with `task status cannot move from "completed" to
+// "claimed"`. The primitive underneath every dispatch is HERE: `activateTaskAttempt` used to set
+// `status='claimed'`, mint a FRESH attemptId, drop `handoffId`/`reassigning` and CLEAR `output`
+// unconditionally, so a ticket composed over a terminal task rotated the capability, wiped the
+// earned summary and left a claim the member could not honour — the terminal record was rewritten
+// by the dispatch itself.
+//
+// The refusal is raised BEFORE the first mutation (in `beginTaskAttempt` before its `attempt`
+// increment, and again in `activateTaskAttempt` for direct callers), so a refused rotation leaves
+// the record byte-identical. The sanctioned revive path is unaffected: `agent_teams_reassign_task`
+// routes a `failed`/`cancelled` task through `invalidateTaskAttempt` (status -> `pending`) BEFORE
+// any attempt is minted, so its fresh-attempt semantics still hold; `claim_task` reaches
+// `transitionError` first. A `completed` task has no revive path by design (immutable).
+export function assertTaskRearmable(task) {
+    if (TERMINAL_TASK_STATUSES.includes(task.status)) {
+        throw new Error(`task ${task.id} is ${task.status}: the attempt rotation is REFUSED for terminal work — a terminal task is never re-armed (the record was left untouched). Retry failed/cancelled work with agent_teams_reassign_task, which re-opens it with a fresh attempt id.`);
+    }
+}
+//#endregion mpd-delta terminal-task-rearm-refusal
 /** Activate the task's current generation for one owner and return its capability id. */
 export function activateTaskAttempt(task, assignee) {
+    assertTaskRearmable(task);
+    //#region mpd-delta composed-ticket-output-preserved (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // T-73 (wave 2, t24) — a COMPOSED TICKET must not silently DELETE a stored deliverable.
+    //
+    // MEASURED (wave 1, `t36`'s author; re-measured by this lane at HEAD `c826f16`,
+    // `evidence/agent-teams/composed-ticket-output/20260917T075659Z/driver.mjs`): ONE `kickMember`
+    // over an `in_progress` task holding a stored deliverable left the record at `output: null`,
+    // `status: claimed`, `attempt: 1 -> 2` — DETERMINISTIC, not a race, because the compose rotates
+    // the attempt on EVERY dispatched ticket. The dispatch-boundary re-check (`mpd-delta
+    // terminal-dispatch-recheck`, `lib/scheduler.js`) runs AFTER this function, so it can prevent the
+    // WAKE and never the WIPE. The phantom-claim family's mechanical cause is therefore a silent
+    // DELETE, not a spurious wake.
+    //
+    // SHAPE (i) of the two the wave-1 record names (`terminal-dispatch/20260917T023700Z/result.json`,
+    // `second_data_loss_vector.where_the_fix_belongs`) — chosen because it is the shape this lane can
+    // EXERCISE in-process: `output` SURVIVES a rotation that stays inside the SAME generation, i.e. the
+    // task is still OPEN (`claimed`/`in_progress`, so nothing invalidated it) and the incoming assignee
+    // IS its current owner (the `recoverOwned` re-dispatch of the same seat). Every other rotation keeps
+    // clearing `output` exactly as before: a first dispatch of a `pending` task, any generation
+    // invalidated by an amend, and a handover — the reassign path clears it EXPLICITLY through
+    // `invalidateTaskAttempt` before the new owner is armed. Clearing thus becomes an explicit invalidate
+    // action instead of a side effect of every compose.
+    //
+    // Shape (ii) (snapshot before the compose + restore in the refusal path) is NOT shipped: the wave-1
+    // record judges it in-process-untestable on a path no harness can steer, and this lane does not ship
+    // a repair it cannot exercise.
+    //
+    // BOUND (stated, not hidden): a later COMPLETE on the same generation that supplies a DIFFERENT
+    // summary longer than 240 chars meets T-46's existing loud replacement guard
+    // (`replace_output: true` / `output_append`) instead of silently discarding the preserved bytes —
+    // a refusal WITH a remedy, never a loss.
+    const sameGenerationRedispatch = (task.status === 'claimed' || task.status === 'in_progress')
+        && task.assignee === assignee;
+    //#endregion mpd-delta composed-ticket-output-preserved
     const attemptId = randomUUID();
     task.status = 'claimed';
     task.assignee = assignee;
     task.attemptId = attemptId;
     task.handoffId = undefined;
     task.reassigning = false;
-    task.output = undefined;
+    if (!sameGenerationRedispatch)
+        task.output = undefined;
     task.updatedAt = Date.now();
     return attemptId;
 }
 /** Start a fresh task generation for one owner. */
 export function beginTaskAttempt(task, assignee) {
+    assertTaskRearmable(task);
     task.attempt = (task.attempt ?? 0) + 1;
     return activateTaskAttempt(task, assignee);
 }

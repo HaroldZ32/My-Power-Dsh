@@ -1,0 +1,8 @@
+== PIN 2026-09-17T08:34:15Z ==
+6092febdb28e66c8f02889b6e0ae25d430f2e8c4fef2daac24b5c7bdb8d14230  packages/mpd-agent-teams-plugin/lib/state.js
+82f578cfd4857f462de581e6e8a330c16663bcce546b0e1928540ff55ec9e21c  packages/mpd-agent-teams-plugin/self-fix-tests/composed-ticket-output-preserved.test.mjs
+21226fb694ff7f2615d42ba44e55d483b35f1e196d7f2b17c545569c03b012e4  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+7c12851990f5f6b130919373408659ecd263cd4b7959c572435657536046a864  agent-references/agent-teams-deltas.md
+4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68  packages/mpd-agent-teams-plugin/lib/scheduler.js
+2026-09-17 15:57:51 packages/mpd-agent-teams-plugin/lib/state.js
+2026-09-17 16:03:38 packages/mpd-agent-teams-plugin/self-fix-tests/composed-ticket-output-preserved.test.mjs

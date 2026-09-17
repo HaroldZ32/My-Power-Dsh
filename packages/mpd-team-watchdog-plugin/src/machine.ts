@@ -140,6 +140,50 @@ export interface ResolvedKnobs extends WatchdogKnobs {
   issues: KnobIssue[]
 }
 
+/** The `watchdog` section of a namespace value as a plain object (`{}` when it states none). */
+export function watchdogSectionOf(namespaceValue: unknown): Record<string, unknown> {
+  const root = namespaceValue !== null && typeof namespaceValue === "object" ? (namespaceValue as Record<string, unknown>) : {}
+  const sectionRaw = root.watchdog
+  return sectionRaw !== null && typeof sectionRaw === "object" ? (sectionRaw as Record<string, unknown>) : {}
+}
+
+/**
+ * A stable digest of one knob LAYER's `watchdog` section, for change detection.
+ *
+ * Key order must not matter (a rewritten file with the same values is not a change), so the
+ * keys are sorted before serialization. `null` means "this layer states no watchdog values",
+ * which is itself an observable state (a file deleted or a section removed is a change).
+ */
+export function sectionDigest(section: unknown): string | null {
+  if (section === null || typeof section !== "object") return null
+  const record = section as Record<string, unknown>
+  const keys = Object.keys(record).sort()
+  if (keys.length === 0) return null
+  const ordered: Record<string, unknown> = {}
+  for (const key of keys) ordered[key] = record[key]
+  return JSON.stringify(ordered)
+}
+
+/**
+ * T-18 (wave 2, user ruling) — merge a FILE layer's `watchdog` section over the namespace value.
+ *
+ * The user ruling is that the knobs are DATA and must therefore be live in-process: the frozen
+ * thing was the settings namespace's base (the resolved value is a snapshot taken at mount), not
+ * the plugin module. This helper produces the namespace-SHAPED value `readKnobs` already consumes,
+ * with the file's stated leaves winning and every leaf the file does not state left to the
+ * namespace (and, below that, to the row defaults). It is pure, so the merge rule is testable
+ * without a boot, a settings service or a file.
+ *
+ * @param namespaceValue - `settingsReader("mpd").get()`, the live namespace snapshot.
+ * @param fileSection - the `watchdog` object parsed out of the workspace's `.mpd/mpd.jsonc`.
+ * @returns a namespace-shaped value with the file layer applied on top.
+ */
+export function overlayWatchdogSection(namespaceValue: unknown, fileSection: unknown): unknown {
+  const base = namespaceValue !== null && typeof namespaceValue === "object" ? { ...(namespaceValue as Record<string, unknown>) } : {}
+  const file = fileSection !== null && typeof fileSection === "object" ? (fileSection as Record<string, unknown>) : {}
+  return { ...base, watchdog: { ...watchdogSectionOf(namespaceValue), ...file } }
+}
+
 /**
  * Read the watchdog knobs out of the resolved `mpd` settings value.
  *
@@ -151,6 +195,10 @@ export interface ResolvedKnobs extends WatchdogKnobs {
  * a composition that writes no `watchdog` section keeps the row's values, and an
  * edit in either front door wins from then on (AC-11).
  *
+ * T-18 (wave 2): the value passed in may already carry the workspace FILE layer applied by
+ * `overlayWatchdogSection` — the engine folds a fresh `.mpd/mpd.jsonc` edit in when that file is
+ * the layer that moved. This function does not care: it reads one namespace-shaped value.
+ *
  * @param namespaceValue - `settingsReader("mpd").get()`.
  * @param env - the process environment (injectable for tests).
  * @param defaults - the row config's values (the base layer).
@@ -161,11 +209,8 @@ export function readKnobs(
   env: Record<string, string | undefined> = process.env,
   defaults: WatchdogKnobs = WATCHDOG_DEFAULTS,
 ): ResolvedKnobs {
+  const section = watchdogSectionOf(namespaceValue)
   const issues: KnobIssue[] = []
-  const root = namespaceValue !== null && typeof namespaceValue === "object" ? (namespaceValue as Record<string, unknown>) : {}
-  const sectionRaw = root.watchdog
-  const section = sectionRaw !== null && typeof sectionRaw === "object" ? (sectionRaw as Record<string, unknown>) : {}
-
   const number = (key: keyof WatchdogKnobs, min: number): number => {
     const raw = section[key]
     if (raw === undefined) return defaults[key] as number

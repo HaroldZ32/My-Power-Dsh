@@ -1,0 +1,15 @@
+probe                              expect  kept  after.output           after.status/attempt   returned/threw
+drop-pending-first-dispatch        DROP    False <absent=cleared>      claimed/2              returned
+drop-handover-compose              DROP    False <absent=cleared>      claimed/1              returned
+drop-amend-chain                   DROP    False <absent=cleared>      claimed/2              returned
+drop-unassigned-incoming           DROP    False <absent=cleared>      claimed/2              returned
+keep-same-generation-in_progress   KEEP    True  EARNED-DELIVERABLE    claimed/2              returned
+keep-same-generation-claimed       KEEP    True  EARNED-DELIVERABLE    claimed/2              returned
+refuse-completed                   REFUSE  True  EARNED                completed/1              task t1 is completed: the attempt rotation is REFU
+refuse-cancelled                   REFUSE  True  CANCELLED-NOTE        cancelled/1              task t1 is cancelled: the attempt rotation is REFU
+refuse-failed                      REFUSE  True  EARNED-DELIVERABLE    failed/1              task t1 is failed: the attempt rotation is REFUSED
+adv-handover-in-flight             DROP?   True  EARNED-DELIVERABLE    claimed/1              returned
+adv-capability-revoked             DROP?   True  EARNED-DELIVERABLE    claimed/1              returned
+adv-stale-output-prev-attempt      DROP?   True  EARNED-DELIVERABLE    claimed/3              returned
+adv-owner-reused-after-cancel      DROP?   True  PRE-CANCEL            claimed/1              returned
+adv-same-name-different-seat       DROP?   True  EARNED-DELIVERABLE    claimed/1              returned

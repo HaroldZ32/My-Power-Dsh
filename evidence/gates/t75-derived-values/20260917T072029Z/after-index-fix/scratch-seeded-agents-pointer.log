@@ -1,0 +1,8 @@
+FAIL derived-value:delta-range:AGENTS.md:38 — AGENTS.md:38 carries "A1–D26" but the ARTIFACT derives "A1–D38" (41 table ids in agent-references/agent-teams-deltas.md, first A1, last D38) — the artifact wins, never the newer pointer (wave-1 L78); regenerate the range by transcribing the table
+FAIL derived-value:delta-range:AGENTS.md:295 — AGENTS.md:295 carries "A1–D26" but the ARTIFACT derives "A1–D38" (41 table ids in agent-references/agent-teams-deltas.md, first A1, last D38) — the artifact wins, never the newer pointer (wave-1 L78); regenerate the range by transcribing the table
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept verbatim as provenance
+note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D26 checked against "A1–D38" derived from agent-references/agent-teams-deltas.md
+note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D38 checked against "A1–D38" derived from agent-references/agent-teams-deltas.md
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **73**/9 vs derived 73/9 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; live markers in those files: 78 — packages/mpd-agent-teams-plugin/lib/quality-gates.js (registry 8 vs markers 9), packages/mpd-agent-teams-plugin/lib/tools.js (registry 35 vs markers 38), packages/mpd-agent-teams-plugin/lib/state.js (registry 5 vs markers 6) is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs
+
+[verify-docs-parity] root=evidence/gates/t75-derived-values/20260917T072029Z/after-index-fix/root pairs=0 failed=2 violations=2 exempt=1 derived=3 — FAIL

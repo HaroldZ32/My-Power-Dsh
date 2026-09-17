@@ -1,0 +1,68 @@
+{
+  "driver": "terminal-redispatch/pre-fix (HEAD lib)",
+  "headCommit": "c826f16",
+  "headFiles": {
+    "tools.js": {
+      "bytes": 215150
+    },
+    "state.js": {
+      "bytes": 69027
+    },
+    "quality-gates.js": {
+      "bytes": 56502
+    }
+  },
+  "variants": [
+    {
+      "label": "HEAD (pre-fix)",
+      "libDir": "/tmp/mpd-t79-head-lib-GMzry2/lib",
+      "rotation": {
+        "refused": false,
+        "mintedAttemptId": "328e6931-24cd-4fc7-99f4-f6cf83906c21",
+        "statusAfter": "claimed",
+        "attemptAfter": 2,
+        "attemptIdAfter": "328e6931-24cd-4fc7-99f4-f6cf83906c21",
+        "outputWiped": true
+      },
+      "toolOutcome": {
+        "threw": false,
+        "returned": {
+          "task_id": "t1",
+          "status": "completed",
+          "attempt": 1,
+          "attempt_id": "35503430-5a3b-4306-b6f2-d38d416cb438",
+          "output": "earned summary"
+        }
+      },
+      "storedAfter": {
+        "status": "completed",
+        "attempt": 1,
+        "attemptId": "35503430-5a3b-4306-b6f2-d38d416cb438",
+        "output": "earned summary"
+      }
+    },
+    {
+      "label": "fixed tree",
+      "libDir": "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib",
+      "rotation": {
+        "refused": true,
+        "message": "task t1 is completed: the attempt rotation is REFUSED for terminal work — a terminal task is never re-armed (the record was left untouched). Retry failed/cancelled work with agent_teams_reassign_task, which re-opens it with a fresh attempt id.",
+        "statusAfter": "completed",
+        "attemptAfter": 1,
+        "attemptIdAfter": "35503430-5a3b-4306-b6f2-d38d416cb438",
+        "outputAfter": "earned summary",
+        "outputWiped": false
+      },
+      "toolOutcome": {
+        "threw": true,
+        "message": "task t1 is completed: the supplied attempt_id \"attempt-from-the-replayed-ticket\" does not match the stored capability (35503430-5a3b-4306-b6f2-d38d416cb438) — terminal work is never re-armed, so a stale capability cannot update it. Read the record with agent_teams_task_contract, or retry failed/cancelled work with agent_teams_reassign_task (a FRESH attempt id)."
+      },
+      "storedAfter": {
+        "status": "completed",
+        "attempt": 1,
+        "attemptId": "35503430-5a3b-4306-b6f2-d38d416cb438",
+        "output": "earned summary"
+      }
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+[claim-proximity] 32 line-bearing path citation(s) in the real subjects
+[claim-proximity] |claim.docLine - citation.docLine| histogram: 0 line(s): 31 · 1 line(s): 1
+[claim-proximity] citations with no same-path:line claim anywhere in their document: 0
+[claim-proximity] citations whose nearest claim is MORE than 1 line away: 0
