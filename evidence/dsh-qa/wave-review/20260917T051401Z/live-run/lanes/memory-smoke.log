@@ -1,0 +1,5 @@
+[memory-smoke] ok=true -> /root/dshProj/my-power-dsh/evidence/plan-c/c6-memory/2026-09-17T05-20-37.026Z
+  installer: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0}
+  memory: {"ok":true,"entries":1,"repoOk":true,"dueSeen":true}
+[memory-smoke] PASS

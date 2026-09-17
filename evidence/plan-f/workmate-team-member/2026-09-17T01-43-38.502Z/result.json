@@ -1,0 +1,38 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wtm-dsh-jTuBc1",
+  "wmHome": "/tmp/mpd-wtm-home-tNE1ud",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": false,
+      "exit": 1
+    },
+    "injection": {
+      "ok": false,
+      "sample": "[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-wtm-home-tNE1ud/ws | [mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free) | [mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1) | [mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on | [mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=m"
+    },
+    "reflect": {
+      "ok": false,
+      "tokenCount": 0,
+      "uses": 0
+    },
+    "files": {
+      "ok": false,
+      "memory": ""
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer"
+    }
+  }
+}

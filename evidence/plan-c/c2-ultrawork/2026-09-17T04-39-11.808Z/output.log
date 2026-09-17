@@ -1,0 +1,88 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-c2-vlBJ2a/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+Done. Both runs executed the same engine and the artifact is verified.
+
+## Requested run — `mpd_ultrawork` (tier=light, plan=false, maxRounds=2)
+
+| Field | Value |
+|---|---|
+| **status** | `complete` |
+| **rounds** | `1` used of `2` allowed (completed on round 1, no second round needed) |
+| **state file** | `/tmp/mpd-c2-vlBJ2a/ws/.mpd/ulw/ulw-ef2cbfe5/state.json` |
+| verdict | `n/a` (no plan file ⇒ no verification gate, light tier without strictReview) |
+| wave / fruitlessWaves | `1` / `0` |
+
+**Criteria states**
+
+| Key | Criterion | State |
+|---|---|---|
+| c1 | `utils.txt` exists at workspace root | `clean` |
+| c2 | Content is exactly the three lines `alpha`, `beta`, `gamma` in order (no extras, no CRLF) | `clean` |
+
+Verification gate was **skipped by design** — ledger line: `{"lane":"verification","verdict":"skipped","detail":"no plan file or light tier without strict review"}`. No subagent barrier work was needed (no children spawned).
+
+## Independent check of the artifact
+
+```
+alpha\nbeta\ngamma\n   — 17 bytes, 3 newlines, LF only
+wc -lc  -> 3 17
+sha256 -> 4fdbc441ea7b546100e086ac1e4fc5ae6749b7314311c99db05be450eca12996
+```
+
+The pre-existing `utils.txt` was already byte-exact, so the honest change was an idempotent no-op (zero diff) — the run proved that rather than blindly rewriting it, and falsified its own checker against wrong fixtures (missing line, extra line, CRLF) before trusting it.
+
+## One thing you should know
+
+The `mpd_ultrawork` call **returned an error to me after the work had already succeeded**: `Error: tool "mpd_ultrawork" returned invalid output: "value.planFile" must be a string`. Its state file shows `planFile: null`, so the tool's declared output schema rejects its own correct `plan=false` result. The run persisted fine — it's a reporting/serialization defect, not a work failure, but it means `mpd_ultrawork(plan=false)` can never return a success payload to a caller.
+
+To confirm the result wasn't a fluke of that broken path, I re-ran the same objective through the `mpd_ulw` alias (identical engine params) — it also completed: `status=complete`, `rounds=1`, both criteria `clean`, state at `/tmp/mpd-c2-vlBJ2a/ws/.mpd/ulw/ulw-21db4f1c/state.json`.
+
+Both state files are left on disk for inspection.
+[CodeGraph MCP] Shared daemon connection lost; serving this session in-process (degraded), re-serving 0 in-flight request(s).
+dsh: reasoning:
+The tool returned a schema validation error: "value.planFile" must be a string. Meaning planFile non-null when plan=false. This looks like a bug/quirk: with plan=false, planFile is undefined, so the output schema fails. Perhaps using mpd_ulw (lightweight alias, tier=light, plan=false, hyperplan=false) would work — but it's the same engine and might return same shape. Actually mpd_ulw says "Returns the B3-shaped result", maybe different. But the user explicitly asked for mpd_ultrawork with light tier, plan=false, maxRounds=2.
+
+Let me try mpd_ulw with same params to see. But careful — the state may already be created. Let's check .mpd/ulw state dir.
+
+Let me try running mpd_ulw with the same objective and maxRounds=2. That's the same engine with plan=false. If it also fails, maybe I should try plan=true?
+
+Actually the error occurs in post-processing output validation. The engine may have actually done work or not. Let's check the filesystem first, then try the alias.
+
+Let me do both: check state dir and whether utils.txt exists.
+dsh: reasoning:
+Interesting. The first mpd_ultrawork call actually ran and created state at .mpd/ulw/ulw-ef2cbfe5 (session?) — but the tool output failed validation ("value.planFile" must be a string). The second run mpd_ulw created a NEW state dir ulw-21db4f1c and completed in 1 round.
+
+The user asked specifically for mpd_ultrawork with light tier, plan=false, maxRounds=2, and wants status, rounds, criteria states, and state file path.
+
+The mpd_ulw alias is the same engine (light, plan=false, hyperplan=false). But the user asked for the mpd_ultrawork tool. The failure was purely an output-serialization bug (planFile must be a string when plan=false). The underlying run completed and wrote state to ulw-ef2cbfe5.
+
+Let me read both state.json files to report. The canonical answer: the mpd_ultrawork run's state is .mpd/ulw/ulw-ef2cbfe5/state.json. Let me inspect it to get status, rounds, criteria states.
+
+Also possibly re-run to prove reproducibility isn't needed. Let me read the state files.
+
+Note the first call's state dir: ulw-ef2cbfe5. Let me read it.
+dsh: reasoning:
+Both runs completed. The user asked for the mpd_ultrawork result. The requested invocation (mpd_ultrawork, light, plan=false, maxRounds=2) produced state at .mpd/ulw/ulw-ef2cbfe5/state.json — status complete, rounds used 1 of 2, both criteria clean.
+
+Let me verify the artifact independently and check the ledger. Also worth noting: the tool returned an invalid-output error to me, but the run persisted.
+
+Let me do a quick independent verification of utils.txt and check ledger.jsonl of ef2cbfe5.
+
+One consideration: should I report the second (mpd_ulw) run as the answer? The user asked specifically for mpd_ultrawork. I'll report the mpd_ultrawork result as primary (ulw-ef2cbfe5) and note the alias re-run as a cross-check (ulw-21db4f1c).
+
+Let me verify the file and read the ledger.
+dsh: reasoning:
+Everything verified. Now report.
+
+Important nuance: the mpd_ultrawork tool call returned an error to me ("value.planFile must be a string"), which is a serialization bug — planFile is null but the output schema requires a string. The run itself completed and persisted state to disk. I should be honest about this.
+
+Let me report status, rounds, criteria states, and state file path.
+
+Should I clean up? The task is done; artifacts are the file plus state. No cleanup requested. Leave state files.
+
+Report concisely.

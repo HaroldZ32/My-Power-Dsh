@@ -1,0 +1,262 @@
+{
+  "ok": true,
+  "slug": "extension-lifecycle",
+  "sandbox": "/tmp/mpd-extension-lifecycle-MDJaGf",
+  "arms": "main (mount + list + flow + skill + role persona/spawn) | failure (broken of each kind beside a healthy one, CLI oracle) | isolation (two sessions, one host, decoy control) | packed (the packed tree is closed: row + plugin + extensions/ asset, with a negative control over fixture trees)",
+  "rankLadder": "100 project-dsh < 200 project-agents < 250 runtime < 300 ours < 400 user-dsh < 500 user-agents < 600 bundled; lower wins inside a layer, nearest layer wins outright",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0,
+      "tail": "fallback: { provider: deepseek-official, model: deepseek-v4-flash }\n              executionPrompt: \"Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.\"\n\n[install-profile] wrote profile/ home patch/ presets(1) + web-compat shim @mpd-dsh/mpd\n[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)\n"
+    },
+    "main": {
+      "ok": true,
+      "exit": 0,
+      "durationMs": 9678,
+      "offeredExtTools": [
+        "mpd_ext_list",
+        "mpd_ext_show",
+        "mpd_flow_list",
+        "mpd_flow_show"
+      ],
+      "recordedTools": [
+        "mpd_ext_list",
+        "mpd_ext_show",
+        "mpd_flow_list",
+        "mpd_flow_show",
+        "skill",
+        "mpd_role_persona",
+        "mpd_role_spawn"
+      ],
+      "calls": {
+        "mpd_ext_list": {
+          "succeeded": true,
+          "reason": "",
+          "resultHead": "mpd extensions: 3 (0 shadowed, 0 rejected)\n- qa-ext-proj [project/directory] enabled skills=1 flows=1 mcp=0 roles=0\n    error contributes.roles[0]: project-level extensions may contribute skills and flows only: tool and provider registratio"
+        },
+        "mpd_ext_show": {
+          "succeeded": true,
+          "reason": "",
+          "resultHead": "extension qa-ext-proj [project/directory] enabled\nroot: /tmp/mpd-extension-lifecycle-MDJaGf/ws/.mpd/extensions/qa-ext-proj\nsource: /tmp/mpd-extension-lifecycle-MDJaGf/ws/.mpd/extensions/qa-ext-proj/mpd-ext.json\nskills: qa-ext-skill\nflows: q"
+        },
+        "mpd_flow_list": {
+          "succeeded": true,
+          "reason": "",
+          "resultHead": "- qa-ext-flow (qa-ext-proj) 2 steps: QA extension flow"
+        },
+        "mpd_flow_show": {
+          "succeeded": true,
+          "reason": "",
+          "resultHead": "QA extension flow (qa-ext-flow, extension qa-ext-proj)\nQA extension flow qa-ext-flow\nwhen to use: Use when the extension QA case asks for this flow.\n1. Read the input [tool: read]\n   QA-MARKER-FLOW:QA-MARKER-FLOW-PROJ\n2. Report the findings"
+        },
+        "skill": {
+          "succeeded": true,
+          "reason": "",
+          "resultHead": "<skill_content name=\"qa-ext-skill\">\n<skill_resources>\nBase directory for this skill: /tmp/mpd-extension-lifecycle-MDJaGf/ws/.mpd/extensions/qa-ext-proj/skills/qa-ext-skill\nResolve relative paths mentioned by this skill against the base dire"
+        },
+        "mpd_role_persona": {
+          "succeeded": true,
+          "reason": "",
+          "resultHead": "persona QA Extension Reviewer (69 chars):\nYou are a QA extension role. QA-MARKER-PERSONA:QA-MARKER-PERSONA-USER"
+        },
+        "mpd_role_spawn": {
+          "succeeded": true,
+          "reason": "",
+          "resultHead": "role QA Extension Reviewer (complete)\nsummary: QA-CHILD-MARKER-ROLE-OK\nrecommendation: none\ndetails: extension-lifecycle QA\nevidence:\n- mpd_role_spawn"
+        }
+      },
+      "sawProjectId": true,
+      "sawUserId": true,
+      "sawProjectRejection": true,
+      "sawFlow": true,
+      "sawSkill": true,
+      "sawPersona": true,
+      "sawRoleChild": true,
+      "crashSignatures": [],
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-lifecycle-MDJaGf-ws--"
+        ]
+      }
+    },
+    "failure": {
+      "ok": true,
+      "exit": 0,
+      "sessionCompleted": true,
+      "listedHealthy": true,
+      "flowToolStillWorks": true,
+      "reportedProjectRejection": true,
+      "reportedRejections": [
+        "qa-bad-json",
+        "qa-bad-version"
+      ],
+      "cliChecks": {
+        "qa-bad-json": {
+          "exit": 1,
+          "tail": "  extension \"unnamed\": REJECTED |   error descriptor: descriptor must be a JSON object"
+        },
+        "qa-bad-version": {
+          "exit": 1,
+          "tail": "  extension \"qa-bad-version\": REJECTED |   error apiVersion: apiVersion must equal 1 (got 9)"
+        },
+        "qa-bad-skill": {
+          "exit": 1,
+          "tail": "  error contributes.skills[0]/QA-BAD-NAME: frontmatter name \"QA-BAD-NAME\" violates the skill-name grammar in /tmp/mpd-extension-lifecycle-MDJaGf/ws/.mpd/extensions/qa-bad-skill/skills/QA-BAD-NAME/SKIL"
+        },
+        "qa-bad-asset": {
+          "exit": 1,
+          "tail": "  contributes: 0 skill(s), 0 flow(s), 0 role(s), 0 mcp server(s) |   error contributes.skills[0].root: root must be a non-empty extension-root-relative directory (absolute paths and `..` escapes are r"
+        },
+        "qa-ext-healthy": {
+          "exit": 0,
+          "tail": "  contributes: 1 skill(s), 1 flow(s), 0 role(s), 0 mcp server(s) | [mpd-ext] ok"
+        }
+      },
+      "crashSignatures": [],
+      "resultHead": "mpd extensions: 7 (0 shadowed, 2 rejected)\n- qa-bad-asset [project/directory] enabled skills=0 flows=0 mcp=0 roles=0\n    error contributes.skills[0].root: root must be a non-empty extension-root-relative directory (absolute paths and `..` escapes are rejected)\n- qa-bad-skill [project/directory] enabled skills=1 flows=0 mcp=0 roles=0\n    error contributes.flows[0].rank: rank must be a finite number when present\n    error contributes.skills[0]/QA-BAD-NAME: frontmatter name \"QA-BAD-NAME\" violates the skill-name grammar in /tmp/mpd-extension-lifecycle-MDJaGf/ws/.mpd/extensions/qa-bad-skill/skills/",
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-lifecycle-MDJaGf-ws--"
+        ]
+      }
+    },
+    "isolation": {
+      "ok": true,
+      "sessions": {
+        "session-a": {
+          "ok": true,
+          "exit": 0,
+          "cwd": "/tmp/mpd-extension-lifecycle-MDJaGf/ws-a",
+          "recorded": true,
+          "succeeded": true,
+          "sawExpected": true,
+          "sawForbidden": [],
+          "offeredExtTools": [
+            "mpd_ext_list",
+            "mpd_ext_show",
+            "mpd_flow_list",
+            "mpd_flow_show"
+          ],
+          "isolation": {
+            "ok": true,
+            "checked": 2,
+            "keys": [
+              "--tmp-mpd-extension-lifecycle-MDJaGf-ws-a--",
+              "--tmp-mpd-extension-lifecycle-MDJaGf-ws--"
+            ]
+          }
+        },
+        "session-b": {
+          "ok": true,
+          "exit": 0,
+          "cwd": "/tmp/mpd-extension-lifecycle-MDJaGf/ws-b",
+          "recorded": true,
+          "succeeded": true,
+          "sawExpected": true,
+          "sawForbidden": [],
+          "offeredExtTools": [
+            "mpd_ext_list",
+            "mpd_ext_show",
+            "mpd_flow_list",
+            "mpd_flow_show"
+          ],
+          "isolation": {
+            "ok": true,
+            "checked": 3,
+            "keys": [
+              "--tmp-mpd-extension-lifecycle-MDJaGf-ws-b--",
+              "--tmp-mpd-extension-lifecycle-MDJaGf-ws-a--",
+              "--tmp-mpd-extension-lifecycle-MDJaGf-ws--"
+            ]
+          }
+        },
+        "decoy-cwd-control": {
+          "ok": true,
+          "exit": 0,
+          "cwd": "/tmp/mpd-extension-lifecycle-MDJaGf/decoy",
+          "recorded": true,
+          "succeeded": true,
+          "sawExpected": true,
+          "sawForbidden": [],
+          "offeredExtTools": [
+            "mpd_ext_list",
+            "mpd_ext_show",
+            "mpd_flow_list",
+            "mpd_flow_show"
+          ],
+          "isolation": {
+            "ok": true,
+            "checked": 4,
+            "keys": [
+              "--tmp-mpd-extension-lifecycle-MDJaGf-decoy--",
+              "--tmp-mpd-extension-lifecycle-MDJaGf-ws-b--",
+              "--tmp-mpd-extension-lifecycle-MDJaGf-ws-a--",
+              "--tmp-mpd-extension-lifecycle-MDJaGf-ws--"
+            ]
+          }
+        },
+        "ok": true
+      }
+    },
+    "packed": {
+      "ok": true,
+      "packExit": 0,
+      "packedRoot": "/root/dshProj/my-power-dsh/dist/mpd-package",
+      "rows": {
+        "mpdExtRowInPackedPatch": true
+      },
+      "assets": {
+        "pluginDist": true,
+        "extensionsAsset": true
+      },
+      "negativeControl": {
+        "falsifiable": true,
+        "packerExitGated": true,
+        "trees": {
+          "closed": {
+            "hasRow": true,
+            "hasPlugin": true,
+            "hasExtensions": true,
+            "ok": true
+          },
+          "no-plugin-package": {
+            "hasRow": true,
+            "hasPlugin": false,
+            "hasExtensions": true,
+            "ok": false
+          },
+          "no-extensions-root": {
+            "hasRow": true,
+            "hasPlugin": true,
+            "hasExtensions": false,
+            "ok": false
+          },
+          "no-mpd-ext-row": {
+            "hasRow": false,
+            "hasPlugin": true,
+            "hasExtensions": true,
+            "ok": false
+          }
+        }
+      },
+      "status": "GREEN (the packed tree carries the mpd-ext row, the plugin and the extensions/ discovery root)",
+      "note": "no packed-tree file was modified by this case; the three facts are re-derived from disk on every run",
+      "packTail": "[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle | [pack-mpd] modes normalized: 1190 files (644: 1178, 755: 12) | [pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package"
+    },
+    "isolationFinal": {
+      "ok": true,
+      "checked": 4,
+      "keys": [
+        "--tmp-mpd-extension-lifecycle-MDJaGf-decoy--",
+        "--tmp-mpd-extension-lifecycle-MDJaGf-ws-b--",
+        "--tmp-mpd-extension-lifecycle-MDJaGf-ws-a--",
+        "--tmp-mpd-extension-lifecycle-MDJaGf-ws--"
+      ]
+    }
+  }
+}

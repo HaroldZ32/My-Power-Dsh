@@ -1,0 +1,42 @@
+=== the recomposed (hybrid) artifact's signature, measured 2026-09-17T04:25:35Z — read-only ===
+manifest: mtime 2026-09-17 10:56:59.067369444 +0800  sha256_16 13b0f32599c2795e
+packed files: 1188
+--- stamp (from the packed manifest's own field, via the twin scan) ---
+  packStampUtc: 2026-09-17T02:56:59.067Z | identical: 1185 | drift: 0 | noTwin: 1 | byDesign: 2 | ok: False
+--- A6-style detector: packed files whose mtime is NEWER than the manifest stamp ---
+  packed files newer than the stamp (7):
+    04:21:54.260 skills/dsh-qa/scripts/workmate-library.mjs
+    04:21:54.259 skills/dsh-qa/scripts/team-watchdog-fault.mjs
+    04:21:54.257 skills/dsh-qa/cases.json
+    04:21:54.255 packages/mpd-workmate-plugin/dist/index.js
+    04:21:54.254 agent-references/troubleshooting.md
+    02:56:59.067 package.json
+    02:56:59.067 cordis.patch.yml
+
+=== post-acceptance verification, 2026-09-17T04:28:20Z — instrument quoted by HASH (letters dropped per the new rule) ===
+instrument sha256_16: 6b4104e6104e12cb   mtime 2026-09-17 12:28:16.226026230 +0800
+--- their 'corpus frozen since 04:13Z' claim, re-measured ---
+  skills/** files newer than 2026-09-17T04:13:00Z: 0
+  shipped-tree files newer than 04:13:00Z (all trees): 0
+sort: write failed: 'standard output': Broken pipe
+sort: write error
+  newest shipped-tree write overall: 2026-09-17T12:12:36.0350378490 skills/dsh-qa/scripts/team-watchdog-fault.mjs
+--- PRE-PACK baseline in the CURRENT instrument's terms (hash-quoted) ---
+  instrument: 6b4104e6104e12cb
+  packStampUtc: 2026-09-17T02:56:59.067Z | identical: 1185 | drift: 0 | missing: ['skills/dsh-qa/scripts/watchdog-redesign.mjs', 'EXTENSIONS-FOR-AGENTS.md'] | noTwin: 1 | ok: False
+  exit code: 1
+
+=== FREEZE VERIFICATION + pre-pack baseline in the FROZEN instrument's terms (2026-09-17T04:30:36Z) ===
+instrument sha256: 6b4104e6104e12cbd6d75ea8abbb85cc1023e63105db3a1f7c75a5df9c42104a
+instrument sha256_16: 6b4104e6104e12cb   bytes: 15480   mtime: 2026-09-17 12:28:16.226026230 +0800
+expected per captain: 6b4104e6104e12cb…  15,480 B
+  packStampUtc: 2026-09-17T02:56:59.067Z
+  drift: 0 | missing: 2 | afterPack: [{'rel': 'agent-references/troubleshooting.md', 'mtime': '2026-09-17T04:21:54.254Z', 'manifestMtime': '2026-09-17T02:56:59.067Z'}, {'rel': 'packages/mpd-workmate-plugin/dist/index.js', 'mtime': '2026-09-17T04:21:54.255Z', 'manifestMtime': '2026-09-17T02:56:59.067Z'}, {'rel': 'skills/dsh-qa/cases.json', 'mtime': '2026-09-17T04:21:54.257Z', 'manifestMtime': '2026-09-17T02:56:59.067Z'}, {'rel': 'skills/dsh-qa/scripts/team-watchdog-fault.mjs', 'mtime': '2026-09-17T04:21:54.259Z', 'manifestMtime': '2026-09-17T02:56:59.067Z'}, {'rel': 'skills/dsh-qa/scripts/workmate-library.mjs', 'mtime': '2026-09-17T04:21:54.260Z', 'manifestMtime': '2026-09-17T02:56:59.067Z'}] | noTwin: 1 | byDesign: 2 | ok: False
+  afterPack named: []
+  all keys: ['afterPack', 'byDesign', 'drift', 'identical', 'missing', 'noTwin', 'ok', 'pack', 'packStampUtc', 'repo', 'rootFiles', 'rootFilesSource', 'symlinks']
+  exit: 1
+
+=== CLARIFICATION for t61's clause wording (from the frozen baseline above) ===
+`afterPack` is an ARRAY of {rel, mtime, manifestMtime} objects, not a count. So the post-pack clause is "**afterPack is EMPTY**" (equivalently `afterPack.length === 0`), and on the live hybrid today its LENGTH is 5 — naming exactly: agent-references/troubleshooting.md 04:21:54.254Z, packages/mpd-workmate-plugin/dist/index.js .255Z, skills/dsh-qa/cases.json .257Z, skills/dsh-qa/scripts/team-watchdog-fault.mjs .259Z, skills/dsh-qa/scripts/workmate-library.mjs .260Z — every one newer than manifestMtime 02:56:59.067Z.
+Frozen instrument (verified byte-exact against the captain's record): full sha256 6b4104e6104e12cbd6d75ea8abbb85cc1023e63105db3a1f7c75a5df9c42104a, sha256_16 6b4104e6104e12cb, 15,480 B, mtime 2026-09-17T04:28:16Z. JSON keys on this revision: afterPack, byDesign, drift, identical, missing, noTwin, ok, pack, packStampUtc, repo, rootFiles, rootFilesSource, symlinks.
+PRE-PACK BASELINE (frozen revision): packStampUtc 02:56:59.067Z, identical 1185, drift 0, missing 2, afterPack.length 5, noTwin 1, byDesign 2, ok false, exit 1.

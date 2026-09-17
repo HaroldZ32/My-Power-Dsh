@@ -1,0 +1,18 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-tov-0eIN3B",
+  "steps": {
+    "live": {
+      "ok": false,
+      "exit": 1
+    },
+    "expect": {
+      "ok": false,
+      "hits": []
+    },
+    "forbid": {
+      "ok": true,
+      "hits": []
+    }
+  }
+}

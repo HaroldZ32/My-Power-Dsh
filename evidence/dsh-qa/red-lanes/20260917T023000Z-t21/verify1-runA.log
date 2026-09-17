@@ -1,0 +1,8 @@
+[workmate-library] ok=true -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-17T02-51-03.089Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0}
+  flow: {"ok":true,"sample":"age. |  | So the file sandbox for bash is isolated: HOME=/tmp/mpd-wm-home-gfE1MK and the sandbox sees a private /tmp. The workmate library written by the plugin (running outside the sandbox) might be at the real /root/.mpd/workmate... but 
+  files: {"ok":true,"uses":2,"noteChars":226,"memoryChars":581,"note":"Deep Worker-based workmate \"alice\". Verilog counter specialist; also handles quick read-only repo orientation tasks (e.g. one-sentence README summaries). Last t","wmRoot":"/tmp/mpd-wm-home-gfE1MK/
+  isolation: {"ok":true,"realWm":"/root/.mpd/workmate","before":".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer","after":".archive,agent-teams-engineer,code-reviewer,docs-gat
+[workmate-library] PASS

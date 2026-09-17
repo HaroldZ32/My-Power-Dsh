@@ -6,6 +6,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url))))) // scripts/<domain>/<slug>/<file> -> repo root
 const FIXTURE = `# == base
@@ -40,7 +41,7 @@ function main() {
   if (expect.length === 0) { console.error("usage: mount-assert.mjs --expect=<substring> [--expect=...] | --self-test"); process.exit(2) }
 
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
-  const env = { ...process.env, DSH_HOME: sandbox }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
   if (!env.DSH_HOME.startsWith(sandbox)) { console.error("[mount-assert] isolation assertion failed: DSH_HOME does not point to the temp directory"); process.exit(1) }
 
   const run = spawnSync("dsh", ["--profile", "headless", "--dump-config"], { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })

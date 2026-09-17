@@ -1,0 +1,8 @@
+# t26 ATTEMPT 3 — full QA lane sweep (managed background job, stdio to this file)
+# started 2026-09-17T03:44:01Z  cwd=/root/dshProj/my-power-dsh
+# manifest sha256=919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86
+# command: node scripts/run-qa-lanes.mjs --suite=all --json --evidence-dir=evidence/dsh-qa/full-sweep/20260917T034900Z-t26-attempt3
+
+[mpd-qa:all] runner start manifest=skills/dsh-qa/cases.json sha256=919656a8cac1 lanes=33 evidence=evidence/dsh-qa/full-sweep/20260917T034900Z-t26-attempt3
+[mpd-qa:all] PASS case=agent-teams-adopt evidence=evidence/plan-c/c1-team/2026-09-17T03-44-01.860Z/web.log log=evidence/dsh-qa/full-sweep/20260917T034900Z-t26-attempt3/lanes/agent-teams-adopt.log ms=110503
+[mpd-qa:all] FAIL case=agent-teams-dispatch reason=exit-1 exit=1 evidence=evidence/dsh-qa/agent-teams-dispatch/2026-09-17T03-45-52.361Z log=evidence/dsh-qa/full-sweep/20260917T034900Z-t26-attempt3/lanes/agent-teams-dispatch.log ms=934665

@@ -1,0 +1,314 @@
+
+================================================================================
+== t15 — manifest-driven QA suite runner — attempt 1 (qa-lane-engineer), 2026-09-17T01:38:33Z
+================================================================================
+artifacts:
+d90dc10b5736e7025561f02f27c88840fda15ccefb04b636df6c856e70d374a3  scripts/run-qa-lanes.mjs
+919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86  skills/dsh-qa/cases.json
+701eed117d5102f37322219f09ae3ae5660d07c5e80ef0ba91ba6d809ec93308  skills/dsh-qa/SKILL.md
+b0b4ae0b378a67f28073a573da4d35892efd4764d8525f7be71f61f426f21a92  package.json
+
+================================================================================
+== BEFORE — the old wiring could not pass mount-assert (usage exit 2)
+================================================================================
+
+$ bun skills/dsh-qa/scripts/mount-assert.mjs --no-skip
+usage: mount-assert.mjs --expect=<substring> [--expect=...] | --self-test
+[exit 2]
+
+================================================================================
+== BEFORE — the old inline lane list vs the lanes on disk (drift)
+================================================================================
+
+$ node -e const fs=require("fs");const old=JSON.parse(fs.readFileSync("/tmp/oldpkg.json","utf8")).scripts["test:qa:all"];const listed=new Set((old.match(/for c in ([^;]+);/)||[])[1].split(/\s+/));const disk=fs.readdirSync("skills/dsh-qa/scripts").filter(f=>f.endsWith(".mjs")).map(f=>f.replace(/\.mjs$/,"")).sort();const un=disk.filter(c=>!listed.has(c));console.log("old inline list size:",listed.size,"| lanes on disk:",disk.length,"| present on disk but NEVER listed:",un.length);console.log("unlisted:",un.join(", "))
+old inline list size: 27 | lanes on disk: 44 | present on disk but NEVER listed: 17
+unlisted: agent-teams-messaging, explicit-team-trigger, extension-isolation, readonly-deny, team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-admission, tui-distribution, tui-mount, tui-panels, tui-settings-bridge, tui-spec-conformance, tui-team-surface
+[exit 0]
+
+================================================================================
+== RUNNER — --self-test (offline fixtures: classification, continue-past-failure, exit codes, drift, timeout)
+================================================================================
+
+$ node scripts/run-qa-lanes.mjs --self-test
+[run-qa-lanes self-test] ok: classification (pass/unavailable/fail), continue-past-failure, per-lane logs, exit codes 0/1/2/3, drift detection and the timeout guard verified on fixtures
+[exit 0]
+
+================================================================================
+== RUNNER — --list (registry: every lane with its suite or exclusion reason) and --check-drift
+================================================================================
+
+$ node scripts/run-qa-lanes.mjs --list
+manifest: skills/dsh-qa/cases.json (sha256 919656a8cac1)
+cases: 50 (44 lanes + 6 gates; the all suite selects 27 lanes + 6 gates)
+
+CASE	KIND	SUITES	SCRIPT
+agent-teams-adopt	lane	all	skills/dsh-qa/scripts/agent-teams-adopt.mjs
+agent-teams-dispatch	lane	all	skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+agent-teams-messaging	lane	-	skills/dsh-qa/scripts/agent-teams-messaging.mjs
+agent-teams-sidebar	lane	all	skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+bundle-lifecycle	lane	all	skills/dsh-qa/scripts/bundle-lifecycle.mjs
+codegraph-smoke	lane	all	skills/dsh-qa/scripts/codegraph-smoke.mjs
+dual-track-smoke	lane	all	skills/dsh-qa/scripts/dual-track-smoke.mjs
+explicit-team-trigger	lane	-	skills/dsh-qa/scripts/explicit-team-trigger.mjs
+extension-isolation	lane	-	skills/dsh-qa/scripts/extension-isolation.mjs
+extension-lifecycle	lane	all	skills/dsh-qa/scripts/extension-lifecycle.mjs
+extension-mcp-bridge	lane	all	skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+extension-template	lane	all	skills/dsh-qa/scripts/extension-template.mjs
+mcp-call	lane	all	skills/dsh-qa/scripts/mcp-call.mjs
+memory-smoke	lane	all	skills/dsh-qa/scripts/memory-smoke.mjs
+mount-assert	lane	all	skills/dsh-qa/scripts/mount-assert.mjs
+plan-c-smoke	lane	all	skills/dsh-qa/scripts/plan-c-smoke.mjs
+preset-conformance	lane	all	skills/dsh-qa/scripts/preset-conformance.mjs
+preset-register	lane	all	skills/dsh-qa/scripts/preset-register.mjs
+readonly-deny	lane	-	skills/dsh-qa/scripts/readonly-deny.mjs
+relocate-smoke	lane	all	skills/dsh-qa/scripts/relocate-smoke.mjs
+session-start-team	lane	all	skills/dsh-qa/scripts/session-start-team.mjs
+skill-catalog-probe	lane	all	skills/dsh-qa/scripts/skill-catalog-probe.mjs
+software-smoke	lane	all	skills/dsh-qa/scripts/software-smoke.mjs
+team-route-rewire	lane	all	skills/dsh-qa/scripts/team-route-rewire.mjs
+team-watchdog-boot	lane	-	skills/dsh-qa/scripts/team-watchdog-boot.mjs
+team-watchdog-config	lane	-	skills/dsh-qa/scripts/team-watchdog-config.mjs
+team-watchdog-fault	lane	-	skills/dsh-qa/scripts/team-watchdog-fault.mjs
+team-watchdog-heartbeat	lane	-	skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+team-watchdog-notify	lane	-	skills/dsh-qa/scripts/team-watchdog-notify.mjs
+team-watchdog-scene	lane	-	skills/dsh-qa/scripts/team-watchdog-scene.mjs
+tool-output-validation	lane	all	skills/dsh-qa/scripts/tool-output-validation.mjs
+tui-admission	lane	-	skills/dsh-qa/scripts/tui-admission.mjs
+tui-distribution	lane	-	skills/dsh-qa/scripts/tui-distribution.mjs
+tui-mount	lane	-	skills/dsh-qa/scripts/tui-mount.mjs
+tui-panels	lane	-	skills/dsh-qa/scripts/tui-panels.mjs
+tui-settings-bridge	lane	-	skills/dsh-qa/scripts/tui-settings-bridge.mjs
+tui-spec-conformance	lane	-	skills/dsh-qa/scripts/tui-spec-conformance.mjs
+tui-team-surface	lane	-	skills/dsh-qa/scripts/tui-team-surface.mjs
+ultrawork-smoke	lane	all	skills/dsh-qa/scripts/ultrawork-smoke.mjs
+vision-smoke	lane	all	skills/dsh-qa/scripts/vision-smoke.mjs
+web-client-adapt	lane	all	skills/dsh-qa/scripts/web-client-adapt.mjs
+web-settings-bridge	lane	all	skills/dsh-qa/scripts/web-settings-bridge.mjs
+workmate-library	lane	all	skills/dsh-qa/scripts/workmate-library.mjs
+workmate-team-member	lane	all	skills/dsh-qa/scripts/workmate-team-member.mjs
+qa-lane-drift	gate	all	-
+qa-runner-self-test	gate	all	-
+mpd-ext-self-test	gate	all	-
+mpd-ext-validate-example	gate	all	-
+mpd-ext-validate-template	gate	all	-
+pack-closure	gate	all	-
+
+outside every suite (17) — explicit, with reason:
+  - agent-teams-messaging: live fix lane (R1 message channel): plants real team records and re-runs a RED arm against a pre-fix tools.js, so it is heavier than the standing sweep — run it explicitly: node scripts/run-qa-lanes.mjs --only=agent-teams-messaging
+  - explicit-team-trigger: live fix lane (R4 explicit entry): boots the entry surface end to end — run it explicitly: node scripts/run-qa-lanes.mjs --only=explicit-team-trigger
+  - extension-isolation: shared proof helper for the three extension cases, not a case: it has no lane mode (without --self-test it does nothing and exits 0) — SKILL.md documents this — run it explicitly: node scripts/run-qa-lanes.mjs --only=extension-isolation
+  - readonly-deny: live fix lane (read-only spawn): starts a real child and measures the tool filter it really got — run it explicitly: node scripts/run-qa-lanes.mjs --only=readonly-deny
+  - team-watchdog-boot: team-watchdog lane: a real dsh spawn plus a live model call (heavy) — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-boot
+  - team-watchdog-config: team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-config
+  - team-watchdog-fault: team-watchdog lane: in-process over the built plugin dists and the verified fault fixture — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-fault
+  - team-watchdog-heartbeat: team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-heartbeat
+  - team-watchdog-notify: team-watchdog lane: payloads and built bytes only, in-process — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-notify
+  - team-watchdog-scene: team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-scene
+  - tui-admission: DSH-TUI edition lane: needs the dsh-tui binary plus a TUI sandbox profile (absent on a headless host) — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-admission
+  - tui-distribution: DSH-TUI edition lane: needs pnpm and the dsh-distribution protocol CLI — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-distribution
+  - tui-mount: DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile (the TUI refuses a non-TTY) — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-mount
+  - tui-panels: DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-panels
+  - tui-settings-bridge: DSH-TUI edition lane: judged against the built packages/mpd-tui-plugin dist — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-settings-bridge
+  - tui-spec-conformance: DSH-TUI edition lane: needs the populated dsh-ecosystem-spec checkout at the pinned revision — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-spec-conformance
+  - tui-team-surface: DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-team-surface
+
+drift unlistedScripts (0): none
+drift missingScripts (0): none
+[exit 0]
+
+$ node scripts/run-qa-lanes.mjs --check-drift
+[run-qa-lanes] manifest and disk agree (50 entries)
+[exit 0]
+
+================================================================================
+== REAL ARM 1 — all green (exit 0)
+================================================================================
+
+$ node scripts/run-qa-lanes.mjs --only mount-assert --evidence-dir=evidence/dsh-qa/suite-runner/20260917T013759Z-t15/arms-green
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=919656a8cac1 lanes=1 evidence=evidence/dsh-qa/suite-runner/20260917T013759Z-t15/arms-green
+[mpd-qa:(only)] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T01-38-35.565Z log=evidence/dsh-qa/suite-runner/20260917T013759Z-t15/arms-green/lanes/mount-assert.log ms=147
+[mpd-qa:(only)] summary selected=1 pass=1 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/suite-runner/20260917T013759Z-t15/arms-green
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+[exit 0]
+
+================================================================================
+== REAL ARM 2 — unavailable lane, reported with its reason (exit 2)
+================================================================================
+
+$ node scripts/run-qa-lanes.mjs --only=tui-mount --evidence-dir=evidence/dsh-qa/suite-runner/20260917T013759Z-t15/arms-unavailable
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=919656a8cac1 lanes=1 evidence=evidence/dsh-qa/suite-runner/20260917T013759Z-t15/arms-unavailable
+[mpd-qa:(only)] UNAVAILABLE case=tui-mount reason=absent-fixture exit=1 log=evidence/dsh-qa/suite-runner/20260917T013759Z-t15/arms-unavailable/lanes/tui-mount.log ms=142
+[mpd-qa:(only)] summary selected=1 pass=0 unavailable=1 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/suite-runner/20260917T013759Z-t15/arms-unavailable
+[mpd-qa:(only)] exit 2 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+[exit 2]
+
+================================================================================
+== CONTRACT VERIFY COMMAND — node scripts/run-qa-lanes.mjs --only mount-assert,agent-teams-adopt (captured run 20260917T013507Z-verify)
+================================================================================
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=919656a8cac1 lanes=2 evidence=evidence/dsh-qa/suite-runner/20260917T013507Z-verify
+[mpd-qa:(only)] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T01-35-07.619Z log=evidence/dsh-qa/suite-runner/20260917T013507Z-verify/lanes/mount-assert.log ms=168
+[mpd-qa:(only)] FAIL case=agent-teams-adopt reason=exit-1 exit=1 evidence=evidence/plan-c/c1-team/2026-09-17T01-35-07.700Z/web.log log=evidence/dsh-qa/suite-runner/20260917T013507Z-verify/lanes/agent-teams-adopt.log ms=129434
+[mpd-qa:(only)] summary selected=2 pass=1 unavailable=0 fail=1
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/suite-runner/20260917T013507Z-verify
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+
+================================================================================
+== REAL SWEEP — bun run test:qa:all (captured snapshot, still running at record time)
+================================================================================
+[mpd-qa:all] runner start manifest=skills/dsh-qa/cases.json sha256=919656a8cac1 lanes=33 evidence=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z
+[mpd-qa:all] FAIL case=agent-teams-adopt reason=exit-1 exit=1 evidence=evidence/plan-c/c1-team/2026-09-17T01-19-11.124Z/web.log log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/agent-teams-adopt.log ms=127498
+[mpd-qa:all] FAIL case=agent-teams-dispatch reason=exit-1 exit=1 evidence=evidence/dsh-qa/agent-teams-dispatch/2026-09-17T01-21-18.635Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/agent-teams-dispatch.log ms=907000
+[mpd-qa:all] PASS case=agent-teams-sidebar evidence=evidence/agent-teams/sidebar-migration/2026-09-17T01-36-25.632Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/agent-teams-sidebar.log ms=17024
+[mpd-qa:all] PASS case=bundle-lifecycle evidence=evidence/dsh-qa/bundle-lifecycle/2026-09-17T01-36-42.651Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/bundle-lifecycle.log ms=17002
+[mpd-qa:all] FAIL case=codegraph-smoke reason=exit-1 exit=1 evidence=evidence/dsh-qa/codegraph/2026-09-17T01-37-05.966Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/codegraph-smoke.log ms=6360
+[mpd-qa:all] FAIL case=dual-track-smoke reason=exit-1 exit=1 evidence=evidence/dsh-qa/llm-dual-track/deepseek/2026-09-17T01-37-15.981Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/dual-track-smoke.log ms=10013
+[mpd-qa:all] PASS case=extension-lifecycle evidence=evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/extension-lifecycle.log ms=32337
+[mpd-qa:all] PASS case=extension-mcp-bridge evidence=evidence/extensions/extension-mcp-bridge/2026-09-17T01-37-48.486Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/extension-mcp-bridge.log ms=6390
+[mpd-qa:all] PASS case=extension-template evidence=evidence/extensions/extension-template/2026-09-17T01-37-54.912Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/extension-template.log ms=8495
+[mpd-qa:all] FAIL case=mcp-call reason=exit-1 exit=1 evidence=evidence/dsh-qa/mcp-call/2026-09-17T01-38-19.048Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/mcp-call.log ms=15823
+[mpd-qa:all] FAIL case=memory-smoke reason=exit-1 exit=1 evidence=evidence/plan-c/c6-memory/2026-09-17T01-38-19.129Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/memory-smoke.log ms=9707
+[mpd-qa:all] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T01-38-28.943Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/mount-assert.log ms=156
+[mpd-qa:all] FAIL case=plan-c-smoke reason=exit-1 exit=1 evidence=evidence/plan-c/plan-c-smoke/2026-09-17T01-38-29.003Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/plan-c-smoke.log ms=4782
+
+================================================================================
+== SELF-TEST GATE — bun run test:qa is RED on exactly one lane: the wave's single re-pin signal
+================================================================================
+
+$ bun skills/dsh-qa/scripts/agent-teams-messaging.mjs --self-test
+[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=319/c0dab8641697 tree=320/3b41bda20d33 (re-pin in the same commit, AGENTS.md §9)
+[exit 1]
+
+================================================================================
+== SELF-TEST GATE — every OTHER self-test measured individually (summary of the loop)
+================================================================================
+$ for f in skills/dsh-qa/scripts/*.mjs (excluding agent-teams-messaging); do bun "$f" --self-test; done
+red self-tests besides agent-teams-messaging: 0
+
+================================================================================
+== RE-PIN MATH — verify-vendor's normalized-bytes algorithm: HEAD matches the lock, the working tree is the drift
+================================================================================
+
+$ node -e const fs=require("fs"),path=require("path"),crypto=require("crypto");function readBytes(p){const b=fs.readFileSync(p);if(!b.includes(0))return Buffer.from(b.toString("utf8").replace(/\r\n?/g,"\n"));return b}function listFiles(dir){const out=[];const walk=(d)=>{for(const e of fs.readdirSync(d)){const p=path.join(d,e);if(e==="node_modules")continue;if(e==="__pycache__"||e.endsWith(".pyc")||e.endsWith(".pyo"))continue;if(fs.statSync(p).isDirectory())walk(p);else out.push(p)}};walk(dir);return out}function fp(dir){const files=listFiles(dir);const rel=files.map(f=>f.slice(dir.length+1)).sort();const h=crypto.createHash("sha256");for(const f of rel)h.update(f+"\n"+crypto.createHash("sha256").update(readBytes(path.join(dir,f))).digest("hex")+"\n");return{count:files.length,treeSha:h.digest("hex")}}const lock=JSON.parse(fs.readFileSync("VENDOR_LOCK.json","utf8")).assets.skills;const head=fp(process.argv[1]+"/skills"),work=fp("skills");console.log("lock:   ",lock.fileCount,lock.treeSha);console.log("HEAD:   ",head.count,head.treeSha,"-> matches lock:",head.count===lock.fileCount&&head.treeSha===lock.treeSha);console.log("working:",work.count,work.treeSha) /tmp/tmp.F7F2bhgf59
+lock:    319 c0dab8641697b481e11379e084375721ceeea5b2f6beefc3c1d73196a21d61ff
+HEAD:    319 c0dab8641697b481e11379e084375721ceeea5b2f6beefc3c1d73196a21d61ff -> matches lock: true
+working: 320 3b41bda20d333d6842661c670604c2cd51c3aff754391dcfc330f1c8a0dfc7b3
+[exit 0]
+
+================================================================================
+== SWEEP SNAPSHOT — per-lane verdicts recorded so far (incremental result.json)
+================================================================================
+complete: false | recorded: 13 / 33 {"pass":6,"unavailable":0,"fail":7}
+  fail        agent-teams-adopt reason=exit-1 exit=1 ms=127498
+  fail        agent-teams-dispatch reason=exit-1 exit=1 ms=907000
+  pass        agent-teams-sidebar reason=- exit=0 ms=17024
+  pass        bundle-lifecycle reason=- exit=0 ms=17002
+  fail        codegraph-smoke reason=exit-1 exit=1 ms=6360
+  fail        dual-track-smoke reason=exit-1 exit=1 ms=10013
+  pass        extension-lifecycle reason=- exit=0 ms=32337
+  pass        extension-mcp-bridge reason=- exit=0 ms=6390
+  pass        extension-template reason=- exit=0 ms=8495
+  fail        mcp-call reason=exit-1 exit=1 ms=15823
+  fail        memory-smoke reason=exit-1 exit=1 ms=9707
+  pass        mount-assert reason=- exit=0 ms=156
+  fail        plan-c-smoke reason=exit-1 exit=1 ms=4782
+
+================================================================================
+== ROOT CAUSE OF THE LIVE-LANE REDS — the T-58 credential class (not a runner defect)
+================================================================================
+$ bash -c "echo \${DEEPSEEK_API_KEY:-ABSENT}"   # non-interactive shell
+ABSENT
+$ bash -lc "echo \${DEEPSEEK_API_KEY:-ABSENT}"  # login shell
+ABSENT
+
+$ grep -oh "MISSING_CREDENTIAL[^\\"]*" evidence/dsh-qa/mcp-call/2026-09-17T01-38-19.048Z/*.log evidence/dsh-qa/codegraph/2026-09-17T01-37-05.966Z/*.log
+MISSING_CREDENTIAL: llm-deepseek: no API key for provider route 
+
+every such lane reds in the sweep, and the runner reports ALL of them instead of stopping at the first
+
+================================================================================
+== FINAL SWEEP RESULT — all 33 entries reached (the old for-loop died at lane 1 of 27)
+================================================================================
+$ bun run test:qa:all   # job SWEEP_EXIT=1, runner exit 1 = some failed
+[mpd-qa:all] PASS case=mpd-ext-validate-example log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/mpd-ext-validate-example.log ms=66
+[mpd-qa:all] PASS case=mpd-ext-validate-template log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/mpd-ext-validate-template.log ms=77
+[mpd-qa:all] PASS case=pack-closure log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/pack-closure.log ms=86
+[mpd-qa:all] summary selected=33 pass=21 unavailable=0 fail=12
+[mpd-qa:all] evidence -> evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z
+[mpd-qa:all] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+
+FAILING LANES AND THE ROOT CAUSE FOUND IN EACH LANE'S OWN EVIDENCE:
+  agent-teams-adopt        MISSING_CREDENTIAL (T-58 credential class)
+  agent-teams-dispatch     MISSING_CREDENTIAL (T-58 credential class)
+  codegraph-smoke          MISSING_CREDENTIAL (T-58 credential class)
+  dual-track-smoke         MISSING_CREDENTIAL (T-58 credential class)
+  mcp-call                 MISSING_CREDENTIAL (T-58 credential class)
+  memory-smoke             MISSING_CREDENTIAL (T-58 credential class)
+  plan-c-smoke             MISSING_CREDENTIAL (T-58 credential class)
+  tool-output-validation   MISSING_CREDENTIAL (T-58 credential class)
+  ultrawork-smoke          MISSING_CREDENTIAL (T-58 credential class)
+  vision-smoke             -
+  workmate-library         MISSING_CREDENTIAL (T-58 credential class)
+  workmate-team-member     MISSING_CREDENTIAL (T-58 credential class)
+  (agent-teams-adopt carries BOTH the credential error and its pre-existing 'webRoute 401 unauthorized', measured red by t3 before the wave)
+
+== POST-VERIFICATION UPDATE ==
+runner sha256 (final, with the prerequisite classifier): f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e
+$ node scripts/run-qa-lanes.mjs --only agent-teams-adopt,mcp-call,dual-track-smoke,mount-assert   # real lanes
+[mpd-qa:(only)] FAIL case=agent-teams-adopt reason=unauthorized prereq="HTTP 401 / unauthorized route" signature=(the lane's own stdout):11 also=absent-credentials exit=1 evidence=evidence/plan-c/c1-team/2026-09-17T01-50-10.758Z/web.log log=evidence/dsh-qa/credentials/20260917T015010Z-before-runner/lanes/agent-teams-adopt.log ms=127909
+[mpd-qa:(only)] UNAVAILABLE case=mcp-call reason=absent-credentials prereq="provider credential (DEEPSEEK_API_KEY / deepseek-official route)" signature=evidence/dsh-qa/mcp-call/2026-09-17T01-52-33.792Z/call.log:11 exit=1 evidence=evidence/dsh-qa/mcp-call/2026-09-17T01-52-33.792Z log=evidence/dsh-qa/credentials/20260917T015010Z-before-runner/lanes/mcp-call.log ms=15184
+[mpd-qa:(only)] UNAVAILABLE case=dual-track-smoke reason=absent-credentials prereq="provider credential (DEEPSEEK_API_KEY / deepseek-official route)" signature=evidence/dsh-qa/llm-dual-track/official/2026-09-17T01-52-38.871Z/output.log:11 exit=1 evidence=evidence/dsh-qa/llm-dual-track/deepseek/2026-09-17T01-52-44.413Z log=evidence/dsh-qa/credentials/20260917T015010Z-before-runner/lanes/dual-track-smoke.log ms=10599
+[mpd-qa:(only)] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T01-52-45.028Z log=evidence/dsh-qa/credentials/20260917T015010Z-before-runner/lanes/mount-assert.log ms=617
+[mpd-qa:(only)] summary selected=4 pass=1 unavailable=2 fail=1
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+
+== AMENDED CONTRACT RE-RUN (2026-09-17T02:21:27Z) ==
+$ node scripts/run-qa-lanes.mjs --self-test
+[run-qa-lanes self-test] ok: classification (pass/unavailable/fail), continue-past-failure, per-lane logs, exit codes 0/1/2/3, drift detection and the timeout guard verified on fixtures
+[exit 0]
+$ node scripts/run-qa-lanes.mjs --list
+manifest: skills/dsh-qa/cases.json (sha256 919656a8cac1)
+cases: 50 (44 lanes + 6 gates; the all suite selects 27 lanes + 6 gates)
+
+[exit 0]
+$ node scripts/run-qa-lanes.mjs --check-drift
+[run-qa-lanes] manifest and disk agree (50 entries)
+[exit 0]
+$ node scripts/run-qa-lanes.mjs --only mount-assert
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=919656a8cac1 lanes=1 evidence=evidence/dsh-qa/suite-runner/20260917T013759Z-t15/amended-mount-assert
+[mpd-qa:(only)] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T02-21-29.260Z log=evidence/dsh-qa/suite-runner/20260917T013759Z-t15/amended-mount-assert/lanes/mount-assert.log ms=143
+[mpd-qa:(only)] summary selected=1 pass=1 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/suite-runner/20260917T013759Z-t15/amended-mount-assert
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+[exit 0]
+
+== ACCEPTANCE ITEM 6 (AMENDED): the dirty-corpus reading, recorded verbatim ==
+This is the EXPECTED state while skills/** is dirty: the wave re-pins VENDOR_LOCK.json ONCE, at commit time, after every skills/** edit is final. It is not a defect of t15.
+
+READING A — t15-era tree (my cases.json added, t17 not yet):
+  [agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=319/c0dab8641697 tree=320/3b41bda20d33 (re-pin in the same commit, AGENTS.md §9)
+  LF-NORMALIZED tree fingerprint: 320 files / 3b41bda20d333d6842661c670604c2cd51c3aff754391dcfc330f1c8a0dfc7b3
+READING B — current tree (after t17's lib/credentials.mjs + 25 lane edits):
+  [agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=319/c0dab8641697 tree=321/2fadfe92081a (re-pin in the same commit, AGENTS.md §9)
+  LF-NORMALIZED tree fingerprint: 321 files / 2fadfe92081a1339b74024e9bba237bc4e1f735f697bc7b0fbb76adfe21d4028
+  RAW-BYTES fingerprint of the SAME current tree: 321 cce3cde36ad31b16b2eea5d0e274a950175ffc8c1c67c69a3c4df6252f3e39d8  (differs — see the warning)
+
+WARNING — USE THE LF-NORMALIZED ALGORITHM FOR THE RE-PIN:
+  The gate's algorithm is scripts/verify-vendor.mjs's listFiles() + readBytes(): skips node_modules/__pycache__/*.pyc/*.pyo, and hashes TEXT files after CRLF->LF normalization (.gitattributes declares eol=lf).
+  A RAW-bytes hash of the same corpus yields a DIFFERENT number — measured for the t15-era tree: raw b283f614fd952ea7b70fb46ce484be09634cba51a2d108d0dcf88cd9f23515b3 vs normalized 3b41bda20d333d6842661c670604c2cd51c3aff754391dcfc330f1c8a0dfc7b3.
+  A raw-bytes re-pin would therefore leave verify:vendor and agent-teams-messaging --self-test RED while looking like a completed re-pin: the gate would LIE. Use node scripts/repin-vendor.mjs (derived, --check/--write) so the algorithm is the gate's own.
+
+BASELINE: HEAD's corpus matches the lock exactly (319 files / c0dab8641697b481e11379e084375721ceeea5b2f6beefc3c1d73196a21d61ff), so this red is caused ONLY by the wave's skills/** edits.
+
+AMENDED VERIFY CHECKS (fresh, on sha256 run-qa-lanes.mjs=f60ef2b54ff7bb5d…, cases.json=919656a8cac131c6…): self-test 0, --list 0, --check-drift 0 (manifest and disk agree, 50 entries), --only mount-assert 0 (PASS, 143 ms).
+
+== THE THREE VENDOR READINGS FOR THIS WAVE (algorithm, not number) ==
+The invariant is the ALGORITHM (scripts/verify-vendor.mjs: LF-normalized bytes) plus a re-pin RECOMPUTED AT COMMIT TIME on a frozen corpus — never a quoted number. Each reading below was true only at its own moment:
+  A. 320 files / 3b41bda20d333d6842661c670604c2cd51c3aff754391dcfc330f1c8a0dfc7b3 — measured by qa-lane-engineer at 2026-09-17T01:19-01:43Z, after t15's cases.json (the reading recorded for acceptance item 6).
+  B. ee716c0d… — reported by the captain as measured while t18 ran (docs-gate-engineer); recorded here with attribution, not as my measurement.
+  C. 321 files / 2fadfe92081a1339b74024e9bba237bc4e1f735f697bc7b0fbb76adfe21d4028 — measured by qa-lane-engineer at 2026-09-17T02:19Z, after t17's lib/credentials.mjs + 25 lane wirings.
+  D. 322 files / dac07fdbd8277ba325dddd3ea48f1fb728cbc0bdaf3d91422153d38fa2db4a25 — measured by qa-lane-engineer at 2026-09-17T02:40Z, after t21's workmate-library/extension-template/immutable-output edits (the FINAL reading of lane C).
+RAW-BYTES COUNTER-EXAMPLE (why the algorithm matters): hashing the SAME corpus without CRLF→LF normalization yields a DIFFERENT number (measured on the t15-era tree: b283f614fd952ea7b70fb46ce484be09634cba51a2d108d0dcf88cd9f23515b3) — a raw re-pin would leave verify:vendor AND agent-teams-messaging --self-test red while appearing complete: the gate would lie.
+
+ACCEPTANCE ITEM 6 (amended) STATUS: the single test:qa red is recorded verbatim with its moment and is the EXPECTED state of a dirty corpus; VENDOR_LOCK.json was NOT written by t15 (captain step). No further skills/** edits from qa-lane-engineer after reading D.

@@ -1,0 +1,65 @@
+{
+  "task": "packaging-engineer / lane E — reconcile the TWO distinct 26s that surround AGENTS.md §6's bun-build path-comment sentence, and correct the class-label conflation in my own t11 refutation",
+  "measuredAtUtc": "2026-09-17T03:49:14Z",
+  "hostOffset": "+0800",
+  "readonly": true,
+  "artifacts": [
+    {
+      "path": "dist/mpd-package/packages/mpd-ext-plugin/dist/index.js",
+      "bytes": 152855,
+      "sha256_16": "f6097fd3383f2fa7",
+      "pathComments": 13,
+      "distinctPaths": 11,
+      "allSlashSlashLines": 13
+    },
+    {
+      "path": "dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js",
+      "bytes": 153262,
+      "sha256_16": "7128166c28b1b4ce",
+      "pathComments": 13,
+      "distinctPaths": 11,
+      "allSlashSlashLines": 16,
+      "extraNonPathCommentLines": "3 — the packer-authored shim header at lines 3920-3922 ('Appended by scripts/pack-mpd.mjs (VALIDATOR_SHIM_EXPORTS) …', 'this compiled validator …', 'Do not edit the packed copy — it is regenerated on every pack.')"
+    },
+    {
+      "path": "packages/mpd-ext-plugin/dist/index.js",
+      "bytes": 152855,
+      "sha256_16": "f6097fd3383f2fa7",
+      "pathComments": 13,
+      "distinctPaths": 11,
+      "allSlashSlashLines": 13,
+      "note": "byte-identical to the packed copy — the ext-plugin pair is NOT in the artifact's drift set, so artifact bytes == checkout bytes here"
+    }
+  ],
+  "classLabels": {
+    "pathComments": "grep -cE '^// .*\\.(ts|js)$'",
+    "allSlashSlashLines": "grep -cE '^// '"
+  },
+  "theTwoTwentySixes": {
+    "diffSide": {
+      "value": 26,
+      "class": "diff-output lines",
+      "origin": "13 differing POSITIONS x 2 sides of the diff (13 removed + 13 added) between the canonical repo-root form and the package-directory form of ONE build; both builds are 3918 lines, so nothing shifts",
+      "owner": "docs-gate-engineer / the captain's A1 finding, repaired as t66",
+      "status": "this is the reading AGENTS.md §6 now names ('a diff of the two comment lists prints 26 lines'), and it is the only reading consistent with the sentence's 'in the mpd-ext-plugin build'"
+    },
+    "artifactWide": {
+      "value": 26,
+      "class": "path-comment LINES summed across the two stored copies",
+      "origin": "the packed tree stores the shipped bundle twice: packages/mpd-ext-plugin/dist/index.js (13 path comments) + the packer-generated dist/validator.js (13 path comments)",
+      "owner": "my t11 record, buildFormMatrix.pathCommentCounts_correctionToAGENTS6.originOfTheTwentySix",
+      "caveat": "valid ONLY for the path-comment class: validator.js carries 16 `//` lines (13 path comments + the 3-line shim header), so the artifact's total `//`-line count is 29; and it is NOT one build's count, so it must never be substituted into §6's sentence"
+    }
+  },
+  "correctionOfMyOwnRefutation": {
+    "whatMyT11EvidenceSaid": "buildFormMatrix.pathCommentCounts_correctionToAGENTS6.REFUTED_myTwoCopyInterpretation recorded myReVerification { validatorJs_totalCommentLines: 16, validatorJs_pathComments: 13 } and a correctReading that called the two-copy sum's premise wrong ('validator.js has 16 comment lines, not 13')",
+    "whatIsWrong": "the refutation conflated classes: as a statement about PATH COMMENTS the two-copy sum is exactly right (13 + 13 = 26). The only error in my original phrasing was the class noun, not the arithmetic",
+    "whatStandsFromTheRefutation": "§6's sentence speaks of ONE build, so its 26 can only be the diff-side count; the artifact sum must not be re-worded into §6. t66's text as landed is correct",
+    "recordingRule": "always name the class with the number: 'path comments' (13 per stored copy), 'all // lines' (13 vs 16), 'diff-output lines' (26 = 13 x 2 sides)"
+  },
+  "packedStatusOfThisMeasurement": {
+    "evidenceIsNotPacked": true,
+    "note": "evidence/** is outside the packed set (the artifact ships packages/, skills/, presets/, extensions/, templates/, docs/, agent-references/, scripts/ and four root files), so this record cannot age the pack or redden the twin scan"
+  },
+  "bounds": "read-only counts against the artifact as packed at 02:56:59.067Z; two independent grep patterns agree on 13/11 for each copy (mine: `grep -oE '^// [A-Za-z0-9_./-]+\\.(ts|js)$' | sort -u`; docs-gate-engineer's: `grep -cE '^// .*\\.(ts|js)$'`); no writer touched either file since the pack, so these counts are also the checkout's"
+}

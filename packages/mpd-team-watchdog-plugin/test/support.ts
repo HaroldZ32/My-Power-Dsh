@@ -36,8 +36,11 @@ export interface TeamFixture {
   halted?: boolean
   haltedAt?: number
   captainSessionId?: string
+  /** T-16: the record's own generation floor (absent = permissive, §0/A3). */
+  createdAt?: number
+  approvedAt?: number
   members: Array<{ id: string; name: string; status?: string }>
-  tasks: Array<{ id: string; status: string; assignee?: string; attempt?: number; attemptId?: string }>
+  tasks: Array<{ id: string; status: string; assignee?: string; attempt?: number; attemptId?: string; dependencies?: string[] }>
 }
 
 /** Write a team record into the sandbox's adopted state root. */
@@ -48,6 +51,8 @@ export function writeTeam(box: Sandbox, team: TeamFixture): string {
     id: team.id,
     name: team.name ?? team.id,
     phase: team.phase ?? "running",
+    ...(team.createdAt === undefined ? {} : { createdAt: team.createdAt }),
+    ...(team.approvedAt === undefined ? {} : { approvedAt: team.approvedAt }),
     ...(team.halted === undefined ? {} : { halted: team.halted }),
     ...(team.haltedAt === undefined ? {} : { haltedAt: team.haltedAt }),
     ...(team.captainSessionId === undefined ? {} : { captainSessionId: team.captainSessionId }),
@@ -82,6 +87,12 @@ export interface StubAdapter {
   toolExecutes: string[]
   setSettings: (value: unknown) => void
   emitSettings: () => void
+  /**
+   * Dispatch one adapter event (`session/event`, `agent/assistant-stream`, …) to the
+   * listeners this stub registered, exactly as the harness's emit dispatch does.
+   * Returns how many listeners were called.
+   */
+  emit: (event: string, ...args: unknown[]) => number
 }
 
 /**
@@ -96,6 +107,7 @@ export function stubAdapter(options: StubOptions): StubAdapter {
   const post: Array<(exec: any, result: any, downstream: any) => unknown> = []
   const settingsListeners: Array<(revision?: number, source?: string) => void> = []
   const toolExecutes: string[] = []
+  const eventListeners = new Map<string, Array<(...args: unknown[]) => unknown>>()
   let settings = options.settings
   const adapter = {
     workspaceRoot: (exec?: unknown) => {
@@ -129,6 +141,15 @@ export function stubAdapter(options: StubOptions): StubAdapter {
         if (index >= 0) post.splice(index, 1)
       }
     },
+    onEvent: (event: string, handler: (...args: unknown[]) => unknown) => {
+      const list = eventListeners.get(event) ?? []
+      list.push(handler)
+      eventListeners.set(event, list)
+      return () => {
+        const index = list.indexOf(handler)
+        if (index >= 0) list.splice(index, 1)
+      }
+    },
     toolRuntime: () => ({
       get: (toolName: string) => tools.get(toolName),
       execute: async (input: { name: string; arguments?: unknown }) => {
@@ -153,7 +174,35 @@ export function stubAdapter(options: StubOptions): StubAdapter {
     emitSettings: () => {
       for (const listener of settingsListeners) listener(2, "user")
     },
+    emit: (event: string, ...args: unknown[]) => {
+      let called = 0
+      for (const listener of eventListeners.get(event) ?? []) {
+        listener(...args)
+        called += 1
+      }
+      return called
+    },
   }
+}
+
+/**
+ * Open an OUTSTANDING channel for one member session: a turn and a step with NO committed
+ * assistant answer.
+ *
+ * That is the ONLY state the §3 ladder may warn or escalate from, so any test that expects a
+ * WARN, an ESCALATE or a hold must open one. A member with no channel evidence at all now runs
+ * the §4 report-only fallback, which may WARN and can NEVER hold — the behaviour this wave
+ * exists to guarantee.
+ *
+ * @param stub - the stub adapter whose `emit` reaches the engine's fold.
+ * @param sessionId - the member session id the team record carries.
+ * @param at - the request's start (ms), i.e. the moment it became OUTSTANDING.
+ * @returns the number of listeners each event reached.
+ */
+export function openOutstandingChannel(stub: StubAdapter, sessionId: string, at: number, turn = 1, step = 1): number {
+  const first = stub.emit("session/event", { id: sessionId }, { type: "turn/start", seq: 1, time: at, data: { turn } })
+  const second = stub.emit("session/event", { id: sessionId }, { type: "step/start", seq: 2, time: at, data: { turn, step } })
+  return first + second
 }
 
 /** Engine config with the fast, deterministic test values. */
@@ -167,8 +216,10 @@ export function testConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     actionOnEscalate: "pause",
     teamCacheMs: 0,
     keepGenerations: 3,
+    deadTeamGraceMs: 86_400_000,
     logPrefix: "mpd-team-watchdog-test",
     toolInFlightMaxMs: 900_000,
+    holdTtlMs: 900_000,
     ...overrides,
   }
 }

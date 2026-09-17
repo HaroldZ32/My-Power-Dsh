@@ -1,0 +1,1332 @@
+{
+  "task": "t11 (attempt 1, attempt_id dc81a3c6-05e8-426a-92ee-26fd61224fb3)",
+  "wave": "friction-p1-wave lane E",
+  "coverageOf": [
+    "T-35",
+    "T-36",
+    "T-45",
+    "T-51"
+  ],
+  "generatedAt": "2026-09-17T01:29:41Z",
+  "changedFiles": {
+    "docs/development.md": {
+      "sha256": "fa8f43517e33fb63c05fd47055f9ff7c4de59e1c67390464585ebc59d813ca6f",
+      "bytes": 19118
+    },
+    "docs/development.zh-CN.md": {
+      "sha256": "903840c1361ee511b9d59c344f6157216e510f346b6641ffb1e5d0841c201ea2",
+      "bytes": 18400
+    },
+    "docs/extension-adaptation-report.md": {
+      "sha256": "27c64764ab352c9e142a7e066ef950d8b676cc86f6bacac733acdb462260035e",
+      "bytes": 36523
+    },
+    "docs/extension-adaptation-report.zh-CN.md": {
+      "sha256": "03ea15480c7cc1631d9ad7b2ce43643b67ae636b710469cf53f88b807a8fb078",
+      "bytes": 35899
+    },
+    "docs/extension-authoring-guide.md": {
+      "sha256": "4cee8e61dafe784084e6fdcb62f9306d8bef43de3c9c5f4dcb92964d90b99380",
+      "bytes": 17515
+    },
+    "docs/extension-authoring-guide.zh-CN.md": {
+      "sha256": "cb9ea42a509095d09db8de6f7d25bfe7b35ca52c4341403181ceb90bae3559eb",
+      "bytes": 17388
+    },
+    "docs/user-guide.md": {
+      "sha256": "2a2ad81fad81e9effb3960f44e8333c173a755399999fd2a4b631ead57b0f625",
+      "bytes": 29093
+    },
+    "docs/user-guide.zh-CN.md": {
+      "sha256": "82fb519e82ef928304f4b327983a868023ef84a092ca47f9b9507cf62a62b681",
+      "bytes": 28925
+    },
+    "scripts/mpd-ext.mjs": {
+      "sha256": "e9e5c78007e886107b5f5b932c7d0eb2e92105994e24004bb85cf03a2671e262",
+      "bytes": 35406
+    },
+    "scripts/pack-mpd.mjs": {
+      "sha256": "b4aff7cc81c030adca0cd3d29df9a3901c62cd4ad401d4c7fdc89178d88e7e68",
+      "bytes": 28500
+    },
+    "scripts/verify-pack-closure.mjs": {
+      "sha256": "b7f940b422d34bda1a7d615394f9289e4f23c90e8868417447bffcac30a589cd",
+      "bytes": 43847
+    }
+  },
+  "before": {
+    "pack": {
+      "cmd": "npm run pack",
+      "exit": 0,
+      "note": "packed BEFORE the fix: exits 0 while the tree lacks templates/ and docs/ \u2014 the silent-omission class (T-38)"
+    },
+    "cliInPackedTree": [
+      {
+        "cmd": "bun dist/mpd-package/scripts/mpd-ext.mjs validate dist/mpd-package/extensions/mpd-ext-example",
+        "exit": 1,
+        "stderr": "error: Cannot find module '\u2026/dist/mpd-package/packages/mpd-ext-plugin/src/registry.ts' (T-51)"
+      },
+      {
+        "cmd": "bun dist/mpd-package/scripts/mpd-ext.mjs validate dist/mpd-package/templates/mpd-extension",
+        "exit": 1,
+        "stderr": "same Cannot find module (and the template is not packed either)"
+      },
+      {
+        "cmd": "bun dist/mpd-package/scripts/mpd-ext.mjs --self-test",
+        "exit": 1,
+        "stderr": "same Cannot find module"
+      },
+      {
+        "cmd": "bun dist/mpd-package/scripts/mpd-ext.mjs scaffold probe-ext --dir <evidence-raw>",
+        "exit": 1,
+        "stderr": "same Cannot find module"
+      },
+      {
+        "cmd": "node dist/mpd-package/scripts/mpd-ext.mjs --self-test",
+        "exit": 1,
+        "stderr": "ERR_MODULE_NOT_FOUND (node cannot load the .ts source either)"
+      }
+    ],
+    "packedTreeContents": {
+      "templates": "ABSENT (ls exit 2)",
+      "docs": "ABSENT (ls exit 2)"
+    },
+    "closureChecker": {
+      "cmd": "node scripts/verify-pack-closure.mjs",
+      "exit": 0,
+      "note": "blind to both omissions BEFORE the change"
+    },
+    "rawLog": "evidence/pack-closure/impl/20260917T011849Z/raw/before/output.log"
+  },
+  "after": {
+    "note": "every command below was run against a REAL `npm run pack` output in dist/mpd-package (evidence: raw/final/*.log)",
+    "verifyCommands": [
+      {
+        "cmd": "npm run pack",
+        "exit": 0,
+        "observed": "[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle; 1183 files; staged -> dist/mpd-package"
+      },
+      {
+        "cmd": "bun dist/mpd-package/scripts/mpd-ext.mjs validate dist/mpd-package/extensions/mpd-ext-example",
+        "exit": 0,
+        "observed": "[mpd-ext] ok \u2014 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)"
+      },
+      {
+        "cmd": "bun dist/mpd-package/scripts/mpd-ext.mjs validate dist/mpd-package/templates/mpd-extension",
+        "exit": 0,
+        "observed": "[mpd-ext] ok \u2014 the packed scaffold template loads with all four kinds"
+      },
+      {
+        "cmd": "bun dist/mpd-package/scripts/mpd-ext.mjs --self-test",
+        "exit": 0,
+        "observed": "[mpd-ext] --self-test passed (53 checks) [validator: compiled]"
+      },
+      {
+        "cmd": "node dist/mpd-package/scripts/mpd-ext.mjs --self-test",
+        "exit": 0,
+        "observed": "same 53 checks under plain node (the compiled entry needs no TS loader)"
+      },
+      {
+        "cmd": "bun dist/mpd-package/scripts/mpd-ext.mjs scaffold final-demo --dir <evidence>/raw/final/scaffold",
+        "exit": 0,
+        "observed": "wrote mpd-ext.json + skills/<name>-skill/SKILL.md + flows + personas from the PACKED template"
+      },
+      {
+        "cmd": "bun dist/mpd-package/scripts/mpd-ext.mjs validate <scaffold>/final-demo",
+        "exit": 0,
+        "observed": "[mpd-ext] ok"
+      },
+      {
+        "cmd": "bun dist/mpd-package/scripts/mpd-ext.mjs --validator",
+        "exit": 0,
+        "observed": "validator: compiled \u2014 dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js"
+      },
+      {
+        "cmd": "node scripts/verify-pack-closure.mjs",
+        "exit": 0,
+        "observed": "17 dist rows + 1 adopted + 4 mcp rows resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS exist; root assets skills/presets/extensions/templates/docs declared and present; CLI validator surface 9 exports in step; packed tree \u2026 (373 asset files)"
+      },
+      {
+        "cmd": "node scripts/verify-pack-closure.mjs --self-test",
+        "exit": 0,
+        "observed": "14/14 arms PASS (8 legacy + flipped-templates arm + shim-drift arm + 5 packed-tree arms)"
+      },
+      {
+        "cmd": "bun run verify:docs",
+        "exit": 0,
+        "observed": "pairs=37 failed=0 violations=0 exempt=17 \u2014 PASS"
+      },
+      {
+        "cmd": "node scripts/verify-docs-parity.mjs --root dist/mpd-package",
+        "exit": 0,
+        "observed": "pairs=35 failed=0 violations=0 \u2014 the PACKED doc set has no half pair"
+      },
+      {
+        "cmd": "bun scripts/mpd-ext.mjs --self-test (checkout)",
+        "exit": 0,
+        "observed": "[mpd-ext] --self-test passed (53 checks) [validator: source] \u2014 the checkout behaviour is unchanged"
+      },
+      {
+        "cmd": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example (checkout)",
+        "exit": 0,
+        "observed": "[mpd-ext] ok"
+      }
+    ],
+    "packedManifest": {
+      "files": [
+        "packages/**",
+        "skills/**",
+        "presets/**",
+        "extensions/**",
+        "templates/**",
+        "docs/**",
+        "scripts/**",
+        "cordis.patch.yml",
+        "LICENSE.md",
+        "LICENSE-NOTICES.md",
+        "README.md",
+        "README.zh-CN.md"
+      ],
+      "exports_asset_keys": [
+        "./templates/*",
+        "./docs/*"
+      ]
+    },
+    "packedTreeTopLevel": [
+      "LICENSE-NOTICES.md",
+      "LICENSE.md",
+      "README.md",
+      "README.zh-CN.md",
+      "cordis.patch.yml",
+      "docs",
+      "extensions",
+      "package.json",
+      "packages",
+      "presets",
+      "scripts",
+      "skills",
+      "templates"
+    ],
+    "packedCounts": {
+      "templatesFiles": 7,
+      "docsFiles": 37,
+      "docsPairsWithTwin": "all 12 bilingual pairs present (parity gate: pairs=35 failed=0)",
+      "validatorEntry": {
+        "path": "packages/mpd-ext-plugin/dist/validator.js",
+        "sha256": "910b83dede249acca85b3d577242b5491a5dc70719c8704c7b40f9243c3ea129",
+        "bytes": 151500
+      }
+    },
+    "rawLog": "evidence/pack-closure/impl/20260917T011849Z/raw/final/verify.log"
+  },
+  "negativeControls": [
+    {
+      "name": "packer FAIL arm (source-side, seeded on a copy of the packer whose ROOT_ASSET_DIRS names a missing dir)",
+      "exit": 1,
+      "observed": "[pack-mpd] FAIL: missing <repo>/templates-absent \u2014 the packed tree must carry <root>/templates-absent (see ROOT_ASSET_DIRS)",
+      "log": "evidence/pack-closure/impl/20260917T011849Z/raw/final/source-negative-control.log"
+    },
+    {
+      "name": "clean copy of the REAL artifact (positive control for the packed half)",
+      "exit": 0,
+      "observed": "packed tree: <copy> (373 asset files)",
+      "log": "evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control.log"
+    },
+    {
+      "name": "seeded missing: templates/mpd-extension/mpd-ext.json",
+      "exit": 1,
+      "observed": "TEMPLATES (scaffold would have nothing to copy) + TREE-DRIFT naming mpd-extension/mpd-ext.json",
+      "log": "evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control.log"
+    },
+    {
+      "name": "seeded missing: docs/user-guide.zh-CN.md (half pair)",
+      "exit": 1,
+      "observed": "DOC-PAIR \u2014 docs/user-guide.md shipped without its twin",
+      "log": "evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control.log"
+    },
+    {
+      "name": "seeded manifest drift: `templates/**` removed from the packed files list",
+      "exit": 1,
+      "observed": "MANIFEST \u2014 <packed>/templates is in the artifact but no `files` pattern covers it",
+      "log": "evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control.log"
+    },
+    {
+      "name": "seeded missing: the CLI's compiled validator entry",
+      "exit": 1,
+      "observed": "CLI-VALIDATOR \u2014 validate/scaffold/--self-test would all die on the missing validator (T-51)",
+      "log": "evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control.log"
+    },
+    {
+      "name": "verify-pack-closure --self-test fixture arms",
+      "exit": 0,
+      "observed": "14/14 arms (fixture packed tree positive control + half pair + missing template manifest + unlisted file + absent pattern + missing validator + --require-packed)",
+      "log": "evidence/pack-closure/impl/20260917T011849Z/raw/final/verify.log"
+    }
+  ],
+  "residuals": [
+    "The packed CLI validates from a GENERATED compiled entry: scripts/pack-mpd.mjs appends ONE `export { \u2026 }` line to a copy of the shipped bundle (packages/mpd-ext-plugin/dist/validator.js). The plugin module dist/index.js itself is never modified. The packer refuses to emit the entry if a binding is not declared or is already exported, and imports the entry once before returning.",
+    "The artifact carries a second copy of the ext-plugin bundle (+151 KB; packed tree 1183 files). A dist/validator.js built by the package itself would be shipped verbatim instead (the packer prefers it) \u2014 it does not exist today.",
+    "A source edit is NOT visible inside an artifact until the next `npm run pack` (the checkout CLI still validates from src); documented in the authoring guide \u00a77 and development.md.",
+    "`bun run test:qa` is currently RED at skills/dsh-qa/scripts/agent-teams-messaging.mjs on a STALE skills corpus re-pin (lock=319/c0dab8641697 vs tree=320/3b41bda20d33) \u2014 another lane's in-flight single-writer re-pin, not this change. The two entries this change owns (scripts/mpd-ext.mjs --self-test, validate extensions/mpd-ext-example) were run individually and exit 0; scripts/verify-pack-closure.mjs is wired into test:qa:all by the QA lane (skills/dsh-qa/cases.json).",
+    "Cross-file claims this change invalidates but does NOT own (outside inScope): AGENTS.md \u00a78 (the packer's copy list should now name templates/ + docs/) and EXTENSIONS-FOR-AGENTS.md \u00a79 (the 'does NOT work inside a PACKED artifact' hard limit is closed) \u2014 reported to the captain/docs-gate lane.",
+    "The packed tree is a SNAPSHOT of the shared working tree: a pack taken at 09:21 caught packages/mpd-team-watchdog-plugin/README.md mid-edit and the packed docs-parity run failed on that pair; after the lane settled, the final pack is green (pairs=35 failed=0). Bound: the packed docs parity measures whatever was on disk at pack time.",
+    "scripts/verify-pack-closure.mjs cannot see a packed tree that does not exist: without dist/mpd-package it prints the skip (use --require-packed to make that a failure). The positive/negative evidence above is from real packs."
+  ],
+  "evidenceBound": "All 'after' claims are from a real `npm run pack` into dist/mpd-package plus commands executed against that tree (and, for the controls, a byte-copy of it), measured 2026-09-17 in the shared working tree; hashes above pin the exact revisions of the three scripts and the six doc files.",
+  "settledReRun": {
+    "why": "two report docs were re-anchored after the first sweep; the whole contract was re-run on the settled revision",
+    "hashBefore": {
+      "scripts/pack-mpd.mjs": "17f9f5538bf529b66c9f4bee24b55e46205a35a15536e695639147fcd8a20dcf",
+      "scripts/mpd-ext.mjs": "e9e5c78007e886107b5f5b932c7d0eb2e92105994e24004bb85cf03a2671e262",
+      "scripts/verify-pack-closure.mjs": "38d14db5eb8160c027566e2289e6681d81e3f3a22d66a2d2e0ea998a3061828c"
+    },
+    "hashAfter8s": {
+      "scripts/pack-mpd.mjs": "17f9f5538bf529b66c9f4bee24b55e46205a35a15536e695639147fcd8a20dcf",
+      "scripts/mpd-ext.mjs": "e9e5c78007e886107b5f5b932c7d0eb2e92105994e24004bb85cf03a2671e262",
+      "scripts/verify-pack-closure.mjs": "38d14db5eb8160c027566e2289e6681d81e3f3a22d66a2d2e0ea998a3061828c"
+    },
+    "hashStable": true,
+    "exitCodes": {
+      "npm run pack": 0,
+      "packed validate example": 0,
+      "packed validate template": 0,
+      "packed --self-test (bun)": 0,
+      "packed scaffold": 0,
+      "packed validate scaffold": 0,
+      "packed --self-test (node)": 0,
+      "verify-pack-closure": 0,
+      "verify-pack-closure --self-test": 0,
+      "bun run verify:docs": 0,
+      "verify-docs-parity --root dist/mpd-package": 0
+    },
+    "independentDriftCheck": "diff -rq docs dist/mpd-package/docs -> identical; diff -rq templates dist/mpd-package/templates -> identical (the packed sets are byte-identical to the source sets, measured 2026-09-17T01:31Z)",
+    "log": "evidence/pack-closure/impl/20260917T011849Z/raw/final/verify-2.log"
+  },
+  "gateMeaningInversion": {
+    "what": "scripts/verify-pack-closure.mjs's TEMPLATES arm \u2014 deliberately INVERTED by user decision, not quietly loosened (captain ruling 1 on t6 finding F1)",
+    "before": {
+      "meaning": "PROHIBITED any `templates` path literal in the packer: 'the generic template must never be packed'",
+      "code": "the pre-change arm at scripts/verify-pack-closure.mjs:205-215 (allowlist scan + line scan) with its own negative control at :341-345 (a fixture that ADDS a templates literal must exit 1)",
+      "measuredBlindness": "on the pre-change tree the checker exited 0 while dist/mpd-package carried NO templates/ and NO docs/ (raw/before/output.log)"
+    },
+    "decision": "user decision 2026-09-17: the packed artifact ships templates/ AND docs/; captain ruling on t6-F1: flip the arm in the SAME change as the packer, never split across commits",
+    "after": {
+      "meaning": "REQUIRES `templates` and `docs` in the packer's ROOT_ASSET_DIRS table, requires each declared source directory to exist, and requires the packed tree to carry every declared asset non-empty \u2014 plus the scaffold template root (derived from scripts/mpd-ext.mjs TEMPLATE_DIR + the SDK's manifestFile) with its manifest",
+      "selfTestArms": {
+        "old": "negative control: a seeded `templates` path literal -> exit 1 (TEMPLATES)",
+        "new": "negative control: ROOT_ASSET_DIRS with the `templates` entry removed -> exit 1 (TEMPLATES, naming templates); packed-tree arms additionally seed the template manifest missing, a half doc pair, a dropped `files` pattern, an unlisted file and a missing validator entry \u2014 all exit 1"
+      }
+    },
+    "notQuietlyLoosened": "the new assertion is STRICTER where the decision moved: the old arm only forbade a literal; the new one demands the declaration AND the presence of each declared asset in the source tree AND in the artifact, falsified by 5 packed-tree arms (4 negative controls). Same seeded state, opposite verdicts: the pre-change checker exited 0 on a tree with no templates/ + no docs/, the post-change checker exits 1 on it (raw/final/negative-control.log).",
+    "reversalVisibleInCode": [
+      "scripts/verify-pack-closure.mjs header: 'FLIPPED ARM (captain-visible history)' paragraph, plus the arm's own comment",
+      "scripts/pack-mpd.mjs ROOT_ASSET_DIRS comment naming T-35/T-36 as the omissions the table closes",
+      "both files changed by ONE writer in ONE change \u2014 no red window between commits"
+    ]
+  },
+  "exportReachability": {
+    "question": "captain ruling 2: are the symbols the CLI needs reachable from packages/mpd-ext-plugin/dist/index.js?",
+    "command": "node -e \"\u2026list every export { \u2026 } block of the shipped bundle, test the nine names the CLI uses\u2026\"",
+    "measured": "ONE `export {` block: name, inject, apply, REQUIRED_SEAMS, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_FALLBACK. buildExtension / roleNameKey / roleNameCollisionReason / discoverPlane / projectExtensionsDir / userExtensionsDir / bundleExtensionsDir / ROLES / MPD_EXT_CONTRACT are ALL NOT-EXPORTED.",
+    "conclusion": "fix (a) AS WRITTEN is unavailable (the captain's measurement confirmed). The same symbols ARE declared at the bundle's top level (2/2 for buildExtension+roleNameKey, all 9 checked by the packer with the same regex), which is what makes the pack-time export surface possible.",
+    "log": "evidence/pack-closure/impl/20260917T011849Z/raw/final/export-reachability.log"
+  },
+  "scopeProof": {
+    "packagesSrcEditsByThisLane": "NONE. The t11 changedPaths contain no `packages/**` path. `packages/mpd-ext-plugin/src/index.ts` shows as modified in the shared tree because of ANOTHER lane's in-flight edit (t12/t23) \u2014 not claimed, not reverted.",
+    "pathTaken": "T-51 was fixed entirely inside scripts/**: the packer emits the compiled validator entry <packed>/packages/mpd-ext-plugin/dist/validator.js (= the shipped bundle + ONE appended `export { \u2026 }` line) and scripts/mpd-ext.mjs falls back to it. The plugin module dist/index.js is never modified; no source file outside scripts/** is touched.",
+    "alternativeNotTaken": "register option (c) \u2014 `bun build scripts/mpd-ext.mjs --target node --format esm --outfile <packed>/scripts/mpd-ext.mjs`: (i) adds a `bun` prerequisite to the release step, which today runs under plain node (`npm run pack` = `node scripts/pack-mpd.mjs`); (ii) cannot inline the CLI's validator today because the loader uses runtime-computed dynamic imports (`await import(new URL(rel, import.meta.url).href)`), so the loader would first have to become static imports; (iii) the shipped CLI would be a generated snapshot. Reported to the captain for a ruling; the implemented path is measured green end-to-end with falsifiable controls."
+  },
+  "addendum_agentReferences": {
+    "when": "2026-09-17, captain's in-flight addition to t11, after t16 landed agent-references/",
+    "ruling": "the packed artifact also ships agent-references/**: troubleshooting.md (the symptom -> cause/fix table), agent-teams-deltas.md (the adopted-plugin delta registry) and index.md; AGENTS.md itself stays OUT of the artifact; no *.zh-CN.md twin belongs in the tree and no file may be renamed to README.md",
+    "implemented": [
+      "scripts/pack-mpd.mjs: ROOT_ASSET_DIRS += agent-references (required, hard FAIL when absent); packed manifest `files` += agent-references/** and `exports` += ./agent-references/*",
+      "scripts/verify-pack-closure.mjs: REQUIRED_ROOT_ASSETS += agent-references (kind REFERENCES; templates/docs keep the TEMPLATES kind their evidence block cites); REQUIRED_REFERENCE_FILES = [index.md, troubleshooting.md, agent-teams-deltas.md] asserted in the SOURCE tree AND in the packed tree; the set-equality arm now covers docs/ + templates/ + agent-references/; three new self-test arms"
+    ],
+    "threeAssetGroups": {
+      "note": "the omission class T-38 now covers all THREE asset groups the user decision names",
+      "groups": [
+        "templates/ (T-35)",
+        "docs/ (T-36/T-45)",
+        "agent-references/ (captain's addition)"
+      ],
+      "declaredInPackerAndCheckedStaticaly": true,
+      "checkedInTheArtifact": true,
+      "setEqualWithSource": true
+    },
+    "packedTreeCarries": {
+      "topLevel": [
+        "LICENSE-NOTICES.md",
+        "LICENSE.md",
+        "README.md",
+        "README.zh-CN.md",
+        "agent-references",
+        "cordis.patch.yml",
+        "docs",
+        "extensions",
+        "package.json",
+        "packages",
+        "presets",
+        "scripts",
+        "skills",
+        "templates"
+      ],
+      "rootAssetDirs": [
+        "skills",
+        "presets",
+        "extensions",
+        "templates",
+        "docs",
+        "agent-references"
+      ],
+      "agentReferences": {
+        "agent-teams-deltas.md": {
+          "sha256": "04589f94a2ed2130ed8accbadadba639283a4ce6baeac8e9618d2b5588c4faca",
+          "bytes": 9666
+        },
+        "index.md": {
+          "sha256": "48da5daa779d6c9393d47ee4af4acd23bfa0bacf6f5c7a9059a8c723fe42a331",
+          "bytes": 880
+        },
+        "troubleshooting.md": {
+          "sha256": "5671bf5d2641dd79ff28ad40a050e7cf92089ec4ebb0e4128f3d699d6691efa2",
+          "bytes": 30124
+        }
+      },
+      "readmeOrZhTwinInAgentReferences": 0,
+      "docsPairs": "unchanged: repo verify:docs pairs=37 failed=0; packed --root parity pairs=35 failed=0 (agent-references stays OUTSIDE the bilingual discovery, as ruled)",
+      "drift": "diff -rq <src> <packed> identical for docs, templates AND agent-references"
+    },
+    "verification": {
+      "commands": {
+        "npm run pack": 0,
+        "packed validate example": 0,
+        "packed validate template": 0,
+        "packed --self-test (bun)": 0,
+        "packed --self-test (node)": 0,
+        "packed scaffold": 0,
+        "packed validate scaffold": 0,
+        "verify-pack-closure": 0,
+        "verify-pack-closure --self-test": "0 (17/17 arms)",
+        "bun run verify:docs": 0,
+        "verify-docs-parity --root dist/mpd-package": 0
+      },
+      "hashStable": "script hashes identical before/after a 6s settle window",
+      "normalizedField": "the checker's ok line now reports 'agent references 3/3'",
+      "seededControls": [
+        {
+          "name": "clean copy of the real artifact",
+          "exit": 0
+        },
+        {
+          "name": "agent-references/troubleshooting.md removed from the artifact copy",
+          "exit": 1,
+          "findings": "REFERENCES (names the file) + TREE-DRIFT"
+        },
+        {
+          "name": "agent-references/** dropped from the packed files list",
+          "exit": 1,
+          "findings": "MANIFEST (present but unlisted)"
+        },
+        {
+          "name": "self-test arm 8: ROOT_ASSET_DIRS drops agent-references -> REFERENCES",
+          "exit": 1
+        },
+        {
+          "name": "self-test arm 9: packed fixture missing a named reference file -> REFERENCES",
+          "exit": 1
+        },
+        {
+          "name": "self-test arm 10: named reference file absent from the SOURCE tree -> REFERENCES",
+          "exit": 1
+        }
+      ],
+      "logs": [
+        "evidence/pack-closure/impl/20260917T011849Z/raw/final/verify-3-agent-references.log",
+        "evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-agent-references.log"
+      ]
+    },
+    "docsTouchedForConsistency": [
+      "docs/user-guide.md + .zh-CN.md (what the package carries)",
+      "docs/development.md + .zh-CN.md (release step 5 checklist)",
+      "docs/extension-authoring-guide.md + .zh-CN.md (section 7 artifact contents)"
+    ],
+    "recordNote": "t11's task record is TERMINAL (completed) \u2014 this addition could not be recorded as a t11 payload update. Ask the captain to amend t11 (which re-runs it) or open a repair task with sourceTaskId=t11 so the chain records the addition; the code and evidence are already in place and verified."
+  },
+  "postVerificationEdit": {
+    "what": "scripts/pack-mpd.mjs comment only (the 'AGENTS.md \u00a74 Extension-CLI gate runs it from the packed tree' sentence was an overstatement about ANOTHER file: measured, AGENTS.md contains no 'packed tree' string \u2014 grep exit 1; the phrase lived in this packer comment). Rewritten to state only what this file does (it ships the CLI + emits the compiled validator it falls back to) and to point at verify-pack-closure.mjs for the packed-tree assertion.",
+    "why": "accuracy: the code must not assert another file's content; docs-gate-engineer's measurement corrected my earlier report, and the three real stale lines are EXTENSIONS-FOR-AGENTS.md:222-225, AGENTS.md:145 and AGENTS.md:431-434 (all theirs to fix in t18/repair)",
+    "noBehaviorChange": "comment only; ROOT_ASSET_DIRS + VALIDATOR_SHIM_EXPORTS parsing unaffected",
+    "reverified": {
+      "npm run pack": 0,
+      "verify-pack-closure": 0,
+      "verify-pack-closure --self-test": "0 (17/17 arms)",
+      "packed --self-test": 0,
+      "bun run verify:docs": 0,
+      "packed docs parity": 0
+    },
+    "packMpdSha256After": "b4aff7cc81c030adca0cd3d29df9a3901c62cd4ad401d4c7fdc89178d88e7e68",
+    "log": "evidence/pack-closure/impl/20260917T011849Z/raw/final/comment-fix-reverify.log"
+  },
+  "crossFileStaleClaims": {
+    "owner": "docs-gate-engineer (t18 amend or a repair task; captain routing requested by them)",
+    "items": [
+      {
+        "file": "EXTENSIONS-FOR-AGENTS.md:222-225",
+        "claim": "'The developer CLI (validate / scaffold / --self-test) does NOT work inside a PACKED artifact \u2026 \u2014 run it from a checkout'",
+        "status": "FALSE as of this change",
+        "evidence": "packed validate/scaffold/--self-test/--validator all exit 0 (evidence/pack-closure/impl/20260917T011849Z/result.json)"
+      },
+      {
+        "file": "AGENTS.md:145 (\u00a73 layout)",
+        "claim": "mpd-ext.mjs 'shares the RUNTIME validator (imports the TS source under bun)'",
+        "status": "INCOMPLETE",
+        "evidence": "two-step resolution: TS sources in a checkout, the packer-generated compiled entry in a packed artifact; `--validator` prints which"
+      },
+      {
+        "file": "AGENTS.md:431-434 (\u00a78 packed workflow)",
+        "claim": "the packer 'copies the built plugin dists, the adopted agent-teams main code, skills/ + presets/, the combined web client and the docs/licences'",
+        "status": "INCOMPLETE",
+        "evidence": "the artifact now also carries templates/, docs/ (pairs), agent-references/ and the compiled validator entry (packed manifest files/exports declare all four)"
+      }
+    ],
+    "correctionOfMyOwnReport": "I told the captain that AGENTS.md \u00a74 'already says the gate runs from the packed tree'. Wrong: AGENTS.md contains no 'packed tree' string (grep exit 1); the phrase lived in a comment in scripts/pack-mpd.mjs:178, which I have now rewritten. \u00a74's row is not false, only silent about the new capability.",
+    "missingGateScripts_documentedAheadOfImplementation": {
+      "found": "2026-09-17 while reading the refreshed AGENTS.md (T-22 update)",
+      "measured": "AGENTS.md \u00a74 names THREE gates whose scripts do NOT exist on disk: `node scripts/verify-dist-fresh.mjs` (\u00a74 row 'Dist freshness', line 186), `node scripts/repin-vendor.mjs` (\u00a74 Vendor row line 185 and \u00a711's release sweep), `node scripts/dump-config.mjs` (\u00a74 'Composition only' row line 195, and line 207 says every instruction to run the flag goes through this wrapper). `find . -name '*verify-dist-fresh*' / '*repin-vendor*' / '*dump-config*'` outside .git/evidence/dist returns nothing; package.json scripts list has none of them.",
+      "notADiscoveryThatT18IsUnfinished": "the plan already records these as t18's deliverables (\u00a78 L41: t18's amended verify list 'leaves node scripts/verify-dist-fresh.mjs, bun run verify:rows, preset-conformance --self-test'; L34 records the prepared amendment), so the finding is specifically that the BINDING manual cites them as live gates BEFORE they exist",
+      "whyItMatters": "AGENTS.md \u00a74 is the table an agent reads cold and follows; running any of the three today fails with 'Cannot find file'. Same ordering hazard class as the artifact-order rule and the stale-claims list: text that describes a state the tree has not reached",
+      "remedyOptions": [
+        "(a) land t18 (the owner) so the rows become true",
+        "(b) mark the three rows 'planned - lands with t18' until then",
+        "(c) revert those rows from the manual"
+      ],
+      "ownership": "AGENTS.md text is the docs-gate lane's; the three scripts are t18's. This lane (E) neither owns them nor cites them: its own docs edits reference only npm run pack, scripts/verify-pack-closure.mjs, scripts/mpd-ext.mjs and verify-docs-parity --root, all of which exist.",
+      "captainNotified": true,
+      "docsGateEngineerNotified": true,
+      "status": "RESOLVED by t18 attempt 5 (t18 = completed) \u2014 verified by me in the working tree; no (b) 'planned' annotation and no (c) revert were needed, and none were written",
+      "stateIsMoving_sequence": [
+        {
+          "by": "packaging-engineer",
+          "measured": "~10:0x",
+          "state": "ALL THREE missing (find returned nothing; no package.json wiring)"
+        },
+        {
+          "by": "captain",
+          "measured": "~10:14",
+          "state": "scripts/dump-config.mjs EXISTS (16,217 B, 10:12:34); verify-dist-fresh.mjs + repin-vendor.mjs still missing; none wired"
+        },
+        {
+          "by": "packaging-engineer",
+          "measured": "~10:16",
+          "state": "dump-config.mjs EXISTS (16,217 B, 10:12:34) AND repin-vendor.mjs EXISTS (30,883 B, 10:13:20); verify-dist-fresh.mjs still MISSING; no npm alias wired (verify:dist / repin / dump-config absent from package.json scripts); t18 = in_progress, attempt 5, deps [t6,t15,t16]"
+        }
+      ],
+      "captainDisposition": {
+        "whyNoAction": "the manual's changes ride the captain's wave commit, so an agent reading the tree mid-wave is reading an unpublished working tree; and t18 CANNOT complete while a gate script is missing \u2014 its verify list requires a PASSED entry per command, so a row naming a missing script cannot reach a commit through t18",
+        "checkability": "plan L49: if t18 reports completion while any of the three scripts is missing or unwired in package.json, that is a FINDING for t33 (lane D review) and t35 \u2014 I must check it at the t18 completion report",
+        "cosmetic": "AGENTS.md \u00a73's scripts/ block still lists only the pre-existing scripts; the captain is passing the one-block addition to the owner",
+        "class": "the wave's 'text describing a state the tree has not reached' family (artifact-order rule, stale-claims list, docs-ahead-of-scripts)"
+      },
+      "correctionOfMyOwnFraming": "my original wording ('three gates whose scripts do NOT exist') was true at my measurement moment and is superseded in real time: two of the three now exist. Recorded as a moving state with per-measurement timestamps, the same discipline the artifact-drift baseline uses \u2014 a reader must not quote the earlier state as current.",
+      "myClosureVerification": {
+        "scripts": {
+          "scripts/verify-dist-fresh.mjs": {
+            "sha256_16": "30b796c268872e32",
+            "bytes": 30741
+          },
+          "scripts/repin-vendor.mjs": {
+            "sha256_16": "707d0f9d6fc853e4",
+            "bytes": 31183
+          },
+          "scripts/dump-config.mjs": {
+            "sha256_16": "10f281ad27bbb851",
+            "bytes": 16217
+          }
+        },
+        "npmAliases": {
+          "verify:dist": "node scripts/verify-dist-fresh.mjs",
+          "verify:gates": "aggregate (vendor + dist freshness + rows + docs + preset-conformance)",
+          "repin:vendor": "node scripts/repin-vendor.mjs",
+          "dump-config": "node scripts/dump-config.mjs"
+        },
+        "liveExecution": "node scripts/verify-dist-fresh.mjs --only mpd-config-plugin -> '[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) \u2014 7 NOT COVERED files listed \u2014 49ms', exit 0",
+        "bound": "the three scripts are UNTRACKED and package.json is MODIFIED at this measurement (git status: ?? scripts/{dump-config,repin-vendor,verify-dist-fresh}.mjs; M package.json) \u2014 committed by the captain, not by any member",
+        "conclusion": "the manual is no longer ahead of the tree: every \u00a74/\u00a711 command the manual names now resolves and executes"
+      },
+      "l49CheckExecuted": {
+        "rule": "plan L49: if t18 completes while any of the three gate scripts is missing or unwired in package.json, that is a FINDING for t33 and t35",
+        "runAt": "t18 = completed (attempt 5), measured by me at the first opportunity after its completion",
+        "result": "NO FINDING \u2014 all three scripts exist with the reported hashes, all four aliases resolve, and the gate executes (exit 0)",
+        "residual": "the files are still uncommitted; if the captain's commit drops or renames one, the \u00a74 rows go stale again \u2014 that is a commit-time check, not a task-completion check"
+      }
+    }
+  },
+  "concurrencySnapshots": {
+    "class": "a pack is a SNAPSHOT of the shared working tree, so another lane's mid-edit file can land inside the artifact (captain: this is the wave's third measured instance of the concurrency class)",
+    "instance": {
+      "when": "2026-09-17 ~01:25Z, against the artifact packed at ~01:21Z (the first pack after the packaging change)",
+      "what": "`node scripts/verify-docs-parity.mjs --root dist/mpd-package` -> FAIL 1/35: `packages/mpd-team-watchdog-plugin/README.md \u2014 heading tree differs: EN [1,2,2,2,3,3,2,2,3,2,2,2,2,2,2,2,2] vs zh [1,2,2,2,3,3,2,3,2,2,2,2,2,2,2,2]`",
+      "sameMinuteControl": "`node scripts/verify-docs-parity.mjs` (the REPO) -> PASS pairs=37 failed=0 \u2014 so the source was consistent; the packed COPY was the stale half",
+      "cause": "the pack was taken while that lane's README pair was mid-edit; the packed copy kept the pre-edit zh file",
+      "remedy": "re-pack after the lane settled: the same check is green on disk in raw/final/verify.log and raw/final/verify-2.log (`root=dist/mpd-package pairs=35 failed=0`)",
+      "bound": "the FAILING output was read in-session and was NOT written to a log file at the time; the mid-edit state is no longer reproducible (the file has settled), so the on-disk anchor is the AFTER state (the green re-pack), not the failure itself. The class is what is citable; the instance carries that bound in the wave report.",
+      "sameRemedyAs": "artifactOrdering below \u2014 both say: re-pack on a SETTLED tree, and re-pack again if a dependency's dist changes"
+    },
+    "relatedWaveEvidence": "the same class is why the captain routed the ARTIFACT-ORDER constraint: t40 rebuilds packages/mpd-ext-plugin/dist, so t28 must re-pack after t40 is terminal (plan .mpd/plans/friction-p1-wave.md \u00a78 L27)"
+  },
+  "artifactOrdering": {
+    "artifactSnapshot": "dist/mpd-package as of the last pack in this lane (2026-09-17T01:37Z, 1186 files, packed tree 376 asset files)",
+    "constraint": "the artifact ships whatever packages/mpd-ext-plugin/dist/ held at pack time; t40 rebuilds that dist, so t28's verification must re-pack AFTER t40 is terminal (its declared deps t11/t12/t23 do not include t40 \u2014 routed by the captain, plan \u00a78 L27)",
+    "howToRePack": "npm run pack (node-only, ~0.4 s) then: node scripts/verify-pack-closure.mjs (add --require-packed to make an absent artifact fatal), the four packed CLI commands, and node scripts/verify-docs-parity.mjs --root dist/mpd-package"
+  },
+  "ruleBounds": {
+    "whyRecorded": "docs-gate-engineer's ordering refinement exposed a real bound of the closure rules; recorded so t28/t34/t35 and the wave report do not over-read the gate",
+    "setEqualityIsNotContentEquality": {
+      "whatTheRuleDoes": "for docs/, templates/ and agent-references/ the checker compares the FILE SETS (a dropped file, a half pair, or an invented file fails), and the named-reference-file rule asserts presence",
+      "whatTheRuleDoesNOTDo": "it does NOT compare file CONTENT / hashes, so an artifact packed BEFORE a later source edit still passes: the packed copy is then stale in content while the rule is green",
+      "howContentStalenessIsCaughtToday": "manually, by `diff -rq <group> dist/mpd-package/<group>` (this lane ran it for all three groups: identical at the 01:37Z pack)",
+      "knownStalenessTriggersInThisWave": [
+        "t40 rebuilds packages/mpd-ext-plugin/dist/ -> the artifact's dist + the generated validator sidecar must be re-packed (captain's ARTIFACT-ORDER constraint, plan \u00a78 L27)",
+        "t42 edits agent-references/index.md + the troubleshooting.md asymmetry row -> the artifact's agent-references copy goes stale (docs-gate-engineer's refinement; the re-pack that matters for staleness)",
+        "t43 edits AGENTS.md + EXTENSIONS-FOR-AGENTS.md -> NOT in the packed root, so it does NOT invalidate the artifact (the t43-time run is revision-anchored verification, not a staleness repair)"
+      ],
+      "proposedFollowUp(P2, not implemented)": "make content drift a first-class check WITHOUT turning shared-tree noise into red runs: either (a) the packer writes a `packed-content.sha256` (or the artifact's package.json gains a content hash map) and a `--verify-content` mode compares it, or (b) a `--strict-content` flag used by the release sweep only. Default-on content checking would fail `test:qa:all` for any post-pack edit by ANY lane, which is the wrong coupling for a shared working tree -- hence opt-in/release-only."
+    },
+    "notChangedByThisRecord": "no code, artifact or plan change; this is a bound statement about the shipped rules",
+    "p2DesignSplit (docs-gate-engineer refinement, accepted)": {
+      "why": "one mode would conflate TWO different questions whose failure messages and remedies differ",
+      "question_i_self_consistency": {
+        "asks": "does the artifact still match what the PACKER ITSELF recorded?",
+        "mechanism": "the packer writes a content-hash map (packed-content.sha256, or a hash entry beside `files` in the packed manifest) and the checker's `--verify-content` compares against it",
+        "properties": "travels with the artifact, needs no source tree, so it is checkable anywhere and catches tampering / half-copies",
+        "remedy_on_failure": "the artifact is internally broken -> re-pack"
+      },
+      "question_ii_drift": {
+        "asks": "is this artifact CURRENT relative to the source tree?",
+        "mechanism": "compare the artifact against the SOURCE tree (the manual `diff -rq` this lane ran), exposed as a `--strict-content` mode used by the RELEASE/INTEGRATION sweep",
+        "properties": "needs the source tree; answers the release question",
+        "remedy_on_failure": "the artifact is merely BEHIND the tip -> re-pack on a settled tree",
+        "whyNotDefault": "default-on in `test:qa:all` would redden the suite for any post-pack doc edit by any lane on a shared working tree (the coupling the captain rejected)"
+      },
+      "carryForwardNote": "the T-63 row appended to .mpd/TODO.md at t35 must name this split explicitly so next wave's implementer does not rediscover it"
+    }
+  },
+  "artifactSuperseded": {
+    "ruling": "CAPTAIN (2026-09-17): the artifact packed 09:38:54-55 local is SUPERSEDED - never cite it as final; any packed reading taken before a re-pack is valid only for the revision it measured.",
+    "myIndependentMeasurement": {
+      "packedStamp": "dist/mpd-package/package.json mtime 09:38:55 local (09:38:54 for the plugin files)",
+      "filesCompared": 1183,
+      "contentDiffers": 6,
+      "notInSource": 0,
+      "generatedAllowlist": [
+        "package.json",
+        "cordis.patch.yml",
+        "packages/mpd-ext-plugin/dist/validator.js"
+      ],
+      "drift": [
+        {
+          "file": "packages/mpd-agent-teams-plugin/lib/members.js",
+          "packedSha256": "68f75bd19df0bddf",
+          "sourceSha256": "b1b1ac53cc41f226",
+          "packedMtime": "09:38:54",
+          "sourceMtime": "09:49:03"
+        },
+        {
+          "file": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+          "packedSha256": "f5be64060f380b07",
+          "sourceSha256": "0e8cb8c4da85fe6c",
+          "packedMtime": "09:38:54",
+          "sourceMtime": "09:51:24"
+        },
+        {
+          "file": "packages/mpd-agent-teams-plugin/lib/tools.js",
+          "packedSha256": "e43332675521c492",
+          "sourceSha256": "b0547996c1980ab3",
+          "packedMtime": "09:38:54",
+          "sourceMtime": "09:50:07"
+        },
+        {
+          "file": "packages/mpd-team-watchdog-plugin/README.md",
+          "packedSha256": "46f6cb59b0a09eb3",
+          "sourceSha256": "bd887558cdc833db",
+          "packedMtime": "09:38:54",
+          "sourceMtime": "09:46:40"
+        },
+        {
+          "file": "packages/mpd-team-watchdog-plugin/README.zh-CN.md",
+          "packedSha256": "3e0d743d13bef1a0",
+          "sourceSha256": "a5cd1023620e9ba6",
+          "packedMtime": "09:38:54",
+          "sourceMtime": "09:46:40"
+        },
+        {
+          "file": "packages/mpd-team-watchdog-plugin/dist/index.js",
+          "packedSha256": "a4893187ee13e97d",
+          "sourceSha256": "ddb30834942b3b4f",
+          "packedMtime": "09:38:54",
+          "sourceMtime": "09:47:01"
+        }
+      ],
+      "confirms": "the lanes E+F verifier's six files exactly: three lane A (mpd-team-watchdog-plugin dist/index.js rebuilt 09:47:01 + both README halves) and three lane B (mpd-agent-teams-plugin lib/{tools,members,mpd-deltas}.js, tools.js written 09:50:07)"
+    },
+    "whyTheArmsWereBlind": "this is the T-63 gap demonstrated on the LIVE artifact: the presence/name/set-equality arms (and the named-reference-file rule) report the tree clean while six SHIPPED files are content-stale, because those rules never compare content. The set-equality rule compares file NAMES across docs/templates/agent-references, and packages/** has no set rule at all - the artifact's clean 'ok' line is therefore TRUE about names and SILENT about content.",
+    "sweepStandardForT35AndT28": {
+      "rule": "before ANY packed check, re-pack on the settled tree, then byte-compare EVERY file in the artifact against its source path, allowlisting only the three GENERATED files",
+      "testedCommand": "python3 - <<'PY' ... (see the byte-identity sweep recorded in this block; 1183 files compared, exit 0 required with drift==[]) ...",
+      "whyNotNaiveDiff": "`diff -rq packages dist/mpd-package/packages` is NOT the check: the artifact intentionally omits packages/*/src, tests, themes-copies etc., so a naive diff floods with 'Only in packages/...' entries that are not defects; the correct direction is 'for every file IN the artifact, the source counterpart exists and is byte-identical'",
+      "recordAtSweepTime": "the pack timestamp versus each shipped dist's mtime, plus the fingerprints of the three scripts",
+      "bound": "the three GENERATED files (the packed manifest, the decoupled patch, the generated validator sidecar) legitimately differ from any source and are excluded by name, not by pattern"
+    },
+    "validityBoundOnThisRecord": "every 'identical to source' claim elsewhere in this result.json was measured at the 01:37Z pack and is valid FOR THAT REVISION ONLY; it must not be cited as the artifact's current state.",
+    "movingBaseline": {
+      "reMeaseuredAt": "2026-09-17, after platform-engineer's independent scan (third measurement in the sequence)",
+      "sequence": [
+        {
+          "by": "packaging-engineer (E lane)",
+          "at": "~09:38 pack +0",
+          "drift": 6,
+          "packages": 6,
+          "skills": 0
+        },
+        {
+          "by": "watchdog-engineer (t28)",
+          "at": "~10:00",
+          "drift": 32,
+          "packages": 6,
+          "skills": 26
+        },
+        {
+          "by": "platform-engineer",
+          "at": "~10:0x",
+          "drift": 8,
+          "packages": 8,
+          "skills": "not scanned (their diff was packages-only)"
+        },
+        {
+          "by": "packaging-engineer",
+          "at": "latest",
+          "drift": 34,
+          "packages": 8,
+          "skills": 26
+        }
+      ],
+      "packagesSubsetIsMoving": "6 -> 8: the agent-teams lane kept writing (mpd-agent-teams-plugin/lib/{quality-gates,state}.js joined the five already stale), which is why per-measurement counts must never be quoted as the artifact's state",
+      "independentAgreement": "three members measured the same shape independently (mine 6 then 34; watchdog-engineer 32; platform-engineer 8 on packages/ only): packages/** drift 6-8 + skills drift 26, with 0 not-in-source and the same six-to-eight named files",
+      "rule": "never trust an earlier number; re-measure at sweep time; accept only drift==0 measured AFTER the re-pack"
+    },
+    "thirdLeg_completeness": {
+      "whyNeeded": "the directional content walk only looks at files IN the artifact, so a SOURCE file with no artifact counterpart is invisible to it - and the closure arms are set-only for three groups and content-blind everywhere. Live instance verified by me: skills/dsh-qa/scripts/lib/credentials.mjs (22,387 B, mtime 09:55) exists in the source and is ABSENT from the artifact (not a packer defect: it did not exist at pack time - 09:38:55).",
+      "measuredFalsePositiveTrap": "the rule as first proposed ('every source file matched by the manifest's `files` patterns must have an artifact counterpart') would flag 231 files on THIS healthy pack: packages/ 216 (intentionally absent src/tests/etc.), scripts/ 14 (only install-mcp.mjs + mpd-ext.mjs ship), skills/ 1 (the true positive). It would be born broken - the same class as the glob rule the checker's own header rejects for PLUGIN_PKGS - and the noise would drown the one real finding.",
+      "correctScoping": [
+        "WHOLESALE groups (skills/, presets/, extensions/, docs/, templates/, agent-references/): source is-subset-of artifact is the right rule; measured today 0/0/0/0/0/0 missing EXCEPT skills: 1 = exactly credentials.mjs. Three of the six groups already have set-equality in the checker (docs/templates/agent-references); extending it to skills/presets/extensions is the new part.",
+        "packages/**: the counterpart contract is the packer's own copy rules (dist trees, launcher closure, README pairs, declared per-package asset dirs, the wholesale adopted plugin, mpd-mcp-shared minus *.test.mjs, client.js) - NOT the `files` glob (216 false positives measured).",
+        "scripts/**: only install-mcp.mjs and mpd-ext.mjs ship; `scripts/**` describes the PACKED scripts dir, not all of repo scripts/ (14 false positives measured)."
+      ],
+      "failureMessageAmbiguity": "for a wholesale group, an absent counterpart means either (a) the source file is newer than the pack (drift) or (b) the packer dropped it (omission) - indistinguishable without a pack-time record. This is exactly what T-63's (i) self-consistency map buys: with the packer's content-hash map, 'not in the map' = it did not exist at pack time (drift) while 'in the map but absent from the tree' = internally broken (omission/tampering) - two different remedies.",
+      "labeling": "the live credentials.mjs instance is a DRIFT finding (source ahead of the artifact), not a packer omission; the wave report must not record it as a missing-file defect in the packer.",
+      "naiveReadingGrowth_threeDatapoints": [
+        {
+          "by": "packaging-engineer",
+          "at": "~10:0x",
+          "naiveTotal": 231,
+          "breakdown": {
+            "packages": 216,
+            "scripts": 14,
+            "skills": 1
+          }
+        },
+        {
+          "by": "watchdog-engineer",
+          "at": "~10:3x",
+          "naiveTotal": 235,
+          "breakdown": {
+            "packages": "216+",
+            "scripts": 17,
+            "skills": 1
+          }
+        },
+        {
+          "by": "packaging-engineer",
+          "at": "latest",
+          "naiveTotal": 235,
+          "breakdown": {
+            "packages": 217,
+            "scripts": 17,
+            "skills": 1
+          },
+          "wholesaleOnly": {
+            "skills": 1,
+            "presets": 0,
+            "extensions": 0,
+            "docs": 0,
+            "templates": 0,
+            "agent-references": 0
+          },
+          "note": "latest of three independent runs \u2014 stable"
+        }
+      ],
+      "growthIsExplainedNotNoise": "the +4 is the wave's own gate scripts landing in scripts/ (verify-dist-fresh.mjs, repin-vendor.mjs, dump-config.mjs = +3) plus one package-side file; repo-side scripts do NOT ship (only install-mcp.mjs and mpd-ext.mjs do), so the naive number grows while the scoped number stays 1 - a second, independent argument for the wholesale-group scoping and for re-measuring at sweep time",
+      "t65Coupling": {
+        "row": "T-65 \u2014 the completeness leg, recorded by watchdog-engineer in their carry-forward (evidence/team-watchdog/redesign/holds/SUMMARY.md, marked CORRECTION block) with THIS scoping and the packages/**-derived-from-packer-rules clause",
+        "couplingWithT63": "T-65 alone cannot classify its own findings: a wholesale-group absence is drift (source newer than the pack) or omission (the packer dropped it), indistinguishable without a pack-time record - which is exactly T-63's (i) self-consistency map (not-in-map = drift; in-map-but-absent-from-the-tree = internally broken). T-65 should land WITH the map, not instead of it - as watchdog-engineer argued and I agree.",
+        "ownership": "both rows are FUTURE work; the frozen tooling of this wave does not change. The code part of T-65 (extending the checker's set-equality from docs/templates/agent-references to skills/presets/extensions) belongs to that future change, never to this terminal lane."
+      },
+      "naiveReadingGrowth_finalSequence": [
+        {
+          "by": "packaging-engineer",
+          "at": "~10:0x",
+          "naive": 231,
+          "wholesale": "not measured then",
+          "breakdown": {
+            "packages": 216,
+            "scripts": 14,
+            "skills": 1
+          }
+        },
+        {
+          "by": "watchdog-engineer",
+          "at": "~10:1x",
+          "naive": 235,
+          "breakdown": {
+            "packages": "216+",
+            "scripts": 17,
+            "skills": 1
+          }
+        },
+        {
+          "by": "packaging-engineer",
+          "at": "~10:2x",
+          "naive": 235,
+          "wholesale": 1,
+          "breakdown": {
+            "packages": 217,
+            "scripts": 17,
+            "skills": 1
+          }
+        },
+        {
+          "by": "watchdog-engineer",
+          "at": "latest (after their cause-check)",
+          "naive": 235,
+          "wholesale": 1,
+          "breakdown": {
+            "packages": 217,
+            "scripts": 17,
+            "skills": 1
+          },
+          "note": "the growth PAUSED with the writers \u2014 a fourth datapoint that turns an observation into an explanation"
+        }
+      ],
+      "growthCause_independentlyChecked": {
+        "checkedBy": "watchdog-engineer: `scripts/{verify-dist-fresh,repin-vendor,dump-config}.mjs` are repo-side (mtimes 10:14:25 / 10:14:50 / 10:12:34) and only `install-mcp.mjs` + `mpd-ext.mjs` ship from scripts/, so none of the three is in the packed tree \u2014 their +3; the fourth is package-side",
+        "conclusion": "the naive count grows while the scoped count stays 1, i.e. the +4 is the wave's own tooling, not artifact aging \u2014 a second independent argument for the wholesale-group scoping"
+      },
+      "stableStandingRule": "never trust 6, 32, 231 or 235 \u2014 not from me, not from watchdog-engineer \u2014 only `drift==0` measured AFTER the re-pack, every number quoted next to its measurement moment"
+    },
+    "platformEngineerDatapoint_T50": {
+      "measured": "the three dists platform-engineer rebuilt are byte-IDENTICAL in the packed tree: mpd-dsh-adapter-plugin/dist/index.js (a030858014af5697), mpd-ext-plugin/dist/index.js (f6097fd3383f2fa7), mpd-roles-plugin/dist/index.js (38d4a459f64d1dbd)",
+      "whyItMatters": "the 09:38 pack ran AFTER that rebuild, so the stale-pack episode does NOT undermine T-50's runtime-liveness claim: the artifact is stale only for the files written after 09:38:55 (packages 8 + skills 26), and the closure arms are content-blind, which is why this had to be measured by hand",
+      "confirmedByMe": true
+    },
+    "notStalePolicy": {
+      "legitimateExtraInTheArtifact": "packages/mpd-ext-plugin/dist/validator.js - the packer-emitted compiled validator entry (T-51); the live package has only index.js + sdk.js, so `Only in dist/mpd-package/...` for this file is BY DESIGN, not drift",
+      "intentionallyAbsent": "everything the packer does not copy: packages/*/src, packages/*/test, sub-package package.json files, packages/mpd-bundle (the patch source), self-fix-tests; a `diff -rq` reports these as `Only in packages/...` and they are policy, not defects",
+      "correctDirection": "walk the ARTIFACT (every file must have a byte-identical source counterpart, minus the three generated files), then run the completeness leg over the WHOLESALE groups only"
+    }
+  },
+  "distStalenessSequencing": {
+    "reportedBy": "platform-engineer (2026-09-17), independently re-measured by this lane with bounded rebuilds",
+    "claim": "13 of 20 packages' committed dist/index.js are STALE versus a fresh `bun build` of their own src, so a re-pack started now would bake all 13 stale builds into dist/mpd-package/",
+    "myBoundedMeasurement": {
+      "method": "bun build packages/<pkg>/src/index.ts -> scratch file, sha256 + size vs the committed dist (one build per package, no tree writes)",
+      "results": [
+        {
+          "pkg": "mpd-bootstrap-plugin",
+          "committed": "abcc1cf14d668490 (25,707 B)",
+          "rebuild": "30006247814f9f01 (30,352 B)",
+          "verdict": "STALE"
+        },
+        {
+          "pkg": "mpd-tools-plugin",
+          "committed": "f26afae17afaeb4e (14,889 B)",
+          "rebuild": "fa8f64b8d3130cb7 (19,534 B)",
+          "verdict": "STALE"
+        }
+      ],
+      "log": "evidence/pack-closure/impl/20260917T011849Z/raw/final/dist-staleness/"
+    },
+    "whyItBlocksTheSweep": "pack-mpd.mjs copies packages/*/dist VERBATIM. A pack taken now would produce an artifact that my content leg then reports as byte-identical to the live tree - TRUE but VACUOUS, because the live tree's dists are themselves stale versus their src. The identity leg measures artifact-vs-source faithfulness, never source-vs-its-own-build freshness, so it cannot see this class at all.",
+    "hardPreconditionsForTheT35Sweep": [
+      "1. node scripts/verify-dist-fresh.mjs exits 0 (the new Dist-freshness gate, AGENTS.md \u00a74 / bun run verify:dist) - rebuilds every packages/*/src entry twice into a temp dir and diffs against the committed dist",
+      "2. the wave's writers are settled (skills/**, packages/**)",
+      "3. THEN npm run pack, then the three legs (content / completeness / arms) and --root docs parity",
+      "4. record the pack timestamp vs each shipped dist's mtime + the three script fingerprints, and quote every measurement with its moment"
+    ],
+    "gateWiringMeasured": {
+      "verify:dist": "node scripts/verify-dist-fresh.mjs (wired)",
+      "verify:gates": "aggregate over vendor + dist freshness + rows + docs + preset-conformance (wired)",
+      "scripts/verify-dist-fresh.mjs": "30,741 B, 10:14"
+    },
+    "l49StatusUpdate": "all three previously-missing gate scripts now EXIST (verify-dist-fresh.mjs 30,741 B 10:14; repin-vendor.mjs 30,883 B 10:13:20; dump-config.mjs 16,217 B 10:12:34) and the \u00a74-named npm aggregate `verify:gates` IS wired. Remaining L49 check at t18's completion: any alias AGENTS.md names must resolve, and the gates must pass on the same revision they claim.",
+    "RESOLVED_rebuildLanded": {
+      "measuredBy": "platform-engineer (rebuild) + this lane (independent gate run and comparison builds)",
+      "gateNow": "node scripts/verify-dist-fresh.mjs -> '[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) \u2014 7 NOT COVERED files listed \u2014 509ms', exit 0 = precondition #1 MET",
+      "theirEvidence": "evidence/gates/dist-rebuild/20260917T021906Z/result.json (13 before/after sha256 entries + build_form_DEVIATION_measured + mechanical_only_proof + sequencing)",
+      "mySampleConfirmation": {
+        "mpd-bootstrap-plugin": "committed dist == repo-root rebuild (30006247814f9f01) -> FRESH",
+        "mpd-tools-plugin": "committed dist == repo-root rebuild (fa8f64b8d3130cb7) -> FRESH",
+        "note": "these are the SAME hashes my pre-rebuild measurement produced as the 'rebuild' side, so the before/after pair is clean: the stale verdict was genuine, and the same build form now matches the committed dist"
+      },
+      "expectedArtifactDelta": "the next re-pack WILL differ from the current dist/mpd-package for those 13 files \u2014 that difference is the fix, not a regression; the current artifact (packed 09:38:55) carries the pre-rebuild dists and is therefore superseded",
+      "rebuildCount": "14 dists, not 13 \u2014 platform-engineer's correction accepted: the 14th is packages/mpd-workmate-plugin/dist/index.js (401573a0173b03db\u2026 54,704 B -> 6b1715d0f8bebda0\u2026 55,875 B, rebuilt by t48 AFTER my pack). Moot now, but it is the right before/after pair if anyone replays it.",
+      "artifactDeltaCorrection": {
+        "claimSeen": "'the artifact delta of the re-pack is now ZERO, not 13 files' \u2014 TRUE FOR THE DIST LAYER ONLY",
+        "distLayerMeasuredByMe": "packed packages/*/dist/*.js vs checkout: identical=24 differing=0 no-checkout-twin=1 (the packer-generated mpd-ext-plugin/dist/validator.js) \u2014 the dist layer IS current",
+        "wholeArtifactMeasuredByMe": "directional walk over all 1185 comparable files: drift=2 \u2014 agent-references/troubleshooting.md (source mtime 11:03:59) and skills/dsh-qa/scripts/workmate-library.mjs (source 15,800 B mtime 11:11:11 vs packed 14,322 B)",
+        "conclusion": "the re-pack is NOT obsolete: the dist delta is zero, the non-dist delta is two files and growing under the wave's live writers. Updating the record to 'delta = 0' would tell the t35 sweep to skip a re-pack it still needs."
+      },
+      "packedOnlyByDesign": "packages/mpd-ext-plugin/dist/validator.js is packer-generated (no checkout twin; mpd-ext-plugin/dist holds only index.js + sdk.js) \u2014 it is the ONE legitimate extra, already allowlisted in this lane's content leg and covered by the checker's CLI-VALIDATOR rule. Its mtime (02:56:59Z) is after the last mpd-ext src edit (01:25:33Z), so it is not stale."
+    },
+    "bunBannerTrap_verifiedByMe": {
+      "claim": "bun build embeds the entry path RELATIVE TO CWD as the artifact's first-line banner, so the same src built from different cwds yields byte-different files",
+      "measured": {
+        "fromRepoRoot": "// packages/mpd-tools-plugin/src/index.ts (19,534 B)",
+        "fromPackageDir": "// src/index.ts (19,476 B)",
+        "delta": "58 bytes"
+      },
+      "ruleForAnyComparisonBuild": "build from the REPO ROOT with the package-relative entry path (packages/<pkg>/src/index.ts) or the comparison shows phantom drift; the dist-freshness gate uses that convention, so committed dists must be produced from there too",
+      "whyItDidNotAffectMyEarlierVerdict": "my two bounded rebuilds were already repo-root builds, i.e. the gate's convention, so the STALE verdict on mpd-bootstrap/mpd-tools was real staleness (4.6 KB / 4.6 KB size deltas far beyond a banner line), and the same convention now reports FRESH"
+    },
+    "packStampDiscrepancyExplained": {
+      "readings": {
+        "directoryMtime": "11:01:30 local (= 03:01:30Z)",
+        "manifestMtime": "10:56:59 local (= 02:56:59Z)"
+      },
+      "whyTheyDiffer": "a full pack rewrites package.json (writeManifest is near the end), so a pack at 03:01:30Z would have moved the manifest's mtime to 03:01:30Z. It did not: the directory was touched by something that added/removed/renamed a TOP-LEVEL entry without rewriting the manifest. The manifest's stamp is therefore the pack record (02:56:59Z = t28's pass-2 pack), and no third pack should be recorded at 03:01:30Z.",
+      "notClaimed": "I cannot say what touched the directory at 03:01:30Z \u2014 only that it was not a manifest-rewriting pack, and not mine (my last pack: 09:28:37 local in the t11 window)."
+    }
+  },
+  "sameClassMovingReadings": {
+    "vendorRepin": {
+      "class": "text/number describing a state the tree has not reached \u2014 here, a LOCK reading taken before the corpus settled",
+      "readings": [
+        {
+          "by": "docs-gate-engineer",
+          "when": "a few minutes before their closure message",
+          "computedLf": "ee716c0d\u2026"
+        },
+        {
+          "by": "docs-gate-engineer",
+          "when": "closure message",
+          "computedLf": "2fadfe92081a1339b74024e9bba237bc4e1f735f697bc7b0fbb76adfe21d4028",
+          "locked": "c0dab864\u2026 / 319 files",
+          "computedFileCount": 321
+        }
+      ],
+      "rule": "the single skills re-pin must be RECOMPUTED at commit time; any VENDOR_LOCK reading is valid only for the revision it measured. The helper refuses the repository's own lock without --i-know-this-is-the-captains-step, so a wave cannot re-pin mid-flight (AGENTS.md \u00a74 Vendor row)."
+    },
+    "staleDistAtHead": {
+      "class": "committed dist/ vs its own src \u2014 the T-37 gate's class, owned by the docs-gate/dist lane, not lane E",
+      "readings": [
+        {
+          "by": "platform-engineer",
+          "scope": "working tree",
+          "stale": "13 of 20 packages"
+        },
+        {
+          "by": "docs-gate-engineer (T-37 gate)",
+          "scope": "AT HEAD",
+          "stale": "12 packages",
+          "note": "adapter inlined from source; a647d47 rebuilt only the adapter"
+        }
+      ],
+      "whyBothCanBeTrue": "the two readings have different scopes and moments (committed HEAD vs working tree); they must NOT be quoted as contradictory \u2014 quote each with its scope, and let the sweep re-measure",
+      "consequence": "needs a dist writer before the re-pack; my sweep's first precondition (`verify-dist-fresh` exit 0) is the same requirement seen from the packaging side"
+    }
+  },
+  "buildFormMatrix": {
+    "why": "platform-engineer warned that `bun build` embeds the entry path relative to CWD, so a rebuild from the wrong directory shows phantom drift; I measured the real magnitudes and found the deeper inconsistency",
+    "gateConvention_measured": "scripts/verify-dist-fresh.mjs always calls runBuild(join(root, target.src), out, root) \u2014 i.e. ABSOLUTE source path with cwd = the REPO ROOT \u2014 and compares the full bytes (no banner normalization anywhere in the file)",
+    "measured_deltas": [
+      {
+        "pkg": "mpd-ext-plugin",
+        "committedBytes": 152855,
+        "rootForm": "byte-identical (0 B)",
+        "pkgForm": "-276 B (152,579)",
+        "pkgFormBanner": "// ../mpd-dsh-adapter-plugin/src/index.ts"
+      },
+      {
+        "pkg": "mpd-team-watchdog-plugin",
+        "committedBytes": 153319,
+        "rootForm": "byte-identical (0 B)",
+        "pkgForm": "-528 B (152,791)"
+      },
+      {
+        "pkg": "mpd-tui-plugin",
+        "committedBytes": 149134,
+        "rootForm": "byte-identical (sha d75ddd8917d434a8 both)",
+        "pkgForm": "-480 B (148,654)"
+      },
+      {
+        "pkg": "mpd-tools-plugin",
+        "committedBytes": 19534,
+        "rootForm": "byte-identical after the t44 rebuild",
+        "pkgForm": "-58 B"
+      }
+    ],
+    "correctionToTheEstimate": "the drift is NOT '~58-74 B': for the three packages that inline relative imports it is 276 / 480 / 528 B, because those import-path comments INSIDE the bundle are rewritten too \u2014 so a banner-only normalization could not reconcile the two forms; ONE canonical form (repo root + package-relative paths) is the only consistent answer",
+    "newFinding_scriptsAndDocsPrescribeTheRejectedForm": {
+      "measured": "packages/{mpd-ext-plugin,mpd-team-watchdog-plugin,mpd-tui-plugin}/package.json `scripts.build` all use the package-dir form (`bun build src/index.ts --target node --format esm --outfile dist/index.js`), and AGENTS.md \u00a76's Build line shows the same form \u2014 while all THREE committed dists are byte-identical to the ROOT-form build (so the gate's accepted form is the root one). Running either the packages' own `npm run build` or the manual's documented command therefore produces a dist the freshness gate reports STALE.",
+      "remedies_ranked": [
+        "(a) make the three scripts and \u00a76 name the root form (e.g. `cd ../.. && bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js`, or the equivalent from a repo-root script) \u2014 one canonical form, matches the gate and the committed bytes",
+        "(b) banner normalization inside the gate \u2014 REJECTED by measurement: it would not reconcile 276-528 B of rewritten inlined import paths, and it weakens byte-identity",
+        "(c) do nothing but document the discrepancy \u2014 weakest, because the manual's own build line would keep producing gate-red dists"
+      ],
+      "ownership": "AGENTS.md \u00a76 is the docs-gate lane's; the three package.json files are not lane E's (packages/** is outside my inScope). Reported to the captain for routing; this lane changed nothing.",
+      "waveReportLine": "another instance of the family the wave has been naming: a documented/in-repo INSTRUCTION that produces a state the gate then rejects"
+    },
+    "rawLogs": "evidence/pack-closure/impl/20260917T011849Z/raw/final/build-form/",
+    "captainRuling": {
+      "row": "T-67 exists in .mpd/plans/friction-p1-wave.md \u00a76; my measurement CORRECTED it (the old '58\u201374 B / banner-only' estimate is replaced by the measured 276/480/528 B and the reason: inlined relative-import path comments are rewritten too)",
+      "phasing": "MANUAL half pulled INTO wave 1 as t45 (AGENTS.md \u00a74 gate row + \u00a76 Build line name the repo-root form and state the three-package residual), with t46 as its independent review. SCRIPT half stays WAVE 2 (editing the three build scripts now would land code after t28/t35 were scheduled, with no sweep covering it).",
+      "scopeForThisLane": "I do NOT own the packages/*/package.json edits and MUST NOT touch them (outside inScope; a member editing out of scope fails its own completion gate). My remedy ranking stands in CONTENT but the captain's phasing governs: (a) is split into t45 (manual) + wave 2 (scripts), (b) is disproven, (c) is not chosen."
+    },
+    "mySpotCheckOfTheCaptainMeasurements": {
+      "rootFormEqualsCommitted": {
+        "scratchSha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a",
+        "committedSha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a",
+        "verdict": "identical \u2014 reproduces the captain's number and my earlier 16-hex prefix"
+      },
+      "rootFlagDisprovesNormalization": {
+        "command": "cd packages/mpd-ext-plugin && bun build src/index.ts --target node --format esm --root ../.. --outfile <scratch>",
+        "bytes": 152579,
+        "banner": "// ../mpd-dsh-adapter-plugin/src/index.ts",
+        "plainPkgFormBytes": 152579,
+        "verdict": "IDENTICAL to the plain package-dir form \u2014 --root does not change the emitted path or the size, so the gate-side normalization remedy is disproven by measurement, not by preference (bun accepts the flag, exit 0)"
+      },
+      "threePackagesConfirmed": "exactly mpd-ext-plugin, mpd-team-watchdog-plugin, mpd-tui-plugin declare a package-local build script (the captain read all 23 packages/*/package.json; my earlier scan of scripts.build agrees)"
+    },
+    "artifactNote": "buildFormMatrix remains the measured citation behind T-67's corrected row (per the ruling); nothing was edited outside this lane",
+    "supersession_manualHalfFixed": {
+      "whatChanged": "AGENTS.md \u00a76's Build line now documents the CANONICAL repo-root form ('Build \u2014 from the REPO ROOT, with path-qualified args \u2026 a package-directory build \u2026 is flagged STALE even though it looks sanctioned. Three packages still carry such a script (mpd-ext-plugin, mpd-team-watchdog-plugin, mpd-tui-plugin); use the repo-root command above until that script half lands (T-67, wave 2)').",
+      "whatIsSupersededInMyEarlierRecord": "the sentence 'AGENTS.md \u00a76's Build line shows that same [package-dir] form' was true WHEN MEASURED and is now superseded by t45's landing; the manual half is fixed",
+      "whatRemainsOpen": "exactly the three packages/*/package.json `scripts.build` entries (T-67, the SCRIPT half, wave 2) \u2014 nothing in the manual",
+      "recommendationAccepted": "platform-engineer's suggestion, which I endorse: the captain cites this measured matrix as T-67's justification rather than re-opening \u00a76 \u2014 the manual is right and only the scripts are wrong"
+    },
+    "rangeAcrossAll13Rebuilds": {
+      "reportedBy": "platform-engineer's t44 self-correction (evidence/gates/dist-rebuild/20260917T021906Z/correction-20260917T030844Z/)",
+      "range": "34\u2013528 B (worst: hashline +412, boulder +286; small tail 34/54/58/60/64/66), NOT the '58\u201374 B' the t44 prose claimed",
+      "myOwnFour": {
+        "mpd-tools-plugin": 58,
+        "mpd-ext-plugin": 276,
+        "mpd-tui-plugin": 480,
+        "mpd-team-watchdog-plugin": 528
+      },
+      "rootCauseConfirmsNotBannerOnly": "bun rewrites the entry banner AND every inlined sibling-module comment relative to CWD (the package-dir ext build starts with `// ../mpd-dsh-adapter-plugin/src/index.ts`), which is why banner normalization cannot reconcile the forms and is correctly REJECTED",
+      "note": "their self-correction sits beside the original claim and leaves t44's verdict unchanged; in the same pass all 13 root-form builds came back byte-identical to their committed dists"
+    },
+    "pathCommentCounts_correctionToAGENTS6": {
+      "manualClaim": "AGENTS.md \u00a76 (refreshed): 'bun build writes EVERY bundled module's path RELATIVE TO CWD into the artifact's path comments \u2014 26 of them in the mpd-ext-plugin build (measured; 24 remain after dropping the first), not one banner line'",
+      "measuredSingleBuild": {
+        "rootFormPathComments": 13,
+        "rootFormDistinctPaths": 11,
+        "packageDirFormPathComments": 13,
+        "packageDirFormDistinctPaths": 11,
+        "entriesThatDifferBetweenForms": "13 of 13"
+      },
+      "originOfTheTwentySix": "13 + 13 = 26 \u2014 the artifact contains TWO copies of that bundle (packages/mpd-ext-plugin/dist/index.js and the packer-generated dist/validator.js), each carrying 13 path comments. The figure is a two-copy ARTIFACT sum presented as one build's count.",
+      "substanceUnaffected": "the manual's POINT stands and is strengthened by the exact numbers: it is not one banner line \u2014 ALL 13 path comments are rewritten between the two forms (root: `// packages/...`; package-dir: `// src/...` and `// ../<pkg>/src/...`), which is why normalization cannot reconcile them",
+      "suggestedWording": "'13 path comments (11 distinct module paths) in the mpd-ext-plugin build, and ALL 13 are rewritten \u2014 a package-directory build therefore differs in the body, not merely in a banner (the artifact carries that bundle twice: dist/index.js and the generated validator.js, 26 comments across both).'",
+      "owner": "AGENTS.md \u00a76 is the docs-gate lane's text; this lane measured, did not edit",
+      "REFUTED_myTwoCopyInterpretation": {
+        "myClaim": "'26' = index.js (13 path comments) + validator.js (13) \u2014 a two-copy artifact sum",
+        "refutedBy": "platform-engineer's measurement, verified by me",
+        "myReVerification": {
+          "validatorJs_totalCommentLines": 16,
+          "validatorJs_pathComments": 13,
+          "validatorJs_extraCommentLines": "3 \u2014 the packer-authored shim header ('Appended by scripts/pack-mpd.mjs \u2026', 'this compiled validator \u2026', 'edit the packed copy \u2026'), so the artifact's comment total would be 13+16=29, NOT 26",
+          "diffBothSides": "diff of the two forms: 26 lines (13 '<' + 13 '>'), i.e. 13 differing POSITIONS counted twice by diff; both files are 3918 lines, so nothing shifts"
+        },
+        "correctReading": "the '26' in \u00a76 is the DIFF-OUTPUT count (13 positions x 2 sides of the diff), which is the only reading consistent with 'in the mpd-ext-plugin build' \u2014 my two-copy sum coincidentally equalled 26 while resting on a wrong premise (validator.js has 16 comment lines, not 13)",
+        "alsoCorrected": "the artifact's first line is the ADAPTER module's comment (`// packages/mpd-dsh-adapter-plugin/src/index.ts`), not an entry banner \u2014 so \u00a76's '24 remain after dropping the first' drops that module's comment, not a banner",
+        "endorsedWording": "the rewording platform-engineer proposed (13 comment lines covering 11 distinct modules, two appearing twice; a diff of the two forms shows 26 differing lines because each of the 13 positions appears on both sides), which I have passed to docs-gate-engineer as a CORRECTION of what I sent earlier",
+        "notified": [
+          "docs-gate-engineer (their file, and the recipient of my earlier wrong rewording)",
+          "captain (they repeated the two-copy arithmetic in the ledger)"
+        ]
+      }
+    }
+  },
+  "artifactHandoverState": {
+    "measuredAt": "2026-09-17T03:09:51Z",
+    "artifactStamp": "dist/mpd-package/package.json mtime 2026-09-17 10:56:58 local (= 02:56:58Z) \u2014 i.e. watchdog-engineer's PASS-2 pack; 1188 files",
+    "attributionCorrection": "watchdog-engineer read a pack at 03:01:30.659Z and attributed it to me 'presumably'. NOT MINE: my last pack was 09:28:37 local (01:28Z) in the t11 window (evidence/pack-closure/impl/20260917T011849Z/raw/final/pack.log), and I have run no pack since \u2014 the artifact's own stamp is 02:56:58Z, which is their pass-2. If a 03:01:30Z pack exists it is a third seat's; either way it did not leave this tree, whose content stamp predates it.",
+    "CURRENT DRIFT_1": {
+      "file": "agent-references/troubleshooting.md",
+      "source": {
+        "sha256_16": "cfc98118f2b2e86d",
+        "bytes": 35541,
+        "mtime": "11:03:59 local"
+      },
+      "packed": {
+        "sha256_16": "b4032f41a33ffea2",
+        "bytes": 35534,
+        "mtime": "10:56:58 local"
+      },
+      "diffLines": 2,
+      "cause": "t42's agent-references edit landed at 11:03:59, AFTER the 02:56:58Z pack \u2014 exactly the staleness trigger already recorded in artifactOrdering ('t42 edits agent-references -> the re-pack that matters for staleness')",
+      "consequence": "watchdog-engineer's pass-2 reading (compared=1185 drift=0) is valid ONLY for the pre-11:03:59 revision; the artifact MUST be re-packed before any t35 claim, and every quoted reading must carry its moment"
+    },
+    "myReVerificationOfTheirLegs": {
+      "contentLeg": "my own directional walk: compared=1185 drift=1 (the file above) no-source=0",
+      "closure": "node scripts/verify-pack-closure.mjs exit 0 \u2014 packed tree 378 asset files, agent references 3/3",
+      "packedCli": "validate exit 0; --self-test exit 0 (53 checks)",
+      "packedDocsParity": "node scripts/verify-docs-parity.mjs --root dist/mpd-package -> pairs=35 failed=0 violations=0 \u2014 PASS",
+      "fingerprintsMatchTheirs": {
+        "scripts/pack-mpd.mjs": "b4aff7cc",
+        "scripts/verify-pack-closure.mjs": "b7f940b4",
+        "scripts/mpd-ext.mjs": "e9e5c780"
+      }
+    },
+    "noPackRanThisTurn": "this turn was read-only: nothing packed, no dist rebuilt, packages/** untouched",
+    "f4UntrackedWarning": "acknowledged for the captain's commit shape: 21 new files in shipped/pinned trees are still UNTRACKED (incl. scripts/verify-dist-fresh.mjs, scripts/mpd-bg.mjs, scripts/repin-vendor.mjs, scripts/dump-config.mjs, agent-references/troubleshooting.md); a selective `git add` of modified paths would commit pointers and omit targets. Not an artifact-drift issue (the packer ships only install-mcp.mjs + mpd-ext.mjs from scripts/), but a commit-shape one."
+  },
+  "artifactAgingCensus": {
+    "method": "directional walk of dist/mpd-package against the source tree, three generated files allowlisted (the same leg t28 runs)",
+    "readings": [
+      {
+        "moment": "02:56:58Z (t28 pass-2 pack)",
+        "drift": 0
+      },
+      {
+        "moment": "~03:0xZ (my re-read of their pass-2 artifact)",
+        "drift": 1,
+        "file": "agent-references/troubleshooting.md (source mtime 11:03:59 local)"
+      },
+      {
+        "moment": "now (this measurement)",
+        "drift": 2,
+        "files": [
+          "agent-references/troubleshooting.md",
+          "skills/dsh-qa/scripts/workmate-library.mjs"
+        ]
+      }
+    ],
+    "conclusion": "the artifact ages under the wave's live writers \u2014 three agings inside one verification window (t28 saw two, this adds the third). Only a drift==0 measured AFTER the wave's LAST writer counts, so the t35 re-pack must be the wave's final action.",
+    "t51CannotCauseArtifactDrift_measured": {
+      "packedScripts": [
+        "scripts/install-mcp.mjs",
+        "scripts/mpd-ext.mjs"
+      ],
+      "verifyDistFreshInArtifact": false,
+      "note": "the packer ships only that subset, so an edit to scripts/verify-dist-fresh.mjs cannot drift the artifact \u2014 confirmed by directory listing, not by reading the source"
+    },
+    "ticksOnTheSkillsFile": {
+      "note": "the same file moved three times inside this verification window \u2014 the cleanest demonstration of 'quote every reading with its moment' the wave has produced",
+      "packed_at_pack_time": {
+        "bytes": 14322,
+        "sha256_16": "ba9053b24a3d84f9"
+      },
+      "platform_engineer_read": {
+        "bytes": 15800,
+        "sha256_16": "f1568f53c5558421",
+        "mtime": "03:11:11Z"
+      },
+      "my_later_read": {
+        "bytes": 15835,
+        "sha256_16": "2e9bf6fe566dc5cb"
+      },
+      "agent_references_file": {
+        "src": {
+          "bytes": 35548,
+          "sha256_16": "f6b4d1bec8745da6"
+        },
+        "packed": {
+          "bytes": 35534,
+          "sha256_16": "b4032f41a33ffea2"
+        },
+        "agreement": "my reading matches platform-engineer's EXACTLY"
+      }
+    },
+    "twoScansAgree": {
+      "platform_engineer": "walked 1,185 files: 1,183 identical + 2 pack-generated (no twin) + 3 differences, of which package.json is the packed-form manifest (generated by scripts/pack-mpd.mjs)",
+      "mine": "compared=1185 drift=2 \u2014 I exclude package.json, cordis.patch.yml and packages/mpd-ext-plugin/dist/validator.js BY NAME as generated",
+      "reconciliation": "identical findings, different accounting: the two REAL drifts are the same two files; their 'third difference' is my first allowlist entry. The wave report should read them as agreement, not as two conflicting counts."
+    },
+    "sweepObligationsFromThis": [
+      "re-pack AFTER the writers settle (both drifted writers are still active)",
+      "re-run the twin-scan AFTER the pack \u2014 it is leg (i) of the three-leg sweep and the only check that catches a doc/skill edited after the packer ran",
+      "do NOT touch the skills corpus hash: skills/** has ONE writer this wave (qa-lane-engineer) and the single VENDOR_LOCK re-pin is the captain's step; my sweep will not read or write it as a verdict"
+    ]
+  },
+  "postPackAcceptanceChecks": {
+    "why": "watchdog-engineer's proposal, verified by me: turns 're-pack last' into a falsifiable assertion instead of a formality",
+    "check1_t23_ids_in_the_shipped_reference": {
+      "commands": [
+        "grep -c 'T-23' dist/mpd-package/agent-references/troubleshooting.md",
+        "sha256sum dist/mpd-package/agent-references/troubleshooting.md agent-references/troubleshooting.md"
+      ],
+      "statusNow": "FAILS as expected \u2014 packed count 0, source count 2; packed b4032f41a33ffea2 (35,534 B) vs source f6b4d1bec8745da6 (35,548 B)",
+      "expectedAfterMyPack": "packed count 2 and identical hashes",
+      "whyItIsStrong": "a content-level assertion a warm re-pack of the same bytes cannot fake: the artifact must carry the ids the wave just added"
+    },
+    "check2_wholeArtifactTwinScan": "directional walk, 1,185 comparable files, three generated files allowlisted, drift==0 required (currently drift=2)",
+    "check3_theUsualLegs": [
+      "verify-pack-closure exit 0",
+      "packed CLI validate + --self-test exit 0",
+      "verify-docs-parity --root dist/mpd-package pairs=35 failed=0"
+    ],
+    "rePinStatusAtThisMeasurement": {
+      "freshnessGate": "GREEN 20/20 (733ms)",
+      "fingerprints": {
+        "scripts/pack-mpd.mjs": "b4aff7cc",
+        "scripts/verify-pack-closure.mjs": "b7f940b4",
+        "scripts/mpd-ext.mjs": "e9e5c780"
+      },
+      "sameAsTheirPins": true,
+      "rule": "re-pin at pack time rather than comparing against their numbers \u2014 they matched today, which is not a promise for tomorrow"
+    },
+    "noteOnTheirPass2": "their pass-2 artifact was authoritative at 02:56:59.067Z only; nothing of theirs is inherited into my payload, and the 03:01:30Z 'pack' left no manifest mark (settled from the artifact's own stamps)."
+  },
+  "attributionCorrections": {
+    "t42_to_t52": {
+      "wrong": "this lane wrote that the 11:03:59 edit to agent-references/troubleshooting.md was t42's",
+      "right": "it is t52's \u2014 watchdog-engineer's arithmetic (+7 B = len(\" (T-23)\")) AND the plan agree: .mpd/plans/friction-p1-wave.md L77 records 't52 COMPLETED \u2026 t52 restored the T-23 row's friction id'. t42 was terminal long before that timestamp.",
+      "successor": "t56 landed a SECOND +7-byte append on the same file at 03:11:38Z, so the two repairs together are +14 B (source f6b4d1bec8745da6 / 35,548 B vs packed b4032f41a33ffea2 / 35,534 B)",
+      "whereIWasWrong": "artifactOrdering and artifactAgingCensus both said 't42's agent-references edit' \u2014 corrected here; the staleness TRIGGER class was right, the seat was not"
+    },
+    "driftIsTWO_notOne": {
+      "theirClaim": "watchdog-engineer: 'measured now it is drift=1 with a 14-byte delta on that same single file'",
+      "measuredByMeNow": "compared=1185 drift=2",
+      "secondFile": {
+        "path": "skills/dsh-qa/scripts/workmate-library.mjs",
+        "sourceBytes": 16464,
+        "sourceSha256_16": "f0ec4a325af9844e",
+        "sourceMtime": "11:18:29",
+        "packedBytes": 14322,
+        "packedSha256_16": "ba9053b24a3d84f9",
+        "delta": "+2142 B"
+      },
+      "ticksObservedOnThatFile": [
+        "packed at pack time: 14,322 B ba9053b24a3d84f9",
+        "watchdog-engineer: 15,800 B f1568f53c5558421 (03:11:11Z)",
+        "this lane: 15,835 B 2e9bf6fe566dc5cb",
+        "this lane now: 16,464 B f0ec4a325af9844e (11:18:29)"
+      ],
+      "rule": "a walk that reports drift=1 is not wrong about the file it saw \u2014 it is stale about the walk's moment; only a drift==0 measured AFTER every writer stops counts"
+    },
+    "packAttributionRuleAdopted": "attribute a pack by a FILE stamp INSIDE the artifact, never by the outDir mtime \u2014 their forensics (all file stamps <= pass 2; 0 files in the 03:01:25\u201303:01:40Z window; only the directory carries 11:01:30.659 local) settle it, and the rule is now in this record"
+  },
+  "agreedPackHandshake": {
+    "instrument": "evidence/platform/pack-drift/20260917T031548Z/packed-twin-scan.mjs (platform-engineer's) \u2014 re-runnable, exit 0 IFF drift==0 over the whole artifact, --json for machine output, --self-test with a byte-mutated negative control",
+    "whyIUseTheirsForLegI": "its allowlist is NAMED IN THE SCRIPT (package.json \u2014 packer-written manifest, scripts/pack-mpd.mjs:372; packages/mpd-ext-plugin/dist/validator.js \u2014 scripts/pack-mpd.mjs:125) with cordis.patch.yml counted separately as no-twin, so two seats cannot disagree about exclusions; my own directional walk stays the private cross-check",
+    "myVerificationOfTheInstrument": {
+      "selfTest": "[self-test] identical=1 drift=mutated.txt byDesign=1 ok=false -> PASS (negative control does discriminate)",
+      "realRun": "TRUE exit=1 \u2014 identical=1183 drift=2 byDesign=2 noTwin=1 symlinks=0, packStampUtc 2026-09-17T02:56:59.067Z",
+      "selfCaughtTrap": "my first invocation piped the script into `tail` and printed tail's exit 0; re-run without the pipe to get the script's real exit 1 \u2014 the same capture trap recorded in t47's evidence, caught before reporting this time"
+    },
+    "anchorProtocol": {
+      "quote": [
+        "the manifest STAMP (dist/mpd-package/package.json mtime) as the pack record",
+        "the manifest ANCHOR (its sha256)"
+      ],
+      "currentAnchor": {
+        "bytes": 1408,
+        "sha256": "13b0f32599c2795ef4628cde09d6207b63db54905714f8d4bc3ba24eb1c79495",
+        "mtime": "2026-09-17 10:56:59"
+      },
+      "verifiedMatchesTheirs": true
+    },
+    "prePackRequirement": "run the scan BEFORE the pack too: a drift==0 reading (or a stable drift list) is what proves the writing window actually closed before the artifact is frozen \u2014 otherwise the next edit re-stales it and the t35 claim inherits the same defect. Their own message was already superseded by one further tick when I read it: their skills reading 15,835 B @03:13:57Z vs my instrument run 16,464 B @03:18:29.577Z.",
+    "directoryStampSettled": "their `find dist/mpd-package -newermt 03:01:00Z` returns exactly one hit \u2014 the DIRECTORY \u2014 while every top-level entry stamps 10:56:58\u201359 local; they withdrew the 03:01:30Z-pack line and we cite the manifest stamp as the pack record. Rule: attribute a pack by a FILE stamp inside the artifact, never by the outDir mtime.",
+    "postPackExchange": "after my re-pack I quote (a) the manifest stamp and (b) the manifest anchor, and they run the same scan on that same revision and report identical/drift/byDesign/noTwin + the drift list \u2014 two independent readings of ONE revision, which is the whole point.",
+    "prePackSettleProtocol": {
+      "source": "platform-engineer's precision: 3 s is a thin window for a file that has ticked three times; the wave's own discipline is ~50 s",
+      "protocol": [
+        "read the drift pair (or run the twin-scan instrument) TWICE, >=30 s apart",
+        "treat the artifact as freezable only when (i) both reads are byte-identical AND (ii) the writers have stopped \u2014 no mtime advance on either drifted file across the window",
+        "otherwise WAIT: a re-pack over a moving tree lands already-superseded, which is the failure mode this exchange spent three messages on"
+      ],
+      "then": "quote the packed MANIFEST stamp + the manifest anchor, and platform-engineer re-runs packed-twin-scan.mjs on the same revision for the second independent reading (exit 0 iff drift==0 over the whole artifact)",
+      "whyNot3s": "the workmate-library.mjs source ticked 14,322 -> 15,800 -> 15,835 -> 16,464 B inside one verification window; a 3 s window cannot distinguish 'settled' from 'between two ticks'",
+      "recordedAlsoByThem": "pack_stamp_rule in evidence/platform/pack-drift/20260917T031548Z/result.json (pack record = manifest stamp, never the directory mtime); their 03:01:30Z line is withdrawn and they cite 02:56:59.067Z"
+    },
+    "handoffPackageForTheReadOnlyReMeasurement": {
+      "requestedBy": "watchdog-engineer (their t28 legs were bound to the superseded pass-2 artifact; the asymmetry is that my T-23/twin check cannot be faked by a warm re-pack of the same bytes, while their pass-2 legs can)",
+      "items": [
+        "(1) the pack timestamp with sub-second precision",
+        "(2) the three script fingerprints re-pinned AT pack time (pack-mpd.mjs, verify-pack-closure.mjs, mpd-ext.mjs)",
+        "(3) the halt-check that proves no second pack raced the window",
+        "(4) `grep -c 'T-23' dist/mpd-package/agent-references/troubleshooting.md` plus the sha256 pair for that file",
+        "(5) the writer-settlement statement: which lanes' last writes preceded the pack, and the instant of the last one",
+        "(6) the workmate-library.mjs pair alongside the T-23 one-liner \u2014 the SECOND (and bigger) content-level falsifier: packed 14,322 B ba9053b24a3d84f9 vs source at the pack moment",
+        "(7) an explicit statement if ANY shipped tree was written after the pack \u2014 t61's contract voids its verdict on a later write, and with a moving skills/** file that is the realistic failure mode",
+        "(8) the CHECKOUT hashes of the shipped files AT PACK TIME \u2014 at minimum the two known drifters (agent-references/troubleshooting.md and skills/dsh-qa/scripts/workmate-library.mjs), alongside the manifest stamp + anchor. platform-engineer's reason: their scan reads the checkout LIVE, so a writer ticking between my freeze and their scan would otherwise read as MY pack being stale; with the pack-time checkout hashes they can classify mechanically \u2014 checkout hash == my value => the diff is the pack's; checkout hash != my value => a writer moved after the freeze and the artifact needs redoing, not the pack judged wrong."
+      ],
+      "haltCheckForm_CORRECTED": {
+        "evidence": "the packed MANIFEST's stamp + its anchor (sha256) read BEFORE and AFTER the measurement window \u2014 a second pack rewrites the manifest, so both would move; also the top-level FILE stamps of the artifact",
+        "corroborationOnly": "the outDir mtime \u2014 the wave PROVED it can move without a pack (only the directory carried 03:01:30Z while every file inside was 02:56:58\u201359), so it is recorded as corroboration, never as the evidence",
+        "whyTheCorrectionMatters": "their item (3) asked for the outDir mtime pair while the same sentence says a FILE stamp is the evidence; the record now states the file-stamp form unambiguously"
+      },
+      "readOnlyMeasurerTrade_accepted": {
+        "theirConstraint": "their existing driver RE-PACKS at its start, so running it as-is would overwrite my artifact and break one-pack-at-a-time; the re-measurement needs a read-only variant (a guard that refuses to pack), which they will write under the task rather than now",
+        "trade": "a read-only measurer cannot certify 'drift==0 across the packing moment'; it certifies 'this artifact is self-consistent and usable at YOUR moment' \u2014 which is exactly the re-measurement requested, while the packing moment stays mine to certify",
+        "accepted": true
+      }
+    },
+    "writerSettlement_measuredByMe": {
+      "protocol": "the adopted >=30 s two-read rule, run for real",
+      "read1": "03:34:19Z \u2014 troubleshooting.md 35,548 B f6b4d1bec8745da6 mtime 11:11:38; workmate-library.mjs 16,464 B f0ec4a325af9844e mtime 11:18:29",
+      "read2": "03:34:54Z \u2014 byte-identical on BOTH files (size + mtime + sha256) across 35 s",
+      "verdict": "SETTLED at that moment; the four-tick series on the skills file ended at 03:18:29Z, and the only shipped-tree writer since 03:12:00Z is that one path (`find packages skills presets extensions templates docs agent-references scripts -newermt 03:12:00Z`)",
+      "bound": "this is a settled READING at 03:34:19\u201354Z, not a promise for the pack window; the pre-pack ritual is repeated immediately before packing",
+      "artifactStillStale": "both files remain stale against the packed copies (T-23 +14 B; workmate +2,142 B), so the re-pack is still required"
+    },
+    "vendorRepinOrderingNote_forTheCaptain": "each of the four ticks on skills/dsh-qa/scripts/workmate-library.mjs invalidated the skills corpus treeSha, so the wave's SINGLE vendor re-pin must be taken after the LAST such write \u2014 the same 'last action' ordering rule, one layer up (skills/** single-writer + the re-pin rides the captain's commit)",
+    "instrumentV2_upgradedRule": {
+      "holeClosed": "v1 walked only the PACK: a file ADDED to the checkout after the packer ran has no packed entry, so there was nothing to compare and drift stayed 0 while the artifact was silently incomplete \u2014 the exact class leg (i) exists to catch. 'drift==0' was therefore NOT a sufficient acceptance rule.",
+      "v2Semantics": "forward pass unchanged (byte differences = drift); NEW reverse pass walks the CHECKOUT side of every root the packer declares in scripts/pack-mpd.mjs ROOT_ASSET_DIRS (parsed from the packer, not hardcoded: skills, presets, extensions, templates, docs, agent-references) plus packages/*/dist, and requires a packed twin for each file (absence = missing). ok = drift==0 AND missing==0; exit 0 iff ok.",
+      "selfTest": "[self-test] identical=1 drift=skills/mutated.md missing=skills/added-late.md byDesign=1 ok=false -> PASS (BOTH failure shapes seeded) \u2014 verified by me, TRUE exit 0",
+      "liveReadingVerifiedByMe": {
+        "at": "after the v2 upgrade",
+        "pack stamp": "2026-09-17T02:56:59.067Z",
+        "identical": 1183,
+        "drift": 2,
+        "missing": 0,
+        "byDesign": 2,
+        "noTwin": 1,
+        "ok": false,
+        "exit": 1
+      },
+      "newDatum": "missing=0 means NOTHING the packer is contracted to ship is ABSENT from the artifact \u2014 a stronger statement than 'no bytes differ', and it is new information this lane did not have before v2"
+    },
+    "myOwnLegIHadTheSameHole_selfCorrection": {
+      "what": "my directional walk iterated the PACK and counted `no-source` \u2014 which is the OPPOSITE direction (an extra packed file with no checkout twin), not 'a checkout file missing from the pack'",
+      "consequence": "my recorded leg-(i) criterion 'drift==0' carried the same false-green hole v2 closes; the MISSING direction was never checked by my walk",
+      "correction": "leg (i)'s acceptance is now `ok=true` (drift==0 AND missing==0) from platform-engineer's v2 instrument; my walk stays as the private cross-check for the FORWARD direction only and must not be quoted as a completeness result"
+    },
+    "tailTrapForTheWaveReport": "piping a checker into `tail` returns tail's exit 0 \u2014 a swallowed exit code can turn any gate red into a reported green. Self-caught twice in this lane (t47's settled re-run, and again on the first v2/leg-(i) invocation today); every reading quoted as an exit code must come from an UNPIPED run.",
+    "haltCheck_twoQuestions_twoInstruments": {
+      "sharpening": "watchdog-engineer's distinction, accepted: mtime detects a PACK (or a write); sha detects a CONTENT change. A warm re-pack that reproduces the same bytes moves every mtime while every sha stays put \u2014 so a hash-only halt-check would silently pass a second pack, and an mtime-only check would flag a benign touch.",
+      "question1_didAnythingPackOrWriteDuringMyWindow": {
+        "instrument": "top-level FILE mtimes inside the artifact + the manifest's mtime, read before and after the window",
+        "corroborationOnly": "the outDir mtime (the wave proved it can move without a pack)"
+      },
+      "question2_didTheBytesChange": {
+        "instrument": "the manifest's sha256 AND the content assertion (packed `grep -c 'T-23'` = 2 with the packed copy's sha256 equal to the source's)",
+        "whyItCannotBeFaked": "a warm re-pack of the same bytes cannot make the T-23 count appear \u2014 that is the asymmetry that makes the reading independent"
+      },
+      "placement": "question 1 belongs to handoff item (3), question 2 to item (4); t61's revision pin will quote them separately so neither answer stands in for the other",
+      "myPackageObligation": "supply BOTH sets explicitly \u2014 the before/after mtime set AND the manifest+content sha set \u2014 rather than one 'stamp' that answers only the question I happened to imagine"
+    },
+    "freezeClassification": {
+      "question": "if their post-pack scan reports a divergence, whose is it?",
+      "a_packOfStaleBytes": "checkout sha equals my pack-time sha, yet packed != checkout -> the pack was taken over stale bytes (my fault; redo the pack)",
+      "b_checkoutMovedAfterFreeze": "checkout sha differs from my pack-time sha -> a writer moved after I froze; the artifact is not wrong, it is superseded (and t61's contract already voids its verdict on a later write)",
+      "whyItWorks": "the instrument already prints both sides (`packed \u2026 vs checkout \u2026`), so this is a comparison against a value I supply, not new machinery"
+    },
+    "settleRuleNotToBeRelaxed": "byte-identical across the window AND no mtime advance \u2014 a file REWRITTEN WITH IDENTICAL BYTES still signals an active writer, so hashes alone are not sufficient (platform-engineer's confirmation of the stricter rule)",
+    "expectedWaitOnSkills": "skills/** is the single-writer lane: if that writer is in flight the ritual keeps saying 'wait' \u2014 the system working, not a stall. The artifact cannot be frozen ahead of its last writer, and the corpus treeSha for the wave's single re-pin must also be taken AFTER that writer settles (already relayed to the captain), or the commit-time re-pin pins a superseded revision."
+  }
+}

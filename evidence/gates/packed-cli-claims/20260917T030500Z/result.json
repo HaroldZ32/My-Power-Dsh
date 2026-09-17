@@ -1,0 +1,67 @@
+{
+  "task": "t43 — correct the two doc claims that the packed-CLI fix made stale",
+  "attempt_id": "347194c8-dd75-452e-a9e6-b866628fdc3c",
+  "generated_at": "2026-09-17T03:06:00Z",
+  "verdict": "PASS",
+  "measured": {
+    "files": {
+      "AGENTS.md": { "bytes_after": 47510, "sha256_after": "994f01451ec726a966b678bbe33f899a9879a32df92165a0491215ec1a413c1b", "regions_changed": "§8 packer copy list (441-448), §3 layout line 144" },
+      "EXTENSIONS-FOR-AGENTS.md": { "bytes_after": 15419, "sha256_after": "cae9486f806dafd159ce3b9a27d9e3bd0f75743e84cf67628ff36313d083cb7b", "regions_changed": "§9 v1 hard limits (222-229)" }
+    },
+    "measurement_that_falsifies_the_old_limit": "t11: a real `npm run pack` output, then inside dist/mpd-package: `bun scripts/mpd-ext.mjs validate …extensions/mpd-ext-example` exit 0; `scaffold` exit 0; `--self-test` exit 0 (53 checks, '[validator: compiled]'); plain node too; `--validator` prints the loaded entry — evidence/pack-closure/impl/20260917T011849Z/result.json",
+    "measurement_that_shows_the_list_was_incomplete": "dist/mpd-package/package.json files[] = 13 entries, all present in the artifact root (package.json itself undeclared, npm-included); exports keys lack ./scripts/* — hence 'declared in files, with the author-facing groups also in exports'",
+    "already_shipped_but_previously_unnamed": "extensions/ and scripts/ — `git diff -U1 -- scripts/pack-mpd.mjs` shows the inline `extensionsSrc` copy becoming a declarative entry and the `scripts/` copy line unchanged as context; the captain's ruling is the authority for naming them in this task",
+    "instruction_budget": "AGENTS.md renders 47,814 B against the 65,536 budget → truncated:false, GREEN (t16 harness driver)",
+    "doc_census": "pairs=37 failed=0 violations=0 exempt=17 (unchanged)"
+  },
+  "acceptance": [
+    {
+      "criterion": "EXTENSIONS-FOR-AGENTS.md §9's hard limit 'the developer CLI does NOT work inside a PACKED artifact' is CORRECTED, stating what the packed tree now carries and what a source edit still requires.",
+      "status": "passed",
+      "evidence": "The 4-line limit was replaced by a positive measured statement: the CLI works from a checkout AND from a packed artifact; the packer ships templates/, the docs/ pairs, agent-references/ and scripts/, and emits packages/mpd-ext-plugin/dist/validator.js (the compiled fallback when src/ is absent); every command exits 0 under bun and plain node on a fresh dist/mpd-package/ (evidence/pack-closure/impl/20260917T011849Z/); a SOURCE edit reaches the artifact only after a re-pack — the packed tree ships packages/*/dist/ and no packages/*/src/ (scoped per the packaging lane's measurement that other .ts files, e.g. the adopted plugin's lib/types/, DO ship). `grep -c 'does NOT work inside a PACKED artifact'` = 0."
+    },
+    {
+      "criterion": "AGENTS.md §8's packer copy list names templates/ and docs/ alongside the assets it already listed — the user's decision and t11's implementation must not contradict the manual.",
+      "status": "passed",
+      "evidence": "The list now reads: built plugin dists (incl. the combined web client), the adopted agent-teams main code, skills/ + presets/, extensions/, the scaffold templates/, the docs/ set (EN + *.zh-CN.md pairs), the English-only on-demand agent-references/, scripts/ (the extension CLI) and the licence/README files — declaring all of them in files, with the author-facing groups also in exports — and the 'refuses to ship a package with a missing dist/' clause is preserved. The three groups the user's decision added (templates/, docs/, agent-references/) are named, plus the two previously-unnamed shipped groups (extensions/, scripts/) under the captain's ruling; the exports clause is the corrected one (measured: no ./scripts/* export key)."
+    },
+    {
+      "criterion": "Nothing else in either file changes: the corrections plus at most one clarifying clause each; both English-only; verify:docs green and the census unchanged.",
+      "status": "passed",
+      "evidence": "Exactly three regions changed: §9 (the false limit), §8 (the copy list), and AGENTS.md:144 (the one clarifying clause about the compiled validator fallback — the captain-approved third find, judged INCOMPLETE-not-false). No heading moved, no other file touched, no twin added (agent-facing English-only), and `bun run verify:docs` exit 0 with pairs=37 failed=0 violations=0 exempt=17 — the census is unchanged."
+    },
+    {
+      "criterion": "The evidence quotes BOTH before/after texts verbatim and cites the measurement that makes the old text false.",
+      "status": "passed",
+      "evidence": "evidence/gates/packed-cli-claims/20260917T030500Z/output.log quotes the before-texts (from the reads taken immediately before the edit at 02:52Z) and the after-texts verbatim for all three regions, and cites t11's packed-CLI measurements (validate/scaffold/--self-test/--validator exit 0 inside dist/mpd-package) plus the manifest comparison that shows the §8 list was incomplete."
+    },
+    {
+      "criterion": "If either claim turns out to be TRUE after all, say so and leave it — the acceptance is accuracy, not the edit.",
+      "status": "passed",
+      "evidence": "Both claims were verified FALSE/INCOMPLETE by measurement before editing, and the third find was judged INCOMPLETE-not-false and given a clarifying clause only (never dressed up as a stale claim). The split is recorded in the evidence: §9 FALSE-as-of-t11, §8 INCOMPLETE, §3:144 INCOMPLETE-not-false."
+    }
+  ],
+  "commands": [
+    { "command": "bun run verify:docs", "exit": 0, "decisive_output": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS" },
+    { "command": "node scripts/verify-rows-parity.mjs", "exit": 0, "decisive_output": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list" },
+    { "command": "bun evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs current=AGENTS.md", "exit": 0, "decisive_output": "sourceBytes 47510, renderedBytes 47814, truncated false, GREEN (full content injected)" }
+  ],
+  "residual_risks": [
+    "§3's clarifying clause and §9's new paragraph now name `packages/mpd-ext-plugin/dist/validator.js`; that file exists only inside the PACKED tree (and is emitted by the packer), never in the repo root — the wording says 'the packer … emits', so no repo-path claim is made. The citation checker (docs-claims) does not scan AGENTS.md/EXTENSIONS-FOR-AGENTS.md anchors beyond the one t50 will fix, so this is a wording risk only.",
+    "AGENTS.md and EXTENSIONS-FOR-AGENTS.md are modified-but-uncommitted alongside other lanes' edits; `git diff` cannot isolate this task's bytes, which is why the evidence quotes before/after texts plus the after-hashes.",
+    "t50 (mine, deps t43) still owes the EXTENSIONS-FOR-AGENTS.md:24 `EXPECTED_TOOLS` anchor re-measurement (declaration now at line 532, not the claimed 548) — untouched here on purpose: this task changed only the three named regions.",
+    "No git writes; the captain commits."
+  ],
+  "artifacts": [
+    "EXTENSIONS-FOR-AGENTS.md",
+    "AGENTS.md",
+    "evidence/gates/packed-cli-claims/20260917T030500Z/result.json",
+    "evidence/gates/packed-cli-claims/20260917T030500Z/output.log",
+    "evidence/gates/packed-cli-claims/20260917T030500Z/after-texts.txt",
+    "evidence/gates/packed-cli-claims/20260917T030500Z/verify-docs.log",
+    "evidence/gates/packed-cli-claims/20260917T030500Z/verify-rows.log",
+    "evidence/gates/packed-cli-claims/20260917T030500Z/budget-check.txt",
+    "evidence/gates/packed-cli-claims/20260917T030500Z/sizes.txt",
+    "evidence/gates/packed-cli-claims/20260917T030500Z/hashes.txt"
+  ]
+}

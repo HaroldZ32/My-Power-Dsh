@@ -9,22 +9,26 @@ import { describe, expect, test } from "bun:test"
 import { WatchdogMachine, WATCHDOG_DEFAULTS, readKnobs, streakKey } from "../src/machine"
 import { WatchdogEngine } from "../src/engine"
 import { readHeartbeats } from "../src/store"
-import { agent, sandbox, stubAdapter, testConfig, writeTeam } from "./support"
+import { agent, sandbox, stubAdapter, testConfig, writeTeam, openOutstandingChannel } from "./support"
 
 function stubCtx(): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
   return { on: () => () => {} }
 }
 
-const knobs = { ...WATCHDOG_DEFAULTS }
+// These cases assert the ARITHMETIC of the ladder (a strike every tick, a reset on any
+// evidence, a clean streak per attempt) on the pre-redesign timings, so the timestamps in
+// them stay readable. The FROZEN §3 defaults — 600 s, six strikes, `warn-only` — are
+// asserted verbatim in the knobs describe block below.
+const knobs = { ...WATCHDOG_DEFAULTS, warnSilenceMs: 90_000, warnStreakToEscalate: 3 }
 
 describe("knobs", () => {
   test("an absent namespace resolves to the frozen defaults", () => {
     const resolved = readKnobs(undefined, {})
     expect(resolved.enabled).toBe(true)
-    expect(resolved.warnSilenceMs).toBe(90_000)
+    expect(resolved.warnSilenceMs).toBe(600_000)
     expect(resolved.tickIntervalMs).toBe(15_000)
-    expect(resolved.warnStreakToEscalate).toBe(3)
-    expect(resolved.actionOnEscalate).toBe("pause")
+    expect(resolved.warnStreakToEscalate).toBe(6)
+    expect(resolved.actionOnEscalate).toBe("warn-only")
     expect(resolved.issues).toEqual([])
   })
 
@@ -49,7 +53,7 @@ describe("knobs", () => {
 
   test("a bad knob type falls back with a recorded issue", () => {
     const resolved = readKnobs({ watchdog: { warnSilenceMs: "soon" } }, {})
-    expect(resolved.warnSilenceMs).toBe(90_000)
+    expect(resolved.warnSilenceMs).toBe(600_000)
     expect(resolved.issues.some((issue) => issue.path === "watchdog.warnSilenceMs")).toBe(true)
   })
 
@@ -206,9 +210,13 @@ describe("the machine over a real team record", () => {
       const stub = stubAdapter({ workspace: box.workspace })
       const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
       const startedAt = 1_000_000
+      engine.install()
       engine.stamp("step", agent("a1", box.workspace))
       const stamps = readHeartbeats(box.workspace, box.stateDir, "Architect")
       const silenceFrom = stamps[0].at
+      // The §1 channel authority: an OUTSTANDING request (an open step with no committed
+      // answer) is the only state the ladder warns/escalates from.
+      openOutstandingChannel(stub, "a1", silenceFrom)
 
       const first = await engine.tickOnce(silenceFrom + 90_001)
       expect(first.decisions.map((d) => d.type)).toEqual(["warn"])

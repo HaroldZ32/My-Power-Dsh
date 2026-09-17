@@ -1,0 +1,13 @@
+### bun test packages/mpd-agent-teams-plugin (full adopted-plugin suite)
+
+ 243 pass
+ 0 fail
+ 2007 expect() calls
+Ran 243 tests across 70 files. [10.82s]
+
+### bun test packages/mpd-agent-teams-plugin/self-fix-tests
+
+ 86 pass
+ 0 fail
+ 1266 expect() calls
+Ran 86 tests across 22 files. [9.65s]

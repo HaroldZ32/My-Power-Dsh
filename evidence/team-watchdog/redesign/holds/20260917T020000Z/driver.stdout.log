@@ -1,0 +1,42 @@
+[2026-09-17T01:47:08.930Z] §9 rows (b), (f) — RED (/root/dshProj/my-power-dsh/.mpd/red-baseline) vs GREEN (/root/dshProj/my-power-dsh)
+baseline BEFORE [red] machine=fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef team=02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58 channel=(absent)
+baseline BEFORE [green] machine=ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41 team=c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168 channel=b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84
+[rows-bf] WARN team-a task=t1 member=Architect silence=3691000ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/holds/20260917T020000Z/sandbox-ir87Lx/.mpd/team/watchdog/scene/team-a/20260917T014839Z-warn.json
+[rows-bf] WARN team-a task=t1 member=Architect silence=3781000ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/holds/20260917T020000Z/sandbox-ir87Lx/.mpd/team/watchdog/scene/team-a/20260917T015009Z-warn.json
+[rows-bf] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[rows-bf] ESCALATE team-a task=t1 member=Architect silence=3871000ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/holds/20260917T020000Z/sandbox-ir87Lx/.mpd/team/watchdog/scene/team-a/20260917T015139Z-escalate.json
+
+ROW (b) — a member whose only open tasks are dependency-blocked
+  required      : NO warn, NO hold, and the member is reported PARKED
+  RED   verdict : FAIL  (warn=true escalate=true hold=true dependencyParked=0 foldState=null)
+    defaults    : {"warnSilenceMs":90000,"warnStreakToEscalate":3,"actionOnEscalate":"pause"}
+    ticks       : ["91000:warn","181000:warn","271000:escalate","362000:"]
+  GREEN verdict : PASS  (warn=false escalate=false hold=false dependencyParked=4 foldState={"a1":"OUTSTANDING"})
+    defaults    : {"warnSilenceMs":600000,"warnStreakToEscalate":6,"actionOnEscalate":"warn-only"}
+    ticks       : ["91000:","181000:","271000:","362000:"]
+    team bytes untouched: true
+  ROW RESULT    : red-fails / green-passes ✅
+[rows-bf] WARN team-a task=t1 member=Architect silence=86401000ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/holds/20260917T020000Z/sandbox-B43xMw/.mpd/team/watchdog/scene/team-a/20260917T014710Z-warn.json
+[rows-bf] WARN team-a task=t1 member=Architect silence=86402000ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/holds/20260917T020000Z/sandbox-B43xMw/.mpd/team/watchdog/scene/team-a/20260917T014711Z-warn.json
+[rows-bf] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[rows-bf] ESCALATE team-a task=t1 member=Architect silence=86403000ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/holds/20260917T020000Z/sandbox-B43xMw/.mpd/team/watchdog/scene/team-a/20260917T014712Z-escalate.json
+[rows-bf] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[rows-bf] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/holds/20260917T020000Z/sandbox-K2N0R6/.mpd/team/watchdog/incidents.jsonl
+
+ROW (f) — a team whose only evidence is a PREVIOUS generation's stamp (and a task nobody attempted)
+  required      : never holdable: no warn, no hold
+  RED   verdict : FAIL  (warn=true escalate=true hold=true neverStarted=0)
+    defaults    : {"warnSilenceMs":90000,"warnStreakToEscalate":3,"actionOnEscalate":"pause"}
+    ticks       : ["1000:warn","2000:warn","3000:escalate"]
+  GREEN verdict : PASS  (warn=false escalate=false hold=false neverStarted=1)
+    defaults    : {"warnSilenceMs":600000,"warnStreakToEscalate":6,"actionOnEscalate":"warn-only"}
+    ticks       : ["1000:","2000:","3000:"]
+    team bytes untouched: true
+  ROW RESULT    : red-fails / green-passes ✅
+
+settling 50000 ms before the settled-hash re-measurement …
+settled (identical before/after): true
+RED tree matches the contract's frozen hashes and carries NO channel.ts: true
+A2 — the fingerprint that carries the two new modules (green): {"machine":"ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41","engine":"47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694","channel":"b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84","team":"c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168","tools":"aca511e284fd1855c1255ada7a20347583f85f36f6ef4e2db535fd2845976d5e"}
+
+DRIVER RESULT: PASS — every row fails RED and passes GREEN on settled hashes

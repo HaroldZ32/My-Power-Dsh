@@ -1,0 +1,49 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "8bc7f34737e036af1b7bdf1a5b6c2f7233ba4bfea860e566db24cf8ebaf4e16c",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-09-17T01:16:05.794Z",
+  "finishedAt": "2026-09-17T01:16:05.997Z",
+  "durationMs": 203,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "tui-mount",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "exit-1",
+      "note": null,
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 200,
+      "command": "bun skills/dsh-qa/scripts/tui-mount.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/tui-mount.mjs",
+      "marker": null,
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/suite-runner/20260917T011605Z-unavailable/lanes/tui-mount.log",
+      "outputTail": [
+        "[mpd-qa] FAIL case=tui-mount lane=real reason=absent-fixture prereq=tui profile in the sandbox root remedy=\"bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <root> --install\""
+      ],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 0,
+    "unavailable": 0,
+    "fail": 1
+  },
+  "exitCode": 1
+}

@@ -1,0 +1,74 @@
+{
+  "kind": "handover-source-material",
+  "NOT_A_VERDICT": true,
+  "for_task": "t29 (verification of lane A) - verifier of record: packaging-engineer, blocked on t24",
+  "from": "watchdog-engineer, author of the lane-A implementations under verification (t8, t13)",
+  "why_this_is_not_evidence_for_t29": "the author cannot supply the verdict (self-approval); nothing here may be cited as an acceptance reading for t29. Re-run every driver on settled hashes and record your own numbers.",
+  "created_at": "2026-09-17T03:10:34.269Z",
+  "revision": {
+    "head": "646d8018a44bffb2d6e1c30afa090056f81b911e",
+    "branch": "fix/todo-register-p1"
+  },
+  "frozen_hashes_at_handoff_material_only": {
+    "packages/mpd-team-watchdog-plugin/src/machine.ts": "ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41",
+    "packages/mpd-team-watchdog-plugin/src/engine.ts": "47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694",
+    "packages/mpd-team-watchdog-plugin/src/channel.ts": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+    "packages/mpd-team-watchdog-plugin/src/team.ts": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+    "packages/mpd-agent-teams-plugin/lib/tools.js": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f"
+  },
+  "red_baseline": {
+    "worktree": ".mpd/red-baseline",
+    "note": "the drivers drive BOTH trees, each with its OWN modules, identical scenario, injected clock; the core result asserts redMatchesContract {machine:true, engine:true, tools:true} against the contract frozen at HEAD 75018a1"
+  },
+  "inventory": [
+    {
+      "path": "evidence/team-watchdog/redesign/core/20260917T013000Z/rows-driver.mjs",
+      "proves": "section 9 rows (a)(b)(d): per-row RED fail / GREEN pass",
+      "decisive": "DRIVER RESULT: PASS - every row fails RED and passes GREEN on settled hashes",
+      "rerun": "node evidence/team-watchdog/redesign/core/20260917T013000Z/rows-driver.mjs",
+      "readings": {
+        "settleMs": 50000,
+        "settled": true,
+        "redMatchesContract": "machine/engine/tools all true",
+        "greenMatchesContract": "all false (i.e. NOT the contract baseline)",
+        "ok": true
+      }
+    },
+    {
+      "path": "evidence/team-watchdog/redesign/core/20260917T012445Z/boot/",
+      "proves": "a REAL mounted boot (isolated DSH_HOME + sandbox HOME, real dsh, agentPreset mpd): the row applies, the fold subscription installs, no apply-crash signature",
+      "decisive": "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only ... holdTtlMs=900000 predicate=channel enrichment=on | ok B1 {\"enabled\":\"true\",\"disposers\":8,\"holdService\":\"mpdWatchdog\"}",
+      "rerun": "skills/dsh-qa/scripts/team-watchdog-boot.mjs with --out pointed INSIDE your own evidence dir (the case is read-only otherwise); NOTE outcome=model-error is expected without credentials and counts only for the boot invariant, never as a completed turn"
+    },
+    {
+      "path": "evidence/team-watchdog/redesign/holds/20260917T020000Z/rows-bf-driver.mjs",
+      "proves": "section 9 rows (b) and (f): a dependency-blocked team and a previous-generation-stamp team are never holdable",
+      "decisive": "DRIVER RESULT: PASS - every row fails RED and passes GREEN on settled hashes",
+      "rerun": "node evidence/team-watchdog/redesign/holds/20260917T020000Z/rows-bf-driver.mjs"
+    },
+    {
+      "path": "evidence/team-watchdog/redesign/config/20260917T011345Z/cross-layer-defaults.mjs",
+      "proves": "the three declaration layers (machine.ts, mpd-config-plugin settings-schema.ts, mpd-bundle cordis.patch.yml) agree on the knob values, with a negative-control root shipped beside it",
+      "rerun": "node evidence/team-watchdog/redesign/config/20260917T011345Z/cross-layer-defaults.mjs"
+    },
+    {
+      "path": "evidence/team-watchdog/redesign/core/SUMMARY.md + evidence/team-watchdog/redesign/holds/SUMMARY.md",
+      "proves": "the two lane indexes: per-row tables, gate readings, the RED/GREEN pair for every row, and the frozen-hash boundary note"
+    }
+  ],
+  "gaps_the_verifier_must_cover_themselves": [
+    {
+      "t29_clause": "section 9(2) the D2 in-process proof over the REAL adopted tools (hold present -> claim_task/update_task succeed, deliveriesWhileHeld === 0)",
+      "status": "NOT FOUND on disk under evidence/team-watchdog/redesign/** at this revision. A grep for deliveriesWhileHeld hits only 2026-09-15/16 evidence that PREDATES the redesign (long-tool-false-positive, live/20260915T171438Z, lanes/20260915T170553Z) - do NOT inherit those."
+    },
+    {
+      "t29_clause": "section 9(3) the replay of the 85 recorded incidents (.mpd/team/watchdog/incidents.jsonl) with the count of the historical escalations the new predicate would have produced",
+      "status": "only MENTIONED in the two SUMMARY.md files at handoff; no dedicated replay artifact found. The verifier must produce the replay and its count."
+    },
+    {
+      "t29_clause": "the rate claim bound (one live run window cannot prove the absence of false positives)",
+      "status": "the verifier must state their own window and its limits; the lane files carry per-row injected-clock readings, not a live rate claim."
+    }
+  ],
+  "bound": "everything above is source material quoted from the author's evidence, correct at the revision and moment stamped here. Any writer to the five lane-A sources, the watchdog dist bundle or the adopted lib invalidates the fingerprints; re-measure before judging."
+}

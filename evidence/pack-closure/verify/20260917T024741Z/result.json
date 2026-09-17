@@ -1,0 +1,140 @@
+{
+  "task": "t28",
+  "lane": "E (packaging) + F (harness-close)",
+  "kind": "verification",
+  "verifier": "watchdog-engineer",
+  "started_at": "2026-09-17T02:47:41Z",
+  "finished_at": "2026-09-17T02:58:00Z",
+  "revision": {
+    "head": "646d8018a44bffb2d6e1c30afa090056f81b911e",
+    "dirty_paths": { "pass1": 214, "pass2": 217 },
+    "fingerprints_identical_across_both_passes": {
+      "packages/mpd-dsh-adapter-plugin/src/index.ts": "62f3ac1e66c6e45807434fb0bfbc22d4282c1f007188a37dd7618de7b326ad7b",
+      "packages/mpd-ext-plugin/src/index.ts": "a5167018d25a3544894380ba9d8a3f34c73effe9742e32d44b6a181e310e2fb8",
+      "packages/mpd-team-watchdog-plugin/src/machine.ts": "ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41",
+      "packages/mpd-agent-teams-plugin/lib/tools.js": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f",
+      "scripts/pack-mpd.mjs": "b4aff7cc81c030adca0cd3d29df9a3901c62cd4ad401d4c7fdc89178d88e7e68",
+      "scripts/verify-pack-closure.mjs": "b7f940b422d34bda1a7d615394f9289e4f23c90e8868417447bffcac30a589cd",
+      "scripts/mpd-ext.mjs": "e9e5c78007e886107b5f5b932c7d0eb2e92105994e24004bb85cf03a2671e262"
+    },
+    "note": "the measured surface (the packer, the closure checker, the CLI, the two row patches and the watchdog machine) did not move between the passes; only copied-tree payload did (t48's one dist rebuild + one QA-case edit), which is why pass 2 exists."
+  },
+  "why_two_passes": {
+    "rule": "'the artifact must be packed after the LAST writer of any copied tree; only drift==0 measured AFTER the re-pack counts' (wave rule)",
+    "pass1": {
+      "packed_at": "2026-09-17T02:50:34.788Z",
+      "status": "GREEN on every leg, but INVALIDATED as the current artifact 11 s later"
+    },
+    "the_two_post_pack_writers": [
+      { "at": "2026-09-17T02:50:45.681Z", "path": "skills/dsh-qa/scripts/workmate-library.mjs", "why": "another lane's QA-case edit (shipped tree: skills/**)" },
+      { "at": "2026-09-17T02:54:37.464Z", "path": "packages/mpd-workmate-plugin/dist/index.js", "why": "t48's repair of F-1 (the canonical dist rebuild; shipped tree: packages/**)" }
+    ],
+    "measured_consequence_before_repacking": "artifact copy != source for exactly those two files (workmate-library.mjs ba9053b2… vs a59b89cc…; workmate dist 54704 B 401573a0… vs 55875 B 6b1715d0…) — so the shipped artifact was carrying a stale dist and a stale QA script, which is precisely the class the wave rule exists for.",
+    "pass2": { "packed_at": "2026-09-17T02:56:59.067Z", "status": "AUTHORITATIVE — every number below is from this pass", "writer_settlement": "the last copied-tree writer predates the pack by 141 s; 0 copied-tree writers after it at the check that follows this file" }
+  },
+  "acceptance": [
+    {
+      "id": "A1",
+      "clause": "A REAL `npm run pack` is run from a clean state on settled hashes, and every claim about the artifact is checked against `dist/mpd-package/` itself: `templates/` present, `docs/` pairs present and complete (no EN without its zh-CN twin), packed manifest `files` matching disk.",
+      "verdict": "PASS (with the 'clean state' clause read as settled, not git-clean — see the bound below)",
+      "evidence": {
+        "pack": "npm run pack exit 0 at 2026-09-17T02:56:59.067Z on HEAD 646d8018 + the working tree measured here; the packer rmSync's its outDir, so this is a from-scratch assembly",
+        "settled_hashes": "HEAD unchanged and all seven fingerprints unchanged across both passes; the re-check ran twice (before pass 1, before pass 2) and found no in-flight writer",
+        "LEG_a_directional": "compared=1185 artifact files, drift=0, files-with-no-source=0 (the three generated/allowlisted files: package.json in packed form, cordis.patch.yml — byte-identical to packages/mpd-bundle/cordis.patch.yml, packages/mpd-ext-plugin/dist/validator.js generated from the shipped bundle); root README exit 0",
+        "LEG_c_completeness": "over the six WHOLESALE groups only (skills, presets, extensions, docs, templates, agent-references): missing=0 in every one",
+        "templates": "dist/mpd-package/templates/ present, 1 entry: mpd-extension (the scaffold source)",
+        "docs_pairs": "dist/mpd-package/docs/: 26 EN + 11 zh-CN, zh-without-EN=0; the 15 EN files without a zh twin are exactly the AGENTS.md §3-exempt process records (plan-*.md, decisions.md, bline-report.md, omo-parity-gap.md, review-p0-p3.md, track-a-report.md, tui-edition-report.md, ulw-deepseek-optimization.md). The gate that defines the rule passes on the packed root itself: `[verify-docs-parity] root=…/dist/mpd-package pairs=35 failed=0 violations=0 exempt=17 — PASS` (repo root: pairs=37 failed=0).",
+        "packed_manifest_files": "13 entries: 8 globs (packages/**, skills/**, presets/**, extensions/**, templates/**, docs/**, agent-references/**, scripts/**) each resolving to an existing NON-EMPTY base directory (24/18/1/3/1/37/3/2 entries) + 5 files (cordis.patch.yml, LICENSE.md, LICENSE-NOTICES.md, README.md, README.zh-CN.md) all present → missing=0",
+        "packed_artifact_size": "378 asset files inside the packed tree (the closure checker's own census)"
+      },
+      "bound": "the acceptance clause says 'from a clean state'; this wave's changes are UNCOMMITTED, so a git-clean `npm run pack` is exactly the RED case — it packs the pre-wave tree and its CLI fails (see A2). 'Clean state' is therefore satisfied as 'settled hashes + no in-flight writer', measured twice; it is NOT a git-clean checkout, and it cannot be one before the captain commits."
+    },
+    {
+      "id": "A2",
+      "clause": "The packed CLI is executed INSIDE the packed tree: `validate`, `scaffold` (into a temp dir) and `--self-test` all exit 0 — the RED reading (`Cannot find module '…/packages/mpd-ext-plugin/src/registry.ts'`, exit 1) is reproduced on the pre-change artifact and quoted.",
+      "verdict": "PASS",
+      "evidence": {
+        "green": "inside dist/mpd-package: `node scripts/mpd-ext.mjs validate extensions/mpd-ext-example` exit 0 · `--self-test` exit 0 ('[mpd-ext] --self-test passed (53 checks) [validator: compiled]') · `scaffold verify-probe` into a temp dir exit 0, producing README.md, README.zh-CN.md, flows, mpd-ext.json, personas, skills",
+        "red": "pre-change artifact: `git archive HEAD | tar -x` into a scratch tree (HEAD 646d8018, WITHOUT the wave) → `npm run pack` exit 0 → `node dist/mpd-package/scripts/mpd-ext.mjs validate dist/mpd-package/extensions/mpd-ext-example` exit 1 with `url: 'file:///tmp/t28-red-jK5vhg/tree/dist/mpd-package/packages/mpd-ext-plugin/src/registry.ts'` and `Cannot find module …` → RED reproduced, so the fix is falsifiable"
+      }
+    },
+    {
+      "id": "A3",
+      "clause": "The closure rule's negative control is run: an asset entry seeded missing makes `node scripts/verify-pack-closure.mjs` fail loudly, and the clean pack passes.",
+      "verdict": "PASS",
+      "evidence": {
+        "clean": "`node scripts/verify-pack-closure.mjs` exit 0 — 17 dist/index.js rows + 1 adopted lib/index.js row + 4 MCP rows of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; agent references 3/3",
+        "negative_control": "seeded omission of one REFERENCES entry on a byte-copy of the REAL artifact → exit 1, naming the file (names_file=true) and the kind (names_kind=true); the run's own header prints the copied tree it judged (377 asset files) — the copy is what makes the control causally attributable to the seed",
+        "packed_parity": "the same run's doc-parity leg on the packed root: pairs=35 failed=0 violations=0 exempt=17 — PASS"
+      }
+    },
+    {
+      "id": "A4",
+      "clause": "The harness-owned closure notes are checked as claims: each of T-21/T-23/T-24/T-26/T-43 has a note where an agent meets it, the T-23/T-24 helper is executed once successfully, and the T-43 guard's negative case (it must not fire for a normal session) is shown.",
+      "verdict": "PASS with one cosmetic finding — full detail and raw logs in evidence/platform/verify/20260917T024912Z/{result.json,output.log}",
+      "evidence": {
+        "notes": "AGENTS.md §12 id-labelled bullet per friction (T-21/T-23/T-24/T-26/T-43, plus T-54/T-55) naming the one-command fallback; agent-references/troubleshooting.md rows 15/17/29/30/31 carry the symptom-first detail",
+        "helper_real_run": "mpd-bg run wrote <log>.pid + the child's HELPER-REAL-RUN-DONE into the workspace log; probe <log>.pid → RUNNING pid=15 then DEAD pid=15 (log: PROBE-JOB-DONE)",
+        "helper_self_test": "node scripts/mpd-bg.mjs --self-test → 13/13 arms passed, including the NO-PID-FILE exit-2 arm and the T-24 grandchild/pipe arms",
+        "t43_negative_case": "bun test packages/mpd-workmate-plugin → 28 pass / 0 fail (a normal session is never refused)"
+      },
+      "finding": "F-2 (low, cosmetic): troubleshooting.md row 17 (T-23) is the only one of the five rows without its friction id in the row."
+    },
+    {
+      "id": "A5",
+      "clause": "T-50 is re-verified for what it actually claims — the resolution is lazy and the warning wording is honest; the absent observation (six clean boots) is restated as a bound, never as a fix for an observed failure.",
+      "verdict": "PASS — evidence in evidence/platform/verify/20260917T024912Z/result.json (raw/t50-symbols.log)",
+      "evidence": {
+        "lazy": "createLazyDshAdapter (packages/mpd-dsh-adapter-plugin/src/index.ts) returns a Proxy whose get() calls resolve() per property access; resolve() re-probes on every use and caches only a successful mount; consumers mpd-ext-plugin and mpd-roles-plugin",
+        "honest_wording": "a transient miss (non-strict probe still finds the service) warns 'not ACTIVE yet … this transient miss needs NO row-order change (T-50)'; only a strict+non-strict miss proves absence and earns the row-order hint",
+        "suites": "adapter 42/0, ext 74/0, roles 31/0 — all exit 0",
+        "bound": "'six consecutive clean boots on the correctly ordered tree never opened the window (t24, 6/6) — so this change is justified by the code': stated as a bound on what the observation proves, never as a repair of an observed failure."
+      }
+    },
+    {
+      "id": "A6",
+      "clause": "Anything that does not hold is reported as a finding with the exact command and reading.",
+      "verdict": "PASS — 3 items recorded below (one of them my own driver's error, withdrawn and corrected in place rather than dropped)",
+      "evidence": "findings[]"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "medium",
+      "status": "RAISED at pass 1, REPAIRED at 2026-09-17T02:54:37Z by t48, CONFIRMED fresh from the verification side at pass 2",
+      "text": "the packing input tree was not dist-fresh, so the artifact shipped a stale packages/mpd-workmate-plugin/dist/index.js (t23's routed residual). Reported, never repaired by me — the dist belongs to another lane's inScope.",
+      "reading_at_pass1": "[verify-dist-fresh] FAIL - 1 of 20 targets not fresh (STALE: 1); STALE packages/mpd-workmate-plugin/dist/index.js — committed (54704 B, 401573a0…) != fresh build of its src (55875 B, 6b1715d0…), rebuild: bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js",
+      "reading_at_pass2": "[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed",
+      "cross_check": "the repair's own evidence (evidence/pack-closure/workmate-dist-rebuild/20260917T025436Z/result.json) quotes the same pre-repair hash pair and the same canonical rebuild command; the source file's hash is unchanged by it (c995d017… before and after)"
+    },
+    {
+      "id": "F-10",
+      "severity": "none",
+      "status": "WITHDRAWN — it was MY DRIVER'S classification bug, not a defect",
+      "text": "the driver flagged 'byte-identity red for group(s) scripts' because it applied the WHOLESALE-group rule to a SUBSET group: the packer deliberately ships only install-mcp.mjs + mpd-ext.mjs from scripts/ and dist/ + README pairs from packages/. The decisive reading is `differing` (a packed copy that differs from its source, excluding the three generated files): 0 for every group — including scripts (18 intentional 'Only in' lines) and packages (67 intentional 'Only in' lines).",
+      "reading": "{agent-references,docs,templates,skills,presets,extensions} exit 0 / 0 lines; scripts exit 1 differing=0 only_in=18; packages exit 1 differing=0 only_in=67",
+      "corrected_classification": {
+        "wholesale_groups_exit0": ["agent-references", "docs", "templates", "skills", "presets", "extensions"],
+        "subset_groups": ["scripts", "packages"],
+        "rule": "for a subset group only `differing` counts; 'Only in' entries are the packer's own copy rules, and a clean leg may never lend credit to an unchecked one."
+      }
+    },
+    {
+      "id": "F-3",
+      "severity": "process",
+      "status": "note (not a defect of the packer)",
+      "text": "the artifact ages under ANY writer to a copied tree: 11 s after a fully green pack, one QA-case edit plus one dist rebuild turned two shipped files stale. The wave rule ('pack after the LAST writer of any copied tree') is therefore not bookkeeping — it is the only thing that keeps the artifact readings true. A later pack (t35's) supersedes both of my passes; the pass-2 numbers are authoritative only until the next copied-tree writer.",
+      "reading": "post-pack drift measured before the re-pack: skills/dsh-qa/scripts/workmate-library.mjs DRIFT (ba9053b2… vs a59b89cc…), packages/mpd-workmate-plugin/dist/index.js DRIFT (54704 B vs 55875 B); after the pass-2 pack both read identical, and 0 copied-tree writers follow it at the check recorded in raw/pass2-artifact-current.log"
+    }
+  ],
+  "verdict": "PASS — at the pass-2 pack moment (2026-09-17T02:56:59.067Z, HEAD 646d8018 + the tree fingerprinted here, packed 141 s after the last copied-tree writer) the artifact is self-sufficient: LEG (a) drift=0 over 1185 files, LEG (c) 0 missing across the six wholesale groups, closure exit 0 with a working negative control, packed doc-parity 35/0, and the CLI's validate/--self-test/scaffold all exit 0 INSIDE the packed tree. The RED reading reproduces on the pre-change artifact. One medium finding (F-1) was raised at pass 1 and independently repaired before pass 2; one was my own bug (F-10, withdrawn).",
+  "bound": "every artifact reading belongs to the revision and the pack moment stamped above. The artifact is a build output (dist/mpd-package is gitignored); any later writer to packages/*/dist|lib, skills/, presets/, extensions/, templates/, docs/, agent-references/ or scripts/ regenerates the need for a re-pack, and only drift==0 measured after that re-pack counts.",
+  "raw": [
+    "raw/verify-driver.mjs (the independent driver; re-runnable, re-packs, does not trust prior numbers)",
+    "raw/result.json + raw/output.log + raw/pass2.stdout.log (AUTHORITATIVE, pass 2)",
+    "raw/pass1-result.json + raw/pass1-output.log + raw/driver.stdout.log (pass 1, invalidated by the two post-pack writers)",
+    "raw/dist-fresh.log (F-1 named target), raw/manifest-and-docs.log, raw/settled-recheck.log, raw/post-pack-drift.log, raw/pass2-artifact-current.log",
+    "evidence/platform/verify/20260917T024912Z/ (lane F: harness-close + T-50)"
+  ]
+}

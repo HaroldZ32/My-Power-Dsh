@@ -1,0 +1,105 @@
+# t23 evidence output.log — 2026-09-17T02:35:14Z
+
+## F0 pointer audit (t7's decisive check) — SCOPED to the lane-F pointers this task owns
+ok   AGENTS.md -> reference file (T-21..T-55 detail) -> agent-references/troubleshooting.md
+ok   Reference Index -> agent-references/agent-teams-deltas.md
+ok   Reference Index -> agent-references/index.md
+ok   T-21/T-23/T-24/T-26 helper -> scripts/mpd-bg.mjs
+ok   T-43 guard -> packages/mpd-workmate-plugin/src/index.ts
+ok   T-55 symbol re-cite -> packages/mpd-ext-plugin/src/index.ts
+ok   T-54 recipe evidence (register) -> .mpd/TODO.md
+lane-F pointers: 7/7 resolve
+METHOD NOTE (docs-gate-engineer's two false-negative traps, both avoided here)
+  · the resolver reads the FILESYSTEM (`existsSync`), never the git index — a wave ADDS files that
+    are still untracked (`??`) until the captain's commit, so a `git ls-files`/`git show`-based
+    resolver would report every newly added script MISSING and produce a false negative for exactly
+    the wave being audited. Re-measure AFTER the commit to see the same set.
+  · bare basenames in prose are NOT tokens: the manual writes QA lanes as
+    `skills/dsh-qa/scripts/<case>.mjs`, so a naive `scripts/*.mjs` scan invents ghosts
+    (bundle-lifecycle, preset-conformance, preset-register, lib/session-evidence,
+    lib/workspace-isolation). This audit matches full path tokens and resolves each with an explicit
+    prefix rule (as written, else `skills/dsh-qa/scripts/<basename>`, else `scripts/<basename>`).
+NOTE (handed to the docs lane, NOT fixed here — docs/** is outside this task's inScope): a sweep of
+every *.mjs/*.md path token in AGENTS.md finds that `docs/adder4.md` and `docs/cnt8.md` are named as
+examples of exempt internal QA docs but do NOT exist on disk. Same class as the captain's T-66 gap.
+## helper self-test
+[PASS] reload-check: no session -> NO-LIVE-SESSION, exit 0 — exit=0
+[PASS] fixture: projectKey reachable through the shared lib — exit=0
+[PASS] reload-check: module older than the newest session -> FRESH, exit 0 (no false alarm) — exit=0
+[PASS] reload-check: module newer than the newest session -> RESTART-REQUIRED, exit 1 — exit=1
+[PASS] check-write: a path inside the workspace -> exit 0 — exit=0
+[PASS] check-write: /root/.dsh/x -> outside-workspace, exit 1 — exit=1
+[PASS] run: returns immediately with pid + log — [mpd-bg] started pid=76 log=/tmp/mpd-bg-selftest-l3iavD/long.log pidfile=/tmp/mpd-bg-selftest-l3iavD/long.log.pid
+[PASS] probe: RUNNING while the child lives (kernel-only check, no cmdline match) — exit=0
+[PASS] run: the log lands in a FILE and is complete (no pipe) — LONG-DONE
+[PASS] probe: DEAD after the child exits, exit 1 — exit=1
+[PASS] probe: missing pid file -> NO-PID-FILE, exit 2 — exit=2
+[PASS] T-24: a child that spawns a grandchild holding the handle returns promptly — elapsed=70ms
+[PASS] T-24: the helper never uses stdio:'pipe' — pipeHits=0
+[mpd-bg self-test] 13/13 arms passed — PASS
+
+## T-43 guard cases (bun)
+[PASS] negative-1 isolated boot + HOME=<sandbox> -> allowed — renamed {"ok":true,"name":"oracle-renamed","from":"oracle-one","renamedFrom":["oracle-one"]}
+[PASS] negative-2 normal session (DSH_HOME unset) -> allowed — renamed {"ok":true,"name":"oracle-two-renamed","from":"oracle-two","renamedFrom":["oracle-two"]}
+[PASS] positive isolated boot + HOME unset -> refused, real library untouched — code=real-home-refused realLibraryUnchanged=true
+[PASS] override MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1 -> guard does not throw — released
+[guard-cases] 4/4 cases passed — PASS
+
+## T-23 long demo (>2 min, managed job, log in the workspace)
+### T-23 DEMO (real, >2 min): helper run + kernel-only probe, log in the workspace — 2026-09-17T02:29:13Z
+[mpd-bg] started pid=13 log=/root/dshProj/my-power-dsh/evidence/platform/harness-close/20260917T022913Z/demo-long.log pidfile=/root/dshProj/my-power-dsh/evidence/platform/harness-close/20260917T022913Z/demo-long.log.pid
+[mpd-bg] note: start this INSIDE a managed background job — a detached child dies with its bwrap sandbox otherwise (T-23)
+
+--- probe 1 (02:29:28Z)
+[mpd-bg] RUNNING pid=13
+--- probe 2 (02:29:43Z)
+[mpd-bg] RUNNING pid=13
+--- probe 3 (02:29:59Z)
+[mpd-bg] RUNNING pid=13
+--- probe 4 (02:30:14Z)
+[mpd-bg] RUNNING pid=13
+--- probe 5 (02:30:29Z)
+[mpd-bg] RUNNING pid=13
+--- probe 6 (02:30:44Z)
+[mpd-bg] RUNNING pid=13
+--- probe 7 (02:30:59Z)
+[mpd-bg] RUNNING pid=13
+--- probe 8 (02:31:14Z)
+[mpd-bg] RUNNING pid=13
+--- probe 9 (02:31:29Z)
+[mpd-bg] RUNNING pid=13
+--- probe 10 (02:31:44Z)
+[mpd-bg] DEAD pid=13
+LONG-DONE seen
+
+### final probe (expect DEAD)
+[mpd-bg] DEAD pid=13
+
+### log tail
+progress 7/10 2026-09-17T02:30:59.068Z
+progress 8/10 2026-09-17T02:31:14.076Z
+progress 9/10 2026-09-17T02:31:29.092Z
+progress 10/10 2026-09-17T02:31:44.106Z
+LONG-DONE
+
+## T-23 counter-example (nohup child started in one call, checked in a LATER call)
+marker path: /root/dshProj/my-power-dsh/evidence/platform/harness-close/20260917T022913Z/nohup-marker.txt
+marker absent -> the nohup child DIED with its call (T-23 hazard reproduced)
+
+## verifies
+=== verify 3/4: bun run verify:docs ===
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept verbatim as provenance
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+verify:docs exit=0
+
+=== verify 4/4: node scripts/mpd-bg.mjs --self-test ===
+[PASS] T-24: a child that spawns a grandchild holding the handle returns promptly — elapsed=126ms
+[PASS] T-24: the helper never uses stdio:'pipe' — pipeHits=0
+[mpd-bg self-test] 13/13 arms passed — PASS
+
+=== side-effect check: dist freshness after my workmate src change ===
+  STALE   packages/mpd-workmate-plugin/dist/index.js  <- packages/mpd-workmate-plugin/src/index.ts
+  STALE: packages/mpd-workmate-plugin/dist/index.js — committed packages/mpd-workmate-plugin/dist/index.js (54704 B, 401573a0173b03db…) != fresh build of packages/mpd-workmate-plugin/src/index.ts (55875 B, 6b1715d0f8bebda0…) — rebuild: bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js
+[verify-dist-fresh] FAIL - 1 of 20 targets not fresh (STALE: 1) — 842ms

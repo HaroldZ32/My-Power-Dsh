@@ -1,0 +1,79 @@
+t28 - lane E verification (the packed artifact is self-sufficient). Readings are verbatim in raw/; result.json is the verdict.
+revision: HEAD 646d8018a44bffb2d6e1c30afa090056f81b911e (dirty 214 -> 217 paths) at 2026-09-17T02:47-02:58Z.
+Seven fingerprints (packer, closure checker, CLI, two row patches, watchdog machine) are IDENTICAL in both passes.
+TWO PASSES, on purpose: pass 1 packed 02:50:34 and was GREEN, then two writers touched shipped trees
+(skills/dsh-qa/scripts/workmate-library.mjs 02:50:45, packages/mpd-workmate-plugin/dist/index.js 02:54:37 -
+t48's repair of F-1). Pass 2 packed 02:56:59, 141 s after the last writer: THAT is the authoritative pass.
+
+[A] the pack + the artifact's own contents (pass 2)
+$ npm run pack                                                            exit 0, outDir mtime 02:56:59.067Z
+$ node scripts/verify-dist-fresh.mjs   (pre-flight)                       ok: 20/20 targets fresh  (pass 1: FAIL 1/20)
+$ LEG (a) artifact -> source, 3 generated files allowlisted               compared=1185  drift=0  no-source=0
+    generated: package.json (packed form) | cordis.patch.yml == packages/mpd-bundle/cordis.patch.yml | mpd-ext-plugin/dist/validator.js
+$ LEG (c) the SIX wholesale groups                                       missing=0 in skills, presets, extensions, docs, templates, agent-references
+$ templates/                                                             1 entry: mpd-extension
+$ docs/                                                                  26 EN + 11 zh-CN, zh-without-EN=0; the 15 EN without a twin are exactly the AGENTS.md SS3-exempt process records
+$ verify-docs-parity --root dist/mpd-package                             pairs=35 failed=0 violations=0 exempt=17 - PASS   (repo root: pairs=37 failed=0)
+$ packed manifest "files"                                                13 entries: 8 globs each over an existing non-empty base (24/18/1/3/1/37/3/2) + 5 files all present -> missing=0
+  NOTE the "clean state" clause: this wave is UNCOMMITTED, so a git-clean pack IS the RED case. "Clean" here = settled hashes + no in-flight writer, checked before each pass.
+
+[B] closure rule + its negative control
+$ node scripts/verify-pack-closure.mjs                                   exit 0 - 17 dist rows + 1 lib row + 4 MCP rows resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS; root assets declared and present; validator 9 exports; agent references 3/3; 378 asset files
+$ (seeded omission of one REFERENCES entry, on a byte-copy of the REAL artifact)  exit 1, names_file=true, names_kind=true, judged tree printed (377 asset files)
+
+[C] the packed CLI, INSIDE the packed tree
+$ node dist/mpd-package/scripts/mpd-ext.mjs validate extensions/mpd-ext-example   exit 0
+$ node dist/mpd-package/scripts/mpd-ext.mjs --self-test                          exit 0  [mpd-ext] --self-test passed (53 checks) [validator: compiled]
+$ node dist/mpd-package/scripts/mpd-ext.mjs scaffold verify-probe                 exit 0  README.md README.zh-CN.md flows mpd-ext.json personas skills
+
+[D] RED reproduced on the pre-change artifact (the fix is falsifiable)
+$ git archive HEAD | tar -x  -> npm run pack -> node dist/mpd-package/scripts/mpd-ext.mjs validate ...
+  exit 1  "Cannot find module"  url: file:///tmp/t28-red-jK5vhg/tree/dist/mpd-package/packages/mpd-ext-plugin/src/registry.ts
+
+[E] findings
+  F-1 (medium)  RAISED pass 1: [verify-dist-fresh] FAIL 1/20 - STALE packages/mpd-workmate-plugin/dist/index.js (54704 B 401573a0... vs fresh 55875 B 6b1715d0...). REPAIRED 02:54:37 by t48 (its own evidence quotes the same hash pair), CONFIRMED at pass 2 (20/20 fresh). Not repaired by me - another lane's inScope.
+  F-10 (none)   WITHDRAWN - my driver's classification bug: it applied the wholesale-group rule to the SUBSET group 'scripts'. Decisive reading `differing` is 0 for EVERY group; 'Only in' counts (scripts 18, packages 67) are the packer's own copy rules, by design.
+  F-3 (process) the artifact ages under ANY writer to a copied tree: 11 s after a fully green pack, two shipped files went stale. Only drift==0 measured AFTER a re-pack counts; pass 2 is authoritative only until the next copied-tree writer.
+
+VERDICT: PASS. At the pass-2 pack moment the artifact is self-sufficient (LEG a drift=0 over 1185 files, LEG c 0 missing, closure 0 with a live negative control, packed doc-parity 35/0, CLI validate/--self-test/scaffold all 0 inside the packed tree), and the RED reading reproduces on the pre-change artifact. Bound: dist/mpd-package is gitignored build output; a later writer invalidates these readings and requires a re-pack.
+
+--- ADDENDUM (t28 evidence, appended after the captain's 03:0xZ re-measurement request; the verdict above is unchanged) ---
+[F] static gates re-measured at the captain's request (raw/static-gates-at-remeasure.log, HEAD 646d8018):
+    vendor           exit 1  [verify-vendor] FAIL - asset skills treeSha mismatch  (expected mid-wave; the captain's single commit-time re-pin closes it)
+    dist freshness   exit 0  ok: 20/20 targets fresh (each rebuilt twice, byte-identical) - 7 NOT COVERED listed
+    rows/parity      exit 0  25 row ids match the bundle patch insert list
+    doc pairs        exit 0  root=… pairs=37 failed=0 violations=0 exempt=17 — PASS
+[G] artifact currency after those gates (raw/post-gate-recheck.log, raw/gate-edit-recheck.log):
+    exactly ONE file in the shipped-source trees moved after my pass-2 pack: scripts/verify-dist-fresh.mjs (03:00:21Z).
+    The packer does NOT ship it (no copy in dist/mpd-package) -> NO artifact drift; every pass-2 reading still stands at this moment.
+    Honest gap: that gate script was not among the seven pinned fingerprints, so I can only state the gate's CURRENT hash (04e7dc41…) and its CURRENT reading (20/20) — I cannot prove it was byte-identical when pass 2 read it.
+[H] FINDING F-4 (medium-high, commit shape — outside my inScope, for the captain's single git writer; raw/commit-shape.log):
+    21 new files inside shipped/pinned trees are still UNTRACKED, and five of them are files the wave's own claims point at:
+      scripts/verify-dist-fresh.mjs (AGENTS.md SS4 binding gate)   scripts/mpd-bg.mjs (SS12, four frictions)
+      scripts/repin-vendor.mjs (SS4/SS11)   scripts/dump-config.mjs (SS4)   agent-references/troubleshooting.md (SS12's closure detail)
+    A selective `git add` of modified paths would commit the POINTERS (AGENTS.md) and omit the TARGETS, so the harness-close closure
+    (T-21/T-23/T-24/T-26/T-43 "closed by documentation plus helper") would not exist in the commit. Stage with `git add -A` (or an
+    explicit 21-path list) and re-run the static gates on the staged tree.
+
+--- ADDENDUM 2 (correction of my own attribution, appended 2026-09-17T03:15Z) ---
+[C] I reported that "a pack has ALREADY run at 03:01:30.659Z". WRONG, and corrected here rather than left standing: every FILE stamp inside the artifact is <= 02:56:59.067Z (my pass-2 pack) — package.json 10:56:59.067369444 local, cordis.patch.yml the same, newest file = package.json — while the only 03:01:30.659Z entry is the DIRECTORY itself. A directory mtime moves on an entry add/remove/rename; a pack rewrites every file stamp. So NO pack ran then; the last pack is my pass 2, and packaging-engineer's own last pack was 01:28Z (t11 window). The artifact therefore remains mine by attribution and the next pack is t35's.
+    RULE: attribute a pack by a FILE stamp inside the artifact, never by the outDir mtime.
+[D] drift now (03:15Z): artifact agent-references/troubleshooting.md = b4032f41… / 35534 B / T-23 ids 0, source = f6b4d1be… / 35548 B / T-23 ids 2 — the artifact predates BOTH repairs (t52 +7 B, t56 +7 B). Endgame check for t35: `grep -c 'T-23' dist/mpd-package/agent-references/troubleshooting.md` must read 2.
+
+--- ADDENDUM 3 (lane-F bound + T-43 guard mechanism, appended 2026-09-17T03:2xZ) ---
+[E] BOUND ON THIS REPORT'S T-43 EVIDENCE. The T-43 line in this file was: "bun test packages/mpd-workmate-plugin -> 28 pass / 0 fail (a normal session is never refused)". That reading is a NORMAL-SESSION case only (the guard returns early when DSH_HOME is unset) and it does NOT exercise the isolated-boot path the guard exists for. It is true and it is narrow; it is not a certificate for "the T-43 guard works", and it must not be cited as one.
+[F] MECHANISM OF THE DEFECT the QA lane found (measured read-only, 4 arms, my own probes; NO file was edited — the fix is t62's task):
+    ARM 1  node, HOME=<sandbox> + DSH_HOME=<sandbox> AT PROCESS START (the real QA-boot shape)          -> REFUSED 403 real-home-refused
+    ARM 2a bun, real HOME=/root at start, HOME+DSH_HOME set AT RUNTIME to <sandbox> (t23's case shape)  -> ALLOWED
+    ARM 2b node, DSH_HOME unset at start (normal session)                                              -> ALLOWED
+    ARM 2c node, sandbox HOME at start + MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1                            -> ALLOWED
+    (control) node, DSH_HOME set + HOME repointed at RUNTIME                                           -> REFUSED — because plain Node's os.homedir() follows the LIVE env
+    THE DISCRIMINATOR: the guard's allow-branch requires resolve(HOME) !== resolve(homedir()). Under bun (the plugin's runtime) os.homedir() is frozen at process start (the code comment relies on exactly that), so the branch is reachable ONLY when HOME is changed AFTER start. A real QA boot puts HOME=<sandbox> in the process-start env, where both values are equal -> refused. t23's four in-process cases passed because guard-cases.mjs assigns process.env.HOME in-process under bun: a shape no verifier's boot can reproduce.
+    CONSEQUENCE: the guard refuses the very sandbox its own documentation prescribes; it is inverted, not merely noisy, under a real mounted boot. Fix belongs to t62; re-verification belongs to t21. This file's lane-F verdict stands as a bound, not as a certificate.
+    REPRODUCE: `DSH_HOME=/tmp/h HOME=/tmp/h node --input-type=module -e 'import("/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js").then(m=>{try{m.assertMutationSandboxed("x");console.log("ALLOWED")}catch(e){console.log("REFUSED",e.code)}})'` -> REFUSED.
+
+--- ADDENDUM 4 (appended 2026-09-17T04:27Z): the artifact MOVED after this report was written ---
+[I] HYBRID RECOMPOSE (self-reported by platform-engineer, confirmed here): dist/mpd-package was rewritten IN PLACE at 04:21:54Z (cp -al hardlinks + cp write-through). Measured signature NOW: manifest stamp unchanged (packStampUtc 02:56:59.067Z, package.json sha256_16 13b0f32599c2795e, mtime 10:56:59.067 local), 1188 packed files, and FIVE packed files stamped 04:21:54 (skills/dsh-qa/scripts/workmate-library.mjs, skills/dsh-qa/scripts/team-watchdog-fault.mjs, skills/dsh-qa/cases.json, packages/mpd-workmate-plugin/dist/index.js, agent-references/troubleshooting.md) — i.e. packed-file mtime NEWER than the manifest stamp. That pairing is the hybrid's signature and the reason the twin scan's drift==0 is a FALSE CLEAN for this revision (data/hybrid-signature.log).
+[J] THE INSTRUMENT ITSELF CHANGED UNDER THIS REPORT: the twin scan is now v6, sha256_16 82ab8fe96a3a9df5, mtime 04:21:28Z, and its ok is `drift==0 AND missing==0` (v5 had no `missing[]` reverse pass). Every twin-scan number quoted in this report belongs to the PREVIOUS revision and must be re-taken; the v6 baseline is in data/hybrid-signature.log.
+[K] v6 MISSING=2 on the current artifact, both provenances measured: `skills/dsh-qa/scripts/watchdog-redesign.mjs` (58,464 B, mtime 03:58:13Z — created AFTER the 02:56:59Z pack, a post-pack skills/** write) and `EXTENSIONS-FOR-AGENTS.md` (15,684 B, mtime 03:12:34Z — now DECLARED at scripts/pack-mpd.mjs:117 but absent from the artifact). The wave's own `node scripts/verify-pack-closure.mjs` is RED for the second one: "ROOT-FILE - the packed tree does not carry EXTENSIONS-FOR-AGENTS.md ... (T-70)".
+[L] ORDERING UPDATE: the last write to any shipped tree is now `skills/dsh-qa/scripts/team-watchdog-fault.mjs` at 04:12:36Z (skills/** 4 files newer than the pack; packages/** 3; agent-references/** 1; scripts/** 3). My earlier "writers settled at 03:18:29Z" is superseded, and the wave's single vendor re-pin + t35's pack must both follow 04:12:36Z.

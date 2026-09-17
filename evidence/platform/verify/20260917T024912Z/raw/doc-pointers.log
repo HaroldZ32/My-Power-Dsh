@@ -1,0 +1,17 @@
+=== exact id mentions in agent-references/troubleshooting.md (which frictions carry their id in the row) ===
+9: T-22
+15: T-21
+29: T-24
+30: T-26
+31: T-43
+32: T-54
+33: T-55
+=== row 17 tail (does the T-23 row name its id?) ===
+mand through the helper logged 10 progress lines + `LONG-DONE` in the workspace and probed `RUNNING` at 9 consecutive checks before `DEAD`, while the same command started with `nohup … &` in one bash call never wrote its completion marker at all (the child dies with the call's `bwrap` sandbox). |
+
+=== id census ===
+T-21 in troubleshooting.md: 1
+T-23 in troubleshooting.md: 0
+T-24 in troubleshooting.md: 1
+T-26 in troubleshooting.md: 1
+T-43 in troubleshooting.md: 1

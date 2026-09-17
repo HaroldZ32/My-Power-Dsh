@@ -1,0 +1,82 @@
+=== A1 (corrected): manifest files entries — globs expand over the packaged tree ===
+{
+ "glob_entries": [
+  {
+   "entry": "packages/**",
+   "base_dir_exists": true,
+   "entries_under_base": 24
+  },
+  {
+   "entry": "skills/**",
+   "base_dir_exists": true,
+   "entries_under_base": 18
+  },
+  {
+   "entry": "presets/**",
+   "base_dir_exists": true,
+   "entries_under_base": 1
+  },
+  {
+   "entry": "extensions/**",
+   "base_dir_exists": true,
+   "entries_under_base": 3
+  },
+  {
+   "entry": "templates/**",
+   "base_dir_exists": true,
+   "entries_under_base": 1
+  },
+  {
+   "entry": "docs/**",
+   "base_dir_exists": true,
+   "entries_under_base": 37
+  },
+  {
+   "entry": "agent-references/**",
+   "base_dir_exists": true,
+   "entries_under_base": 3
+  },
+  {
+   "entry": "scripts/**",
+   "base_dir_exists": true,
+   "entries_under_base": 2
+  }
+ ],
+ "file_entries": [
+  {
+   "entry": "cordis.patch.yml",
+   "exists": true
+  },
+  {
+   "entry": "LICENSE.md",
+   "exists": true
+  },
+  {
+   "entry": "LICENSE-NOTICES.md",
+   "exists": true
+  },
+  {
+   "entry": "README.md",
+   "exists": true
+  },
+  {
+   "entry": "README.zh-CN.md",
+   "exists": true
+  }
+ ],
+ "missing": []
+}
+=== A2b: the 15 EN docs without a zh twin ARE the declared exemptions ===
+EN docs with no zh twin (15): bline-report.md, decisions.md, omo-parity-gap.md, plan-c.md, plan-d.md, plan-e.md, plan-f.md, plan-team-watchdog-report.md, plan-team-watchdog.md, plan-tui-edition.md, plan-tui-team-surface.md, review-p0-p3.md, track-a-report.md, tui-edition-report.md, ulw-deepseek-optimization.md
+12://     with the AGENTS.md §3 process records exempted from the missing-twin rule;
+17://     it is the one recorded exemption (`packages/mpd-mcp-shared`), so the census cannot stay green
+26:// zh-only document is reported as `zh-CN file has no EN twin` (an exempt path stays a reported
+27:// exemption instead of a violation).
+29:// EXEMPTION BOOKKEEPING (why the count can exceed what is live here): of the entries in
+30:// `EXEMPT_LONE_FILES`, THIRTEEN correspond to files that exist in this tree today; `docs/adder4.md`
+34:// either file is exempted by design rather than by accident, and the census is unchanged. The run prints every exemption with its reason, so the count is never
+41:// Exit: 0 when every checked pair passes and no violation is reported (exemptions are printed,
+51:// Files the AGENTS.md Language policy exempts. An exemption means ONLY that a missing zh twin is
+52:// not a violation; it never suppresses the checks for a pair that exists — an exempt file that
+54:const EXEMPT_LONE_FILES = new Map([
+68:  ["docs/tui-edition-report.md", "prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)"],

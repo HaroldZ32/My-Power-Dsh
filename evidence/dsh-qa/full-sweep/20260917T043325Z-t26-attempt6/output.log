@@ -1,0 +1,40 @@
+=== WITNESS CORRECTION (docs-gate-engineer, verified by me) ===
+The lesson I passed to docs-gate-engineer cited `evidence/pack-closure/verify/20260917T024741Z/raw/pass2.stdout.log` as the 0-byte failure snapshot of the mpd-bg launch shape. That path now holds the SUCCESSFUL pass-2 output (2,435 B, mtime 10:57:02 local) because MY OWN successful re-run redirected the driver's stdout onto the same path — so the failure witness was destroyed by the fix it justified. Verified here.
+CAUSE, owned: the failing launch wrote `pass2.stdout.log` via mpd-bg (0 B) and the next call re-ran the same driver with `> $D/raw/pass2.stdout.log`, overwriting it.
+SURVIVING WITNESSES for the launch bound: (1) `scripts/mpd-bg.mjs:89` — the helper's own note ("start this INSIDE a managed background job — a detached child dies with its bwrap sandbox otherwise (T-23)"); (2) the session's job output for the failed attempt (0-byte log + a pidfile probing RUNNING while `ps` showed nothing = a reaped child); (3) the REPRODUCIBLE probe re-run under `launch-probe/` in this board directory (added after run 1), which preserves its own 0-byte log, its absent marker and its DEAD probe reading with a hash-qualified citation.
+RULE going forward: a witness that a later run can overwrite must be copied or hash-quoted at the moment it is read; prose is not a witness.
+
+=== CANONICAL-SELECTION PROOF (acceptance clause 1), measured 2026-09-17T04:3xZ ===
+The acceptance cites canonical hash `58128ebd1ed1c748` for the (case, script, args) selection. I could NOT reproduce that value: eight candidate canonicalizations of the CURRENT pin's selection (tuples/NUL, tuples/tab, JSON full, JSON case+script+args, JSON sorted, cases sorted, cases in manifest order, case+script lines sorted) yield bce06b1ea217c01a / e55ed74260147ca0 / 8286f38c68069b2c / febf135dd992b96d / b9d4419abd6bd0a4 / d6424ba156c1e5ea / 1ce8210ce0871c35 / 0b3a98cf38115f1e — none matches it. So the cited hash's DEFINITION is not on disk; that is a finding for the acceptance's author, not a defect of the board.
+THE SUBSTANCE IS PROVEN A DIFFERENT WAY, from the pins' own `--list` outputs:
+  old pin 919656a8cac1 (t15 handover, evidence/dsh-qa/suite-runner/handover-20260917T015029Z/verify__list.out): "cases: 50 (44 lanes + 6 gates; the all suite selects 27 lanes + 6 gates)"
+  current pin 54585caba9a5: "cases: 51 (45 lanes + 6 gates; the all suite selects 27 lanes + 6 gates)"
+  diff of the (case|suites|script) surface between the two pins: exactly ONE line, `watchdog-redesign|-|skills/dsh-qa/scripts/watchdog-redesign.mjs` — an ADDED lane with suites: [] (NOT selected).
+  => the SELECTED 33 are identical across both pins on the surface `--list` prints (case, suites, script); the only manifest change is an unselected lane. The board is therefore multi-job but NOT multi-selection, which is the acceptance's claim, supported by the pins' own outputs rather than by the unreproducible hash.
+BOUND: `args` are not printed by --list and the older manifest revision was NOT preserved on disk (it is mutated in place), so the args surface across pins cannot be compared; what IS comparable is proven above. Within this board every chunk runs under the CURRENT pin, so no chunk mixes selections.
+
+=== CONCURRENT-LANE CONTENTION, measured 04:40:05Z ===
+my chunk 01 (agent-teams-adopt) started 04:34:41Z; its lane log is still 0 B at 04:40:05Z.
+lane-evidence dirs created by OTHER seats since my chunk started (not under evidence/dsh-qa/full-sweep/20260917T043325Z-t26-attempt6):
+  evidence/plan-c/c8-vision
+  evidence/plan-c/c8-vision/2026-09-17T04-38-52.116Z
+  evidence/plan-c/c2-ultrawork
+  evidence/plan-c/c2-ultrawork/2026-09-17T04-39-11.808Z
+  evidence/plan-c/c6-memory
+  evidence/plan-c/c6-memory/2026-09-17T04-39-05.859Z
+  evidence/plan-c/plan-c-smoke
+  evidence/plan-c/plan-c-smoke/2026-09-17T04-38-43.882Z
+  evidence/plan-c/c1-team
+  evidence/plan-c/c1-team/2026-09-17T04-34-41.355Z
+  evidence/dsh-qa/session-start-team
+  evidence/dsh-qa/session-start-team/2026-09-17T04-38-14.171Z
+files written by those runs in the last 4 minutes:
+  evidence/platform/pack-drift/20260917T031548Z/result.json
+  evidence/plan-c/c8-vision/2026-09-17T04-38-52.116Z/answer.txt
+  evidence/plan-c/c8-vision/2026-09-17T04-38-52.116Z/result.json
+  evidence/plan-c/c8-vision/2026-09-17T04-38-52.116Z/raw.json
+  evidence/plan-c/c8-vision/2026-09-17T04-38-52.116Z/fixture.png
+  evidence/plan-c/c6-memory/2026-09-17T04-39-05.859Z/output.log
+  evidence/plan-c/c6-memory/2026-09-17T04-39-05.859Z/result.json
+  evidence/plan-c/plan-c-smoke/2026-09-17T04-38-43.882Z/output.log
+grep: write error: Broken pipe

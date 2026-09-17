@@ -1,0 +1,52 @@
+# t42 — watchdog §1 rule-3 asymmetry row — evidence log
+# cwd = /root/dshProj/my-power-dsh for every command below
+
+## 1. The edit (ONE row, after the existing long-tool-call watchdog row)
+$ node evidence/gates/watchdog-asymmetry-row/20260917T025500Z/insert-row.mjs "$PWD"
+  anchorLine 39 | insertedAtLine 40 | lines 69 -> 70 | bytes 34292 -> 35534
+  sha256Before 67bc579b850d1990825fac83747ea1c88e17000eda019e6314c193ab570db5de
+  sha256After  b4032f41a33ffea2c8ba0bccf468f75575129afa05c3a125db4b16774fadd689
+$ sha256sum agent-references/troubleshooting.md
+  b4032f41a33ffea2c8ba0bccf468f75575129afa05c3a125db4b16774fadd689   (matches the driver)
+# the driver refuses a multi-line row and an anchor that is not unique; it inserts a single slice
+
+## 2. Gates
+$ bun run verify:docs    -> exit 0: pairs=37 failed=0 violations=0 exempt=17 — PASS
+$ node scripts/verify-rows-parity.mjs -> exit 0: 25 row ids match the bundle patch insert list
+
+## 3. The README-pair claim — CONFIRMED, not rewritten (packages/** is out of inScope)
+packages/mpd-team-watchdog-plugin/README.md      29,409 B sha256 bd887558cdc833db…
+  line 127  the OUTSTANDING state row (an open step with NO committed assistant/message|attempt)
+  lines 138-148  the asymmetry bullets; 140 "A completed step is ALIVE forever"; 142-146 the
+            streaming/enrichment bullet, incl. "stated here on purpose, and in the agent-facing
+            troubleshooting reference"; 147-148 the harness-never-emits-first-token case
+  lines 241/243  watchdog.warnSilenceMs / warnStreakToEscalate
+packages/mpd-team-watchdog-plugin/README.zh-CN.md 28,693 B sha256 a5cd1023620e9ba6…
+  lines 110 / 120 / 122-126 / 202 / 204  the same content in Chinese
+=> the EN bullet PROMISES that the agent-facing reference states this asymmetry; this row fulfils it.
+
+## 4. Source grounding (symbol-first, per T-55 — never a bare line number)
+packages/mpd-team-watchdog-plugin/src/channel.ts
+  module header: OUTSTANDING = an open step with NO committed assistant answer
+  the `assistant/message` | `assistant/attempt` cases flip OUTSTANDING -> answered
+  `noteStreamFrame` doc comment: contract §2 (never required) + §1 rule 3 — the
+  `agent/assistant-stream` START frame proves the model is DELIVERING and flips the open
+  (turn,step) to ALIVE; without that signal the state honestly stays OUTSTANDING
+  rule-2 comment: only an OUTSTANDING request has a clock
+packages/mpd-team-watchdog-plugin/src/engine.ts — counts flipped steps + whether the enrichment
+  is installed (its `enrichment` flag)
+
+## 5. Hash chain of this body (why the t16 hash is historical)
+t16 created it at 30,124 B (moved §12 body + provenance header), settled sha 5671bf5d…
+t23 added 4 rows            -> 34,292 B, sha 67bc579b…   (the state measured BEFORE this edit)
+t42 added this 1 row         -> 35,534 B, sha b4032f41…
+# NOT corrected inside evidence/gates/agents-budget/** because that path is outside t42's inScope;
+# the correction lives here and is one line away if the captain scopes it.
+
+## 6. Bounds
+- agent-references/** is untracked until the captain commits, so `git diff` is empty for this file;
+  the proof is the driver's before/after counters + the sha256 pair (and the commit adds the dir).
+- evidence/extensions/docs-claims/check-citations.mjs does NOT scan this tree (its ROOT_DIRS are
+  docs/, packages/, skills/, extensions/, templates/, scripts/, evidence/, presets/, tests/, src/),
+  so this row cannot redden that gate; it was still written symbol-first on purpose.
+- Nothing else in the reference tree was written: only troubleshooting.md's sha changed.

@@ -31,6 +31,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 // LANDED FORM: import { sandboxWorkspace, assertSessionsSandboxed } from "./lib/workspace-isolation.mjs"
 import { sandboxWorkspace, assertSessionsSandboxed } from "./lib/workspace-isolation.mjs"
+import { credentialEnv } from "./lib/credentials.mjs"
 
 const SLUG = "software-smoke"
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -286,7 +287,7 @@ function runReal() {
     mkdirSync(dshHome, { recursive: true })
     mkdirSync(runHome, { recursive: true })
     const ws = sandboxWorkspace(sandbox)
-    const env = { ...process.env, DSH_HOME: dshHome, HOME: runHome, DEEPSEEK_API_KEY: "sk-software-smoke-local-stub" }
+    const env = credentialEnv({ ...process.env, DSH_HOME: dshHome, HOME: runHome, DEEPSEEK_API_KEY: "sk-software-smoke-local-stub"  })
     if (dshHome.startsWith(homedir() + "/.dsh")) { console.error("[" + SLUG + "] FAIL: isolation assertion"); process.exit(1) }
 
     const inst = await runAsync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", dshHome, "--profile", "mpd-headless", "--skip-toolchain"], { env, cwd: ws, timeout: 900000 })

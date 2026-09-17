@@ -1,0 +1,5 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=919656a8cac1 lanes=1 evidence=evidence/dsh-qa/suite-runner/20260917T011605Z-arms
+[mpd-qa:(only)] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T01-20-09.740Z log=evidence/dsh-qa/suite-runner/20260917T011605Z-arms/lanes/mount-assert.log ms=205
+[mpd-qa:(only)] summary selected=1 pass=1 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/suite-runner/20260917T011605Z-arms
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

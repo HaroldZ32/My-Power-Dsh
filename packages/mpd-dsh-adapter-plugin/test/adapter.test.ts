@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
 
 import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
-import { apply, createDshAdapter, decision, SERVICE_NAME, textBlock } from "../src/index"
+import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, SERVICE_NAME, textBlock } from "../src/index"
 
 function fakeHarness(overrides: Record<string, unknown> = {}) {
   const registered: any[] = []
@@ -544,5 +544,119 @@ describe("onPreToolExecute on the real cordis waterfall (observe-only, proven by
     createDshAdapter(clean as any).onPreToolExecute(() => {})
     const passed = await clean.waterfall(clean, "tools/pre-execute", { name: "bash" }, () => Promise.resolve({ kind: "allow" as const }))
     expect(passed).toEqual({ kind: "allow" })
+  })
+})
+
+describe("lazy mpdDsh resolution (T-50)", () => {
+  /**
+   * A ctx whose provider activation the test controls, mirroring the vendored cordis semantics:
+   * `get(name, true)` answers only for an ACTIVE provider, `get(name, false)` sees the
+   * registration regardless of fiber state (measured in the real-cordis test below).
+   */
+  function pendingCtx() {
+    const mounted = { marker: "mounted", capabilities: () => ({ probe: "mounted" }) } as any
+    const state = { active: false, provided: true, strictReads: 0 }
+    const ctx = {
+      get(name: string, strict = true) {
+        if (name !== SERVICE_NAME) return undefined
+        if (!state.provided) return undefined
+        if (strict) {
+          state.strictReads += 1
+          return state.active ? mounted : undefined
+        }
+        return mounted
+      },
+    }
+    return { ctx, mounted, state }
+  }
+
+  test("a transient miss is served temporarily, warned honestly, and is NOT cached for the session", () => {
+    const { ctx, state } = pendingCtx()
+    const lines: string[] = []
+    const dsh = createLazyDshAdapter(ctx, { label: "mpd-test", warn: (line) => lines.push(line) })
+    // First use lands inside the window: the temporary adapter answers, so the mounted marker is absent.
+    expect((dsh as any).marker).toBeUndefined()
+    expect(lines.filter((line) => line.includes("NOT YET ACTIVE")).length).toBe(1)
+    // The old diagnosis ("row missing / fix the ROW ORDER") is GONE for this case — it is the wrong fix.
+    expect(lines.some((line) => line.includes("ROW ORDER"))).toBe(false)
+    expect(dshAdapterIdentity(ctx)).toBe(ADAPTER_IDENTITY_PENDING)
+    // The provider activates: the SAME facade (no re-creation, no re-apply) now reaches the mounted adapter.
+    state.active = true
+    expect((dsh as any).marker).toBe("mounted")
+    expect(dshAdapterIdentity(ctx)).toBe(ADAPTER_IDENTITY_MOUNTED)
+    // …and the warning stayed exactly one line per row.
+    expect(lines.filter((line) => line.includes("NOT YET ACTIVE")).length).toBe(1)
+  })
+
+  test("a strict success is cached; a miss is retried on every use", () => {
+    const { ctx, state } = pendingCtx()
+    const dsh = createLazyDshAdapter(ctx, { label: "mpd-test", warn: () => {} })
+    dsh.capabilities()
+    const afterFirstMiss = state.strictReads
+    dsh.capabilities()
+    // A miss must NOT pin the fallback: the next use probes again (this is the whole fix).
+    expect(state.strictReads).toBeGreaterThan(afterFirstMiss)
+    state.active = true
+    dsh.capabilities()
+    const afterResolve = state.strictReads
+    dsh.capabilities()
+    dsh.capabilities()
+    // Once a strict read SUCCEEDS the result is stable: no further probes.
+    expect(state.strictReads).toBe(afterResolve)
+  })
+
+  test("a clean boot never warns and reports the mounted identity", () => {
+    const { ctx, state } = pendingCtx()
+    state.active = true
+    const lines: string[] = []
+    const dsh = createLazyDshAdapter(ctx, { label: "mpd-test", warn: (line) => lines.push(line) })
+    expect(dsh.capabilities()).toEqual({ probe: "mounted" })
+    expect(lines).toEqual([])
+    expect(dshAdapterIdentity(ctx)).toBe(ADAPTER_IDENTITY_MOUNTED)
+  })
+
+  test("a provably absent provider keeps the row-order hint — and only that case does", () => {
+    const { ctx, state } = pendingCtx()
+    state.provided = false
+    const lines: string[] = []
+    const dsh = createLazyDshAdapter(ctx, { label: "mpd-test", warn: (line) => lines.push(line) })
+    dsh.capabilities()
+    expect(dshAdapterIdentity(ctx)).toBe(ADAPTER_IDENTITY_FALLBACK)
+    expect(lines.filter((line) => line.includes("ROW ORDER")).length).toBe(1)
+    expect(lines.some((line) => line.includes("NOT YET ACTIVE"))).toBe(false)
+  })
+
+  test("REAL vendored cordis: the sibling-apply window exists and the SAME facade crosses it", async () => {
+    // The code-path justification for T-50, measured on the vendored cordis itself: a provider that
+    // has already called provide() is NOT ACTIVE while a SIBLING row's apply runs (the loader applies
+    // siblings concurrently). In that window a strict read answers `undefined` while a non-strict read
+    // already sees the value — the old eager resolution cached that transient `undefined` as a private
+    // adapter for the whole session and blamed the ROW ORDER.
+    const root = new Context()
+    const lines: string[] = []
+    const provider = root.plugin({
+      name: "t50-provider",
+      apply(inner: any) {
+        inner.provide(SERVICE_NAME, { marker: "mounted" })
+      },
+    } as any)
+    let facade: ReturnType<typeof createLazyDshAdapter> | undefined
+    let markerDuringApply: unknown
+    const consumer = root.plugin({
+      name: "t50-consumer",
+      apply(inner: any) {
+        expect((provider as any).state).not.toBe(2)
+        facade = createLazyDshAdapter(inner, { label: "mpd-cordis-test", warn: (line) => lines.push(line) })
+        markerDuringApply = (facade as any).marker
+      },
+    } as any)
+    await (consumer as any)
+    expect((provider as any).state).toBe(2)
+    // Served by the temporary adapter inside the window, diagnosed as a not-yet-active provider…
+    expect(markerDuringApply).toBeUndefined()
+    expect(lines.some((line) => line.includes("NOT YET ACTIVE"))).toBe(true)
+    expect(lines.some((line) => line.includes("ROW ORDER"))).toBe(false)
+    // …and the SAME facade reaches the mounted adapter once the provider is ACTIVE.
+    expect((facade as any).marker).toBe("mounted")
   })
 })

@@ -1,0 +1,18 @@
+# t68 final verify — 2026-09-17T04:32:08Z — file sha 5d935524b7db27ea47d3cda913a7f53541b3db2457e7097360f92cd59ee50f27
+
+$ ! grep -qE '\.(ts|js|mjs|yml|json|md):[0-9]+' EXTENSIONS-FOR-AGENTS.md
+exit=0
+
+$ node evidence/extensions/docs-claims/check-citations.mjs
+[docs-claims] evidence -> evidence/extensions/docs-claims/runs/run-2026-09-17T04-32-08.100Z
+
+[docs-claims] 12/12 checks passed, 0 failed, 249 citation(s) resolved, 0 pending, 12 illustrative
+exit=0
+
+$ bun run verify:docs
+exit=0
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+
+$ bun run verify:rows
+exit=0
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)

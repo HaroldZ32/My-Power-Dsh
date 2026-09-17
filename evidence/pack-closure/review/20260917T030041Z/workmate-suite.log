@@ -1,0 +1,42 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+(pass) sanitizeName / capText / autoNote / scoreMatch units [3.96ms]
+(pass) init → list → reflect → match lifecycle with a sandbox HOME [22.85ms]
+(pass) spawn carries persona+memory+note, reflect instruction, readonly deny, own route [6.05ms]
+(pass) workmate library root is under HOME and not in cwd [3.61ms]
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+(pass) rename moves the evolved identity and preserves every byte of it [6.78ms]
+(pass) renamedFrom accumulates, dedupes, survives a later reflect and is capped [8.95ms]
+(pass) A5 note rule: only a LEADING autoNote prefix is rewritten, a custom note keeps its bytes [3.61ms]
+(pass) invalid names are rejected BEFORE any filesystem call, on both argument positions [1.86ms]
+(pass) same-key rename and case-only rename are refused with no side effect (M2) [2.31ms]
+(pass) the library ROOT can never be addressed as an instance (§B) [1.35ms]
+(pass) collision guard: ANY lstat hit on the target is a 409 collision and nothing is overwritten (M5) [1.09ms]
+(pass) a symlinked instance directory is refused, not resolved (§H) [0.81ms]
+(pass) unknown and orphan directories are never touched (M3), repeat delete is 404 [1.28ms]
+(pass) delete archives by default: hidden immediately, restorable, index key dropped [6.44ms]
+(pass) purge requires confirm === name, then removes the instance for good (D1) [1.43ms]
+(pass) a READONLY instance is a valid mutation target: library administration, not self-editing (M1) [2.53ms]
+(pass) delete never touches another workmate's bytes and leaves no partial instance [2.73ms]
+(pass) in-use gate: a name a team member holds blocks BOTH the rename target and the source (§E, A6) [5.98ms]
+(pass) busyTeams reads <cwd>/.mpd/team, skips archived teams and non-directory entries, fails open [0.79ms]
+(pass) A3: a stale meta.name cannot shadow the directory key, and a legacy key cannot resurrect a dir [2.81ms]
+(pass) an interrupted rename is rolled back: no half-moved instance, the key stays addressable [1.22ms]
+(pass) a throwing spawn releases the in-use counter, so it cannot block a later rename [1.98ms]
+(pass) no registered output schema uses a type ARRAY, and every surface reports archived: null on purge [9.54ms]
+(pass) routes: §D status/reason matrix, headers, no path leakage [10.86ms]
+(pass) a headless profile stays tool-only: no webServer, no route work, tools still function [0.90ms]
+(pass) the mutation tools' declared output schemas accept the values they return (t15) [57.44ms]
+(pass) the OLD return shape is rejected by the harness validator, so this lock can actually fail (t15) [30.83ms]
+(pass) the workmate deny list denies bash and the write-capable MCP tools, and carries no dead name [1.21ms]
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+
+ 28 pass
+ 0 fail
+ 333 expect() calls
+Ran 28 tests across 4 files. [568.00ms]

@@ -39,6 +39,8 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+// T-53: evidence is immutable by default — see skills/dsh-qa/scripts/lib/immutable-output.mjs.
+import { exitOnRefusal, refuseOverwrite, timestamp } from "../../../../skills/dsh-qa/scripts/lib/immutable-output.mjs"
 
 const SELF = fileURLToPath(import.meta.url)
 const scriptDir = dirname(SELF)
@@ -298,16 +300,20 @@ function printReport(report) {
 function parseArgs(argv) {
   const opts = {
     selfTest: false, exampleRoot: DEFAULT_EXAMPLE_ROOT, templateRoot: DEFAULT_TEMPLATE_ROOT,
-    jsonOut: join(scriptDir, "probe-report.json"), writeJson: true
+    // T-53: evidence is immutable by default. The default target used to be the CANONICAL
+    // `probe-report.json` inside this script's own directory, so every plain run rewrote the
+    // artifact of record. It is now a fresh timestamped path, and an existing target — explicit or
+    // not — is REFUSED instead of overwritten.
+    jsonOut: join(scriptDir, "probe-report-" + timestamp() + ".json"), jsonOutExplicit: false, writeJson: true
   }
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === "--self-test") opts.selfTest = true
     else if (a === "--example-root") opts.exampleRoot = resolve(argv[++i] ?? "")
     else if (a === "--template-root") opts.templateRoot = resolve(argv[++i] ?? "")
-    else if (a === "--json-out") { opts.jsonOut = resolve(argv[++i] ?? ""); opts.writeJson = true }
+    else if (a === "--json-out") { opts.jsonOut = resolve(argv[++i] ?? ""); opts.jsonOutExplicit = true; opts.writeJson = true }
     else if (a === "--no-json") opts.writeJson = false
-    else if (a === "--help" || a === "-h") { console.log("usage: node verify-debranding-full.mjs [--self-test] [--example-root <dir>] [--template-root <dir>] [--json-out <path>] [--no-json]"); process.exit(0) }
+    else if (a === "--help" || a === "-h") { console.log("usage: node verify-debranding-full.mjs [--self-test] [--example-root <dir>] [--template-root <dir>] [--json-out <path>] [--no-json]\n  evidence is immutable by default (T-53): the default report path is timestamped, and an\n  existing target is refused — pass a NEW --json-out <path> instead of overwriting one."); process.exit(0) }
     else { console.error(PREFIX + " FAIL - unknown argument: " + a); process.exit(2) }
   }
   return opts
@@ -431,8 +437,15 @@ printReport(report)
 console.log(PREFIX + " " + report.claim)
 
 if (opts.writeJson) {
+  // T-53: refuse an existing target instead of silently replacing another task's evidence; the
+  // remedy is an explicit NEW path (`--json-out <path>`).
+  try {
+    refuseOverwrite(opts.jsonOut, { label: "probe report", remedy: opts.jsonOutExplicit ? "pass a NEW --json-out <path>" : "pass --json-out <new-path>" })
+  } catch (error) {
+    exitOnRefusal(error, PREFIX)
+  }
   mkdirSync(dirname(opts.jsonOut), { recursive: true })
   writeFileSync(opts.jsonOut, JSON.stringify(report, null, 2) + "\n")
-  console.log(PREFIX + " probe list written to " + relative(repoRoot, opts.jsonOut))
+  console.log(PREFIX + " probe list written to " + relative(repoRoot, opts.jsonOut) + (opts.jsonOutExplicit ? " (explicit target)" : " (timestamped default)"))
 }
 process.exit(report.totals.findings === 0 ? 0 : 1)

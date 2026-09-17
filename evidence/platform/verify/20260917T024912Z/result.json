@@ -1,0 +1,89 @@
+{
+  "task": "t28",
+  "lane": "F (harness-close) + T-50",
+  "kind": "verification",
+  "verifier": "watchdog-engineer",
+  "started_at": "2026-09-17T02:49:12Z",
+  "finished_at": "2026-09-17T02:56:00Z",
+  "revision": {
+    "head": "646d8018a44bffb2d6e1c30afa090056f81b911e",
+    "dirty_paths": 216,
+    "note": "every claim in this file belongs to this revision; the raw logs in raw/ carry the readings verbatim"
+  },
+  "acceptance": [
+    {
+      "id": "A4",
+      "clause": "The harness-owned closure notes are checked as claims: each of T-21/T-23/T-24/T-26/T-43 has a note where an agent meets it, the T-23/T-24 helper is executed once successfully, and the T-43 guard's negative case (it must not fire for a normal session) is shown.",
+      "verdict": "PASS with one cosmetic finding (F-2)",
+      "evidence": {
+        "notes_where_an_agent_meets_them": {
+          "AGENTS.md": "SS12 'Harness-owned frictions - CLOSED by a rule plus a helper' carries an id-labelled bullet for each of T-21 / T-23 / T-24 / T-26 / T-43 (+ T-54 / T-55) and names the one-command fallback for each; lines 521/524/527/530/532/535/537 (line numbers cited as the NOTE's location, never as code provenance - T-55).",
+          "agent-references/troubleshooting.md": "the symptom-first table carries the detail: row 15 T-21 (id in row), row 17 T-23 (detail present, id ABSENT - F-2), row 29 T-24 (id in row), row 30 T-26 (id in row), row 31 T-43 (id in row).",
+          "reachability": "two independent routes: the id (AGENTS.md SS12 -> 'the detail lives in agent-references/troubleshooting.md') and the SYMPTOM (grep nohup / mpd-bg / reload-check / check-write / real-home hits the right row)."
+        },
+        "helper_executed_once_successfully": {
+          "command": "node scripts/mpd-bg.mjs run --log <evidence>/raw/helper.log -- node -e '<writes HELPER-REAL-RUN-DONE>' then node scripts/mpd-bg.mjs probe <log>.pid",
+          "readings": [
+            "[mpd-bg] started pid=17 log=evidence/platform/verify/20260917T024912Z/raw/helper.log pidfile=.../helper.log.pid",
+            "log content: HELPER-REAL-RUN-DONE (the child really ran and really wrote the workspace log)",
+            "[mpd-bg] RUNNING pid=15   (second, correct probe target: probe.log.pid)",
+            "[mpd-bg] DEAD pid=15   log: PROBE-JOB-DONE",
+            "[mpd-bg] NO-PID-FILE .../helper.pid  (the FIRST attempt probed the wrong filename <log-without-.log>.pid - the helper writes <log>.pid; that NO-PID-FILE exit-2 reading is itself the documented arm, not a helper failure)"
+          ]
+        },
+        "t43_negative_case": {
+          "command": "bun test packages/mpd-workmate-plugin",
+          "reading": "28 pass, 0 fail, 333 expect() calls, 4 files - a normal session (DSH_HOME unset) is never refused by the real-home guard",
+          "on_disk": "the two sandbox cases (refusal + deliberate override) live in evidence/platform/harness-close/"
+        },
+        "helper_self_test": {
+          "command": "node scripts/mpd-bg.mjs --self-test",
+          "reading": "[mpd-bg self-test] 13/13 arms passed - PASS; incl. 'probe: missing pid file -> NO-PID-FILE, exit 2', 'T-24: a child that spawns a grandchild holding the handle returns promptly - elapsed=76ms', 'T-24: the helper never uses stdio:pipe - pipeHits=0'"
+        }
+      }
+    },
+    {
+      "id": "A5",
+      "clause": "T-50 is re-verified for what it actually claims - the resolution is lazy and the warning wording is honest; the absent observation (six clean boots) is restated as a bound, never as a fix for an observed failure.",
+      "verdict": "PASS",
+      "evidence": {
+        "lazy_resolution": {
+          "symbol": "createLazyDshAdapter (packages/mpd-dsh-adapter-plugin/src/index.ts)",
+          "consumers": [
+            "packages/mpd-ext-plugin/src/index.ts -> dsh = createLazyDshAdapter(ctx, { label: 'mpd-ext', warn })",
+            "packages/mpd-roles-plugin/src/index.ts -> const dsh = createLazyDshAdapter(ctx, { label: 'mpd-roles', warn: adapterWarn })"
+          ],
+          "mechanism": "a Proxy whose get() calls resolve() per property access; resolve() probes the service on EVERY use and caches ONLY a successful mount (mounted / temporary), so a row that applies before its provider activates still picks the mounted adapter up on the next call"
+        },
+        "honest_wording": {
+          "transient_miss": "'ADAPTER NOT YET ACTIVE: ... its provider fiber is not ACTIVE yet ... this transient miss needs NO row-order change (T-50).' - reached when a NON-strict probe still finds the service (registered, starting)",
+          "provably_absent": "'ADAPTER FALLBACK (adapterIdentity=...): ... fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter)' - reached only on a strict+non-strict miss, i.e. proof of absence; the two modes are separated by probeMpdDsh(ctx,false).missing (comment at the branch, ADAPTER_IDENTITY_PENDING = 'pending:provider-not-active')"
+        },
+        "suites": "bun test: mpd-dsh-adapter-plugin 42 pass / 0 fail (137 expect); mpd-ext-plugin 74 pass / 0 fail (560 expect); mpd-roles-plugin 31 pass / 0 fail (485 expect) - all three exit 0",
+        "bound": "the register's own bound, restated as a bound and NOT as a fix for an observed failure: 'six consecutive clean boots on the correctly ordered tree never opened the window (t24, 6/6 adapterIdentity=mounted:mpdDsh, zero fallback lines) - so this change is justified by the code' (evidence/platform/lazy-adapter/20260917T012724Z/result.json). One live run window cannot prove the transient window is unreachable; it proves the fix does not regress the ordered case."
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-2",
+      "severity": "low",
+      "file": "agent-references/troubleshooting.md",
+      "text": "row 17 (the T-23 symptom row: nohup / bwrap --die-with-parent / the mpd-bg run+probe shape) is the ONLY one of the five harness-close rows that does not carry its friction id in the row: rows 15/29/30/31 say (T-21)/(T-24)/(T-26)/(T-43) but row 17 says none. An id-search for 'T-23' in that file returns 0 hits.",
+      "requiredFix": "append ' (T-23)' to row 17 (one-line doc edit; the AGENTS.md SS12 bullet for T-23 already carries the id, and the row is reachable by its symptom, so this is cosmetic, not a knowledge gap).",
+      "impact": "none on any reading in this file; the detail is discoverable by symptom keyword and the id route lands on the row's topic."
+    }
+  ],
+  "verdict": "PASS - acceptance A4 (with cosmetic F-2) and A5 hold on the revision measured; nothing in the harness-close note set is a false claim.",
+  "bound": "the note set, the helper behaviour and the T-50 mechanism were measured on HEAD 646d801 + the working tree at the times stamped here; a later writer to scripts/mpd-bg.mjs, AGENTS.md, agent-references/troubleshooting.md or the adapter/ext/roles sources invalidates the corresponding reading.",
+  "raw": [
+    "raw/harness-close.log",
+    "raw/helper.log",
+    "raw/helper.log.pid",
+    "raw/probe.log",
+    "raw/probe.log.pid",
+    "raw/self-test.log",
+    "raw/doc-pointers.log",
+    "raw/t50-symbols.log"
+  ]
+}

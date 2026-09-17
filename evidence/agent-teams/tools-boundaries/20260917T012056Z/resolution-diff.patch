@@ -1,0 +1,11 @@
+diff --git a/packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs b/packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs
+index 1bca3f3..32d63b5 100644
+--- a/packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs
++++ b/packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs
+@@ -95,5 +95,5 @@ test("F6: TEAM_TOOL_NAMES carries the frozen 14-name manual-entry set", () => {
+     // the derived captain/member views stay consistent with the frozen set
+     for (const name of MEMBER_TOOL_NAMES) expect(TEAM_TOOL_NAMES).toContain(name)
+     for (const name of CAPTAIN_TOOL_NAMES) expect(TEAM_TOOL_NAMES).toContain(name)
+-    expect(CAPTAIN_TOOL_NAMES).toContain("agent_teams_task_contract")
++    expect(MEMBER_TOOL_NAMES).toContain("agent_teams_task_contract")
+ })

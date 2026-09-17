@@ -1,0 +1,16 @@
+=== the 26/24 measurement, re-taken with temp outfiles (method for the evidence) ===
+root form : f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  152855 B
+pkg  form : a7b843e19656dbe950131f9c597222436f671a15b35ee3c62776fd4f6f76864a  152579 B
+differing lines total       : 26
+differing AFTER dropping L1 : 24
+--- sample differing lines ---
+< // packages/mpd-dsh-adapter-plugin/src/index.ts
+> // ../mpd-dsh-adapter-plugin/src/index.ts
+< // packages/mpd-ext-plugin/src/sdk.ts
+> // src/sdk.ts
+< // packages/mpd-ext-plugin/src/registry.ts
+> // src/registry.ts
+--- any non-path-comment difference? ---
+0
+=== committed dist (should be the root form) ===
+f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  packages/mpd-ext-plugin/dist/index.js

@@ -1,0 +1,71 @@
+[t49] sandbox DSH_HOME=/tmp/mpd-t49-dsh-3 HOME=/tmp/mpd-t49-home-3 ws=/tmp/mpd-t49-home-3/ws
+[t49] stub listening on 127.0.0.1:36527; booting the headless profile
+[t49] boot exit=0 stubCalls=19
+[t49] assertions {"A1_captain_seat_classified":true,"A2_member_lists_contract_tool":false,"A3_member_does_not_list_approve":true,"A4a_member_log_records_contract_call":false,"A4b_member_log_has_nonerror_result":false,"A5_member_denied_write_tools":true,"A6_contract_result_returned_to_member":false}
+[t49] wrote /root/dshProj/my-power-dsh/evidence/agent-teams/tools-boundaries/20260917T012056Z/result.json ok=false
+{
+  "case": "agent-teams-tools-boundaries-t49-mounted",
+  "startedAt": "2026-09-17T01:21:45.752Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "isolation": {
+    "dshHome": "/tmp/mpd-t49-dsh-3",
+    "runHome": "/tmp/mpd-t49-home-3",
+    "ws": "/tmp/mpd-t49-home-3/ws",
+    "realHomeUntouched": true,
+    "installExit": 0
+  },
+  "stub": {
+    "calls": [
+      {
+        "call": 1,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 2,
+        "seat": "member",
+        "toolCount": 0,
+        "hasContractTool": false,
+        "hasApproveTool": false,
+        "hasBash": false,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 3,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [
+          "Team \"t49-contract-seat-probe\" plan created under /tmp/mpd-t49-home-3/ws/.mpd/team/t49-contract-seat-probe. It is staged: finish the roster and DAG, then wait f"
+        ],
+        "contractResultSeen": false
+      },
+      {
+        "call": 4,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [
+          "Team \"t49-contract-seat-probe\" plan created under /tmp/mpd-t49-home-3/ws/.mpd/team/t49-contract-seat-probe. It is staged: finish the roster and DAG, then wait f",
+          "Error: member name \"Architect\" has already been used in team \"t49-contract-seat-probe\""
+        ],
+        "contractResultSeen": false
+      },
+      {
+        "call": 5,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "to

@@ -26,7 +26,7 @@ import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/
 import { WatchdogEngine, type EngineContext } from "../src/engine"
 import { inFlightFor, WatchdogMachine } from "../src/machine"
 import { readHeartbeats, type HeartbeatStamp } from "../src/store"
-import { agent, sandbox, stubAdapter, testConfig, writeTeam, type Sandbox } from "./support"
+import { agent, openOutstandingChannel, sandbox, stubAdapter, testConfig, writeTeam, type Sandbox } from "./support"
 
 /** The thresholds these cases run with — small enough to be real-time, big enough to be safe. */
 const FAST = { warnSilenceMs: 300, tickIntervalMs: 100, toolInFlightMaxMs: 5_000 }
@@ -73,6 +73,17 @@ function mountReal(box: Sandbox, overrides: Partial<typeof FAST> = {}): RealEngi
   const engine = new WatchdogEngine(adapter, engineCtx, testConfig({ stateDir: box.stateDir, ...FAST, ...overrides }))
   const disposers = engine.install()
   return { ctx, engine, adapter, warnings, dispose: () => { for (const off of disposers) off() } }
+}
+
+/**
+ * Open an OUTSTANDING channel through the REAL cordis context.
+ *
+ * `session/event` is an emit dispatch; the adapter's `onEvent` registered the engine's fold as
+ * a listener on this same context, so this reaches the production wiring and nothing else.
+ */
+function openChannel(ctx: Context, sessionId: string, at: number): void {
+  ctx.emit("session/event", { id: sessionId }, { type: "turn/start", seq: 1, time: at, data: { turn: 1 } })
+  ctx.emit("session/event", { id: sessionId }, { type: "step/start", seq: 2, time: at, data: { turn: 1, step: 1 } })
 }
 
 /** Dispatch the harness's pre-execute gate exactly as `dsh-tools` does. */
@@ -356,9 +367,11 @@ describe("r6 — the real engine, a real long command, and the durable store", (
         expect(gate).toEqual({ kind: "deny", reason: "scope" })
         expect(existsSync(join(box.workspace, box.stateDir, "watchdog", "heartbeat"))).toBe(false)
         expect(real.engine.getStats().toolStarts).toBe(0)
-        // …and the silence rule still sees the wedge it has always seen.
+        // …and the silence rule still sees the wedge it has always seen — an OUTSTANDING
+        // channel (open step, no committed answer) is what makes the §3 ladder available.
         real.engine.stamp("step", agent("a1", box.workspace))
         const last = stampsOf(box)[0].at
+        openChannel(real.ctx, "a1", last)
         const kinds: string[][] = []
         for (const n of [1, 2, 3]) {
           const tick = await real.engine.tickOnce(last + FAST.warnSilenceMs + n)
@@ -396,6 +409,7 @@ describe("r6 — the real engine, a real long command, and the durable store", (
         expect(warnings.some((line) => line.includes("no pre-tool hook"))).toBe(true)
         engine.stamp("step", agent("a1", box.workspace))
         const last = stampsOf(box)[0].at
+        openOutstandingChannel(stub, "a1", last)
         const kinds: string[][] = []
         for (const n of [1, 2, 3]) kinds.push((await engine.tickOnce(last + FAST.warnSilenceMs + n)).decisions.map((d) => d.type))
         expect(kinds).toEqual([["warn"], ["warn"], ["escalate"]])

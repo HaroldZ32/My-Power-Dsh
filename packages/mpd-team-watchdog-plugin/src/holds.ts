@@ -334,6 +334,31 @@ export class HoldRegistry {
 export const HOLD_GATE_CALL = 'ctx.get("mpdWatchdog", false)?.isHeld(teamId, workspace)?.held === true'
 
 /** The one-file probe a gate can use when it has a state root but no service. */
+/**
+ * T-17: every team id with a hold file on disk, sorted — the DISK truth a release decision
+ * must use (the registry is a cache, and a process that never hydrated it still has to be able
+ * to release an expired hold). A missing directory answers `[]`, never a throw.
+ */
+export function heldTeamIds(workspace: string, stateDir: string): string[] {
+  let files: string[]
+  try {
+    files = readdirSync(holdDir(workspace, stateDir))
+  } catch {
+    return []
+  }
+  const held: string[] = []
+  for (const file of files) {
+    if (!file.endsWith(".json")) continue
+    const teamId = file.slice(0, -".json".length)
+    try {
+      if (readHoldFile(workspace, stateDir, teamId) !== undefined) held.push(teamId)
+    } catch {
+      // an unreadable hold file is skipped; the rest of the index still answers
+    }
+  }
+  return held.sort()
+}
+
 export function holdFileExists(workspace: string, stateDir: string, teamId: string): boolean {
   try {
     return statSync(holdPath(workspace, stateDir, teamId)).isFile()

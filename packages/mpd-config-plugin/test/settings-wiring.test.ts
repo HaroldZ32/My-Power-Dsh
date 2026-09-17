@@ -19,6 +19,19 @@ function sandbox(): { root: string; file: string } {
   mkdirSync(join(root, ".mpd"), { recursive: true })
   return { root, file: join(root, ".mpd", "mpd.jsonc") }
 }
+
+/**
+ * The fake adapter's MOUNT-TIME fallback root: an explicit empty fixture, never
+ * `process.cwd()`. A checkout that has its own `.mpd/mpd.jsonc` (this repo does) must not
+ * become an implicit fixture — that coupling is what made the U15 "no live root" case and
+ * the ZERO-live-roots base case fail by cwd (T-57). Bare temp dir, no `.mpd` at all, which
+ * is exactly the "no file there" premise those two cases need.
+ */
+function mountRootFixture(): string {
+  const dir = mkdtempSync(join(tmpdir(), "mpd-wiring-mount-"))
+  temps.push(dir)
+  return dir
+}
 afterEach(() => {
   for (const dir of temps.splice(0)) rmSync(dir, { recursive: true, force: true })
   delete process.env.MPD_DSH_TUI_SETTINGS_BRIDGE
@@ -26,6 +39,8 @@ afterEach(() => {
 
 interface HarnessOptions {
   roots?: string[]
+  /** Explicit mount-time fallback root; defaults to a fresh empty fixture (never `process.cwd()`). */
+  mountRoot?: string
   user?: any
   revision?: number
   settingsAvailable?: boolean
@@ -34,6 +49,7 @@ interface HarnessOptions {
 
 function harness(options: HarnessOptions = {}) {
   const roots = options.roots ?? []
+  const mountRoot = options.mountRoot ?? mountRootFixture()
   const registered: any[] = []
   const logs: string[] = []
   const mutates: Array<{ ns: string; ops: any[]; expected?: number }> = []
@@ -48,7 +64,7 @@ function harness(options: HarnessOptions = {}) {
       registrations.push({ ns, schema, options })
       return registrationError === undefined ? { ok: true } : { ok: false, error: registrationError }
     },
-    workspaceRoot: (exec?: any) => exec?.agent?.session?.header?.cwd ?? roots[0] ?? process.cwd(),
+    workspaceRoot: (exec?: any) => exec?.agent?.session?.header?.cwd ?? roots[0] ?? mountRoot,
     workspaceRootsAll: () => [...roots],
     settingsReader: (ns: string) =>
       options.settingsAvailable === false || ns !== "mpd"
@@ -96,6 +112,7 @@ function harness(options: HarnessOptions = {}) {
   }
   return {
     ctx,
+    mountRoot,
     registered,
     logs,
     mutates,
@@ -343,13 +360,19 @@ describe("migration (design §6, U15)", () => {
     expect(h.provided.mpdConfig.states().migration).toBe("already-migrated")
   })
 
-  test("with no live root the migration is DEFERRED and nothing is written to process.cwd()", async () => {
-    const h = harness({ roots: [], user: { ulw: { maxRounds: 9 } }, revision: 2 })
+  test("with no live root the migration is DEFERRED and nothing is written to the mount-time fallback root", async () => {
+    const mount = mountRootFixture()
+    const h = harness({ roots: [], mountRoot: mount, user: { ulw: { maxRounds: 9 } }, revision: 2 })
     apply(h.ctx)
     await h.settle()
     expect(h.provided.mpdConfig.states().migration).toBe("deferred-no-workspace")
     expect(h.mutates).toEqual([])
-    expect(existsSync(join(process.cwd(), ".mpd", "mpd.jsonc"))).toBe(false)
+    // The premise is asserted against the harness's OWN resolved root — an explicit empty
+    // fixture, never `process.cwd()` — so the developer's own `.mpd/mpd.jsonc` cannot
+    // falsify it (T-57: this assertion used to read `join(process.cwd(), ".mpd", "mpd.jsonc")`).
+    expect(h.mountRoot).toBe(mount)
+    expect(h.mountRoot).not.toBe(process.cwd())
+    expect(existsSync(join(h.mountRoot, ".mpd", "mpd.jsonc"))).toBe(false)
     expect(h.logs.some((line) => line.includes("migration deferred"))).toBe(true)
   })
 
@@ -413,9 +436,15 @@ describe("the file-derived base under the captain's cardinality rule (§10.1 + r
   })
 
   test("ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults)", () => {
-    const h = harness({ roots: [] })
+    const mount = mountRootFixture()
+    const h = harness({ roots: [], mountRoot: mount })
     apply(h.ctx)
     expect(h.provided.mpdConfig.states().settings.baseReason).toBe("mount-time-root")
+    // "no file THERE" is asserted on the explicit fixture root the adapter resolved to, so
+    // this case cannot silently read the checkout's own `.mpd/mpd.jsonc` (T-57: the mount-time
+    // root used to be `process.cwd()`, which made the base non-empty in this repo).
+    expect(h.mountRoot).toBe(mount)
+    expect(existsSync(join(h.mountRoot, ".mpd", "mpd.jsonc"))).toBe(false)
     expect(h.registrations[0].options?.base).toEqual({})
   })
 

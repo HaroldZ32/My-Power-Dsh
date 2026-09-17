@@ -1,0 +1,3 @@
+=== WHOLE-FILE identity BEFORE (the practice adopted after the t45 revert) ===
+eb526cb3e42199643c31602fce4c7ecc6fc62b59b268e830dc5a95a82f9d7452  AGENTS.md
+48354 AGENTS.md

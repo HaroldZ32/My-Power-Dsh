@@ -13,6 +13,7 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, 
 import { homedir } from "node:os"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const DEV = process.env.MPD_DEV_ROOT || repoRoot
@@ -64,7 +65,7 @@ async function runReal() {
   const home = join(reloc, "home")
   const profile = join(home, "profiles", "t")
   mkdirSync(profile, { recursive: true })
-  cpSync(creds, join(home, ".credentials.yaml"))
+  seedSandboxCredentials(home, { credentialsFile: creds })
   // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
 // model chain is configured through gateway providers (llm-pi-ai), so without it the
 // sandbox falls back to the base `deepseek-official` route and the boot dies with
@@ -81,7 +82,7 @@ async function runReal() {
   // SKILLS=24 BUNDLED=18 NON_BUNDLED=<6 machine skills> -> roles-probe FAIL).
   const userHome = join(reloc, "userhome")
   mkdirSync(userHome, { recursive: true })
-  const env = { ...process.env, DSH_HOME: home, HOME: userHome }
+  const env = credentialEnv({ ...process.env, DSH_HOME: home, HOME: userHome  })
   if (env.DSH_HOME !== home || env.HOME !== userHome) { console.error("[relocate-smoke] isolation assertion failed"); process.exit(1) }
   const steps = {}
   console.log("[relocate-smoke] npm install (agent-teams + ast-grep + codegraph)...")

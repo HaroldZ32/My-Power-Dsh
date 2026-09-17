@@ -1,0 +1,129 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-c1-v9llFZ",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        [
+          "captain.jsonl"
+        ]
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-fe2cca1a-fe67-4f92-9cbe-acc1bdf9224c",
+          "createdAt": 1789616662191,
+          "members": [
+            {
+              "id": "4e3ad2b5-32f6-4a11-a6ce-cfcfb541e512",
+              "name": "librarian",
+              "role": "researcher",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789616663531,
+              "status": "removed"
+            },
+            {
+              "id": "5f0b39cd-717d-40e4-937a-adad2078ce7a",
+              "name": "oracle",
+              "role": "reviewer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789616663566,
+              "status": "removed"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Read the team goal \"C1 adoption QA\" and produce exactly one sentence that summarizes the QA goal for the team. Keep it to a single line of plain text, no bullet list. Reply to the captain with the one-line summary.",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1789616666259,
+              "updatedAt": 1789616680541,
+              "kind": "work",
+              "attemptId": "5c514ffa-cd38-426a-8db6-948ed7ad3cdf",
+              "reassigning": false,
+              "output": "QA the adoption of C1: verify that C1 has been adopted as intended and confirm the adoption is correct and complete."
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Wait for t1 (the librarian's one-line summary of the QA goal). Then judge it: it must be exactly one line and must accurately summarize the team goal \"C1 adoption QA\". Decide approve or reject and report your verdict plus the summary text to the captain.",
+              "status": "completed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1789616669051,
+              "updatedAt": 1789616700315,
+              "kind": "work",
+              "attemptId": "b66cfe4d-565b-4c13-bf8b-0b4e9ba1f47a",
+              "reassigning": false,
+              "output": "VERDICT: APPROVE.\n\nReviewed artifact: t1 output (dependency, completed by librarian, attempt 1).\nSUMMARY TEXT (verbatim): \"QA the adoption of C1: verify that C1 has been adopted as intended and confirm the adoption is correct and complete.\"\n\nCriterion 1 — exactly one line: PASS. Raw stored output is 116 chars with 0 newline characters (line count = 1), a single period-terminated sentence, no bullet/list markers. Verified by parsing .mpd/team/c1qa/team.json (t1.output, repr/newline count).\nCriterion 2 — accurately summarizes team goal \"C1 adoption QA\": PASS. Team description in team.json is exactly \"C1 adoption QA\". The summary preserves the subject verbatim (\"the adoption of C1\"), correctly frames the team's activity as QA, and expands the intent faithfully into verifying the adoption was as intended and confirming it is correct and complete. No invented scope (no extra deliverables, no hallucinated specifics about what C1 is — C1 is kept as-is since the goal itself does not define it).\n\nDecision: APPROVE. Handing the verbatim summary text to the captain above."
+            }
+          ],
+          "taskSeq": 2
+        }
+      ]
+    },
+    "archive": {
+      "ok": true,
+      "archiveIds": [
+        "c1qa"
+      ]
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "arm": "fence-refusal",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T03-44-01.860Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

@@ -1,7 +1,7 @@
 // mpd settings section — the browser half of the `mpd` settings namespace (t35; moved to its own
 // top-level section by w14/t83 at the user's request: "web的设置栏请单开一栏MPD设置，别混在插件栏里").
 //
-// WHERE THIS MOUNTS: its OWN top-level `MPD` section of the Web settings dialog. The same eleven
+// WHERE THIS MOUNTS: its OWN top-level `MPD` section of the Web settings dialog. The same thirteen
 // mpd.jsonc knobs used to ride the Plugins tab's keyed per-namespace item slot; this file no longer
 // registers anything there, so the Plugins tab shows no mpd card.
 //
@@ -48,14 +48,24 @@
   const SECTION_ORDER = 20
 
   /** The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE). */
-  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount)"
+  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime"
+  /**
+   * The HOST LIMITATION half of the truth (T-18), byte-identical to
+   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT` and rendered as the
+   * card's second disclosure paragraph: the file-derived base is fixed for the running process, so
+   * a hand edit of `.mpd/mpd.jsonc` applies at the next `dsh` boot and never mid-process, and only
+   * a change made through the settings document can reach a running plugin (where it subscribes).
+   * This is the honest replacement for the old "any settings edit wins from the next tick on"
+   * claim, which the host's mount-time base read does not support.
+   */
+  const BRIDGE_RESTART_LIMIT = "the file half is host-limited: a .mpd/mpd.jsonc edit is read once at plugin mount and stays fixed for the running process, so it applies at the next dsh boot and never mid-process; only a change made through this settings document can reach a running plugin, and only where the plugin subscribes to the host's settings-document update"
   const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
   // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
   // hint and the status line carry).
   const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session"
 
   /**
-   * The twelve knobs — the SAME fields the TUI `/settings` section declares. `hint` is the knob's
+   * The thirteen knobs — the SAME fields the TUI `/settings` section declares. `hint` is the knob's
    * mpd.jsonc key + the shared disclosure, exactly as the TUI builds it; a knob whose effect is
    * not self-evident from its label also carries a `semantics` sentence the row renders (w16).
    */
@@ -72,6 +82,7 @@
     { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
     { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
     { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", semantics: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
+    { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", semantics: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ]
 
   const hintOf = (field) => `mpd.jsonc ${field.path.join(".")} — ${BRIDGE_DISCLOSURE}${field.semantics === undefined ? "" : " — " + field.semantics}`
@@ -124,7 +135,7 @@
    * `scope.mutate(ops, revision)` — nested paths included, which `scope.set(field, …)` cannot
    * express (it writes top-level fields only).
    */
-  function createMpdCardController(scope, fields = FIELDS, disclosure = { BRIDGE_DISCLOSURE, NO_WORKSPACE_NOTICE }) {
+  function createMpdCardController(scope, fields = FIELDS, disclosure = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }) {
     const staged = new Map()
     // Declared BEFORE the first projection: `project()` reads all three, and a `let` below the
     // call site is a TDZ ReferenceError (measured by this module's own test).
@@ -313,6 +324,7 @@
           createElement("span", { style: { fontSize: 12, opacity: 0.75 } }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
         ),
         createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "8px 0 0" } }, state.disclosure?.BRIDGE_DISCLOSURE ?? ""),
+        createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
         createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
         state.mode === "memory"
           ? createElement("p", { style: { fontSize: 12, opacity: 0.75, margin: "4px 0 0" } }, t("memoryMode"))
@@ -326,7 +338,7 @@
     const en = {
       nav: "MPD",
       title: "MPD bundle",
-      intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies after a restart",
+      intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot",
       save: "Save",
       discard: "Discard",
       reset: "Reset to the file value",
@@ -338,7 +350,7 @@
     const zh = {
       nav: "MPD",
       title: "MPD 插件包",
-      intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 重启后对插件生效",
+      intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效",
       save: "保存",
       discard: "放弃",
       reset: "重置为文件值",
@@ -426,6 +438,7 @@
     SECTION_ID,
     SECTION_ORDER,
     BRIDGE_DISCLOSURE,
+    BRIDGE_RESTART_LIMIT,
     NO_WORKSPACE_NOTICE,
   }
 }

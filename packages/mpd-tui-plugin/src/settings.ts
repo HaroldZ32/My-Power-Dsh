@@ -11,6 +11,18 @@
 // session's plugin behaviour changes only after a restart — every knob in this
 // section is captured at plugin mount (design §D.1).
 //
+// T-18 HOST LIMITATION (the honest half, also rendered by the Web card as its second
+// disclosure paragraph and exported as `BRIDGE_RESTART_LIMIT` from the shared schema):
+// the FILE-derived base is read once at plugin mount and stays fixed for the process
+// lifetime, so a hand edit of `.mpd/mpd.jsonc` applies at the next dsh boot and never
+// mid-process. Only a change made through the settings document can reach a RUNNING
+// plugin, and only where the plugin subscribes to the host's settings-document update
+// (the watchdog engine does, `engine.ts` `onSettingsDocumentUpdated`); this change does
+// not prove that seam is exposed on the installed host, so no surface claims a live
+// reload — the per-field hints state the restart truth, and `BRIDGE_RESTART_LIMIT` carries
+// the limitation on the Web card (this pane keeps its one-line hints free of it so the
+// restart disclosure and the "never lost" clause stay legible).
+//
 // The disclosure is not only in this header and the READMEs — it is carried by
 // the RENDERED METADATA too (t21): every field hint names its mpd.jsonc key and
 // then states the marker, so a user reading `/settings` learns it at the point of
@@ -23,7 +35,7 @@
 // `z` comes from the bundle's already-vendored schemastery copy. Same directory
 // specifier rule as `index.ts`.
 import type { PluginContextLike, SeamOutcome, SettingsProviderLike, TuiSettingsSectionLike, TuiSettingsSectionsLike } from "./types.js"
-// ONE source for the namespace schema, the six knobs and the disclosure: `mpd-config-plugin`
+// ONE source for the namespace schema, the thirteen knobs and the disclosure: `mpd-config-plugin`
 // owns the namespace (design §10.1) and exports them; this package consumes them for its
 // guarded FALLBACK registration and for the section it declares.
 import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS } from "../../mpd-config-plugin/src/settings-schema"

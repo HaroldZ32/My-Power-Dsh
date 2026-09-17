@@ -3,10 +3,18 @@
 [中文](./README.zh-CN.md)
 
 A DSH cordis plugin that watches an AgentTeams team for a **wedged turn**: a member
-(or the captain) that stops stepping without ever finishing. It writes a per-step and
-per-tool **heartbeat**, turns silence into a **WARN**, three consecutive WARNs for the
-same task+attempt into an **ESCALATE**, keeps a restorable **scene snapshot**, and
-records a durable, preserving **hold** for the affected team only.
+(or the captain) that stops stepping without ever finishing. It folds the member's own
+record stream (`session/event`) into ONE of four channel states — `OUTSTANDING`,
+`IN-FLIGHT`, `ALIVE`, `PARKED` — and only an `OUTSTANDING` request, unanswered past
+`warnSilenceMs`, earns a **WARN**; `warnStreakToEscalate` consecutive `OUTSTANDING`
+observations earn an **ESCALATE**, which persists a durable, preserving **hold** for the
+affected team ONLY when the resolved `actionOnEscalate` is `pause` (the default is
+`warn-only`). Every state change keeps a restorable **scene snapshot**.
+
+The heartbeat is still written, but it is no longer the verdict: it bounds the
+`tool-expired` report and remains the **report-only** fallback when the channel fold has
+no evidence. **A hold stops NEW DISPATCH only** — it never declines `claim_task`,
+`update_task` or a kick.
 
 This package is the **core** of that capability. It is deliberately narrow: it owns
 the writers, the machine, the store and its own actions. Wiring the adopted dispatch
@@ -109,21 +117,66 @@ from the stamp stream and pausing on a guess is the defect this bound exists to 
 * `toolInFlightMaxMs: 0` disables the suppression entirely (the pre-r6, POST-only behaviour); it is
   the fixture's own falsifier.
 
-## The WARN → ESCALATE machine
+## The channel predicate — four states, ONE authority
+
+Wall-clock silence is no longer a verdict. Per member (per owned task + attempt) the
+watchdog folds the member session's own record stream into exactly ONE state:
+
+| State | Record-level definition (per member session) | Watchdog action |
+|---|---|---|
+| `OUTSTANDING` | an OPEN step (`step/start` with no `step/end`) with NO committed `assistant/message`/`assistant/attempt` for it | the ONLY warnable state: WARN once `warnSilenceMs` elapsed since the request became outstanding, ESCALATE per the ladder |
+| `IN-FLIGHT` | the open step has an answer AND a `tool/call` has no matching `tool/result` | ALIVE until `toolInFlightMaxMs` past the call start, then exactly ONE `tool-expired` report (WARN-class: no scene, no hold, no escalate) |
+| `ALIVE` | a committed answer, a completed step/tool result, or a turn that has not closed | never a wedge, regardless of age |
+| `PARKED` | no open turn: between turns, dependency-blocked, finished-but-unupdated, staged plan, unclaimed task, or the member session is not attached | never a wedge, never a warn, never a hold |
+
+* **The fold is the primary signal** (`session/event`, an EMIT dispatch, so a listener
+  return value is ignored and no turn can be vetoed). Events used: `turn/start`,
+  `turn/end`, `step/start`, `step/end`, `assistant/message`, `assistant/attempt`,
+  `tool/call`, `tool/result`. An unknown (extension) event type changes no verdict.
+* **ONE authority per conclusion.** The fold decides the STATE; the heartbeat stamps decide
+  only the `tool-expired` BOUND and remain the fallback source below. Two sources never
+  both decide one conclusion.
+* **A completed step is ALIVE forever.** "How long ago" is irrelevant; only an
+  `OUTSTANDING` request has a clock.
+* **Streaming is not a non-response — with a signal.** While the model delivers a long
+  answer, no `assistant/message` is committed yet. The `agent/assistant-stream` START frame
+  (the §2 enrichment, soft-probed at apply) flips the open `(turn,step)` to `ALIVE`. **When
+  that enrichment is unavailable the state honestly stays `OUTSTANDING`** and the
+  `warnSilenceMs` bound is the protection: that asymmetry is stated here on purpose, and in
+  the agent-facing troubleshooting reference, because it is the one place where the watchdog
+  is deliberately conservative instead of silent. The same is true of a harness that never
+  emits a first-token signal at all.
+* **Zero attempts / never stamped is never a wedge.** A task whose owner never stamped is
+  reported `never-started` (a dispatch observation) and never holds or escalates. The
+  candidate precondition above is unchanged.
+* **Degradation is loud, never silent (a watchdog that goes quiet is worse than a noisy
+  one).** With no `session/event` seam, or with no folded event for a live member that owns
+  an open attempt, the engine FALLS BACK to the heartbeat rule in **REPORT-ONLY** mode: it
+  may WARN **once** per task+attempt with the cause `silence-heartbeat`, and it can NEVER
+  hold or escalate. The fallback is announced with ONE warning line per process, and
+  `session-watchdog-status` names the active predicate source (`channel` or `heartbeat`).
+* **Waterfall safety.** The plugin may subscribe to a waterfall event only if the listener
+  delegates (`return next()`), contains its own failures and is pinned by a negative-control
+  test; `agent/pre-step` is the one such subscription and its discipline is unchanged. The
+  fold's own subscription is an emit.
+
+## The §3 ladder (WARN → ESCALATE)
 
 ```
-OBSERVE (every tickIntervalMs)
-  silence = now - newestStamp(owner, task)
-  if an OPEN tool call for this task is younger than toolInFlightMaxMs:
-      EXPLAINED -> no WARN, no ESCALATE, streak reset (past the bound: ONE tool-expired record)
-  else if the owner's turn is expected in flight AND silence > warnSilenceMs:
-      WARN(task, attemptId)     -> scene snapshot + incident
-      streak[task+attempt] += 1
-      if streak >= warnStreakToEscalate:
-          ESCALATE(task, attemptId) -> scene + HOLD(team) + incident
-          the key is then DONE: no fourth WARN, no second ESCALATE
-  else:
-      streak[task+attempt] = 0
+OBSERVE (every tickIntervalMs) — the channel verdict decides the state
+  ALIVE / PARKED      -> no WARN, no ESCALATE, streak reset (age is irrelevant)
+  IN-FLIGHT           -> explained until toolInFlightMaxMs past the call start
+                         (past it: ONE tool-expired record, never a hold)
+  OUTSTANDING         -> silence = now - (the moment the request became outstanding)
+                         if silence > warnSilenceMs:
+                             WARN(task, attemptId, cause=silence-channel) -> scene + incident
+                             streak[task+attempt] += 1
+                             if streak >= warnStreakToEscalate:
+                                 ESCALATE(task, attemptId) -> scene + HOLD(team) + incident
+                                 (the hold only when actionOnEscalate === 'pause')
+                                 the key is then DONE: no further WARN, no second ESCALATE
+  NO CHANNEL EVIDENCE -> the heartbeat rule, REPORT-ONLY (one warn, cause=silence-heartbeat,
+                         never an escalate, never a hold)
 ```
 
 The streak is keyed `<taskId>\0<attemptId>`, so a retry with a fresh attempt starts
@@ -154,6 +207,26 @@ newest stamp decides — a `turn-end` newest stamp withholds the observation, no
 CURRENT generation is reported `never-started` (a dispatch observation that never escalates),
 and anything else is measured against `warnSilenceMs`.
 
+**T-16 — the silence slice is GENERATION-SCOPED.** A stamp older than the record's own
+`createdAt`/`approvedAt` belongs to a previous generation of that team and can no longer make a
+task silent: the candidate is reported `never-started` instead (a report that never holds). The
+measured leak this closes (2026-09-16): a hold took task `t12` whose only stamp (05:33:35Z)
+predated the record's `createdAt` (05:51:45Z), so "silence" was measured against a stamp from
+before the record existed. Two deliberate asymmetries stay: the bound applies to the
+**silence/hold slice only** — the dispatch precondition still counts an earlier-generation stamp
+as "this task was handed out" (the r7 pin), because a task nobody can see is a false negative
+that no lane would ever report — and a record that states **no** `createdAt` stays permissive,
+since an unbounded record must not turn the watchdog silent.
+
+**T-20 — a member waiting on a dependency is PARKED, not silent.** A member whose only open
+tasks are blocked by dependencies that are not terminal has nothing claimable: the watchdog
+derives that from `team.json` alone (the projection carries each task's `dependencies`) and
+suppresses the silence rule for it, reporting `PARKED`. No new member-facing wait tool exists —
+the derivation is the whole mechanism. Two readings are deliberately conservative: a dependency
+naming a task that is not in the record counts as unfinished (a task that cannot be shown
+finished has not been shown finished), and a member with no open task is not "blocked" (there is
+nothing to wait for).
+
 ### The knobs
 
 The `mpd` settings namespace is the live authority; the row config is the defaults
@@ -165,18 +238,25 @@ applied first would otherwise sit on its own defaults until somebody edited sett
 
 | Knob | Default | Meaning |
 |---|---|---|
-| `watchdog.warnSilenceMs` | `90000` | silence beyond this is a WARN |
+| `watchdog.warnSilenceMs` | `600000` | how long a request may stay `OUTSTANDING` before the FIRST warn |
 | `watchdog.tickIntervalMs` | `15000` | tick cadence; **clamped** when `>= warnSilenceMs` |
-| `watchdog.warnStreakToEscalate` | `3` | consecutive WARNs for one task+attempt before ESCALATE |
-| `watchdog.actionOnEscalate` | `pause` | `pause` persists the hold; `warn-only` only records |
+| `watchdog.warnStreakToEscalate` | `6` | consecutive `OUTSTANDING` observations after the first warn before ESCALATE |
+| `watchdog.actionOnEscalate` | `warn-only` | `pause` persists the hold; `warn-only` only records — a hold is OPT-IN |
 | `watchdog.enabled` | `true` | kill switch (`MPD_DSH_TEAM_WATCHDOG=off` forces it off) |
-| `watchdog.toolInFlightMaxMs` | `900000` | how long an OPEN tool call explains silence away; `0` disables the suppression (r6) |
+| `watchdog.toolInFlightMaxMs` | `900000` | how long an OPEN tool call explains silence away; `0` disables the bound (r6) |
+| `watchdog.holdTtlMs` | `900000` | the bound after which a persisted hold is auto-released with a durable `hold-auto-released` incident; `0` = never expire |
 
-The first five are declared in `mpd-config`'s schema and in the Web card's own
-`FIELDS` list, **in those packages, not here**; `toolInFlightMaxMs` is read through the same
-namespace and is *not* in that declaration yet — because schemastery keeps unknown
-keys it is readable and settable from the namespace (and from the row config) regardless,
-and it simply is not rendered in the two front doors until the declaration lands.
+These numbers are the frozen §3 table: they appear in `machine.ts`'s `WATCHDOG_DEFAULTS`,
+in this row's own `Config` schema and in the bundle patch's row config, and the three layers
+must agree exactly. The declaration of the first five in `mpd-config`'s schema and in the Web
+card's own `FIELDS` list belongs to **those packages, not here**; the knobs are read through
+the `mpd` namespace and, because schemastery keeps unknown keys, a knob is readable and
+settable from the namespace (and from this row's config) before that declaration lands.
+`holdTtlMs` is declared, resolved AND consumed on this row: a hold persisted by a `pause`
+escalation carries it, and T-17's auto-release path lifts the pause when the bound elapses (or
+when the team produces a stamp newer than `since`), with a durable `hold-auto-released` record.
+A manual hold is still cleared immediately by `session-watchdog-resume` (or by hand from the
+hold sidecar).
 
 ## The scene snapshot
 
@@ -209,10 +289,21 @@ Two fields are honest projections rather than the adopted plugin's own state:
 
 ## The hold, the incidents and the watermark
 
-* `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt}`. It is
-  written temp+rename, idempotent by `id`, and it is a **preserving** hold: it exists to
+* `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt, ttlMs}`. It
+  is written temp+rename, idempotent by `id`, and it is a **preserving** hold: it exists to
   stop NEW dispatch into one team, never to cancel work. It is NOT `agent_teams_halt`
   (which cancels every non-terminal task).
+* **T-17 — a hold releases itself, on two bounds.** Every hold carries `ttlMs` (the resolved
+  `watchdog.holdTtlMs` for a hold the watchdog raises; a manual `session-watchdog-hold` may
+  override it with `ttl_ms`, and `0` means "no TTL"). A hold is auto-released when EITHER
+  `now - since >= ttlMs` (`ttlMs > 0`) OR **any heartbeat stamp for that team is newer than
+  `since`** — a member that demonstrably worked has disproved the wedge. Both paths write one
+  durable `hold-auto-released` incident (`cause.kind: "hold-auto-released"`, `cause.release:
+  "ttl" | "activity"`), log one line, and touch **not one byte of `team.json`**: the pause
+  stays preserving, exactly like `session-watchdog-resume`. A hold written before this field
+  existed reads as `ttlMs: 0`, so no bound is ever invented for it. The pass runs at the head
+  of every tick and reads the hold **files** (the durable truth), so a process whose
+  synchronous reader was never hydrated still releases an expired pause.
 * `incidents.jsonl` = one record per WARN/ESCALATE with its cause, its task/attempt and
   the path of the scene it wrote, plus `hold: 'applied' | 'not-applied' | 'not-requested'`.
   The WARN-class observations `never-started` and `tool-expired` (r6) live on the same
@@ -224,6 +315,27 @@ Two fields are honest projections rather than the adopted plugin's own state:
 
 A team that is already held gets **no second scene and no second hold**; the incident is
 still recorded.
+
+### T-19 — one pause surface, naming the ACTIVE mechanism
+
+A team can be paused two ways: `agent_teams_halt` (which CANCELS every non-terminal task) and
+this package's own **preserving** hold. `session-watchdog-status` prints the **union** and names
+which one is active — `team-a: PAUSED — halted (agent_teams_halt)` vs `team-a: PAUSED — held
+(watchdog hold)` vs `team-a: not paused` — in the rendered text AND as a `pause: {active,
+mechanism, halted, held}` object per team in the JSON. No new resume verb is introduced: the two
+clears stay distinct (`agent_teams_resume` / `session-watchdog-resume`) and the surface tells the
+user which one applies.
+
+### §7.2/§7.3 — the knobs' live value vs the FILE's
+
+`.mpd/mpd.jsonc` reaches a process's `mpd` namespace **once, at mount**: a file edit is invisible
+until the next `dsh` boot. The status view therefore prints, per knob, the **live** value the
+process is running with and the **file** value when it differs, plus a `restartRequired` boolean
+(`warnSilenceMs=7200000 (file 900000, restartRequired)`); the engine logs ONE warning per process
+naming both values the first time it sees a divergence (`KNOBS DIVERGE (§7.3) … `). The file is
+read from the workspace (never `DSH_HOME`) with a tolerant JSONC reader — comments, a trailing
+comma, a missing file or a malformed document all degrade to "the file states nothing", which can
+only ever suppress a divergence report, never invent one.
 
 ## Hold enforcement — the reader w7 consults
 
@@ -332,10 +444,13 @@ node skills/dsh-qa/scripts/preset-conformance.mjs
 |---|---|
 | `src/index.ts` | the cordis row: `name` / `Config` / `apply`, alone |
 | `src/engine.ts` | the writers, the tick and the WARN/ESCALATE fan-out |
-| `src/machine.ts` | the knobs and the WARN→ESCALATE arithmetic |
+| `src/machine.ts` | the knobs, the WARN→ESCALATE arithmetic and the §7.2 knob readings |
+| `src/channel.ts` | the §1 four-state channel fold (`session/event`) |
 | `src/store.ts` | the heartbeat files, their rotation and atomic writes |
 | `src/team.ts` | the READ-ONLY view over the adopted team record |
 | `src/scene.ts` | the scene document, its atomic write and the unread mirror |
 | `src/sidecars.ts` | the hold, the incident log and the read watermark |
 | `src/actions.ts` | the three tool actions |
+| `src/config-file.ts` | the §7.2/§7.3 file layer of `.mpd/mpd.jsonc` (tolerant JSONC) |
+| `src/holds.ts` | the synchronous hold reader the w7 gates consult |
 | `src/paths.ts` | every path, resolved per call |

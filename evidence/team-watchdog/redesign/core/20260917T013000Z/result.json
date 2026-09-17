@@ -1,0 +1,701 @@
+{
+  "startedAt": "2026-09-17T01:32:12.727Z",
+  "redRoot": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+  "greenRoot": "/root/dshProj/my-power-dsh",
+  "hashesBefore": {
+    "red": {
+      "src/machine.ts": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+      "src/engine.ts": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+      "src/channel.ts": "(absent)",
+      "dist/index.js": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4",
+      "tools.js": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+    },
+    "green": {
+      "src/machine.ts": "fbe2db0b790684f6f9ec47b66da00f60fe053fc89c91741f15a7c043b3843eca",
+      "src/engine.ts": "51c95b95f7f16f51deaa6530664818b5ddf7d2d1300f0e2a72ccb01437782e6b",
+      "src/channel.ts": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+      "dist/index.js": "a4893187ee13e97dd465b214e0ba12e172bca25e73a5152da5e7ef042a5c4d39",
+      "tools.js": "895523ee9541e831b123f8292d4e23d3f197741d5020cd5de6c3c6eb850b1f86"
+    }
+  },
+  "baselineHashes": {
+    "before": {
+      "red": {
+        "root": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+        "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+        "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+        "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2",
+        "matchesContract": {
+          "machine": true,
+          "engine": true,
+          "tools": true
+        },
+        "sha256sum": [
+          "machine.ts=fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+          "engine.ts=f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+          "tools.js=49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+        ]
+      },
+      "green": {
+        "root": "/root/dshProj/my-power-dsh",
+        "machine": "fbe2db0b790684f6f9ec47b66da00f60fe053fc89c91741f15a7c043b3843eca",
+        "engine": "51c95b95f7f16f51deaa6530664818b5ddf7d2d1300f0e2a72ccb01437782e6b",
+        "tools": "895523ee9541e831b123f8292d4e23d3f197741d5020cd5de6c3c6eb850b1f86",
+        "matchesContract": {
+          "machine": false,
+          "engine": false,
+          "tools": false
+        },
+        "sha256sum": [
+          "machine.ts=fbe2db0b790684f6f9ec47b66da00f60fe053fc89c91741f15a7c043b3843eca",
+          "engine.ts=51c95b95f7f16f51deaa6530664818b5ddf7d2d1300f0e2a72ccb01437782e6b",
+          "tools.js=895523ee9541e831b123f8292d4e23d3f197741d5020cd5de6c3c6eb850b1f86"
+        ]
+      }
+    },
+    "after": {
+      "red": {
+        "root": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+        "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+        "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+        "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2",
+        "matchesContract": {
+          "machine": true,
+          "engine": true,
+          "tools": true
+        },
+        "sha256sum": [
+          "machine.ts=fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+          "engine.ts=f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+          "tools.js=49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+        ]
+      },
+      "green": {
+        "root": "/root/dshProj/my-power-dsh",
+        "machine": "fbe2db0b790684f6f9ec47b66da00f60fe053fc89c91741f15a7c043b3843eca",
+        "engine": "51c95b95f7f16f51deaa6530664818b5ddf7d2d1300f0e2a72ccb01437782e6b",
+        "tools": "895523ee9541e831b123f8292d4e23d3f197741d5020cd5de6c3c6eb850b1f86",
+        "matchesContract": {
+          "machine": false,
+          "engine": false,
+          "tools": false
+        },
+        "sha256sum": [
+          "machine.ts=fbe2db0b790684f6f9ec47b66da00f60fe053fc89c91741f15a7c043b3843eca",
+          "engine.ts=51c95b95f7f16f51deaa6530664818b5ddf7d2d1300f0e2a72ccb01437782e6b",
+          "tools.js=895523ee9541e831b123f8292d4e23d3f197741d5020cd5de6c3c6eb850b1f86"
+        ]
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "(a)",
+      "title": "a member streaming/writing a long answer, 12+ min simulated",
+      "required": "NO warn, NO hold",
+      "red": {
+        "verdict": {
+          "red": "fail",
+          "green": "fail",
+          "detail": "warn=true hold=true"
+        },
+        "reading": {
+          "tree": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+          "defaults": {
+            "warnSilenceMs": 90000,
+            "warnStreakToEscalate": 3,
+            "actionOnEscalate": "pause"
+          },
+          "ticks": [
+            {
+              "offset": 91000,
+              "decisions": [
+                "warn"
+              ],
+              "causes": [
+                null
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 181000,
+              "decisions": [
+                "warn"
+              ],
+              "causes": [
+                null
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 271000,
+              "decisions": [
+                "escalate"
+              ],
+              "causes": [
+                null
+              ],
+              "holds": [
+                "team-a"
+              ],
+              "heldOnDisk": true
+            },
+            {
+              "offset": 720000,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": true
+            }
+          ],
+          "warnedAt": 91000,
+          "escalatedAt": 271000,
+          "anyWarn": true,
+          "anyEscalate": true,
+          "anyHold": true,
+          "states": null,
+          "stats": {
+            "ticks": 4,
+            "tickErrors": 0,
+            "tickSkips": 0,
+            "heartbeatWrites": 1,
+            "heartbeatFailures": 0,
+            "rotations": 0,
+            "scenes": 3,
+            "sceneFailures": 0,
+            "holdsApplied": 1,
+            "holdsFailed": 0,
+            "incidents": 3,
+            "incidentFailures": 0,
+            "neverStarted": 0,
+            "skippedTeams": 0,
+            "toolStarts": 0,
+            "toolExpired": 0,
+            "lastError": null
+          }
+        }
+      },
+      "green": {
+        "verdict": {
+          "red": "pass",
+          "green": "pass",
+          "detail": "warn=false hold=false"
+        },
+        "reading": {
+          "tree": "/root/dshProj/my-power-dsh",
+          "defaults": {
+            "warnSilenceMs": 600000,
+            "warnStreakToEscalate": 6,
+            "actionOnEscalate": "warn-only"
+          },
+          "ticks": [
+            {
+              "offset": 91000,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 181000,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 271000,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 720000,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": false
+            }
+          ],
+          "warnedAt": null,
+          "escalatedAt": null,
+          "anyWarn": false,
+          "anyEscalate": false,
+          "anyHold": false,
+          "states": {
+            "a1": "ALIVE"
+          },
+          "stats": {
+            "ticks": 4,
+            "tickErrors": 0,
+            "tickSkips": 0,
+            "heartbeatWrites": 1,
+            "heartbeatFailures": 0,
+            "rotations": 0,
+            "scenes": 0,
+            "sceneFailures": 0,
+            "holdsApplied": 0,
+            "holdsFailed": 0,
+            "incidents": 0,
+            "incidentFailures": 0,
+            "neverStarted": 0,
+            "skippedTeams": 0,
+            "toolStarts": 0,
+            "toolExpired": 0,
+            "channelEvents": 2,
+            "channelFallbacks": 0,
+            "streamFrames": 1,
+            "channelDetached": 0,
+            "lastError": null
+          }
+        }
+      },
+      "ok": true
+    },
+    {
+      "id": "(b)",
+      "title": "a member whose only open task is dependency-blocked (turn closed, stale prior-generation stamp)",
+      "required": "NO warn, NO hold, and PARKED is the named state",
+      "red": {
+        "verdict": {
+          "red": "fail",
+          "green": "fail",
+          "detail": "warn=true hold=true state=n/a"
+        },
+        "reading": {
+          "tree": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+          "defaults": {
+            "warnSilenceMs": 90000,
+            "warnStreakToEscalate": 3,
+            "actionOnEscalate": "pause"
+          },
+          "ticks": [
+            {
+              "offset": 1000,
+              "decisions": [
+                "warn"
+              ],
+              "causes": [
+                null
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 2000,
+              "decisions": [
+                "warn"
+              ],
+              "causes": [
+                null
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 3000,
+              "decisions": [
+                "escalate"
+              ],
+              "causes": [
+                null
+              ],
+              "holds": [
+                "team-a"
+              ],
+              "heldOnDisk": true
+            }
+          ],
+          "warnedAt": 1000,
+          "escalatedAt": 3000,
+          "anyWarn": true,
+          "anyEscalate": true,
+          "anyHold": true,
+          "states": null,
+          "stats": {
+            "ticks": 3,
+            "tickErrors": 0,
+            "tickSkips": 0,
+            "heartbeatWrites": 0,
+            "heartbeatFailures": 0,
+            "rotations": 0,
+            "scenes": 3,
+            "sceneFailures": 0,
+            "holdsApplied": 1,
+            "holdsFailed": 0,
+            "incidents": 3,
+            "incidentFailures": 0,
+            "neverStarted": 0,
+            "skippedTeams": 0,
+            "toolStarts": 0,
+            "toolExpired": 0,
+            "lastError": null
+          }
+        }
+      },
+      "green": {
+        "verdict": {
+          "red": "pass",
+          "green": "pass",
+          "detail": "warn=false hold=false state=PARKED"
+        },
+        "reading": {
+          "tree": "/root/dshProj/my-power-dsh",
+          "defaults": {
+            "warnSilenceMs": 600000,
+            "warnStreakToEscalate": 6,
+            "actionOnEscalate": "warn-only"
+          },
+          "ticks": [
+            {
+              "offset": 1000,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 2000,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 3000,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": false
+            }
+          ],
+          "warnedAt": null,
+          "escalatedAt": null,
+          "anyWarn": false,
+          "anyEscalate": false,
+          "anyHold": false,
+          "states": {
+            "a1": "PARKED"
+          },
+          "stats": {
+            "ticks": 3,
+            "tickErrors": 0,
+            "tickSkips": 0,
+            "heartbeatWrites": 0,
+            "heartbeatFailures": 0,
+            "rotations": 0,
+            "scenes": 0,
+            "sceneFailures": 0,
+            "holdsApplied": 0,
+            "holdsFailed": 0,
+            "incidents": 0,
+            "incidentFailures": 0,
+            "neverStarted": 0,
+            "skippedTeams": 0,
+            "toolStarts": 0,
+            "toolExpired": 0,
+            "channelEvents": 5,
+            "channelFallbacks": 0,
+            "streamFrames": 0,
+            "channelDetached": 0,
+            "lastError": null
+          }
+        }
+      },
+      "ok": true
+    },
+    {
+      "id": "(d)",
+      "title": "an OUTSTANDING request with no response",
+      "required": "first WARN only after warnSilenceMs (600 s), then ESCALATE per the frozen ladder",
+      "red": {
+        "verdict": {
+          "red": "fail",
+          "green": "fail",
+          "detail": "firstWarnAt=90100ms firstEscalateAt=600100ms"
+        },
+        "reading": {
+          "tree": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+          "defaults": {
+            "warnSilenceMs": 90000,
+            "warnStreakToEscalate": 3,
+            "actionOnEscalate": "pause"
+          },
+          "ticks": [
+            {
+              "offset": 1000,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 90100,
+              "decisions": [
+                "warn"
+              ],
+              "causes": [
+                null
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 599999,
+              "decisions": [
+                "warn"
+              ],
+              "causes": [
+                null
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 600100,
+              "decisions": [
+                "escalate"
+              ],
+              "causes": [
+                null
+              ],
+              "holds": [
+                "team-a"
+              ],
+              "heldOnDisk": true
+            },
+            {
+              "offset": 600101,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": true
+            },
+            {
+              "offset": 600102,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": true
+            },
+            {
+              "offset": 600103,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": true
+            },
+            {
+              "offset": 600104,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": true
+            },
+            {
+              "offset": 600105,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": true
+            }
+          ],
+          "warnedAt": 90100,
+          "escalatedAt": 600100,
+          "anyWarn": true,
+          "anyEscalate": true,
+          "anyHold": true,
+          "states": null,
+          "stats": {
+            "ticks": 9,
+            "tickErrors": 0,
+            "tickSkips": 0,
+            "heartbeatWrites": 1,
+            "heartbeatFailures": 0,
+            "rotations": 0,
+            "scenes": 3,
+            "sceneFailures": 0,
+            "holdsApplied": 1,
+            "holdsFailed": 0,
+            "incidents": 3,
+            "incidentFailures": 0,
+            "neverStarted": 0,
+            "skippedTeams": 0,
+            "toolStarts": 0,
+            "toolExpired": 0,
+            "lastError": null
+          }
+        }
+      },
+      "green": {
+        "verdict": {
+          "red": "pass",
+          "green": "pass",
+          "detail": "firstWarnAt=600100ms firstEscalateAt=600105ms"
+        },
+        "reading": {
+          "tree": "/root/dshProj/my-power-dsh",
+          "defaults": {
+            "warnSilenceMs": 600000,
+            "warnStreakToEscalate": 6,
+            "actionOnEscalate": "warn-only"
+          },
+          "ticks": [
+            {
+              "offset": 1000,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 90100,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 599999,
+              "decisions": [],
+              "causes": [],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 600100,
+              "decisions": [
+                "warn"
+              ],
+              "causes": [
+                "silence-channel"
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 600101,
+              "decisions": [
+                "warn"
+              ],
+              "causes": [
+                "silence-channel"
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 600102,
+              "decisions": [
+                "warn"
+              ],
+              "causes": [
+                "silence-channel"
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 600103,
+              "decisions": [
+                "warn"
+              ],
+              "causes": [
+                "silence-channel"
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 600104,
+              "decisions": [
+                "warn"
+              ],
+              "causes": [
+                "silence-channel"
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            },
+            {
+              "offset": 600105,
+              "decisions": [
+                "escalate"
+              ],
+              "causes": [
+                "silence-channel"
+              ],
+              "holds": [],
+              "heldOnDisk": false
+            }
+          ],
+          "warnedAt": 600100,
+          "escalatedAt": 600105,
+          "anyWarn": true,
+          "anyEscalate": true,
+          "anyHold": false,
+          "states": {
+            "a1": "OUTSTANDING"
+          },
+          "stats": {
+            "ticks": 9,
+            "tickErrors": 0,
+            "tickSkips": 0,
+            "heartbeatWrites": 1,
+            "heartbeatFailures": 0,
+            "rotations": 0,
+            "scenes": 6,
+            "sceneFailures": 0,
+            "holdsApplied": 0,
+            "holdsFailed": 0,
+            "incidents": 6,
+            "incidentFailures": 0,
+            "neverStarted": 0,
+            "skippedTeams": 0,
+            "toolStarts": 0,
+            "toolExpired": 0,
+            "channelEvents": 2,
+            "channelFallbacks": 0,
+            "streamFrames": 0,
+            "channelDetached": 0,
+            "lastError": null
+          }
+        }
+      },
+      "ok": true
+    }
+  ],
+  "settleMs": 50000,
+  "hashesAfter": {
+    "red": {
+      "src/machine.ts": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+      "src/engine.ts": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+      "src/channel.ts": "(absent)",
+      "dist/index.js": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4",
+      "tools.js": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+    },
+    "green": {
+      "src/machine.ts": "fbe2db0b790684f6f9ec47b66da00f60fe053fc89c91741f15a7c043b3843eca",
+      "src/engine.ts": "51c95b95f7f16f51deaa6530664818b5ddf7d2d1300f0e2a72ccb01437782e6b",
+      "src/channel.ts": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+      "dist/index.js": "a4893187ee13e97dd465b214e0ba12e172bca25e73a5152da5e7ef042a5c4d39",
+      "tools.js": "895523ee9541e831b123f8292d4e23d3f197741d5020cd5de6c3c6eb850b1f86"
+    }
+  },
+  "settled": true,
+  "redMatchesContract": {
+    "machine": true,
+    "engine": true,
+    "tools": true
+  },
+  "greenMatchesContract": {
+    "machine": false,
+    "engine": false,
+    "tools": false
+  },
+  "ok": true,
+  "finishedAt": "2026-09-17T01:33:02.816Z"
+}

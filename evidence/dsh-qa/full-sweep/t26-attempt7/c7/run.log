@@ -1,0 +1,77 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=2 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c7
+[mpd-qa:(only)] PASS case=dual-track-smoke evidence=evidence/dsh-qa/llm-dual-track/deepseek/2026-09-17T04-39-36.187Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c7/lanes/dual-track-smoke.log ms=52444
+[mpd-qa:(only)] PASS case=mcp-call evidence=evidence/dsh-qa/mcp-call/2026-09-17T04-40-24.491Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c7/lanes/mcp-call.log ms=48316
+[mpd-qa:(only)] summary selected=2 pass=2 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c7
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 2,
+  "startedAt": "2026-09-17T04:38:43.757Z",
+  "finishedAt": "2026-09-17T04:40:24.522Z",
+  "durationMs": 100764,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "dual-track-smoke",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 52444,
+      "command": "bun skills/dsh-qa/scripts/dual-track-smoke.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/dual-track-smoke.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/llm-dual-track/deepseek/2026-09-17T04-39-36.187Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c7/lanes/dual-track-smoke.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "mcp-call",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 48316,
+      "command": "bun skills/dsh-qa/scripts/mcp-call.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/mcp-call.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/mcp-call/2026-09-17T04-40-24.491Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c7/lanes/mcp-call.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 2,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}
+[c7 exit=0] 2026-09-17T04:40:24Z

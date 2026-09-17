@@ -1,0 +1,154 @@
+{
+  "ok": true,
+  "case": "agent-teams-sidebar",
+  "checkedAt": "2026-09-17T01-36-25.632Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "sandbox": "/tmp/mpd-atsb-5LRJzz",
+  "artifact": {
+    "path": "packages/mpd-bundle-plugin/client.js",
+    "sha256": "ae2f2f020673ab276e24b1e8b58688e2b18df21cb7e84a991c290f7a04693bb6",
+    "bytes": 295527
+  },
+  "steps": {
+    "artifactCopyFaithful": {
+      "ok": true,
+      "repoSha": "ae2f2f020673ab276e24b1e8b58688e2b18df21cb7e84a991c290f7a04693bb6",
+      "copySha": "ae2f2f020673ab276e24b1e8b58688e2b18df21cb7e84a991c290f7a04693bb6",
+      "bytes": 295527
+    },
+    "moduleIds": {
+      "ok": true,
+      "ids": [
+        "@nanmicoder/dsh-agent-teams",
+        "@mpd-dsh/team-page",
+        "@mpd-dsh/settings-card",
+        "@mpd-dsh/mpd"
+      ]
+    },
+    "teamPageModuleInArtifact": {
+      "ok": true
+    },
+    "exactlyOneTeamTab": {
+      "ok": true,
+      "teamTabIds": [
+        "mpd-agent-teams"
+      ],
+      "allTabIds": [
+        "mpd-agent-teams",
+        "mpd-workmate"
+      ]
+    },
+    "teamTabShape": {
+      "ok": true,
+      "order": 85,
+      "single": true,
+      "toggle": "autoOpenOnTeamActivity"
+    },
+    "seedlessAutoOpen": {
+      "ok": true,
+      "call": "openTab({ type: TEAM_TAB_ID })"
+    },
+    "noLegacyRegistration": {
+      "ok": true,
+      "registeredDefinitions": [
+        "conversation.chat.commandview"
+      ]
+    },
+    "adoptedNeverApplied": {
+      "ok": true,
+      "artifactStillContainsAdoptedStrings": true
+    },
+    "noFloaterDefined": {
+      "ok": true
+    },
+    "commandViewKept": {
+      "ok": true,
+      "slots": [
+        "conversation.chat.commandview",
+        "settings.section"
+      ]
+    },
+    "panelInteriorParity": {
+      "ok": true,
+      "mismatched": [],
+      "observed": {
+        "root": "aYQbCq_panel",
+        "head": "aYQbCq_panelHead",
+        "title": "aYQbCq_panelTitle",
+        "dot": "aYQbCq_panelDot",
+        "controls": "aYQbCq_panelControls",
+        "collapse": "aYQbCq_iconButton",
+        "teams": "aYQbCq_teams",
+        "empty": "aYQbCq_emptyHint",
+        "panelMarker": true,
+        "emptyMarker": true,
+        "glyph": "IconChevronDownOutline14"
+      },
+      "windowManagerDropped": true,
+      "storeReduced": true
+    },
+    "sourcesRegisterNoRemovedSurface": {
+      "ok": true,
+      "hits": []
+    },
+    "commandViewStillRegisteredBySource": {
+      "ok": true
+    },
+    "buildGatePresent": {
+      "ok": true
+    },
+    "serverHalfMountedByRow": {
+      "ok": true,
+      "note": "row mounted by the bundle patch + server half registering the route"
+    },
+    "adoptedClientBridged": {
+      "ok": true,
+      "missing": []
+    },
+    "artifactCarriesBridge": {
+      "ok": true,
+      "missing": []
+    },
+    "bridgePatchGuarded": {
+      "ok": true
+    },
+    "bridgePatchIdempotent": {
+      "ok": true,
+      "exit": 0,
+      "output": "[patch-agent-teams-client] already applied: packages/mpd-agent-teams-plugin/lib/client.js (17 symbols, 196972 bytes)",
+      "restored": false
+    },
+    "workspaceIsolation": {
+      "ok": true,
+      "mode": "real-boot",
+      "detail": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      }
+    },
+    "hostRouteMounted": {
+      "ok": true,
+      "mode": "real-boot",
+      "servedClient": {
+        "url": "/plugins/??@mpd-dsh/mpd/client.js&rev=8122197dc72f044a-46",
+        "status": 200,
+        "bytes": 295612,
+        "teamPageModule": true,
+        "teamTabId": true,
+        "bridge": true,
+        "atLeastRepoArtifactBytes": true,
+        "carriesRepoArtifact": true
+      },
+      "stateRoute": {
+        "status": 200,
+        "anonymousStatus": 401,
+        "gated": true,
+        "body": "{\"teams\":[]}",
+        "teamsArray": true
+      },
+      "honestNote": "asserted on a REAL offline web boot: the served @mpd-dsh/mpd client bundle + HTTP state route"
+    }
+  },
+  "realHomeUntouched": true
+}

@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "generatedAt": "2026-09-17T01:42:00.073Z",
+  "slowProviderWindowMs": 6000,
+  "claims": {
+    "proves": [
+      "the rebuilt dists mount in a real dsh boot (isolated DSH_HOME + sandboxed HOME + sandboxed workspace) with no apply-crash signature",
+      "in the standard composition the healthy path is unchanged: mounted:mpdDsh on both rows, zero fallback/not-yet-active lines",
+      "under a CONSTRUCTED transient window the rebuilt dists diagnose 'provider not yet ACTIVE' and never claim a row-order fix, while the pre-t12 dists pin fallback:createDshAdapter and blame the ROW ORDER"
+    ],
+    "does_not_prove": [
+      "that the window ever opens in a production boot (the register's bound stands: six clean boots never opened it; the window here is forced by a deliberately slow provider row)",
+      "the post-activation recovery of the same facade in a live boot — the service fields are captured when the service object is built, so recovery is proven on the shipped bytes by the dist-level cordis probe and by packages/mpd-dsh-adapter-plugin/test/adapter.test.ts"
+    ]
+  },
+  "pass": {
+    "A": true,
+    "B": true,
+    "C": true
+  },
+  "verdicts": [
+    {
+      "id": "A-standard-composition",
+      "expectation": "both rows mount, report mounted:mpdDsh, zero warnings, zero crash signatures",
+      "extIdentity": "mounted:mpdDsh",
+      "rolesIdentity": "mounted:mpdDsh",
+      "adapterLine": true,
+      "fallbackLines": 0,
+      "notYetActiveLines": 0,
+      "crashSignatures": [],
+      "rawLog": "/root/dshProj/my-power-dsh/evidence/platform/lazy-adapter-live/20260917T013500Z/raw/A-standard.boot.log"
+    },
+    {
+      "id": "B-red-pre-t12-dist",
+      "expectation": "the OLD dist pins the fallback and blames the ROW ORDER",
+      "extIdentity": "fallback:createDshAdapter",
+      "rolesIdentity": "fallback:createDshAdapter",
+      "fallbackLines": 2,
+      "rowOrderHint": true,
+      "notYetActiveLines": 0,
+      "slowProviderWindow": true,
+      "rawLog": "/root/dshProj/my-power-dsh/evidence/platform/lazy-adapter-live/20260917T013500Z/raw/B-red-old-dist.boot.log"
+    },
+    {
+      "id": "C-green-rebuilt-dist",
+      "expectation": "the NEW dist names the not-yet-ACTIVE provider and never claims a row-order fix",
+      "extIdentity": "pending:provider-not-active",
+      "rolesIdentity": "pending:provider-not-active",
+      "notYetActiveLines": 2,
+      "rowOrderHint": false,
+      "fallbackLines": 0,
+      "slowProviderWindow": true,
+      "rawLog": "/root/dshProj/my-power-dsh/evidence/platform/lazy-adapter-live/20260917T013500Z/raw/C-green-new-dist.boot.log"
+    }
+  ]
+}

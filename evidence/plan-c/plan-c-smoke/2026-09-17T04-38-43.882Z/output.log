@@ -1,0 +1,49 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-wa-QllzXB/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+All three parts passed.
+
+**1) Config** — wrote `.mpd/mpd.jsonc` with `{ ulw: { maxRounds: 4 }, memory: { vcs: 'git' } }`.
+- `mpd_config_get key='memory.vcs'` → **`"git"`** ✅ (bonus check: `ulw.maxRounds` → `4`, confirming the project layer merged, not just user config)
+
+**2) Boulder** — wrote `.mpd/plans/qa.md` with `# QA` + `## TODOs` (`- [ ] 1. First`, `- [x] 2. Second`).
+- `mpd_boulder_start` → **workId `qa-c93f7788`**, status **`active`**
+- task timer `1`: `start` → `1 (running)`, `end` → `1 (completed)` ✅
+- `mpd_boulder_complete` → **status `completed`**, `elapsedMs=6119`
+
+**3) Hashline** — wrote `note.txt` (`first` / `second` / `third`), read anchors `1#KM`, `2#BB`, `3#SS`, replaced line `2#BB`.
+- Edit applied cleanly: `noop=0, deduped=0`, diff replaced `second` → `second2`
+- Final `note.txt` content:
+```
+first
+second2
+third
+```
+
+Artifacts left in place: `.mpd/mpd.jsonc`, `.mpd/plans/qa.md`, `.mpd/boulder.json`, `note.txt`.
+dsh: reasoning:
+Now call mpd_config_get with key 'memory.vcs'.
+dsh: reasoning:
+Part 1 done: memory.vcs = "git".
+
+Part 2: create .mpd/plans/qa.md with '# QA' and '## TODOs' with '- [ ] 1. First' and '- [x] 2. Second'.
+
+The plan progress parser looks for '## TODOs' items (N.) and '## Final Verification Wave' items (F<n>.). Let me write the file.
+dsh: reasoning:
+workId = qa-c93f7788, status active. Now task timer start for task '1', then end.
+dsh: reasoning:
+Part 2 done. workId = qa-c93f7788, status = completed.
+
+Let me also check boulder status for confirmation. Not strictly required but quick. Actually the task says report workId and status — I have it.
+
+Part 3: create note.txt with three lines 'first' 'second' 'third', call mpd_hashline_read, then mpd_hashline_edit to replace line 2 with 'second2', then read note.txt.
+
+Note: mpd_hashline_edit requires anchors from mpd_hashline_read. Let's write note.txt at workspace root.
+dsh: reasoning:
+All three parts done. Let me report. Maybe also verify the boulder status quickly for the record — the user asked for workId and status, which I have from start (active) and complete (completed). I could report boulder status but it's optional. Let me keep it concise.
+
+Actually let me double check that mpd_config_get picked up the project file — yes it returned "git". Also ulw.maxRounds: check? Not asked, but I could mention it resolved too. The user asked only for memory.vcs. I'll report as asked, maybe with the maxRounds bonus quickly. Let me just report cleanly without extra calls... a quick extra config_get for ulw.maxRounds adds evidence that the project file merged. It's cheap and one call. Let's do it.

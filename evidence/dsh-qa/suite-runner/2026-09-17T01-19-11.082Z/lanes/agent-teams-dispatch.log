@@ -1,0 +1,7 @@
+[agent-teams-dispatch] ok=false -> /root/dshProj/my-power-dsh/evidence/dsh-qa/agent-teams-dispatch/2026-09-17T01-21-18.635Z
+  installer: {"ok":true,"exit":0}
+  captainRun: {"ok":false,"exit":1,"tail":"ow, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)\n[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh\n[mpd-config] settings brid
+  tasks: {"total":0}
+  memberAssignments: {"count":0,"sessions":1,"labels":[]}
+  secondBatchDispatched: {"ok":false}
+  assignmentDelivery: {"ok":false}

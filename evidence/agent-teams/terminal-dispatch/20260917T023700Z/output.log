@@ -1,0 +1,13 @@
+t36 evidence — lane B5 / T-07: a terminal task is never offered to a seat
+
+ROUTE (named from the code): scheduler.js kickMember — ticket composed under withTeamLock, delivered by deliverToMember AFTER the lock releases; every selection predicate already excludes terminal work (hence the s1-s4 pin is green).
+
+FIX: mpd-delta terminal-dispatch-recheck at the delivery boundary (+ terminal-dispatch-import), refusing on gone / TERMINAL / rotated-attempt and never writing to the task.
+
+RED: the live measured instance (member woken for an already-completed task; claim refused) — quoted.
+  acceptance premise REFUTED by measurement: raw/red-seeded-probe.mjs shows the seeded-terminal assertion passes pre-fix on a region-stripped copy (deliveries=0, bytes unchanged, all three terminal statuses).
+  race reproducibility BOUND: raw/red-probe.mjs, 20 runs per shape, refusalsObserved=0/20 — the in-process harness cannot place the completion before the delivery decision; no in-process reading can witness the pre-fix failure.
+
+GATES: 242 pass / 0 fail · --check exit 0 (73 regions) · typecheck exit 0
+
+SECOND DATA-LOSS VECTOR (captain's t19 note, measured): the compose itself wipes task.output — `kickMember` -> `beginTaskAttempt` -> `activateTaskAttempt` (lib/state.js) sets output=undefined. Reading: the wipe probe took a task holding a 9000-byte stored deliverable to `output: null`, `attempt: 1 -> 2`, `status: claimed`, in ONE kick. My re-check fires after that, so it prevents the wake, never the wipe. The repair belongs in lib/state.js (outside t36's inScope); recorded as L44(a) with the added fact that it fires on every composed ticket.

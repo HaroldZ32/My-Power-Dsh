@@ -296,7 +296,10 @@ describe("full composition (every service injected)", () => {
     // tuiSettingsSections: the mpd.jsonc section, with the on-screen disclosure.
     expect(calls.sections).toHaveLength(1)
     expect(calls.sections[0].ns).toBe("mpd")
-    expect(calls.sections[0].fields).toHaveLength(12)
+    // 13 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin), which
+    // gained `watchdog.holdTtlMs` in the T-18 redesign (the count pin follows the shared list; the
+    // per-field assertions below are the other half of the no-drift pair).
+    expect(calls.sections[0].fields).toHaveLength(13)
     for (const field of calls.sections[0].fields) {
       expect(field.hint).toContain("mpd.jsonc")
       expect(field.hint).toContain(BRIDGE_DISCLOSURE)

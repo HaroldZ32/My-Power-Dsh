@@ -1,0 +1,58 @@
+# the last LANE, in its own chunk so A4 does not wait behind session-start-team (c5, which has been silent since 12:38:14 with a 0-byte lane log)
+
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=1 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c5b-workmate-team-member
+[mpd-qa:(only)] PASS case=workmate-team-member evidence=evidence/plan-f/workmate-team-member/2026-09-17T04-44-22.004Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c5b-workmate-team-member/lanes/workmate-team-member.log ms=62862
+[mpd-qa:(only)] summary selected=1 pass=1 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c5b-workmate-team-member
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-09-17T04:44:21.964Z",
+  "finishedAt": "2026-09-17T04:45:24.830Z",
+  "durationMs": 62866,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "workmate-team-member",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 62862,
+      "command": "bun skills/dsh-qa/scripts/workmate-team-member.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/workmate-team-member.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/plan-f/workmate-team-member/2026-09-17T04-44-22.004Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c5b-workmate-team-member/lanes/workmate-team-member.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}
+[exit=0]

@@ -54,6 +54,10 @@ MCP servers are built by `node scripts/build-mcp.mjs` (offline from in-repo sour
 interface ship as plain directories under `extensions/<id>/` with an `mpd-ext.json` manifest and
 their assets — no compilation step, and the developer CLI runs straight from the TypeScript
 sources (`bun scripts/mpd-ext.mjs …`), so the CLI can never validate a stale copy of the rules.
+Inside a **packed** artifact there are no sources, so the CLI falls back to the compiled validator
+entry the packer emits (`packages/mpd-ext-plugin/dist/validator.js`): `validate`, `scaffold`,
+`list`, `--self-test` and `--validator` all run from `dist/mpd-package/` (bun or plain node), and
+`--validator` prints which entry a run actually loaded (T-51).
 A NEW plugin package must also be added to the `PLUGIN_PKGS` allowlist inside
 `scripts/pack-mpd.mjs`, or a packed install ships without it and dies at boot with
 `ERR_MODULE_NOT_FOUND`.
@@ -156,7 +160,7 @@ profile `node_modules/@mpd-dsh/mpd`) when pnpm store access is unavailable; the 
 | QA self-tests | `bun run test:qa` + each case `--self-test` |
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` |
 | Installer | `node scripts/install-profile.mjs --dry-run` / `--self-test` |
-| Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME`: `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` (host rows) / `node skills/dsh-qa/scripts/preset-conformance.mjs` (the `mpd` preset's standing mount). `dsh --profile <p> --dump-config` composes rows only and is NOT this gate (AGENTS.md §4) |
+| Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME`: `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` (host rows) / `node skills/dsh-qa/scripts/preset-conformance.mjs` (the `mpd` preset's standing mount). `node scripts/dump-config.mjs --profile <p>` (the repo wrapper, which prints that warning itself) composes rows only and is NOT this gate (AGENTS.md §4) |
 | Extension CLI | `bun scripts/mpd-ext.mjs --self-test` (offline) + `bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension must exit 1 with per-item errors) |
 
 No evidence on disk for a gate = the change is not complete.
@@ -177,8 +181,14 @@ No evidence on disk for a gate = the change is not complete.
    without it.
 5. Packaging: `npm run pack` (`node scripts/pack-mpd.mjs`) assembles the relocatable
    `dist/mpd-package/`. Check the packed tree actually contains every plugin dist, the
-   `extensions/` assets and `scripts/mpd-ext.mjs` (a missing `PLUGIN_PKGS` entry is a silent
-   exit-0 with a broken boot).
+   `extensions/` assets, the scaffold `templates/`, the `docs/` pairs (`node scripts/verify-docs-parity.mjs
+   --root dist/mpd-package`) and `scripts/mpd-ext.mjs` (a missing `PLUGIN_PKGS` entry is a silent
+   exit-0 with a broken boot). Since the 2026-09-17 packaging change this is checked, not eyeballed:
+   `node scripts/verify-pack-closure.mjs` asserts the packer's root-asset table and, when the
+   artifact exists, that every declared asset arrived, `docs/`+`templates/`+`agent-references/`
+   match the source file for file, the three named reference files (`index.md`,
+   `troubleshooting.md`, `agent-teams-deltas.md`) are present, the packed manifest's
+   `files`/`exports` agree with what is on disk, and the CLI's compiled validator entry is present.
 6. Merge `--no-ff` into `master` with a `release: vX.Y.Z …` message, create the annotated tag
    (`git tag -a vX.Y.Z`), and push `master` + the tag (and `dev`).
 

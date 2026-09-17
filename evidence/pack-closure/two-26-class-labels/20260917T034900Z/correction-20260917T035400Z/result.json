@@ -1,0 +1,25 @@
+{
+  "correctionOf": "../result.json (parent file byte-untouched)",
+  "measuredAtUtc": "2026-09-17T03:54:20Z",
+  "hostOffset": "+0800",
+  "whyThisExists": "The captain retired the artifact-wide origin of the manual's 26 after the docs seat's re-measure. My parent record titles its analysis 'theTwoTwentySixes' and lists the artifact-wide sum as a second origin, so a downstream reader could take it as endorsing two origins of §6's number. It does not, and this correction says so beside the parent rather than editing it.",
+  "retired": {
+    "artifactWideOrigin": "13 + 13 = 26 holds ONLY under the path-comment subset (index.js 13, validator.js 13) and 13 + 16 = 29 under all `^//` lines (validator.js carries 3 shim-note lines at 3920-3922), so no stable artifact-wide total equals 26 and the artifact-wide sum must NOT be presented as an origin of §6's figure.",
+    "theTwoEntryBannersClause": "NOT REPRODUCIBLE, and additionally measured here: line 1 of BOTH shipped forms is the FIRST INLINED MODULE's path comment, never a banner — `// packages/mpd-dsh-adapter-plugin/src/index.ts` in the root form and the artifact copy, `// ../mpd-dsh-adapter-plugin/src/index.ts` in a package-directory rebuild. Dropping one line from 26 gives 25, not 24, and no two identifiable items exist to drop, so the old '24 remain' figure is UNEXPLAINED and must be retracted rather than re-derived as '26 − 2'."
+  },
+  "whatStandsFromTheParent": {
+    "pathComments": "13 per stored copy, 11 distinct module paths, in both dist/index.js (152,855 B, f6097fd3383f2fa7) and dist/validator.js (153,262 B, 7128166c28b1b4ce) - re-measured unchanged",
+    "allSlashSlashLines": "13 in index.js vs 16 in validator.js; the 3 extras are the packer's shim note",
+    "diffSide": "26 = 13 differing positions x 2 diff sides, the only reading consistent with §6's 'in the mpd-ext-plugin build'; §6 needs NO edit",
+    "line1Differs": "line 1 differs between the two build forms, which is literally why 'not one banner line' is true and why banner normalization cannot reconcile them"
+  },
+  "commands": [
+    "sed -n '1p' dist/mpd-package/packages/mpd-ext-plugin/dist/index.js  -> // packages/mpd-dsh-adapter-plugin/src/index.ts",
+    "sed -n '1p' dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js -> // packages/mpd-dsh-adapter-plugin/src/index.ts",
+    "sed -n '1p' packages/mpd-ext-plugin/dist/index.js -> // packages/mpd-dsh-adapter-plugin/src/index.ts",
+    "(cd packages/mpd-ext-plugin && bun build src/index.ts --target node --format esm --outfile <scratch>/pkgdir.js) -> line1 // ../mpd-dsh-adapter-plugin/src/index.ts, 13 path comments",
+    "grep -cE '^// .*\\.(ts|js)$' <both artifact files> -> 13, 13",
+    "grep -cE '^// ' <both artifact files> -> 13, 16"
+  ],
+  "bounds": "counts and line 1 are read from the artifact as packed at 02:56:59.067Z (its ext-plugin pair shows no drift, so artifact bytes == checkout bytes) plus one scratch rebuild into a temp dir that was removed; no repository writes."
+}

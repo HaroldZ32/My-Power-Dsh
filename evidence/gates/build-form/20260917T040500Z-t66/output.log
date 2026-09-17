@@ -1,0 +1,111 @@
+# t66 — REPAIR — §6's path-comment count is 13 per build, not 26
+# attempt_id e08f5a5e-b791-4192-8956-db46bdc34594  ·  kind=repair  ·  sourceTaskId=t60
+# source finding: t60-path-comment-count-26-is-not-one-builds-count  ·  coverageOf T-67
+# cwd = /root/dshProj/my-power-dsh for every command below
+#
+# WHY: t60 landed "26 of them … 24 remain after dropping the first" and that 26 is a DIFF-side
+# (13 removed + 13 added) / artifact-wide (index.js + validator.js) total presented as ONE build's
+# count. One build writes 13 path comments (11 distinct module paths), and ALL 13 differ between the
+# two forms — that is the number the anti-normalisation argument actually needs.
+
+================================================================================
+## 1. THE MEASURED FACTS (A1) — both origins of "26" named
+================================================================================
+### one build = 13 path comments (11 distinct module paths), all 13 differing
+$ grep -cE '^// .*\.(ts|js)$' packages/mpd-ext-plugin/dist/index.js     → 13
+$ grep -c '^// ' packages/mpd-ext-plugin/dist/index.js                  → 13   (no other comment lines)
+$ grep -oE '^// .*\.(ts|js)$' packages/mpd-ext-plugin/dist/index.js | sort -u | wc -l  → 11
+$ grep -cE '^// .*\.(ts|js)$' packages/mpd-ext-plugin/dist/sdk.js       → 1
+the 13 comments of the committed artifact (checked in at 10:54-era revision):
+  // packages/mpd-dsh-adapter-plugin/src/index.ts
+  // packages/mpd-ext-plugin/src/sdk.ts
+  // packages/mpd-ext-plugin/src/registry.ts        <- duplicated (13 comments, 11 distinct)
+  // packages/mpd-ext-plugin/src/skills.ts
+  // packages/mpd-ext-plugin/src/flows.ts
+  // packages/mpd-roles-plugin/src/roles.data.ts
+  // packages/mpd-ext-plugin/src/registry.ts        <- duplicate
+  // packages/mpd-ext-plugin/src/manifest.ts
+  // packages/mpd-ext-plugin/src/mcp.ts
+  // packages/mpd-ext-plugin/src/mcp-client.ts
+  // packages/mpd-ext-plugin/src/schema-sanitize.ts
+  // packages/mpd-ext-plugin/src/mcp.ts             <- duplicate
+  // packages/mpd-ext-plugin/src/index.ts
+
+### between the two forms ALL 13 differ ⇒ a comment-list `diff` prints 26 lines (13 + 13)
+$ bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile <tmp>/root.js      # repo root
+$ (cd packages/mpd-ext-plugin && bun build src/index.ts --target node --format esm --outfile <tmp>/pkg.js)  # trap
+  root.js  f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  152,855 B   (== committed)
+  pkg.js   a7b843e19656dbe950131f9c597222436f671a15b35ee3c62776fd4f6f76864a  152,579 B
+  comment lines: root 13 / pkg 13     distinct paths: root 11 / pkg 11
+  $ diff <(grep -E '^// .*\.(ts|js)$' root.js) <(grep -E '^// .*\.(ts|js)$' pkg.js) | grep -c '^[<>]'  → 26  (13 removed + 13 added)
+  full-line comparison: differing source lines 13, ALL of them comments, non-comment differences 0
+  (raw transcript: measure.log in this directory; temp outfiles only — no packages/** write)
+
+### the OTHER way a 26 total appears: the ARTIFACT carries that bundle twice
+  packages/mpd-ext-plugin/dist/validator.js exists only inside the packed artifact
+  (dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js, 153,262 B) and carries 13 comment lines;
+  with dist/index.js (13) the artifact stores 26 path comments in total — an artifact-wide count, not
+  one build's count. Neither origin is one build's count; both are named here.
+
+================================================================================
+## 2. THE EDIT (words only, one span)
+================================================================================
+BEFORE (t60's text, AGENTS.md lines 350-354):
+  bundled module's path RELATIVE TO CWD into the artifact's path comments — 26 of them in the
+  `mpd-ext-plugin` build (measured; 24 remain after dropping the first), not one banner line — and
+  `node scripts/verify-dist-fresh.mjs` reproduces THESE bytes, so normalizing a banner cannot
+  reconcile the two forms: a package-directory build (the form the packages' own `build` scripts
+
+AFTER (t66, current):
+  bundled module's path RELATIVE TO CWD into the artifact's path comments — 13 of them in the
+  `mpd-ext-plugin` build (11 distinct module paths), and ALL 13 differ between the two forms, so a
+  `diff` of the two comment lists prints 26 lines (13 removed + 13 added), not one banner line — and
+  `node scripts/verify-dist-fresh.mjs` reproduces THESE bytes, so normalizing a banner cannot
+  reconcile the two forms: a package-directory build (the form the packages' own `build` scripts
+
+Unmoved: the canonical repo-root command, the multi-entry note, the three-package residual
+(§6 T-67 pointer), the §4 pointer, "not one banner line", and the foreclosure sentence.
+
+================================================================================
+## 3. WORDS-ONLY PROOF (single hunk, reverse substitution against the recorded identity)
+================================================================================
+$ python3 -c "reverse the substitution in a COPY -> REVERSED-pre-t66.AGENTS.md"
+occurrences of the post-t66 span: 1
+after  : a5ba27f66aec2b5549df0fcbe66f97f1f258054f3f3f2b400f3c49b3d32ce0aa  48,641 B
+before : 1a317bdfbfdb2877873440ec80681a57610fea6e8973ffad8063dee2fdd091f4  48,540 B  (recorded at t60 close)
+MATCH  : True   (byte delta +101 B, wholly the reworded span)
+$ sha256sum AGENTS.md   # settled re-check 2026-09-17T03:41:51Z
+a5ba27f66aec2b5549df0fcbe66f97f1f258054f3f3f2b400f3c49b3d32ce0aa  48,641 B   (unchanged)
+⇒ no command, no rule and no other claim moved; the reconstruction artefact stays in this directory
+  so the diff and both hashes can be re-run.
+
+================================================================================
+## 4. RENDERED BUDGET (re-measured against 65,536)
+================================================================================
+$ bun evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs current=AGENTS.md
+  "sourceBytes": 48641, "renderedBytes": 48945, "underBudget": true,
+  "truncated": false, "omitted": [], "truncatedRecords": [], "verdict": "GREEN (full content injected)"
+[exit=0]   headroom 16,591 B
+
+================================================================================
+## 5. GATES
+================================================================================
+$ bun run verify:docs          → verify:docs exit=0
+  [verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+$ node scripts/verify-rows-parity.mjs  → exit=0
+  [verify-rows-parity] ok: 25 row ids match the bundle patch insert list
+(raw: verify-docs.log, checks.log; the checks.log block records that an earlier '[exit=0]' printed
+ after a piped verify:docs was tail's exit code — corrected by the un-piped re-run above)
+
+================================================================================
+## 6. SUPERSESSION STATEMENT (A5) AND SCOPE
+================================================================================
+The superseded figure (26/24) was COMMITTED BY t60 and is corrected here, in this task's evidence;
+t60's own evidence is left untouched — a historical record is not wrong, it is historical. This
+repair cites t60 as `sourceTaskId` and t60's measured pair (f6097fd3…/152,855 B) was re-reproduced
+byte-exactly while doing so.
+Scope: `AGENTS.md` (one span in §6) + `evidence/gates/build-form/20260917T040500Z-t66/**` only.
+No `packages/**` write (both builds wrote temp outfiles; the checkout's dist mtimes are unchanged),
+no `scripts/**`, no `skills/**`, no `agent-references/**`, no `docs/**`, no git write.
+FINDING RECORD: the discovery is filed at
+`evidence/gates/build-form/20260917T034500Z-counting-convention/{result.json,DEFECT-…md}`.

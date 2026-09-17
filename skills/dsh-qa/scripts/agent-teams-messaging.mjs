@@ -46,6 +46,7 @@ import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PLUGIN_LIB = join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib")
@@ -402,13 +403,13 @@ async function runReal() {
 
   // --- sandbox: DSH_HOME + HOME + workspace all under the sandbox ---
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-t36-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   const settings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(settings)) cpSync(settings, join(sandbox, "settings.yaml"))
   const ws = sandboxWorkspace(sandbox)
   const stateRoot = join(ws, STATE_DIR)
   mkdirSync(join(stateRoot, TEAM, "inbox"), { recursive: true })
-  const env = { ...process.env, DSH_HOME: sandbox, HOME: sandbox }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: sandbox  })
   if (env.DSH_HOME !== sandbox || env.HOME !== sandbox) fail("isolation assertion failed")
 
   function runSync(cmd, args, opts = {}) {

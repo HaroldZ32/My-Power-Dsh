@@ -42,6 +42,7 @@ import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
+import { seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const ROOT = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PORT = Number(process.env.MPD_QA_PRESET_PORT ?? 3198)
@@ -277,7 +278,7 @@ function makeSandbox(tag, presetRoot) {
   mkdirSync(join(profile, "node_modules", "@mpd-dsh"), { recursive: true })
   mkdirSync(userHome, { recursive: true })
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
-  if (existsSync(creds)) cpSync(creds, join(home, ".credentials.yaml"))
+  seedSandboxCredentials(home, { credentialsFile: creds })
   const settings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(settings)) cpSync(settings, join(home, "settings.yaml"))
   // A checkout install IS a link: node_modules/@mpd-dsh/mpd -> the repo, which is

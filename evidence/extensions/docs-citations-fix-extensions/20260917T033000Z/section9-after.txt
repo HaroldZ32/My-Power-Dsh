@@ -1,0 +1,5 @@
+The developer CLI (`validate` / `scaffold` / `--self-test` / `--validator`) works from a CHECKOUT (it imports
+the TypeScript validator sources) AND from a PACKED artifact: the packer ships `templates/`, the `docs/` pairs,
+`agent-references/` and `scripts/`, and emits the compiled `validator.js` entry — the one
+the CLI falls back to when the package's TypeScript sources are absent. Measured on a fresh `dist/mpd-package/`: every command exits 0
+under bun and under plain node, and `--validator` prints which entry a run loaded

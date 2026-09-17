@@ -1,0 +1,31 @@
+=== static gates at the moment the captain asked for re-measurement (read-only; no tracked file touched) ===
+HEAD 646d8018a44bffb2d6e1c30afa090056f81b911e  dirty 3285
+--- vendor ---
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+vendor exit=1
+--- dist freshness ---
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 911ms
+fresh exit=0
+--- rows/parity ---
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+rows exit=0
+--- doc pairs ---
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+docs exit=0
+--- shipped trees newer than MY pass-2 pack (02:56:59.067Z) ---
+packages           0
+skills             0
+presets            0
+extensions         0
+templates          0
+docs               0
+agent-references   0
+scripts            1

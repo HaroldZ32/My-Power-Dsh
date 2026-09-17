@@ -11,6 +11,7 @@ import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { deflateSync } from "node:zlib"
+import { credentialDescriptor, refuseWithoutCredential, resolveProviderCredential } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const MODEL = "deepseek-v4-flash-vision-exp"
@@ -67,10 +68,10 @@ function generateFixture() {
 }
 
 function readApiKey() {
-  const p = join(homedir(), ".dsh", ".credentials.yaml")
-  if (!existsSync(p)) return null
-  const m = readFileSync(p, "utf8").match(/DEEPSEEK_API_KEY:\s*(\S+)/)
-  return m ? m[1] : null
+  // The ONE resolver (T-58): environment, then the declared credentials document (refs / flat /
+  // records), then the shell profile's exported keys. The old flat-file regex only accepted a
+  // shape this host's store does not have, so the lane reported a FALSE RED here.
+  return resolveProviderCredential({ provider: "deepseek" })
 }
 
 function selfTest() {
@@ -82,8 +83,15 @@ function selfTest() {
 }
 
 async function runReal() {
-  const key = readApiKey()
-  if (!key) { console.error("[vision-e2e] missing DEEPSEEK_API_KEY in ~/.dsh/.credentials.yaml"); process.exit(1) }
+  const resolution = readApiKey()
+  if (!resolution.present) {
+    // Refuse loudly with the canonical marker (SKIP, or FAIL under --no-skip/--require-pack) and
+    // the exact missing prerequisite — never a bare error line that reads as an assertion failure.
+    const exitCode = refuseWithoutCredential({ caseSlug: "vision-smoke", resolution })
+    console.log("[vision-e2e] credential resolution: " + JSON.stringify(credentialDescriptor(resolution)))
+    process.exit(exitCode)
+  }
+  const key = resolution.value
   const ts = new Date().toISOString().replaceAll(":", "-")
   const outDir = join(repoRoot, "evidence", "plan-c", "c8-vision", ts)
   mkdirSync(outDir, { recursive: true })

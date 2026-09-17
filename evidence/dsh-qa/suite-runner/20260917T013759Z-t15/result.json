@@ -1,0 +1,256 @@
+{
+  "task": "t15 — lane C1: manifest-driven QA runner that continues past an unavailable lane and prints a per-lane summary (T-32, T-59, T-60 loop half)",
+  "attempt": 1,
+  "attemptId": "65f5388d-6f3c-4054-8881-e86765c13b13",
+  "agent": "qa-lane-engineer",
+  "recordedAt": "2026-09-17T01:38:00Z",
+  "deliverables": [
+    "scripts/run-qa-lanes.mjs (new; FINAL sha256 f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e — hash history: d90dc10b5736e7025561f02f27c88840fda15ccefb04b636df6c856e70d374a3 was the first fully verified build; the FINAL build adds the runner-side prerequisite classification described in postVerificationUpdate.added; single author = qa-lane-engineer, the file is untracked so there is no other revision)",
+    "skills/dsh-qa/cases.json (new; sha256 919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86)",
+    "package.json (test:qa:all is now `node scripts/run-qa-lanes.mjs` — the 27-name inline for-loop is gone)"
+  ],
+  "before": {
+    "testQaAll": "package.json:32 was `for c in <27 names>; do … bun \"skills/dsh-qa/scripts/$c.mjs\" --no-skip || { …; exit 1; }; done; …` — it exit-1ed on the FIRST failing lane, so lane 1 hid the other 26.",
+    "mountAssertOldWiring": {
+      "command": "bun skills/dsh-qa/scripts/mount-assert.mjs --no-skip",
+      "exitCode": 2,
+      "output": "usage: mount-assert.mjs --expect=<substring> [--expect=...] | --self-test",
+      "meaning": "the loop never passed the REQUIRED --expect, so this lane exited 2 by construction on every suite run"
+    },
+    "laneListDrift": {
+      "oldInlineListSize": 27,
+      "laneScriptsOnDisk": 44,
+      "presentOnDiskButNeverListed": 17,
+      "unlisted": [
+        "agent-teams-messaging",
+        "explicit-team-trigger",
+        "extension-isolation",
+        "readonly-deny",
+        "team-watchdog-boot",
+        "team-watchdog-config",
+        "team-watchdog-fault",
+        "team-watchdog-heartbeat",
+        "team-watchdog-notify",
+        "team-watchdog-scene",
+        "tui-admission",
+        "tui-distribution",
+        "tui-mount",
+        "tui-panels",
+        "tui-settings-bridge",
+        "tui-spec-conformance",
+        "tui-team-surface"
+      ]
+    }
+  },
+  "after": {
+    "manifest": "skills/dsh-qa/cases.json — 44 lanes + 6 gates; the `all` suite selects 27 lanes + 6 gates (33 entries). Every lane either belongs to a suite or carries an explicit outsideSuites reason; --list prints both, --check-drift exits 1 on drift, and the `qa-lane-drift` gate runs that check INSIDE the suite.",
+    "exitCodes": {
+      "allGreen": 0,
+      "someUnavailable": 2,
+      "someFailed": 1,
+      "runnerError": 3
+    },
+    "realRuns": {
+      "greenArm": {
+        "command": "node scripts/run-qa-lanes.mjs --only=mount-assert --evidence-dir=evidence/dsh-qa/suite-runner/20260917T011605Z-arms",
+        "exitCode": 0,
+        "decisiveLine": "[mpd-qa:(only)] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T01-16-05.726Z log=… ms=209"
+      },
+      "unavailableArm": {
+        "command": "node scripts/run-qa-lanes.mjs --only=tui-mount --evidence-dir=evidence/dsh-qa/suite-runner/20260917T011605Z-unavailable2",
+        "exitCode": 2,
+        "decisiveLine": "[mpd-qa:(only)] UNAVAILABLE case=tui-mount reason=absent-fixture exit=1 log=… ms=126",
+        "laneMarker": "[mpd-qa] FAIL case=tui-mount lane=real reason=absent-fixture prereq=tui profile in the sandbox root remedy=\"bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <root> --install\""
+      },
+      "contractVerifyCommand": {
+        "command": "node scripts/run-qa-lanes.mjs --only mount-assert,agent-teams-adopt --evidence-dir=evidence/dsh-qa/suite-runner/20260917T013507Z-verify",
+        "exitCode": 1,
+        "note": "exit 1 is the runner's documented `some failed` outcome, NOT a runner failure: mount-assert PASS, agent-teams-adopt FAIL (pre-existing red on this host — webRoute 401 unauthorized, measured by t3 before the wave). Both lanes ran and both are reported.",
+        "decisiveLines": [
+          "[mpd-qa:(only)] PASS case=mount-assert … ms=168",
+          "[mpd-qa:(only)] FAIL case=agent-teams-adopt reason=exit-1 exit=1 evidence=evidence/plan-c/c1-team/2026-09-17T01-35-07.700Z/web.log ms=129434",
+          "[mpd-qa:(only)] summary selected=2 pass=1 unavailable=0 fail=1",
+          "[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)"
+        ]
+      },
+      "fullSweep": {
+        "command": "bun run test:qa:all",
+        "evidenceDir": "evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z",
+        "manifestSha256AtStart": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86",
+        "statusAtRecordTime": "COMPLETED — 33/33 entries reached (27 lanes + 6 gates); runner exit 1 (some failed); duration 1476338 ms",
+        "entriesReportedAtCompletion": 33,
+        "countsAtCompletion": {
+          "pass": 21,
+          "unavailable": 0,
+          "fail": 12
+        },
+        "runnerExitCode": 1,
+        "runnerProcessExitCode": 1,
+        "gateResultsInsideTheSuite": {
+          "qa-lane-drift": "PASS (61 ms)",
+          "qa-runner-self-test": "PASS (1338 ms)",
+          "mpd-ext-self-test": "PASS",
+          "mpd-ext-validate-example": "PASS",
+          "mpd-ext-validate-template": "PASS",
+          "pack-closure": "PASS"
+        },
+        "failingLanesAndRootCause": "all 12 reds carry `MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"` in their OWN evidence dirs (the T-58 credential class: DEEPSEEK_API_KEY is ABSENT from both `bash -c` and `bash -lc`, the environment every automated suite run uses); agent-teams-adopt additionally carries its pre-existing `webRoute 401 unauthorized` (t3 measured that red before the wave)",
+        "comparisonToT3Baseline": "t3's earlier batch (run with the key present) reported 21 green / 5 red over 27 lanes: mount-assert's old wiring (exit 2, no --expect) is now PASS via the manifest args, session-start-team and web-settings-bridge are PASS here too, and the extra reds in this sweep are exactly the credential class — so this sweep doubles as the T-58 BEFORE measurement for t17",
+        "decisiveLines": [
+          "[mpd-qa:all] FAIL case=agent-teams-adopt reason=exit-1 exit=1 … ms=127498",
+          "[mpd-qa:all] PASS case=agent-teams-sidebar … ms=17024",
+          "[mpd-qa:all] PASS case=bundle-lifecycle … ms=17002",
+          "[mpd-qa:all] FAIL case=codegraph-smoke reason=exit-1 exit=1 … ms=6360",
+          "[mpd-qa:all] FAIL case=dual-track-smoke reason=exit-1 exit=1 … ms=10013"
+        ],
+        "whyThisIsTheCriterionOneProof": "lane 1 is EXACTLY the lane that used to abort the whole suite; this run reported lane 1 as FAIL and then ran lanes 2..6 (and continues) — the old for-loop would have exited 1 at lane 1 and never started them."
+      }
+    },
+    "selfTest": {
+      "command": "node scripts/run-qa-lanes.mjs --self-test",
+      "exitCode": 0,
+      "decisiveLine": "[run-qa-lanes self-test] ok: classification (pass/unavailable/fail), continue-past-failure, per-lane logs, exit codes 0/1/2/3, drift detection and the timeout guard verified on fixtures",
+      "pins": "offline fixtures drive: the three verdict classes, a marker whose prereq contains SPACES (the real tui-mount spelling that broke the first parser), the short marker spelling, continue-past-failure (fail-lane first, last lane still recorded), per-lane log files, exit codes 0/1/2/3, drift positive+negative controls, the timeout guard, and BOTH flag spellings"
+    },
+    "driftChecks": {
+      "list": {
+        "command": "node scripts/run-qa-lanes.mjs --list",
+        "exitCode": 0,
+        "decisiveLine": "cases: 50 (44 lanes + 6 gates; the all suite selects 27 lanes + 6 gates)"
+      },
+      "checkDrift": {
+        "command": "node scripts/run-qa-lanes.mjs --check-drift",
+        "exitCode": 0,
+        "decisiveLine": "[run-qa-lanes] manifest and disk agree (50 entries)"
+      }
+    }
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "test:qa:all no longer aborts the whole run on the first failing lane",
+      "status": "passed",
+      "evidence": "Sweep evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z: lane 1 agent-teams-adopt FAIL (127498 ms) and lanes 2..6 still ran (agent-teams-dispatch FAIL, agent-teams-sidebar PASS, bundle-lifecycle PASS, codegraph-smoke FAIL, dual-track-smoke FAIL) — the old for-loop exit-1ed at lane 1. Plus --only mount-assert,agent-teams-adopt reporting both lanes with the per-lane summary, and the fixture proof in --self-test (fail-lane first, last lane still recorded)."
+    },
+    {
+      "criterion": "The lane list is DATA (a manifest file), not a for loop inside package.json, so drift is detectable",
+      "status": "passed",
+      "evidence": "package.json test:qa:all = `node scripts/run-qa-lanes.mjs`; the lane list lives in skills/dsh-qa/cases.json (44 lanes + 6 gates). Measured BEFORE: the inline list had 27 names while 44 lane scripts were on disk → 17 lanes never listed; NOW --list prints every entry with its suite and exclusion reason and --check-drift exits 1 when a script is in NEITHER (0 drift today: `manifest and disk agree (50 entries)`), enforced inside the suite by the qa-lane-drift gate."
+    },
+    {
+      "criterion": "mount-assert is invoked in a form that can PASS inside the suite (--expect from the manifest)",
+      "status": "passed",
+      "evidence": "cases.json mount-assert args = [\"--expect=name: '@deepseek-ai/dsh-llm'\"] and the runner appends a lane's args to the suite's --no-skip (never substituting). Measured: old wiring `bun mount-assert.mjs --no-skip` → exit 2 (usage); now PASS in 168-209 ms in the green arm, in the contract verify run and in the sweep."
+    },
+    {
+      "criterion": "Per-lane summary (verdict + reason + evidence path + counts); a lane that cannot run is reported skipped-unavailable WITH its reason",
+      "status": "passed",
+      "evidence": "Every run ends with `summary selected=… pass=… unavailable=… fail=…`, `evidence -> <dir>` and the exit-code legend, after one line per lane carrying verdict/reason/exit/evidence path/log path/ms. Real unavailable lane: tui-mount → `UNAVAILABLE case=tui-mount reason=absent-fixture` (+ its full marker with prereq phrase and remedy) and exit 2, never a pass. result.json carries the same per lane (marker.reason/prereq/remedy, logPath, evidencePath, outputTail for failures)."
+    },
+    {
+      "criterion": "Three-way exit code + a real run on this host produces the summary",
+      "status": "passed",
+      "evidence": "0/2/1 all measured on this host: `--only=mount-assert` → exit 0; `--only=tui-mount` → exit 2 (some unavailable); `--only mount-assert,agent-teams-adopt` and the full sweep → exit 1 (some failed). 3 is the documented runner/config error (unknown case/suite/manifest) — measured: `--only nope` → 3. The wrapper `bun run test:qa:all` produced the same summaries in /evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/output.log."
+    },
+    {
+      "criterion": "AMENDED (captain, 2026-09-17): the single `bun run test:qa` red — `agent-teams-messaging --self-test`, the VENDOR_LOCK corpus fingerprint — is recorded VERBATIM in the evidence as the EXPECTED state of a dirty `skills/**` corpus (the wave re-pins VENDOR_LOCK.json ONCE, at commit time, after every skills/** edit of the wave is final; t17/t21 still edit that tree), together with the LF-normalized tree hash and the warning that a raw-bytes hash yields a different value and would silently fail the gate.",
+      "status": "passed",
+      "evidence": "READING A (t15-era tree): `[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=319/c0dab8641697 tree=320/3b41bda20d33 (re-pin in the same commit, AGENTS.md §9)` — LF-normalized fingerprint 320 files / 3b41bda20d333d6842661c670604c2cd51c3aff754391dcfc330f1c8a0dfc7b3. READING B (current tree, after t17): `… tree=321/2fadfe92081a …` — LF-normalized 321 files / 2fadfe92081a1339b74024e9bba237bc4e1f735f697bc7b0fbb76adfe21d4028. BASELINE: HEAD matches the lock exactly (319 / c0dab8641697b481e11379e084375721ceeea5b2f6beefc3c1d73196a21d61ff) ⇒ the red is caused only by the wave skills/** edits. WARNING: the gate hashes LF-NORMALIZED bytes (verify-vendor listFiles()+readBytes(): node_modules/__pycache__/*.pyc/*.pyo skipped, CRLF→LF for text per .gitattributes); a RAW-bytes hash of the same corpus gives a different number (t15-era: raw b283f614fd952ea7b70fb46ce484be09634cba51a2d108d0dcf88cd9f23515b3 vs normalized 3b41bda20d333d684…) and a raw-bytes re-pin would leave verify:vendor AND the lane red while LOOKING completed — the gate would lie. Use `node scripts/repin-vendor.mjs --write --i-know-this-is-the-captains-step` (derived ⇒ the gate own algorithm; the captain holds the one-re-pin invariant). NO VENDOR_LOCK.json write was made by this task (out of inScope)."
+    }
+  ],
+  "rePinRecipeForTheCaptain": {
+    "when": "after the LAST skills/** edit of the wave (t17 owns the credential helper under skills/dsh-qa/scripts/lib/)",
+    "file": "VENDOR_LOCK.json → assets.skills",
+    "algorithm": "scripts/verify-vendor.mjs listFiles (skips node_modules/__pycache__/*.pyc/*.pyo) + readBytes (CRLF→LF normalization for text files) + sha256(relpath + \"\\n\" + sha256(fileBytes) + \"\\n\") over relpaths sorted ascending — a raw-bytes hash gives a DIFFERENT number and would silently fail the gate (measured: raw-byte hash of the same tree = b283f614fd952ea7b70fb46ce484be09634cba51a2d108d0dcf88cd9f23515b3)",
+    "valuesAtThisRecordTime": {
+      "fileCount": 320,
+      "treeSha": "3b41bda20d333d6842661c670604c2cd51c3aff754391dcfc330f1c8a0dfc7b3"
+    },
+    "verification": "node scripts/verify-vendor.mjs (green) AND bun skills/dsh-qa/scripts/agent-teams-messaging.mjs --self-test (green) — both compare the lock against the same normalized algorithm"
+  },
+  "honestCaveats": [
+    "The sweep completed and reached ALL 33 entries (27 lanes + 6 gates) in 1476338 ms: 21 pass / 0 unavailable / 12 fail, exit 1. MEASURED root cause of all 12 reds: the launching environment has NO credential — `bash -c 'echo ${DEEPSEEK_API_KEY:-ABSENT}'` and `bash -lc …` both print ABSENT (the T-58 fact) — so every lane that boots a live headless model aborts with `dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment`. That line was found in EVERY failing lane's own evidence directory (agent-teams-adopt, agent-teams-dispatch, codegraph-smoke, dual-track-smoke, mcp-call, memory-smoke, plan-c-smoke, tool-output-validation, ultrawork-smoke, vision-smoke, workmate-library, workmate-team-member), so they are the T-58 credential class owned by t17 — NOT runner defects and NOT lane assertion failures. agent-teams-adopt additionally carries its pre-existing `webRoute 401 unauthorized`. Sanity cross-check: t3's earlier batch, run with the key present, had these same lanes PASS. This is an incremental-write run: result.json/output.log were written after every entry, so an interrupted run still leaves usable evidence.",
+    "The sweep's per-lane execution used the runner as of 01:19:11Z; the only later edits were CLI flag parsing (both `--flag=value` and `--flag value`) plus a self-test pin for that spelling — no lane-execution or classification change. Proof that the FINAL artifact was exercised inside the same suite: the `qa-lane-drift` (61 ms) and `qa-runner-self-test` (1338 ms) gates each spawn a fresh `node scripts/run-qa-lanes.mjs` and both PASSED at the end of the sweep.",
+    "The 17 lanes outside the `all` suite are pre-existing membership, now EXPLICIT (each with an outsideSuites reason): 7 DSH-TUI edition lanes (need dsh-tui/tmux/a TUI sandbox profile), 6 team-watchdog lanes (in-process over the built dists; the watchdog subsystem is being rewritten this wave), 3 live fix lanes (agent-teams-messaging, explicit-team-trigger, readonly-deny) and the extension-isolation shared helper (no lane mode). They are runnable on demand via --only; expanding the sweep is a separate decision, deliberately not taken mid-wave.",
+    "Carry-forward (out of t15 scope): `test:qa` and `test:qa:strict` are still abort-on-first-failure for-loops over the self-test glob — that is why the vendor-lock red HID the other 43 self-tests until they were measured individually; the same runner could drive them with a selfTest mode."
+  ],
+  "documentationNote": "SKILL.md was reverted to HEAD: it is outside t15 inScope (validator-enforced); the runner documents itself via --help + its header, and the reason-code gap (absent-bundle-dist, in use by tui-settings-bridge) is noted here for the captain instead of being documented in SKILL.md.",
+  "postVerificationUpdate": {
+    "at": "2026-09-17T02:19:27.863Z",
+    "reason": "The runner gained the RUNNER-SIDE prerequisite classification the captain required (t15 must report WHICH prerequisite failed: a 401 and a missing key are different verdicts) after the first sweep; the hash below is the final artifact.",
+    "runnerSha256Final": "f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e",
+    "added": "SIGNATURES + detectSignatures(): a marker-less lane is classified from its OWN output/evidence — absent-credentials -> unavailable (with file:line), unauthorized (HTTP 401) -> fail (with file:line), both -> the failure with the prerequisite surfaced in alsoDetected; pinned by fixtures fx-credential/fx-401/fx-both in --self-test.",
+    "targetedRealProof": "node scripts/run-qa-lanes.mjs --only agent-teams-adopt,mcp-call,dual-track-smoke,mount-assert -> agent-teams-adopt FAIL reason=unauthorized prereq=\"HTTP 401 / unauthorized route\" signature=(lane stdout):11 also=absent-credentials; mcp-call UNAVAILABLE reason=absent-credentials signature=evidence/dsh-qa/mcp-call/<ts>/call.log:11; dual-track-smoke UNAVAILABLE reason=absent-credentials signature=evidence/dsh-qa/llm-dual-track/official/<ts>/output.log:11; mount-assert PASS. Log: evidence/dsh-qa/credentials/20260917T015010Z-before-runner/output.log",
+    "docsBoundary": "skills/dsh-qa/SKILL.md was reverted to HEAD: it is outside t15/t17 inScope (validator-enforced). The runner documents itself via --help + its header, and the reason-code gap (absent-bundle-dist, used by tui-settings-bridge) is recorded here for the captain instead.",
+    "rePinTarget": {
+      "file": "VENDOR_LOCK.json assets.skills",
+      "fileCount": 321,
+      "treeSha": "2fadfe92081a1339b74024e9bba237bc4e1f735f697bc7b0fbb76adfe21d4028",
+      "tool": "node scripts/repin-vendor.mjs --write --i-know-this-is-the-captains-step (refuses members by design; the captain own step)",
+      "effect": "`bun run test:qa` and verify:vendor go green; all six t15 acceptance items then genuinely pass."
+    }
+  },
+  "amendedContract": {
+    "received": "2026-09-17 from the captain: acceptance item 6 replaced; verify list corrected to the four runner checks (self-test, --list, --check-drift, --only mount-assert); agent-teams-adopt and bun run test:qa dropped; NO VENDOR_LOCK.json write (captain step)",
+    "verifyChecksFresh": {
+      "at": "2026-09-17T02:21:27Z",
+      "selfTest": 0,
+      "list": 0,
+      "checkDrift": 0,
+      "onlyMountAssert": 0,
+      "artifacts": {
+        "runner": "f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e",
+        "manifest": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86"
+      }
+    }
+  },
+  "runnerHashHistory": {
+    "firstVerifiedBuild": "d90dc10b5736e7025561f02f27c88840fda15ccefb04b636df6c856e70d374a3",
+    "finalBuild": "f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e",
+    "editedAt": "2026-09-17T01:49:38Z",
+    "editedBy": "qa-lane-engineer (single author)",
+    "whatChanged": "added the runner-side prerequisite classification the captain required after the first sweep: SIGNATURES + evidenceCandidates + collectEvidenceTexts + detectSignatures + lineOf; classify({...,root}) reads a marker-less lane own output/evidence; the lane record gains signature/alsoDetected/declaredPrereq; printLaneLine prints prereq=\"label\" + signature=file:line; --self-test gains the fixtures fx-credential / fx-401 / fx-both and their expectations. A missing key => unavailable reason=absent-credentials; an answered 401 => fail reason=unauthorized; both => the failure with alsoDetected=[absent-credentials]. Earlier disclosed build difference (first build vs the pre-01:19 sweep): CLI flag parsing (both spellings) + a self-test pin only — no lane-execution or classification change."
+  },
+  "provenanceRuling": {
+    "question": "Did qa-lane-engineer edit scripts/run-qa-lanes.mjs at 01:49:38Z (d90dc10b… -> f60ef2b5…)?",
+    "answer": "YES — authored by qa-lane-engineer, the declared single author of that untracked file; nobody else touched it.",
+    "what": "the runner-side prerequisite classification demanded after t3s corrected baseline (401 -> fail/unauthorized; missing key -> unavailable/absent-credentials; both -> the failure with alsoDetected), plus the fx-credential/fx-401/fx-both self-test fixtures.",
+    "where": "this file: runnerHashHistory (firstVerifiedBuild d90dc10b…, finalBuild f60ef2b5…, editedAt 2026-09-17T01:49:38Z, editedBy qa-lane-engineer), postVerificationUpdate.runnerSha256Final, amendedContract.verifyChecksFresh.artifacts.runner, and the corrected deliverables[] line.",
+    "verification": "the four declared checks were re-run on THESE bytes by both the author (02:21:27Z) and the handover owner, all exit 0; the pre-01:19 sweep build differed only in CLI flag parsing + a self-test pin (no lane-execution or classification change).",
+    "answeredFor": "t32 (reviewer) — this block exists so the provenance question is answerable from the evidence alone."
+  },
+  "vendorReadingInvariant": {
+    "rule": "the invariant is the ALGORITHM (LF-normalized bytes per scripts/verify-vendor.mjs) plus a re-pin recomputed at commit time on a frozen corpus — never a quoted number",
+    "readings": [
+      {
+        "files": 320,
+        "treeSha": "3b41bda20d333d6842661c670604c2cd51c3aff754391dcfc330f1c8a0dfc7b3",
+        "moment": "2026-09-17T01:19-01:43Z",
+        "measuredBy": "qa-lane-engineer",
+        "when": "after t15 cases.json (the item-6 reading)"
+      },
+      {
+        "treeShaPrefix": "ee716c0d…",
+        "measuredBy": "docs-gate-engineer (t18)",
+        "attribution": "reported by the captain; recorded with attribution, not as my measurement"
+      },
+      {
+        "files": 321,
+        "treeSha": "2fadfe92081a1339b74024e9bba237bc4e1f735f697bc7b0fbb76adfe21d4028",
+        "moment": "2026-09-17T02:19Z",
+        "measuredBy": "qa-lane-engineer",
+        "when": "after t17 credentials + 25 lane wirings"
+      },
+      {
+        "files": 322,
+        "treeSha": "dac07fdbd8277ba325dddd3ea48f1fb728cbc0bdaf3d91422153d38fa2db4a25",
+        "moment": "2026-09-17T02:40Z",
+        "measuredBy": "qa-lane-engineer",
+        "when": "after t21 (FINAL for lane C)"
+      }
+    ],
+    "rawBytesCounterExample": {
+      "treeSha": "b283f614fd952ea7b70fb46ce484be09634cba51a2d108d0dcf88cd9f23515b3",
+      "note": "raw bytes, same t15-era corpus — a raw re-pin would leave verify:vendor AND agent-teams-messaging --self-test red while looking complete"
+    }
+  }
+}

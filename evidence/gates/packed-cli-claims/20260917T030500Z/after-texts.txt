@@ -1,0 +1,22 @@
+--- EXTENSIONS-FOR-AGENTS.md §9 (after) ---
+## 9. v1 hard limits
+
+The developer CLI (`validate` / `scaffold` / `--self-test` / `--validator`) works from a CHECKOUT (it imports
+the TypeScript validator sources) AND from a PACKED artifact: the packer ships `templates/`, the `docs/` pairs,
+`agent-references/` and `scripts/`, and emits `packages/mpd-ext-plugin/dist/validator.js` — the compiled entry
+the CLI falls back to when `src/` is absent. Measured on a fresh `dist/mpd-package/`: every command exits 0
+under bun and under plain node, and `--validator` prints which entry a run loaded
+(`evidence/pack-closure/impl/20260917T011849Z/`). A SOURCE edit reaches the artifact only after a re-pack: the
+packed tree ships `packages/*/dist/` and no `packages/*/src/` (it does carry other `.ts` files, e.g. the adopted
+plugin's `lib/types/` declarations).
+No reload (a restart is the reload: `"No reload"`, `docs/extensions.md:524`); stdio MCP only; JSON flows only; no
+MCP resources or prompts; no extension-contributed agent presets; extension roles never become
+
+--- AGENTS.md §8 copy list (after) ---
+441:  installs (`dsh plugin --profile web add dist/mpd-package`): it copies the built plugin
+442-  dists (incl. the combined web client), the adopted agent-teams main code, `skills/` +
+443-  `presets/`, `extensions/`, the scaffold `templates/`, the `docs/` set (EN + `*.zh-CN.md`
+444-  pairs), the English-only on-demand `agent-references/`, `scripts/` (the extension CLI) and
+
+--- AGENTS.md §3 mpd-ext.mjs line (after) ---
+144:│   ├── mpd-ext.mjs               # extension developer CLI (validate/scaffold/list/--self-test/--validator); shares the RUNTIME validator (TS sources in a checkout, the packer-generated `dist/validator.js` inside a packed artifact)

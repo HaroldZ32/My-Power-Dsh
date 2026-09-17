@@ -1,0 +1,25 @@
+{
+  "question": "does the checker accept a symbol-first anchor with NO line number?",
+  "arms": {
+    "symbolOnlyPresent": {
+      "anchor": "`alphaSymbol`, `src/probe.ts`",
+      "exitCode": 0,
+      "accepted": true,
+      "reported": "  ok   citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved |   ok   citations:docs/extension-authoring-guide.zh-CN.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved |   ok   citations:E"
+    },
+    "symbolOnlyAbsent": {
+      "anchor": "`gammaSymbol`, `src/probe.ts`",
+      "exitCode": 0,
+      "falsifiable": false,
+      "reported": "  ok   citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved |   ok   citations:docs/extension-authoring-guide.zh-CN.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved |   ok   citations:E"
+    },
+    "lineAnchoredControl": {
+      "anchor": "`alphaSymbol`, `src/probe.ts:2`",
+      "exitCode": 0,
+      "accepted": true,
+      "reported": "  ok   citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved |   ok   citations:docs/extension-authoring-guide.zh-CN.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved |   ok   citations:E"
+    }
+  }
+}
+[anchor-form] NOT DURABLE:
+  - a symbol-only anchor whose symbol is ABSENT did not fail (exit 0) — the accepted form would not be falsifiable

@@ -28,9 +28,10 @@
 //
 // EXEMPTION BOOKKEEPING (why the count can exceed what is live here): of the entries in
 // `EXEMPT_LONE_FILES`, THIRTEEN correspond to files that exist in this tree today; `docs/adder4.md`
-// and `docs/cnt8.md` are ANTICIPATORY entries — AGENTS.md §3 names them as exempt internal QA/golden
-// references, but neither file exists here, so a future addition of either is exempted by design
-// rather than by accident. The run prints every exemption with its reason, so the count is never
+// and `docs/cnt8.md` are ANTICIPATORY entries kept BY DESIGN (t39, 2026-09-17): the manual no longer
+// names them as examples — it named two paths that do not exist in this tree, and that stale citation
+// was removed from BOTH ends in one change. This list is now their single source: a future addition of
+// either file is exempted by design rather than by accident, and the census is unchanged. The run prints every exemption with its reason, so the count is never
 // read as "N live paths" without the reasons beside it.
 //
 // Usage:
@@ -62,8 +63,8 @@ const EXEMPT_LONE_FILES = new Map([
   ["docs/review-p0-p3.md", "prior-phase report (AGENTS.md §3)"],
   ["docs/track-a-report.md", "prior-phase report (AGENTS.md §3)"],
   ["docs/ulw-deepseek-optimization.md", "prior-phase report (AGENTS.md §3)"],
-  ["docs/adder4.md", "internal QA/golden reference (AGENTS.md §3) — ANTICIPATORY: the file does not exist in this tree yet"],
-  ["docs/cnt8.md", "internal QA/golden reference (AGENTS.md §3) — ANTICIPATORY: the file does not exist in this tree yet"],
+  ["docs/adder4.md", "internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet and the manual no longer names it as an example; this list is the single source (t39)"],
+  ["docs/cnt8.md", "internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet and the manual no longer names it as an example; this list is the single source (t39)"],
   ["docs/tui-edition-report.md", "prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)"],
   ["packages/mpd-agent-teams-plugin/README.md", "adopted upstream main code, kept verbatim as provenance"],
 ]);

@@ -1,0 +1,33 @@
+{
+  "task": "t39",
+  "attempt": 6,
+  "attemptId": "dd0419e7-7977-4aea-b1f3-336ee3d7c6df",
+  "seat": "code-reviewer",
+  "outcome": "failed-blocked",
+  "reason": "t39 is kind=implementation and requires editing agent-references/agent-teams-deltas.md + AGENTS.md; this seat is configured read-only: member toolDeny (team.json) = write, edit, mpd_hashline_edit, mcp__ast_grep__rewrite, mcp__lsp__rename, and the execution prompt says 'You implement NOTHING'. No in-scope path was modified by this seat.",
+  "independenceConflict": "This seat holds t31 (Review - lane B: the adopted-plugin batches), which covers t9/t14/t19/t20 - the same lane whose delta registry t39 would author.",
+  "measurements": {
+    "inScopeHashesAsMeasured": {
+      "AGENTS.md": "1eac90f4268b2b34180dcc22b0513c9abd087eb8e23ae761a176aeec45a48c07 (47230 B, mtime 2026-09-17 10:33:55 +0800)",
+      "agent-references/agent-teams-deltas.md": "04589f94a2ed2130ed8accbadadba639283a4ce6baeac8e9618d2b5588c4faca (9666 B, mtime 2026-09-17 09:19:17 +0800)"
+    },
+    "registry": {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0,
+      "output": "[patch-agent-teams-fixes] already applied: 73 mpd delta region(s) across 9 adopted file(s)",
+      "docDisagrees": "agent-references/agent-teams-deltas.md:44 says '53' regions"
+    },
+    "staleRow": "agent-references/agent-teams-deltas.md:42 still describes the PRE-t9 design: 'watchdog-hold-reader (ADDITIVE, 2 regions: lib/tools.js + lib/scheduler.js)', 'claim-task-hold-guard', 'update-task-hold-guard', 'kick-member-hold-decline'",
+    "missingRows": "grep for tool-names|D27|D28..D37 in agent-references/agent-teams-deltas.md: 0 matches",
+    "exemptionPaths": {
+      "namedInAgentsMd": ["AGENTS.md:19-20 (language-policy bullet)", "AGENTS.md:174 (S3 layout block)"],
+      "lsDocs": "docs/adder4.md and docs/cnt8.md are ABSENT from 'ls docs/'",
+      "crossFileCouplingOutsideT39Scope": "scripts/verify-docs-parity.mjs:30-31,65-66 keep ANTICIPATORY exemption entries for both paths and cite 'AGENTS.md S3' as their justification - re-wording AGENTS.md orphans that citation; scripts/ is outside t39 inScope"
+    },
+    "gatesBaseline": [
+      {"command": "bun run verify:docs", "exit": 0, "output": "pairs=37 failed=0 violations=0 exempt=17 - PASS"},
+      {"command": "node scripts/verify-rows-parity.mjs", "exit": 0, "output": "ok: 25 row ids match the bundle patch insert list"}
+    ]
+  },
+  "routesTo": "reassign t39 to an editing seat (any of the six engineer seats or the captain as the single writer); its verify commands are already green on the as-measured revision and the two in-scope hashes are pinned above"
+}

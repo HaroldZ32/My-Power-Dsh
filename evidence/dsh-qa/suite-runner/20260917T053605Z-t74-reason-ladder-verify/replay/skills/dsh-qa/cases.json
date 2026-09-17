@@ -1,0 +1,2 @@
+{ "manifestVersion": 1,
+  "lanes": [ { "case": "replay-adopt", "script": "skills/dsh-qa/scripts/replay-adopt.mjs", "suites": ["all"] } ] }

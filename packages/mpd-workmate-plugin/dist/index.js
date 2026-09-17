@@ -1,7 +1,7 @@
 // packages/mpd-workmate-plugin/src/index.ts
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { homedir, userInfo } from "node:os";
+import { join, resolve as resolve2, sep } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { resolve } from "node:path";
@@ -161,6 +161,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsGuard: typeof tools?.guard === "function",
         toolsGet: typeof tools?.get === "function",
         toolsExecute: typeof tools?.execute === "function",
+        toolsPreExecute: typeof ctx?.on === "function",
         toolsPostExecute: typeof ctx?.on === "function",
         subagents: subagents !== undefined,
         subagentsSpawn: typeof subagents?.start === "function",
@@ -208,6 +209,17 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no guard()");
       return tools.guard((exec) => guard(exec ?? {}));
     },
+    onPreToolExecute(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("tools/pre-execute", async (exec, next) => {
+        const downstream = typeof next === "function" ? await next() : undefined;
+        try {
+          listener(Object.freeze({ ...exec ?? {} }), downstream);
+        } catch {}
+        return downstream;
+      });
+    },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")
         return noop;
@@ -246,7 +258,8 @@ function createDshAdapter(ctx, config = {}) {
           name: input.name,
           arguments: input.arguments ?? {},
           callId,
-          ...signal === undefined ? {} : { signal }
+          ...signal === undefined ? {} : { signal },
+          ...input.agent === undefined ? {} : { agent: input.agent }
         });
         const isError = raw?.isError === true;
         if (isError) {
@@ -315,6 +328,126 @@ function createDshAdapter(ctx, config = {}) {
         ...preset?.broken === undefined ? {} : { broken: String(preset.broken) }
       };
     },
+    settingsReader(namespace) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null)
+        return;
+      return {
+        get() {
+          try {
+            return typeof settings.get === "function" ? settings.get(namespace) : undefined;
+          } catch {
+            return;
+          }
+        },
+        describe() {
+          try {
+            if (typeof settings.describe !== "function")
+              return;
+            const list = settings.describe();
+            if (!Array.isArray(list))
+              return;
+            const found = list.find((entry) => entry?.ns === namespace);
+            if (found === undefined)
+              return;
+            return {
+              value: found.value,
+              revision: typeof found.revision === "number" ? found.revision : undefined,
+              user: found.user,
+              base: found.base,
+              applies: typeof found.applies === "string" ? found.applies : undefined
+            };
+          } catch {
+            return;
+          }
+        }
+      };
+    },
+    onSettingsDocumentUpdated(namespace, listener) {
+      let pendingRevision;
+      let pendingSource;
+      let hasPending = false;
+      let scheduled = false;
+      const flush = () => {
+        scheduled = false;
+        if (!hasPending)
+          return;
+        const revision = pendingRevision;
+        const source = pendingSource;
+        pendingRevision = undefined;
+        pendingSource = undefined;
+        hasPending = false;
+        try {
+          listener(revision, source);
+        } catch {}
+      };
+      const offUpdated = adapter.onEvent("settings/updated", (ns, _next, _prev, from) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingSource = from === undefined ? undefined : String(from);
+        return;
+      });
+      const offDocument = adapter.onEvent("settings/document-updated", (ns, revision) => {
+        if (String(ns) !== namespace)
+          return;
+        pendingRevision = typeof revision === "number" ? revision : undefined;
+        hasPending = true;
+        if (!scheduled) {
+          scheduled = true;
+          Promise.resolve().then(flush);
+        }
+        return;
+      });
+      return () => {
+        try {
+          offUpdated?.();
+        } catch {}
+        try {
+          offDocument?.();
+        } catch {}
+      };
+    },
+    whenSettingsAvailable(callback) {
+      if (typeof ctx?.inject !== "function") {
+        try {
+          callback();
+        } catch {}
+        return;
+      }
+      try {
+        ctx.inject(["settings"], () => {
+          try {
+            callback();
+          } catch {}
+        });
+      } catch {}
+    },
+    settingsRegister(namespace, schema, options) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.register !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        settings.register(namespace, schema, { ...options?.base === undefined ? {} : { base: options.base }, ...options?.applies === undefined ? {} : { applies: options.applies } });
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: String(error?.message ?? error) };
+      }
+    },
+    async settingsMutate(namespace, ops, expectedRevision) {
+      const settings = service("settings");
+      if (settings === undefined || settings === null || typeof settings.mutate !== "function") {
+        return { ok: false, error: "settings service is unavailable" };
+      }
+      try {
+        await settings.mutate(namespace, ops.map((op) => op.op === "unset" ? { op: "unset", path: [...op.path] } : { op: "set", path: [...op.path], value: op.value }), expectedRevision);
+        return { ok: true };
+      } catch (error) {
+        const name = String(error?.name ?? "");
+        const conflict = name === "SettingsConflictError" || /conflict/i.test(String(error?.message ?? ""));
+        return { ok: false, error: String(error?.message ?? error), ...conflict ? { conflict: true } : {} };
+      }
+    },
     text: textBlock
   };
   return adapter;
@@ -380,6 +513,39 @@ function homeDir() {
 }
 function workmateRoot() {
   return join(homeDir(), ".mpd", "workmate");
+}
+var WORKMATE_ALLOW_REAL_HOME_ENV = "MPD_DSH_WORKMATE_ALLOW_REAL_HOME";
+function realUserHome() {
+  try {
+    const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
+    if (uid !== undefined) {
+      const line = readFileSync("/etc/passwd", "utf8").split(`
+`).find((l) => l.split(":")[2] === String(uid));
+      const home = line === undefined ? undefined : line.split(":")[5];
+      if (home !== undefined && home !== "")
+        return home;
+    }
+  } catch {}
+  try {
+    const api = userInfo().homedir;
+    if (api !== "" && resolve2(api) !== resolve2(process.env.HOME ?? api))
+      return api;
+  } catch {}
+  return;
+}
+function assertMutationSandboxed(operation) {
+  const dshHome = process.env.DSH_HOME;
+  if (dshHome === undefined || dshHome === "")
+    return;
+  if (process.env[WORKMATE_ALLOW_REAL_HOME_ENV] === "1")
+    return;
+  const root = workmateRoot();
+  const home = process.env.HOME;
+  const realHome = realUserHome();
+  const inside = (h) => root === h || root.startsWith(h.endsWith(sep) ? h : h + sep);
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve2(home) !== resolve2(realHome) && inside(resolve2(home)))
+    return;
+  throw new WorkmateError("real-home-refused", "mpd_workmate: refusing to " + operation + " inside the REAL library " + root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + WORKMATE_ALLOW_REAL_HOME_ENV + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
 }
 function wmDir(name2) {
   const key = sanitizeName(name2);
@@ -683,6 +849,7 @@ function rewriteNoteIdentity(dir, baseName, oldKey, newKey) {
   writeFileSync(path, `${baseName}-based workmate "${newKey}".` + raw.slice(prefix.length));
 }
 function renameWorkmate(nameArg, newNameArg, teamRoots) {
+  assertMutationSandboxed("rename a workmate");
   const oldKey = nameKey(nameArg, "name");
   const newKey = nameKey(newNameArg, "new_name");
   if (newKey === oldKey)
@@ -711,6 +878,7 @@ function renameWorkmate(nameArg, newNameArg, teamRoots) {
   return { ok: true, name: newKey, from: oldKey, renamedFrom };
 }
 function deleteWorkmate(nameArg, purgeArg, confirmArg, teamRoots) {
+  assertMutationSandboxed("delete a workmate");
   const key = nameKey(nameArg, "name");
   const purge = purgeArg === true;
   if (purge && String(confirmArg ?? "") !== key) {
@@ -765,6 +933,7 @@ function apply(ctx) {
     throw new Error(`mpd_workmate: unknown base "${k}" — run mpd_roles_list (ids or normal names like "Deep Worker")`);
   }
   function initWorkmate(baseKey, nameArg, noteArg) {
+    assertMutationSandboxed("initialize a workmate");
     const base = resolveBase(baseKey);
     const given = sanitizeName(nameArg);
     let name2 = given;
@@ -886,6 +1055,7 @@ Work with the tools your role requires (read-only workmates must never modify an
     parameters: { type: "object", properties: { name: { type: "string" }, task: { type: "string" }, outcome: { type: "string" }, persona_delta: { type: "string", description: "optional persona revision text (merged, capped)" }, note: { type: "string", description: "optional replacement note card; auto-generated if omitted" } }, required: ["name", "task", "outcome"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, updated: { type: "boolean" }, uses: { type: "integer" }, personaChars: { type: "integer" }, memoryChars: { type: "integer" }, noteChars: { type: "integer" } }, required: ["name", "updated"], additionalProperties: false }, render: (_a, v) => textBlock2("workmate " + v.name + " reflected (uses=" + v.uses + ", persona " + v.personaChars + "B / memory " + v.memoryChars + "B / note " + v.noteChars + "B)") },
     execute: async (args) => {
+      assertMutationSandboxed("reflect a workmate");
       const { meta, key } = ensureInstance(String(args?.name ?? ""));
       const task = String(args?.task ?? "").trim();
       const outcome = String(args?.outcome ?? "").trim();
@@ -1103,8 +1273,10 @@ export {
   capText,
   busyTeams,
   autoNote,
+  assertMutationSandboxed,
   apply,
   WorkmateError,
+  WORKMATE_ALLOW_REAL_HOME_ENV,
   READONLY_DENY,
   PERSONA_CAP,
   NOTE_CAP,

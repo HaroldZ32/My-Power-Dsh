@@ -1,0 +1,13 @@
+mpd-bootstrap-plugin           a104d89790017b7c31e68aa5786f6cbf3fd1f265e42ba45494a84c897ad51e20
+mpd-boulder-plugin             2055dd0f61e1bdf81ca812b62d7b1ee63ca82f03adce0775a35efa5e66a85b9a
+mpd-codegraph-plugin           9024ae195f3a21d4ede06013a7c9feb7111f97f8d77d0bbc475861298b57a7cc
+mpd-comment-checker-plugin     7cd8e76c25f1342c34d1e7f7779ff0c2bc9e01176b220d6bd1636d2c4d058314
+mpd-hashline-plugin            936a90410d37ff21a4c6183a209cd805e745d0f3bc747139821cccb373e4a849
+mpd-memory-plugin              f6e40e866f1595f844e8a18038b359ff1af4588a82cd8a5403aace6e5990a704
+mpd-modelchain-plugin          96e2e335f00f9a2ff9fedc1aa8d06b33b1ccb917431393387070d31b35625b23
+mpd-qa-roles-probe             43093ec096341ebcaa2e348aa4c15d44e89d87d5c68d9adaddf4786ea720c2ba
+mpd-team-compact-plugin        04907216286351add6f51eefd1a5b8ff8815941c60dccdeab54d0cdcccb6491a
+mpd-team-watchdog-plugin       80c1b014d002421e94f43e36a5be0bcfef626c85d6ca1c87971698a29b7fd72a
+mpd-tools-plugin               e900c38d3d31feda3d202c772cd8b50b433a21f31207da94b68aafc16e67bd9d
+mpd-ulw-plugin                 c809e2a00622e283ed96639d585a8f486e0c8568725172eb427e754a61822598
+mpd-workmate-plugin            b8b4cf50f72eb44a29a71feaaf0efba65d565f77a7c88b2185cd1ded1cedc16e

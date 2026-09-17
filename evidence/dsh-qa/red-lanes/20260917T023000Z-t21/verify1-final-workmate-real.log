@@ -1,0 +1,7 @@
+[workmate-library] ok=false -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-17T03-08-05.586Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0}
+  flow: {"ok":false,"sample":"well (for the spawn task) — not strictly needed, but the spawn never ran. Also check the sandbox dir for the workmate library in case it exists elsewhere (e.g., MPD_DSH_WORKMATE_ALLOW_REAL_HOME). Let me do a quick glob for note.md under /
+  files: {"ok":false,"uses":null,"noteChars":0,"memoryChars":0,"note":"","wmRoot":"/tmp/mpd-wm-home-uEfyOH/.mpd/workmate"}
+  isolation: {"ok":true,"realWm":"/root/.mpd/workmate","before":".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer","after":".archive,agent-teams-engineer,code-reviewer,docs-gat

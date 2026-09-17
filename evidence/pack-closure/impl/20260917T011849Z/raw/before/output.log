@@ -1,0 +1,63 @@
+
+===== cli-validate-packed =====
+$ bun dist/mpd-package/scripts/mpd-ext.mjs validate dist/mpd-package/extensions/mpd-ext-example
+error: Cannot find module '/root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-ext-plugin/src/registry.ts' from '/root/dshProj/my-power-dsh/dist/mpd-package/scripts/mpd-ext.mjs'
+
+Bun v1.3.14 (Linux x64)
+[exit=1]
+
+===== cli-validate-template-packed =====
+$ bun dist/mpd-package/scripts/mpd-ext.mjs validate dist/mpd-package/templates/mpd-extension
+error: Cannot find module '/root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-ext-plugin/src/registry.ts' from '/root/dshProj/my-power-dsh/dist/mpd-package/scripts/mpd-ext.mjs'
+
+Bun v1.3.14 (Linux x64)
+[exit=1]
+
+===== cli-self-test-packed =====
+$ bun dist/mpd-package/scripts/mpd-ext.mjs --self-test
+error: Cannot find module '/root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-ext-plugin/src/registry.ts' from '/root/dshProj/my-power-dsh/dist/mpd-package/scripts/mpd-ext.mjs'
+
+Bun v1.3.14 (Linux x64)
+[exit=1]
+
+===== cli-scaffold-packed =====
+$ bun dist/mpd-package/scripts/mpd-ext.mjs scaffold probe-ext --dir evidence/pack-closure/impl/20260917T011849Z/raw/before
+error: Cannot find module '/root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-ext-plugin/src/registry.ts' from '/root/dshProj/my-power-dsh/dist/mpd-package/scripts/mpd-ext.mjs'
+
+Bun v1.3.14 (Linux x64)
+[exit=1]
+
+===== cli-self-test-packed-node =====
+$ node dist/mpd-package/scripts/mpd-ext.mjs --self-test
+node:internal/modules/esm/resolve:271
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-ext-plugin/src/registry.ts' imported from /root/dshProj/my-power-dsh/dist/mpd-package/scripts/mpd-ext.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+    at #resolve (node:internal/modules/esm/loader:673:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+    at node:internal/modules/esm/loader:622:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-ext-plugin/src/registry.ts'
+}
+
+Node.js v24.16.0
+[exit=1]
+
+===== ls packed templates/docs =====
+$ ls -d dist/mpd-package/templates dist/mpd-package/docs
+ls: cannot access 'dist/mpd-package/templates': No such file or directory
+ls: cannot access 'dist/mpd-package/docs': No such file or directory
+[exit=2]
+
+===== closure-check-current =====
+$ node scripts/verify-pack-closure.mjs
+[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; allowlist carries no templates/ entry
+[exit=0]

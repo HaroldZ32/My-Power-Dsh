@@ -1,0 +1,26 @@
+--- evidence/agent-teams/driver-header-truth/20260917T030901Z/driver-before.mjs	2026-09-17 11:21:21.731737172 +0800
++++ evidence/agent-teams/deliverables/20260917T015207Z/driver.mjs	2026-09-17 11:21:21.828739586 +0800
+@@ -17,13 +17,17 @@
+ //
+ // Assertions:
+ //   A1 the CAPTAIN's request carries `agent_teams_approve` (seat classification works at all)
+-//   A2 the READ-ONLY MEMBER's request LISTS `agent_teams_task_contract`      <- T-49 GREEN
++//   A2 the READ-ONLY MEMBER's request LISTS `agent_teams_update_task` (the artifact channel);
++//      the contract tool is listed too — it is a member tool since t9 — but THIS driver never
++//      CALLS it, and its header says so rather than claiming a session-log `tool/call` it does
++//      not produce (t25's F1). The A4-shaped "the log records a tool/call for
++//      `agent_teams_task_contract` with a non-error tool/result" claim belongs to the OTHER
++//      driver, which really makes that call and is where that evidence lives:
++//      `evidence/agent-teams/tools-boundaries/20260917T012056Z/driver.mjs` + `result.json`.
+ //   A3 the same member request does NOT list `agent_teams_approve`           <- discriminating
+-//   A4 the harness SESSION LOG for the member records a `tool/call` for
+-//      `agent_teams_task_contract` with a NON-ERROR `tool/result` whose text
+-//      carries the measured contract (read THROUGH it, proven from the log)
+-//   A5 the member's `toolFilter` really denied the write tools (negative contrast:
+-//      `bash`/`write` absent from the member's tools[] while present for the captain)
++//   A4 this driver's A4 is the DENY contrast: `bash`/`write`/`edit` are absent from the
++//      read-only member's tools[] while the captain's list keeps them (evidence: the run's
++//      `result.json` assertions A3/A4/A5, decoded from the harness's own request payloads)
+ import { createServer } from "node:http"
+ import { spawn } from "node:child_process"
+ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"

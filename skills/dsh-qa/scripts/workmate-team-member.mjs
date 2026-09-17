@@ -17,6 +17,7 @@ import { cpSync, existsSync, readdirSync, mkdirSync, mkdtempSync, readFileSync, 
 import { homedir, tmpdir } from "node:os"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PROMPT = `Perform this exact sequence with the tools and report each result:
@@ -63,7 +64,7 @@ function runReal() {
   const wmHome = mkdtempSync(join(tmpdir(), "mpd-wtm-home-"))
   const ws = join(wmHome, "ws")
   mkdirSync(ws, { recursive: true })
-  cpSync(creds, join(dshHome, ".credentials.yaml"))
+  seedSandboxCredentials(dshHome, { credentialsFile: creds })
   // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
 // model chain is configured through gateway providers (llm-pi-ai), so without it the
 // sandbox falls back to the base `deepseek-official` route and the boot dies with
@@ -73,7 +74,7 @@ function runReal() {
   const qaSettings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(qaSettings)) cpSync(qaSettings, join(dshHome, "settings.yaml"))
   writeFileSync(join(ws, "README.md"), "# my-power-dsh\nworkmate team-member e2e workspace\n")
-  const env = { ...process.env, DSH_HOME: dshHome, HOME: wmHome }
+  const env = credentialEnv({ ...process.env, DSH_HOME: dshHome, HOME: wmHome  })
   const steps = {}
   function runSync(cmd, args, opts = {}) {
     const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })

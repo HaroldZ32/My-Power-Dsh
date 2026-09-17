@@ -1,0 +1,14 @@
+=== two-26 class labels — measured 2026-09-17T03:49:14Z UTC (host +0800) ===
+--- artefact identity ---
+dist/mpd-package/packages/mpd-ext-plugin/dist/index.js  bytes=152855  sha256=f6097fd3383f2fa7  pathComments=13  distinctPaths=11  slashSlashLines=13
+dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js  bytes=153262  sha256=7128166c28b1b4ce  pathComments=13  distinctPaths=11  slashSlashLines=16
+packages/mpd-ext-plugin/dist/index.js  bytes=152855  sha256=f6097fd3383f2fa7  pathComments=13  distinctPaths=11  slashSlashLines=13
+--- patterns used ---
+pathComments : grep -cE '^// .*\.(ts|js)$'
+allComments  : grep -cE '^// '
+--- the shim header (validator.js only, 3 lines) ---
+3920:// Appended by scripts/pack-mpd.mjs (VALIDATOR_SHIM_EXPORTS): the packed CLI's view of
+3921:// this compiled validator, whose own export block exposes only the plugin surface. Do not
+3922:// edit the packed copy — it is regenerated on every pack.
+--- diff-side count, one build vs the other form (both sides) ---
+13 positions x 2 sides = 26 (recorded in evidence/pack-closure/impl/20260917T011849Z, buildFormMatrix); both builds are 3918 lines so nothing shifts

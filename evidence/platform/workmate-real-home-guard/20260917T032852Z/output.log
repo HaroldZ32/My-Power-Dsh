@@ -1,0 +1,33 @@
+# t62 A1/A4 — RED reproduced in a SCRATCH harness (no QA-lane tree touched), 2026-09-17T03:28:52Z
+# dist under test: packages/mpd-workmate-plugin/dist/index.js sha256 6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85
+
+## A1 the exact commands and readings
+  --- node ---
+  HOME=/tmp/tmp.DN0pPOqXrs/home DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh : REFUSED status=403 code=real-home-refused
+      : mpd_workmate: refusing to probe a mutation inside the REAL library /tmp/tmp.DN0pPOqXrs/home/.mpd/workmate while DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh marks an isolated/QA boot — set HOME=<sandbox> (T-43), 
+  (HOME unset) DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh : REFUSED status=403 code=real-home-refused
+      : mpd_workmate: refusing to probe a mutation inside the REAL library /root/.mpd/workmate while DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set MPD_DSH_WORK
+  HOME=/root DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh : REFUSED status=403 code=real-home-refused
+      : mpd_workmate: refusing to probe a mutation inside the REAL library /root/.mpd/workmate while DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set MPD_DSH_WORK
+  sandbox + ALLOW override : ALLOWED
+  --- bun ---
+  HOME=/tmp/tmp.DN0pPOqXrs/home DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh : REFUSED status=403 code=real-home-refused
+      : mpd_workmate: refusing to probe a mutation inside the REAL library /tmp/tmp.DN0pPOqXrs/home/.mpd/workmate while DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh marks an isolated/QA boot — set HOME=<sandbox> (T-43), 
+  (HOME unset) DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh : REFUSED status=403 code=real-home-refused
+      : mpd_workmate: refusing to probe a mutation inside the REAL library /root/.mpd/workmate while DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set MPD_DSH_WORK
+  HOME=/root DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh : REFUSED status=403 code=real-home-refused
+      : mpd_workmate: refusing to probe a mutation inside the REAL library /root/.mpd/workmate while DSH_HOME=/tmp/tmp.DN0pPOqXrs/dsh marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set MPD_DSH_WORK
+  sandbox + ALLOW override : ALLOWED
+
+## the HOME-independent primitive (what the fix must use)
+  node: homedir()=/tmp/fakehome   userInfo().homedir=/root
+  bun : homedir()=/tmp/fakehome   userInfo().homedir=/tmp/fakehome
+  -> under node (dsh is node: #!/usr/bin/env node) userInfo() is passwd-derived;
+     under bun it FOLLOWS HOME, so the fix reads /etc/passwd by uid and keeps userInfo() as fallback.
+
+## A5 baseline: the REAL library, read-only, before any change
+  tree sha256 (sorted relpaths+bytes): e2b206d2d7ba1d31cd543cc07570815b8a02d3358e2ccd66fa18915cdf039b99 files: 33
+
+## A1 verdict
+  Row 1 (the sanctioned recipe) is REFUSED 403 and the message NAMES THE SANDBOX as the REAL library.
+  Cause: realHome = os.homedir() FOLLOWS $HOME, so under HOME=<sandbox> the equality can never fail.

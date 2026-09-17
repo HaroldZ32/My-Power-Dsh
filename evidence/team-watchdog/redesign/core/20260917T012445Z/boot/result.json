@@ -1,0 +1,155 @@
+{
+  "task": "the watchdog's row mounted in a REAL dsh does not veto the turn machinery (pre-step waterfall)",
+  "lane": "team-watchdog-boot",
+  "heavy": true,
+  "workspace": "/tmp/mpd-wdboot-QjJc9J/ws",
+  "dshHome": "/tmp/mpd-wdboot-QjJc9J/home",
+  "copiedFiles": [
+    ".credentials.yaml",
+    ".anonymous-user-id",
+    "settings.yaml"
+  ],
+  "composition": {
+    "declared": [
+      "@deepseek-ai/dsh-base",
+      "@deepseek-ai/dsh-web-app",
+      "@linxin666/dsh-web-all",
+      "dshmarket",
+      "dsh-cost-meter",
+      "nowledge-mem-deepseek-harness",
+      "dsh-better-sidebar",
+      "@mpd-dsh/mpd"
+    ],
+    "mirrored": [
+      "@linxin666/dsh-web-all -> /root/.dsh/profiles/web/node_modules/@linxin666/dsh-web-all",
+      "dshmarket -> /root/.dsh/profiles/web/node_modules/dshmarket",
+      "dsh-cost-meter -> /root/.dsh/profiles/web/node_modules/dsh-cost-meter",
+      "nowledge-mem-deepseek-harness -> /root/.dsh/profiles/web/node_modules/nowledge-mem-deepseek-harness",
+      "dsh-better-sidebar -> /root/.dsh/profiles/web/node_modules/dsh-better-sidebar",
+      "@mpd-dsh/mpd -> /root/dshProj/my-power-dsh (checkout)"
+    ],
+    "unresolved": [
+      "@deepseek-ai/dsh-base (not resolved in /root/.dsh/profiles/web)",
+      "@deepseek-ai/dsh-web-app (not resolved in /root/.dsh/profiles/web)"
+    ]
+  },
+  "observed": {
+    "rowLine": "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on",
+    "preset": "mpd",
+    "createOk": true,
+    "promptAccepted": true,
+    "copied": [
+      ".credentials.yaml",
+      ".anonymous-user-id",
+      "settings.yaml"
+    ],
+    "settingsPresent": true,
+    "clientRoute": {
+      "url": "/plugins/??@mpd-dsh/mpd/client.js&rev=bba12f8aa04acce3-46",
+      "status": 200,
+      "bytes": 295612,
+      "indexStatus": 200,
+      "discovered": 63,
+      "body": "(omitted: 295612 bytes; see raw/gui-activation.json)"
+    },
+    "composition": {
+      "declared": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@linxin666/dsh-web-all",
+        "dshmarket",
+        "dsh-cost-meter",
+        "nowledge-mem-deepseek-harness",
+        "dsh-better-sidebar",
+        "@mpd-dsh/mpd"
+      ],
+      "mirrored": [
+        "@linxin666/dsh-web-all -> /root/.dsh/profiles/web/node_modules/@linxin666/dsh-web-all",
+        "dshmarket -> /root/.dsh/profiles/web/node_modules/dshmarket",
+        "dsh-cost-meter -> /root/.dsh/profiles/web/node_modules/dsh-cost-meter",
+        "nowledge-mem-deepseek-harness -> /root/.dsh/profiles/web/node_modules/nowledge-mem-deepseek-harness",
+        "dsh-better-sidebar -> /root/.dsh/profiles/web/node_modules/dsh-better-sidebar",
+        "@mpd-dsh/mpd -> /root/dshProj/my-power-dsh (checkout)"
+      ],
+      "unresolved": [
+        "@deepseek-ai/dsh-base (not resolved in /root/.dsh/profiles/web)",
+        "@deepseek-ai/dsh-web-app (not resolved in /root/.dsh/profiles/web)"
+      ]
+    },
+    "turnEnds": [
+      "{\"type\":\"turn/end\",\"seq\":18,\"time\":1789608317700,\"data\":{\"turn\":1,\"reason\":{\"kind\":\"error\",\"error\":{\"message\":\"llm-deepseek: no API key for provider route \\\"deepseek-official\\\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment\",\"code\":\"MISSING_CREDENTIAL\"}}}}"
+    ],
+    "assistantMessages": []
+  },
+  "outcome": "model-error",
+  "reason": "the turn reached the MODEL call and failed there (not at pre-step): llm-deepseek: no API key for provider route \\",
+  "checks": [
+    {
+      "id": "B1",
+      "ok": true,
+      "detail": "the watchdog row APPLIED in the real boot ({\"enabled\":\"true\",\"disposers\":8,\"holdService\":\"mpdWatchdog\"})"
+    },
+    {
+      "id": "B2",
+      "ok": true,
+      "detail": "the session was created on agentPreset mpd (\"mpd\")"
+    },
+    {
+      "id": "B3",
+      "ok": true,
+      "detail": "session/create and session/prompt were both accepted ({\"create\":true,\"prompt\":true})"
+    },
+    {
+      "id": "B4",
+      "ok": true,
+      "detail": "the sandbox home received BOTH `.credentials.yaml` and `settings.yaml` when present ([\".credentials.yaml\",\".anonymous-user-id\",\"settings.yaml\"])"
+    },
+    {
+      "id": "B5",
+      "ok": true,
+      "detail": "the harness's own session log recorded at least one turn/end (1 turn/end line(s))"
+    },
+    {
+      "id": "B6",
+      "ok": true,
+      "detail": "NO turn/end carries the pre-step veto signature (map/findLastIndex/length)"
+    },
+    {
+      "id": "B7",
+      "ok": true,
+      "detail": "outcome=model-error — PASSED FOR THIS INVARIANT (the pre-step veto is gone; the turn reached the model call) and explicitly NOT a completed turn: the turn reached the MODEL call and failed there (not at pre-step): llm-deepseek: no API key for provider route \\"
+    },
+    {
+      "id": "B8",
+      "ok": true,
+      "detail": "no client-entry activation failure signature in the real boot log (did not activate / pending (waiting for service / failed to apply loader entry / a client-modules error naming @mpd-dsh/mpd)"
+    },
+    {
+      "id": "B9",
+      "ok": true,
+      "detail": "the host SERVED our client for the @mpd-dsh/mpd entry (HTTP 200 on /plugins/??@mpd-dsh/mpd/client.js&rev=bba12f8aa04acce3-46, 295612 bytes)"
+    },
+    {
+      "id": "B10",
+      "ok": true,
+      "detail": "the served bytes carry BOTH tab ids we register (mpd-agent-teams: true, mpd-workmate: true)"
+    },
+    {
+      "id": "B11",
+      "ok": true,
+      "detail": "the served bytes carry the adopted export bridge AND the sidebar page module"
+    },
+    {
+      "id": "B12",
+      "ok": true,
+      "detail": "the boot ran in the USER'S composition, mirrored as far as the sandbox allows (declared: [\"@deepseek-ai/dsh-base\",\"@deepseek-ai/dsh-web-app\",\"@linxin666/dsh-web-all\",\"dshmarket\",\"dsh-cost-meter\",\"nowledge-mem-deepseek-harness\",\"dsh-better-sidebar\",\"@mpd-dsh/mpd\"]; mirrored: [\"@linxin666/dsh-web-all -> /root/.dsh/profiles/web/node_modules/@linxin666/dsh-web-all\",\"dshmarket -> /root/.dsh/profiles/web/node_modules/dshmarket\",\"dsh-cost-meter -> /root/.dsh/profiles/web/node_modules/dsh-cost-meter\",\"nowledge-mem-deepseek-harness -> /root/.dsh/profiles/web/node_modules/nowledge-mem-deepseek-harness\",\"dsh-better-sidebar -> /root/.dsh/profiles/web/node_modules/dsh-better-sidebar\",\"@mpd-dsh/mpd -> /root/dshProj/my-power-dsh (checkout)\"]; unresolved: [\"@deepseek-ai/dsh-base (not resolved in /root/.dsh/profiles/web)\",\"@deepseek-ai/dsh-web-app (not resolved in /root/.dsh/profiles/web)\"])"
+    }
+  ],
+  "ok": true,
+  "notClaimed": [
+    "This lane witnesses the INVARIANT (the row mounts and the turn machinery survives it). A `model-error` outcome (e.g. MISSING_CREDENTIAL — measured in this sandbox while the task was written) proves the turn reached the model call but is NOT a completed turn.",
+    "No genuine provider wedge is claimed; this lane drives one normal prompt, not a wedge.",
+    "THE CEILING (r5): no browser exists in this environment, so `registerTab` EXECUTION against the real sidebar cannot be witnessed end-to-end. What IS asserted: (a) the client entry activated — none of the terminal-only failure signatures (did not activate / pending (waiting for service / failed to apply loader entry / a client-modules error naming @mpd-dsh/mpd) appear in the boot log; (b) the host SERVED our client for the @mpd-dsh/mpd entry (HTTP 200); (c) the served bytes carry BOTH tab ids and the adopted bridge. Whether the sidebar then RENDERS the tabs stays outside this lane.",
+    "The mirrored composition is as far as the sandbox allows: a user bundle that the user's own profile does not resolve is recorded as `unresolved` in the composition and never silently dropped."
+  ]
+}

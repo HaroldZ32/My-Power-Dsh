@@ -72,7 +72,7 @@ decision nobody wrote down is indistinguishable from an oversight:
    stops accidental *environment* leakage; it is not a sandbox.
 2. **Author-declared secrets are real secrets.** Anything you write into a manifest `env` block is
    readable in the manifest on disk. `mpd_ext_show` redacts the **values** (keys stay visible,
-   `redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:659`) so a tool result in a session log cannot leak
+   `redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:643`) so a tool result in a session log cannot leak
    them — but the file itself is not encrypted, and a value you wrote down is a value you own.
 3. **Filesystem trust.** Installing an extension means executing a stdio server that you or someone
    else provided. There is no signature, no sandbox namespace, no seccomp profile and no capability
@@ -101,7 +101,7 @@ plane.
 | `skills` | project | **per call**, from the calling session's workspace | no |
 | `flows` | project | **per call** | no |
 | `skills`, `flows` | user, bundle | discovered at **apply** | yes |
-| `mcp` | user, bundle | the extension is discovered at apply, and servers are **connected at apply** — in parallel, time-boxed by `connectTimeoutMs`, never lazily (`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1062`) | yes |
+| `mcp` | user, bundle | the extension is discovered at apply, and servers are **connected at apply** — in parallel, time-boxed by `connectTimeoutMs`, never lazily (`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1046`) | yes |
 | `roles` | user, bundle | the declaration is discovered at apply; the role itself is resolved **per call** by the roster plane, which re-reads the persona text (`extensionRoles`, `packages/mpd-roles-plugin/src/index.ts:225-292`) | yes for adding or renaming a role; editing only the persona body does not need one |
 
 Three consequences worth carrying in your head:
@@ -129,6 +129,10 @@ bun scripts/mpd-ext.mjs scaffold my-extension --dir ~/.mpd/extensions
 # B. or copy it yourself — it is an ordinary directory
 cp -r templates/mpd-extension ~/.mpd/extensions/my-extension
 ```
+
+Both commands assume a checkout. From an installed (packed) bundle the same CLI lives inside the <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
+package — `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs <command>` from the profile directory —
+and §7 says exactly what such an artifact carries and which bound still applies.
 
 Then walk the same five steps every extension goes through:
 
@@ -211,15 +215,26 @@ decision from §2 — this section only says how the bytes get there:
   registry, no version resolution and no dependency graph: the recipient drops it in, validates it,
   and restarts.
 
-One measured limit applies to a **packed** artifact specifically: the packer ships
-`packages/<pkg>/dist` and no `src` (`cpDist`, `scripts/pack-mpd.mjs:67-77`), while the developer CLI
-imports its validator from `src` (`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:35`),
-so inside `dist/mpd-package/` every CLI entry point exits 1 with
-`Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'` — `validate` works in a checkout
-and does not work there, and even with `src` restored `scaffold` still fails because no `templates/`
-entry is packed. This is measured, cited and **not fixed** in the wave that wrote this guide
-(`evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json`; tracked as
-`.mpd/TODO.md` T-51).
+A packed artifact is **author-facing** since the 2026-09-17 packaging change, so these commands run
+there too. The packer ships the scaffold template (`templates/mpd-extension`, T-35), the `docs/` set
+with its EN + `*.zh-CN.md` pairs (T-36/T-45), the on-demand `agent-references/`
+(`troubleshooting.md` — the symptom → cause/fix table — plus the adopted-plugin delta registry and
+its index), and a **compiled validator entry** <!-- citation-check: illustrative: a pack-time artifact emitted by the packer into the artifact, not a repo path -->
+(`packages/mpd-ext-plugin/dist/validator.js`, generated at pack time from the shipped bundle) that
+`scripts/mpd-ext.mjs` falls back to when the TypeScript sources are absent (T-51). Measured from
+inside a freshly packed `dist/mpd-package/`:
+
+```bash
+bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example   # exit 0
+bun scripts/mpd-ext.mjs scaffold my-extension --dir /tmp/demo # exit 0 — copies the packed template
+node scripts/mpd-ext.mjs --self-test                          # exit 0 — the compiled entry needs no TS loader
+bun scripts/mpd-ext.mjs --validator                           # which validator this run loaded, from where
+```
+
+An installed bundle carries the same CLI: from the profile directory, <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
+`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs validate <dir>`. The honest bound: a checkout run
+validates from `src` (live rules, no build step), so a **source** edit is not visible inside an
+artifact until the next `npm run pack` — re-pack before judging a packed CLI.
 
 What does **not** exist in v1, so that you do not plan around it: `mpd_ext_reload`, YAML flows, MCP
 resources or prompts, a GUI panel, a marketplace or remote download, extension-contributed agent

@@ -1,0 +1,40 @@
+{
+  "task": "t67 — pin the guard's both-sides spawn-shape behaviour PERMANENTLY in the package suite",
+  "attempt_id": "da0bebcb-b98d-42ac-93df-4f6b0cf70d21",
+  "agent": "platform-engineer",
+  "verdict": "PASS — the arms are permanent suite tests in the production shape, the control proves a one-sided table hides the defect, the pre-fix predicate is falsified by the same arms, the suite is green, and NO product file changed.",
+  "new_test_file": "packages/mpd-workmate-plugin/test/sandbox-guard.test.ts (11 tests)",
+  "A1_arms": {
+    "shape": "each arm runs in a CHILD process with the environment set AT SPAWN, importing the package's own dist (dist/index.js) — the shape production uses, not an in-process env mutation",
+    "arms": [
+      "node+bun: sandbox HOME + DSH_HOME -> ALLOWED (the recipe the manual prescribes)",
+      "node+bun: HOME unset + DSH_HOME -> REFUSED",
+      "node+bun: real HOME (userInfo().homedir, HOME-independent) + DSH_HOME -> REFUSED, asserted to contain 403 and the real-home-refused code",
+      "node+bun: sandbox HOME + MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1 -> ALLOWED (the deliberate override)"
+    ],
+    "observable_surface": "each arm asserts ALLOWED vs the refusal's status/code — never an internal variable"
+  },
+  "A2_control": {
+    "rule": "armTableVerdict(rows) = { ok, oneSided } where oneSided = ok AND no arm is DISCRIMINATING; only the sandbox arm is discriminating (the override arm also expects ALLOWED but short-circuits before the real-home check, so it cannot discriminate)",
+    "proven": "dropping the discriminating arm leaves every remaining arm GREEN and the verdict reports oneSided=true (the exact false green of the original in-process cases); with the defect present the same table turns red — asserted in the CONTROL test",
+    "found_and_fixed_by_this_control": "my FIRST control rule (\"no ALLOWED-expecting arm\") was wrong and the suite caught it — 1 fail — because the override arm also expects ALLOWED; the rule became behavioural (discriminating, not compositional). The failing run is preserved in output.log."
+  },
+  "A3_suite_green_and_falsifiable": {
+    "V1": "bun test packages/mpd-workmate-plugin -> 39 pass / 0 fail, 351 expect() calls, exit 0",
+    "counts": "pre-existing 28 (rename-delete 24 + workmate 4, unchanged) + 11 new = 39; bun reports '6 files' for 3 test files — its own accounting, reconciled per file in output.log",
+    "falsifiability": "the FALSIFIABILITY test spawns the same sandbox arm against a fixture carrying the PRE-fix predicate verbatim (realHome = homedir()); it must REFUSE 403 — proving the pin fails against the defect it exists to catch, i.e. it is not a tautology"
+  },
+  "A4_no_product_change": {
+    "src_before_after": "63f9c00928aead71231d0c1859edb6d4fd82c569ac1e84586f39de39b41d7559 == 63f9c00928aead71… (identical)",
+    "dist_before_after": "5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d == 5a1863b2… (identical)",
+    "note": "the fix landed in t62; this task only pins it — inScope excluded src/** and dist/** deliberately, and git status confirms the only new file is the test"
+  },
+  "A5_real_library_unchanged_in_window": {
+    "digest_before": "aae7631eb30f6685c1a5fc857bf74d11… (33 files)",
+    "digest_after": "aae7631eb30f6685c1a5fc857bf74d11… (33 files) — identical across the whole run",
+    "note": "the value differs from t62's baseline because peers write the shared library via mpd_workmate_reflect; the invariant is per-window, as recorded in t62 and passed to t63/t64"
+  },
+  "A6_why_here": "the package suite had NO guard test at all, which is why a one-sided, in-process verification passed while every real mounted boot refused (403 on the sandbox). The evidence-path harness proved the fix once (t62); this file is the permanent pin, and its header states that history for the next reader.",
+  "bound": "the suite proves the guard's decision logic in the production shape in both runtimes; the end-to-end sandboxed-BOOT effect remains with t63 (lane owner) and t64 (non-author), as t62's bound states.",
+  "evidence_dir": "evidence/platform/workmate-guard-suite-arms/20260917T034326Z"
+}

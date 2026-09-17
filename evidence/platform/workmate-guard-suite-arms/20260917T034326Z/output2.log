@@ -1,0 +1,12 @@
+# t67 re-run after fixing the CONTROL rule @ 2026-09-17T03:43:51Z
+
+## bun test packages/mpd-workmate-plugin
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+
+ 39 pass
+ 0 fail
+ 351 expect() calls
+Ran 39 tests across 6 files. [945.00ms]
+exit=0

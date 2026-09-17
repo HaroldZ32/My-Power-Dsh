@@ -1,0 +1,412 @@
+{
+  "task": "t35",
+  "attempt_id": "f6093e63-a385-465c-aeb5-239b385f061c",
+  "seat": "packaging-engineer",
+  "kind": "integration",
+  "recorded_at_utc": "2026-09-17T05:42:29Z",
+  "deliverables": [
+    ".mpd/TODO.md",
+    "evidence/wave1-integration/20260917T052400Z/"
+  ],
+  "settled_revision": {
+    "pins": [
+      {
+        "log": "settle-pin-1.log",
+        "pin_at_utc": "2026-09-17T05:25:30Z",
+        "dirty_entries": 284,
+        "vendor_lock_sha256_prefix": "6ca531d2b20afb19",
+        "skills_files": 323,
+        "packer_prefix": "79563bc5fdd6",
+        "closure_prefix": "b82941ec2d4c",
+        "artifact_manifest_prefix": "eaa0919702bf5b33",
+        "artifact_files": 1190,
+        "artifact_manifest_mtime_utc": "05:19:48Z",
+        "twin_instrument_prefix": "858cd130b6ca"
+      },
+      {
+        "log": "settle-pin-2.log",
+        "pin_at_utc": "2026-09-17T05:26:15Z",
+        "dirty_entries": 284,
+        "vendor_lock_sha256_prefix": "6ca531d2b20afb19",
+        "skills_files": 323,
+        "packer_prefix": "79563bc5fdd6",
+        "closure_prefix": "b82941ec2d4c",
+        "artifact_manifest_prefix": "eaa0919702bf5b33",
+        "artifact_files": 1190,
+        "artifact_manifest_mtime_utc": "05:19:48Z",
+        "twin_instrument_prefix": "858cd130b6ca"
+      }
+    ],
+    "pin_identity": {
+      "readings_identical": true,
+      "compared_fields": [
+        "dirty_entries",
+        "vendor_lock_sha256_prefix",
+        "skills_files",
+        "packer_prefix",
+        "closure_prefix",
+        "artifact_manifest_prefix",
+        "artifact_files",
+        "artifact_manifest_mtime_utc",
+        "twin_instrument_prefix"
+      ],
+      "excluded_fields": [
+        "log",
+        "pin_at_utc"
+      ],
+      "gap_seconds": 45
+    }
+  },
+  "merged_tip_gates": [
+    {
+      "gate": "pack-closure",
+      "command": null,
+      "exit_code": 0,
+      "log": "gate-pack-closure.log",
+      "log_bytes": 472,
+      "reading": {
+        "verdict": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-refe",
+        "packed_tree": "/root/dshProj/my-power-dsh/dist/mpd-package",
+        "packed_asset_files": 379,
+        "agent_references": "3/3",
+        "root_files": "1/1",
+        "declared_packages": "23/23"
+      }
+    },
+    {
+      "gate": "patch-check",
+      "command": null,
+      "exit_code": 0,
+      "log": "gate-patch-check.log",
+      "log_bytes": 91,
+      "reading": {
+        "verdict": "[patch-agent-teams-fixes] already applied: 73 mpd delta region(s) across 9 adopted file(s)",
+        "regions": 73,
+        "adopted_files": 9
+      }
+    },
+    {
+      "gate": "test-packages",
+      "command": null,
+      "exit_code": 1,
+      "log": "gate-test-packages.log",
+      "log_bytes": 193073,
+      "reading": {
+        "verdict": "Ran 883 tests across 164 files. [27.51s]",
+        "pass": 882,
+        "fail": 1,
+        "ran": "Ran 883 tests across 164 files",
+        "failing_arm": "T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake",
+        "failing_arm_location": "packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs:176"
+      }
+    },
+    {
+      "gate": "test-qa",
+      "command": "for f in skills/dsh-qa/scripts/*.mjs; do echo \"[test:qa] $f\"; bun \"$f\" --self-test || { echo \"[test:qa] FAILED: $f\"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs --self-test\"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo \"[test:qa] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example\"; exit 1; }; echo \"[test:qa] all self-tests passed\"",
+      "exit_code": 0,
+      "log": "gate-test-qa.log",
+      "log_bytes": 25389,
+      "reading": {
+        "verdict": "[test:qa] all self-tests passed"
+      }
+    },
+    {
+      "gate": "typecheck",
+      "command": "tsgo --noEmit",
+      "exit_code": 0,
+      "log": "gate-typecheck.log",
+      "log_bytes": 16,
+      "reading": {
+        "verdict": "clean: `tsgo --noEmit` printed no diagnostics (exit 0)",
+        "diagnostics": 0
+      }
+    },
+    {
+      "gate": "verify-docs",
+      "command": "node scripts/verify-docs-parity.mjs",
+      "exit_code": 0,
+      "log": "gate-verify-docs.log",
+      "log_bytes": 3038,
+      "reading": {
+        "verdict": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 \u2014 PASS",
+        "pairs": 37,
+        "failed": 0,
+        "violations": 0,
+        "exempt": 17
+      }
+    },
+    {
+      "gate": "verify-rows",
+      "command": "node scripts/verify-rows-parity.mjs",
+      "exit_code": 0,
+      "log": "gate-verify-rows.log",
+      "log_bytes": 451,
+      "reading": {
+        "verdict": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mp",
+        "row_ids": 25
+      }
+    },
+    {
+      "gate": "verify-vendor",
+      "command": "node scripts/verify-vendor.mjs",
+      "exit_code": 0,
+      "log": "gate-verify-vendor.log",
+      "log_bytes": 616,
+      "reading": {
+        "verdict": "[verify-vendor] PASS",
+        "skills_files": 323
+      }
+    }
+  ],
+  "t07_isolated_repeats": [
+    {
+      "log": "t07-repeat-1.log",
+      "pass": 4,
+      "fail": 0,
+      "ran": "Ran 4 tests across 2 files. [254.00ms]",
+      "race_arm": "(pass) T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake [3.15ms]"
+    },
+    {
+      "log": "t07-repeat-2.log",
+      "pass": 4,
+      "fail": 0,
+      "ran": "Ran 4 tests across 2 files. [252.00ms]",
+      "race_arm": "(pass) T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake [3.17ms]"
+    },
+    {
+      "log": "t07-repeat-3.log",
+      "pass": 4,
+      "fail": 0,
+      "ran": "Ran 4 tests across 2 files. [247.00ms]",
+      "race_arm": "(pass) T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake [3.17ms]"
+    }
+  ],
+  "packed_artifact": {
+    "manifest_sha256": "eaa0919702bf5b334332d5b701b6a2a85ab5aa0a84cc4ccd9b4faa6636ebf61c",
+    "manifest_stamp_utc": "2026-09-17T05:19:48.266Z",
+    "files": 1188,
+    "twin_scan": {
+      "identical": 1187,
+      "drift": [],
+      "missing": [],
+      "byDesign": [
+        "package.json",
+        "packages/mpd-ext-plugin/dist/validator.js"
+      ],
+      "noTwin": 1,
+      "afterPack": [],
+      "ok": true
+    },
+    "relative_links": {
+      "scan_line": "[check-relative-links] markdown files scanned: 291; relative links seen: 449",
+      "extensions_for_agents_links": "[check-relative-links] links to EXTENSIONS-FOR-AGENTS.md: 10 (resolving: 10, broken: 0)",
+      "model_templates_path_note": []
+    }
+  },
+  "register_partition": {
+    "check_log": "register-partition-check.log",
+    "check_json": "register-partition-check.json",
+    "check_script": "reconcile-register.py",
+    "check_run": "python3 reconcile-register.py \u2014 exit 0 = reconciled; TWO directions: the internal partition of \u00a78.2-\u00a78.5 and the wave's own coverage list in .mpd/team/friction-p1-wave/team.json",
+    "todo_sha256_prefix": "94bf0cfc43fb30e5",
+    "fixed_section_rows": 36,
+    "already_fixed": 3,
+    "partial": 5,
+    "touched_originals": 44,
+    "untouched_originals_listed": 16,
+    "sum": 60,
+    "new_rows_appended": 20,
+    "direction_1_internal": "clean",
+    "direction_2_coverage": "clean",
+    "disagreements": [],
+    "section_5_non_original_ids": [
+      "T-67"
+    ],
+    "corrections_disclosed": [
+      "draft 1: 31 fixed / 40 touched claimed against a 34-row \u00a78.2 table, T-52 named nowhere, and the NEW row T-67 folded into the original-60 partition",
+      "draft 2: 34 fixed / 42 touched with T-52 and T-56 listed as untouched \u2014 direction 2 (the wave's coverage list) caught both: lane B2 fixed T-52, lane C3 fixed T-56; both are now \u00a78.2 rows",
+      "final: 36 fixed + 3 already + 5 partial = 44 touched, 16 untouched, both directions clean; T-67 stays in \u00a78.5 as a \u00a78.6 new row (by design, not a disagreement)"
+    ]
+  },
+  "vendor_lock_repin_delta": [],
+  "changed_paths": {
+    "list_file": "changed-paths.txt",
+    "command": "git status --porcelain (read-only, repo root)",
+    "total": 4305,
+    "xy_histogram": {
+      "??": 9,
+      "A ": 4185,
+      "AM": 7,
+      "M ": 104
+    },
+    "staged_modified": 104,
+    "unstaged_modified": 0,
+    "staged_added": 4185,
+    "re_add_required": [
+      "evidence/dsh-qa/full-sweep/t26-attempt7/RED-CLASSIFICATION.md",
+      "evidence/wave1-integration/20260917T052400Z/changed-paths.txt",
+      "evidence/wave1-integration/20260917T052400Z/output.log",
+      "evidence/wave1-integration/20260917T052400Z/register-partition-check.json",
+      "evidence/wave1-integration/20260917T052400Z/register-partition-check.log",
+      "evidence/wave1-integration/20260917T052400Z/result.json",
+      "evidence/wave1-integration/20260917T052400Z/result.json.sha256"
+    ],
+    "untracked": [
+      ".qa-before-dir",
+      ".qa-run-stamp",
+      ".qa-t15-dir",
+      ".qa-t17-after",
+      ".qa-t17-after-runner",
+      ".qa-t17-dir",
+      ".qa-t17-final",
+      ".qa-t21-dir",
+      "evidence/dsh-qa/full-sweep/t26-attempt7/correction-20260917T054200Z-reason-ladder-status/"
+    ],
+    "do_not_stage_untracked": [
+      ".qa-before-dir",
+      ".qa-run-stamp",
+      ".qa-t15-dir",
+      ".qa-t17-after",
+      ".qa-t17-after-runner",
+      ".qa-t17-dir",
+      ".qa-t17-final",
+      ".qa-t21-dir"
+    ],
+    "staged_raw_noise": {
+      "paths": 2686,
+      "top_dirs": {
+        "evidence/pack-closure/impl/20260917T011849Z/raw/final": 2410,
+        "evidence/team-watchdog/redesign/lane/2026-09-17T03-52-18.485Z/raw": 21,
+        "evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw": 21,
+        "evidence/team-watchdog/redesign/lane/2026-09-17T03-54-20.627Z/raw": 21,
+        "evidence/team-watchdog/redesign/lane/2026-09-17T03-54-45.322Z/raw": 21,
+        "evidence/team-watchdog/redesign/lane/2026-09-17T03-57-04.815Z/raw": 21,
+        "evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/raw": 21,
+        "evidence/team-watchdog/redesign/verify/20260917T040310Z/lane": 21,
+        "evidence/pack-closure/impl/20260917T011849Z/raw/after": 7,
+        "evidence/agent-teams/deliverables/20260917T015207Z/raw/sessions": 4,
+        "evidence/agent-teams/tools-boundaries/20260917T012056Z/raw/sessions": 4,
+        "evidence/agent-teams/wave-verify/20260917T024718Z/raw/sessions": 4,
+        "evidence/team-watchdog/redesign/core/20260917T012445Z/boot": 3,
+        "evidence/dsh-qa/watchdog-fault-lane-staleness/2026-09-17T04-06-47Z/raw/lane-before": 2,
+        "evidence/pack-closure/impl/20260917T011849Z/raw/before": 2,
+        "evidence/platform/lazy-adapter-live/20260917T013500Z/raw/old-dist": 2,
+        "evidence/agent-teams/ownership/20260917T021348Z/raw/ownership-tests.log": 1,
+        "evidence/agent-teams/ownership/20260917T021348Z/raw/registry-check.log": 1,
+        "evidence/agent-teams/ownership/20260917T021348Z/raw/self-fix-tests.log": 1,
+        "evidence/agent-teams/ownership/20260917T021348Z/raw/tests.log": 1,
+        "evidence/agent-teams/ownership/20260917T021348Z/raw/typecheck.log": 1,
+        "evidence/agent-teams/terminal-dispatch/20260917T023700Z/raw/output-wipe-probe.mjs": 1,
+        "evidence/agent-teams/terminal-dispatch/20260917T023700Z/raw/red-probe.mjs": 1,
+        "evidence/agent-teams/terminal-dispatch/20260917T023700Z/raw/red-seeded-probe.mjs": 1,
+        "evidence/agent-teams/terminal-dispatch/20260917T023700Z/raw/registry-check.log": 1,
+        "evidence/agent-teams/terminal-dispatch/20260917T023700Z/raw/tests.log": 1,
+        "evidence/agent-teams/terminal-dispatch/20260917T023700Z/raw/typecheck.log": 1,
+        "evidence/dsh-qa/watchdog-fault-lane-staleness/2026-09-17T04-06-47Z/raw/engine-suite-before.log": 1,
+        "evidence/dsh-qa/watchdog-fault-lane-staleness/2026-09-17T04-06-47Z/raw/lane-before.log": 1,
+        "evidence/dsh-qa/watchdog-fault-lane-staleness/2026-09-17T04-06-47Z/raw/verify-docs.log": 1,
+        "evidence/dsh-qa/watchdog-fault-lane-staleness/2026-09-17T04-12-42Z/raw/engine-suite-after.log": 1,
+        "evidence/dsh-qa/watchdog-fault-lane-staleness/2026-09-17T04-12-42Z/raw/verify-docs-after.log": 1,
+        "evidence/extensions/docs-claims/2026-09-17T04-02-12Z-lane-c-recheck/raw/gate-docs-parity.txt": 1,
+        "evidence/extensions/docs-claims/2026-09-17T04-02-12Z-lane-c-recheck/raw/gate-selftest.txt": 1,
+        "evidence/extensions/docs-claims/2026-09-17T04-02-12Z-lane-c-recheck/raw/gate-validate-example.txt": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z/raw/decoy-cwd-control.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z/raw/decoy-cwd-control.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z/raw/failure.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z/raw/failure.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z/raw/main.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z/raw/main.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z/raw/session-a.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z/raw/session-a.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z/raw/session-b.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z/raw/session-b.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z/raw/decoy-cwd-control.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z/raw/decoy-cwd-control.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z/raw/failure.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z/raw/failure.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z/raw/main.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z/raw/main.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z/raw/session-a.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z/raw/session-a.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z/raw/session-b.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z/raw/session-b.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T05-18-51.805Z/raw/decoy-cwd-control.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T05-18-51.805Z/raw/decoy-cwd-control.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T05-18-51.805Z/raw/failure.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T05-18-51.805Z/raw/failure.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T05-18-51.805Z/raw/main.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T05-18-51.805Z/raw/main.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T05-18-51.805Z/raw/session-a.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T05-18-51.805Z/raw/session-a.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T05-18-51.805Z/raw/session-b.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-lifecycle/2026-09-17T05-18-51.805Z/raw/session-b.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-mcp-bridge/2026-09-17T01-37-48.486Z/raw/mcp.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-mcp-bridge/2026-09-17T01-37-48.486Z/raw/mcp.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-mcp-bridge/2026-09-17T04-38-00.271Z/raw/mcp.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-mcp-bridge/2026-09-17T04-38-00.271Z/raw/mcp.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-template/2026-09-17T01-37-54.912Z/raw/template.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-template/2026-09-17T01-37-54.912Z/raw/template.session.jsonl.zstd": 1,
+        "evidence/extensions/extension-template/2026-09-17T04-38-08.476Z/raw/template.session.decoded.jsonl": 1,
+        "evidence/extensions/extension-template/2026-09-17T04-38-08.476Z/raw/template.session.jsonl.zstd": 1,
+        "evidence/mpd-bridge/web-settings-bridge/20260917T014234Z/raw/boot-disabled.log": 1,
+        "evidence/mpd-bridge/web-settings-bridge/20260917T014234Z/raw/boot-main.log": 1,
+        "evidence/mpd-bridge/web-settings-bridge/20260917T014234Z/raw/card-shape-control.json": 1,
+        "evidence/mpd-bridge/web-settings-bridge/20260917T014234Z/raw/lane-output.txt": 1,
+        "evidence/mpd-bridge/web-settings-bridge/20260917T043843Z/raw/boot-disabled.log": 1,
+        "evidence/mpd-bridge/web-settings-bridge/20260917T043843Z/raw/boot-main.log": 1,
+        "evidence/mpd-bridge/web-settings-bridge/20260917T043843Z/raw/card-shape-control.json": 1,
+        "evidence/mpd-bridge/web-settings-bridge/20260917T043843Z/raw/lane-output.txt": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/commit-shape.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/currency-at-0300.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/dist-fresh.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/driver.stdout.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/gate-edit-recheck.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/handover-to-t35.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/hybrid-signature.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/manifest-and-docs.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/output.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/pass1-output.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/pass1-result.json": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/pass2-artifact-current.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/pass2.stdout.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/post-gate-recheck.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/post-pack-drift.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/result.json": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/settled-recheck.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/static-gates-at-remeasure.log": 1,
+        "evidence/pack-closure/verify/20260917T024741Z/raw/verify-driver.mjs": 1,
+        "evidence/platform/lazy-adapter-live/20260917T013500Z/raw/A-standard.boot.log": 1,
+        "evidence/platform/lazy-adapter-live/20260917T013500Z/raw/B-red-old-dist.boot.log": 1,
+        "evidence/platform/lazy-adapter-live/20260917T013500Z/raw/C-green-new-dist.boot.log": 1,
+        "evidence/platform/lazy-adapter-live/20260917T013500Z/raw/slow-adapter-row.mjs": 1,
+        "evidence/platform/lazy-adapter-live/20260917T013500Z/raw/slow-provider-green.yml": 1,
+        "evidence/platform/lazy-adapter-live/20260917T013500Z/raw/slow-provider-red.yml": 1,
+        "evidence/platform/verify/20260917T024912Z/raw/doc-pointers.log": 1,
+        "evidence/platform/verify/20260917T024912Z/raw/harness-close.log": 1,
+        "evidence/platform/verify/20260917T024912Z/raw/helper.log": 1,
+        "evidence/platform/verify/20260917T024912Z/raw/helper.log.pid": 1,
+        "evidence/platform/verify/20260917T024912Z/raw/probe.log": 1,
+        "evidence/platform/verify/20260917T024912Z/raw/probe.log.pid": 1,
+        "evidence/platform/verify/20260917T024912Z/raw/self-test.log": 1,
+        "evidence/platform/verify/20260917T024912Z/raw/t50-symbols.log": 1,
+        "evidence/team-watchdog/boot/20260917T040625Z/raw/boot.log": 1,
+        "evidence/team-watchdog/boot/20260917T040625Z/raw/gui-activation.json": 1,
+        "evidence/team-watchdog/boot/20260917T040625Z/raw/index.html": 1
+      },
+      "bytes_of_top_dirs": {
+        "evidence/pack-closure/impl/20260917T011849Z/raw/final": 29186126,
+        "evidence/team-watchdog/redesign/lane/2026-09-17T03-52-18.485Z/raw": 1294000,
+        "evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw": 1294210
+      },
+      "judgement": "regenerable per-check raw output that a `git add` of the evidence tree swept into the index; the captain decides before committing (the bulk is this seat's own evidence/pack-closure \u2026/raw/final)"
+    },
+    "register_tracked": false,
+    "register_ignore_rule": ".gitignore:21:.mpd/"
+  },
+  "invariants": [
+    "no git write command was run by this task",
+    "no file under packages/** or skills/** was edited by this task",
+    "VENDOR_LOCK.json content was not written by this task (re-pin is the captain's step)",
+    "the only workspace-state file edited is .mpd/TODO.md"
+  ]
+}

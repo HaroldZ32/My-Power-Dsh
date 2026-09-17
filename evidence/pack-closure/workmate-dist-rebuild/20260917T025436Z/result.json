@@ -1,0 +1,49 @@
+{
+  "task": "t48 \u2014 repair: rebuild the workmate dist that t23's src edit left stale",
+  "attemptId": "f662f484-914a-4957-94bd-aba937d5d8a4",
+  "measuredAt": "2026-09-17T02:54:38Z",
+  "changedPaths": [
+    "packages/mpd-workmate-plugin/dist/index.js",
+    "evidence/pack-closure/workmate-dist-rebuild/20260917T025436Z"
+  ],
+  "red": {
+    "exit": 1,
+    "decisiveLines": [
+      "  STALE   packages/mpd-workmate-plugin/dist/index.js  <- packages/mpd-workmate-plugin/src/index.ts",
+      "  STALE: packages/mpd-workmate-plugin/dist/index.js \u2014 committed packages/mpd-workmate-plugin/dist/index.js (54704 B, 401573a0173b03db\u2026) != fresh build of packages/mpd-workmate-plugin/src/index.ts (55875 B, 6b1715d0f8bebda0\u2026) \u2014 rebuild: bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js",
+      "[verify-dist-fresh] FAIL - 1 of 20 targets not fresh (STALE: 1) \u2014 703ms"
+    ]
+  },
+  "rebuild": {
+    "command": "bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js",
+    "cwd": "repo root",
+    "note": "canonical repo-root form; a package-directory build emits different bytes (T-67)"
+  },
+  "green": {
+    "exit": 0,
+    "decisiveLines": [
+      "[verify-dist-fresh] NOT COVERED (7) \u2014 committed dist files no target maps to, listed so nothing is silently skipped:",
+      "[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) \u2014 7 NOT COVERED files listed \u2014 749ms"
+    ]
+  },
+  "sourceUntouched": {
+    "before": "c995d0172170507ac2b43c68cf88ec01bc62a500894726875159edfbee02ee57",
+    "after": "c995d0172170507ac2b43c68cf88ec01bc62a500894726875159edfbee02ee57",
+    "identical": true
+  },
+  "dist": {
+    "before": {
+      "sha256": "401573a0173b03db8a6a8fe8dd38e78a9d6d3d6f1aae27de1d5d5f1faec4072a",
+      "bytes": 54704
+    },
+    "after": {
+      "sha256": "6b1715d0f8bebda0f60ea9bdcd24d7e7615bd481951d241be9b393638bccdc85",
+      "bytes": 55875
+    }
+  },
+  "sequencing": "MUST land BEFORE the re-pack (t35): a dist rebuilt after a pack leaves the packed artifact stale, and the artifact ages under any active writer.",
+  "bounds": [
+    "One dist file rebuilt with the canonical command; no source, script or lock was touched.",
+    "The NOT COVERED list is re-read from the same run and compared to the pre-existing 7 files."
+  ]
+}

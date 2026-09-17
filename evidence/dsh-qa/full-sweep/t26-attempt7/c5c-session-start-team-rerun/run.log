@@ -1,0 +1,4 @@
+# determinism re-run of the ONE failing lane (c5: complexTeams [1,0,0], notices [true,true,true], simple all 0/0, negative control ok)
+# if the two cases flip, it is live-model variance; if identical, it is deterministic
+
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=1 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c5c-session-start-team-rerun

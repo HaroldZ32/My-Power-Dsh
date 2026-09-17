@@ -21,6 +21,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 import { readSessionEvents, findToolCall, recordedToolNames } from "./lib/session-evidence.mjs"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const ENUM_JOB = "Do only one thing: list all available tool names in your current session that start with the mcp__ prefix (one per line). Do not call any tools."
@@ -58,7 +59,7 @@ function realRun(job, timeoutMs = 600000) {
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   if (!existsSync(creds)) { console.error("[mcp-call] missing credentials"); process.exit(1) }
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   // Live-LLM cases must ALSO copy settings.yaml when present (AGENTS.md §7): homes whose
   // keys come from gateway providers (llm-pi-ai — opencode-go/scnet) configure the chain
   // there, and without it headless falls back to the base `deepseek-official` route and
@@ -84,7 +85,7 @@ function realRun(job, timeoutMs = 600000) {
   const logFile = join(sandbox, "run.log")
   const fd = openSync(logFile, "w")
   try {
-    const env = { ...process.env, DSH_HOME: sandbox, HOME: sandbox }
+    const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: sandbox  })
     if (env.DSH_HOME !== sandbox) { console.error("[mcp-call] isolation assertion failed: DSH_HOME does not point to the sandbox"); process.exit(1) }
     // NO MPD_AST_GREP_SG_PATH / MPD_CODEGRAPH_BIN pre-setting here (B8): this case
     // used to pin both to the checkout toolchain, which is exactly why it stayed

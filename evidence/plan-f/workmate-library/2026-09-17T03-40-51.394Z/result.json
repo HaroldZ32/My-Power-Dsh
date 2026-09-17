@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wm-dsh-MYhZxy",
+  "wmHome": "/tmp/mpd-wm-home-w6uvoV",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "attempts": 1,
+      "retryNotes": []
+    },
+    "flow": {
+      "ok": true,
+      "calls": {
+        "mpd_workmate_init": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_list": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_spawn": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_reflect": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_match": {
+          "called": true,
+          "succeeded": true
+        }
+      },
+      "unproven": [],
+      "availableTools": 102,
+      "source": "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+      "sample": "see. The read tool resolves via filesystem backend; workspace-write policy might deny reads outside workspace. Let's just attempt read and see. |  | Start with step 1. | dsh: reasoning: | Step 1 result: workmate alice initialized (base Deep Worker, deepseek-official/deepseek-v4-flash), note: Verilog counter specialist. |  | Now step 2: list. | dsh: reasoning: | Step 2 result: workmates (1): alice [Deep Worker] uses=0 :: Verilog counter specialist |  | Step 3: spawn alice with the README task. | dsh: reasoning: | Step 3 result: alice (complete) with summary. |  | Step 4: reflect. | dsh: reasoni"
+    },
+    "files": {
+      "ok": true,
+      "uses": 2,
+      "noteChars": 267,
+      "memoryChars": 324,
+      "note": "Deep Worker-based workmate \"alice\". Verilog counter specialist; workspace is the mpd workmate e2e sandbox (README titles it my-power-dsh); the workmate instance",
+      "wmRoot": "/tmp/mpd-wm-home-w6uvoV/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-w6uvoV",
+      "sandboxRoot": "/tmp/mpd-wm-home-w6uvoV/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

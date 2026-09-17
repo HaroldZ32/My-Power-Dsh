@@ -1,0 +1,60 @@
+{
+  "task": "T-79 supporting measurement (not a task: no attempt owned)",
+  "filed_by": "platform-engineer",
+  "filed_at": "2026-09-17T03:14:45.765Z",
+  "question": "The captain's T-79 row says a single stale auto-dispatch 'cannot discriminate between t36's route missed this one and the fix is inert in this process'. The repo's own T-21 instrument can discriminate: it compares each module's mtime with the live session's start.",
+  "answer": "MEASURED: the fix is inert in this process. `lib/scheduler.js` — one of t36's two changed source files — was written at 02:34:15Z while the newest live session started at 02:10:11Z, so the running dsh holds PRE-fix bytes of the very module that composes the dispatch ticket. The terminal-task re-dispatch observed at ~03:09Z is therefore explained by the T-21 stale-module trap, not by a hole in t36's route.",
+  "live_session": {
+    "dir": "<dir>",
+    "startedAt": "<iso>"
+  },
+  "session_start_relation": "modules with mtime > the session start are RESTART-REQUIRED; modules older than it are FRESH (their on-disk bytes are the ones the process loaded, assuming they were unchanged at start).",
+  "stale_modules": [
+    {
+      "module": "mpd-deltas.js",
+      "verdict": "RESTART-REQUIRED",
+      "mtime": "2026-09-17T02:34:15.760Z"
+    },
+    {
+      "module": "quality-gates.js",
+      "verdict": "RESTART-REQUIRED",
+      "mtime": "2026-09-17T02:16:36.026Z"
+    },
+    {
+      "module": "scheduler.js",
+      "verdict": "RESTART-REQUIRED",
+      "mtime": "2026-09-17T02:34:15.597Z"
+    },
+    {
+      "module": "tool-names.js",
+      "verdict": "RESTART-REQUIRED",
+      "mtime": "2026-09-17T02:17:38.266Z"
+    }
+  ],
+  "fresh_modules": [
+    "capabilities.js",
+    "client.js",
+    "command.js",
+    "events.js",
+    "event-types.js",
+    "harness-compat.js",
+    "index.js",
+    "members.js",
+    "profiles.js",
+    "session-start.js",
+    "snapshot.js",
+    "state.js",
+    "tools.js",
+    "types.js",
+    "web-routes.js"
+  ],
+  "affected_claim_classes": [
+    "anything routed through lib/scheduler.js (dispatch / claim / kick / update paths)",
+    "lib/mpd-deltas.js (registry reads and --check inside the live process)",
+    "lib/quality-gates.js (gate enforcement as observed live)",
+    "lib/tool-names.js (the read-only seat's advertised name list, T-49)"
+  ],
+  "NOT_affected": "t36's own evidence: its probe does `await import(pathToFileURL(join(root,'lib','scheduler.js')))` in a FRESH node process (raw/red-probe.mjs:77), which reads the current bytes from disk. So 'measured live' there means 'route exercised in a fresh process', and that result stands — including the refuted-acceptance-premise it records.",
+  "bound": "This proves WHAT the live process is running. It does NOT prove t36's fix is correct in the running system: a restart (or a fresh-process probe, which t36 used) is what settles behaviour. The wave's bound therefore strengthens: no lane-B behaviour claim may rest on a live re-dispatch after the fix — and any live in-process reading of the four modules above is suspect until a restart.",
+  "method": "node scripts/mpd-bg.mjs reload-check <module>  (scripts/mpd-bg.mjs, t23; --self-test 13/13). Raw capture: output.log in this directory."
+}

@@ -1,0 +1,1 @@
+├── agent-references/             # ON-DEMAND agent-facing reference (English-only, NOT auto-injected; index in the manual's "Reference Index (on-demand)"): troubleshooting.md (former §12 body) + agent-teams-deltas.md (former §6 delta registry)

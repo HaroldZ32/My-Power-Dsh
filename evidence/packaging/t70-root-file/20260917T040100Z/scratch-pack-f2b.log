@@ -1,0 +1,9 @@
+[scratch-pack] repo      = /root/dshProj/my-power-dsh
+[scratch-pack] outDir    = /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact
+[scratch-pack] packer    = /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs  sha256=79563bc5fdd6518e
+[scratch-pack] patched   = /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/pack-mpd.scratch.mjs  sha256=6fa8aeaf704fb273
+[scratch-pack] patched lines: repoRoot, outDir (2 of 517 lines rewritten; every other line byte-identical)
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] modes normalized: 1190 files (644: 1178, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact
+[scratch-pack] packer exit = 0

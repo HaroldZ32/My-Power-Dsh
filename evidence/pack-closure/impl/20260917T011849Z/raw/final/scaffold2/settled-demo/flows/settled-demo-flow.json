@@ -1,0 +1,25 @@
+{
+  "id": "settled-demo-flow",
+  "title": "settled-demo flow",
+  "description": "The settled-demo extension's first flow. Replace this procedure with the real one, or delete the flows directory and the flows entry in mpd-ext.json.",
+  "whenToUse": "Use when a task needs the repeatable procedure this flow describes.",
+  "steps": [
+    {
+      "title": "Collect the input",
+      "detail": "Describe what the first step reads and where it comes from.",
+      "tool": "read",
+      "output": "The input the procedure needs, in the form the next step expects."
+    },
+    {
+      "title": "Apply the extension's skill",
+      "detail": "Follow the settled-demo-skill skill: do the work it describes, naming the contract each result can change.",
+      "tool": "read",
+      "output": "The result of the procedure, with the file behind every claim."
+    },
+    {
+      "title": "Report the outcome",
+      "detail": "State what was done, what was verified and what was NOT verified. If this extension still ships its stdio MCP server, its describe_extension tool reports the id, root and contributed kinds exactly as the running host sees them.",
+      "output": "A short report with the evidence behind each claim."
+    }
+  ]
+}

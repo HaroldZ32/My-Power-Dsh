@@ -17,6 +17,7 @@ import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFil
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const NOTICE_MARKER = "[AgentTeams] Session-start team rule"
@@ -122,10 +123,10 @@ async function runReal() {
   if (!settled) fail("revision did not settle (HEAD or gate file changed during the window)")
 
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-sst-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   const settings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(settings)) cpSync(settings, join(sandbox, "settings.yaml"))
-  const env = { ...process.env, DSH_HOME: sandbox }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
   if (env.DSH_HOME !== sandbox) fail("isolation assertion failed")
 
   function runSync(cmd, args, opts = {}) {
@@ -194,7 +195,7 @@ async function runReal() {
     if (!patchText.includes("autoRoute")) return { ok: false, reason: "autoRoute not found in the installed row patch" }
     const disarmed = patchText.replace(/autoRoute:\s*true/g, "autoRoute: false")
     writeFileSync(join(controlHome, "cordis.patch.yml"), disarmed)
-    const env = { ...process.env, DSH_HOME: controlHome, HOME: controlHome }
+    const env = credentialEnv({ ...process.env, DSH_HOME: controlHome, HOME: controlHome  })
     const live = spawnSync("dsh", ["--profile", "mpd-headless", COMPLEX_PROMPTS[0]], { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: controlWs, stdio: ["ignore", "pipe", "pipe"] })
     LOG.push("[negative-control] autoRoute=false + complex prompt\n[[exit=" + live.status + "]]\n" + ((live.stdout || "") + (live.stderr || "")).slice(0, 4000))
     const teams = activeTeams(controlWs)

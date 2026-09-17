@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wm-dsh-TWzedN",
+  "wmHome": "/tmp/mpd-wm-home-tW4cYI",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "attempts": 1,
+      "retryNotes": []
+    },
+    "flow": {
+      "ok": true,
+      "calls": {
+        "mpd_workmate_init": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_list": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_spawn": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_reflect": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_match": {
+          "called": true,
+          "succeeded": true
+        }
+      },
+      "unproven": [],
+      "availableTools": 102,
+      "source": "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+      "sample": "ith other workmates). If both exist, they may differ. The reflect result said note 211B. The content read is ~211 bytes? Let's count: \"Deep Worker-based workmate \"alice\". Verilog counter specialist; also handles trivial read-and-summarize workspace tasks via the read tool. Last task: summarize README. 2026-09-17T04:04:13.030Z — summarize README\" — that's roughly 211 chars. Plausibly exactly 211 bytes-ish. |  | Let me verify /root path. | dsh: reasoning: | So alice is not in /root/.mpd/workmate. The authoritative store for this session is the virtualized path /tmp/mpd-wm-home-tW4cYI/.mpd/workma"
+    },
+    "files": {
+      "ok": true,
+      "uses": 2,
+      "noteChars": 211,
+      "memoryChars": 497,
+      "note": "Deep Worker-based workmate \"alice\". Verilog counter specialist; also handles trivial read-and-summarize workspace tasks via the read tool. Last task: summarize ",
+      "wmRoot": "/tmp/mpd-wm-home-tW4cYI/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-tW4cYI",
+      "sandboxRoot": "/tmp/mpd-wm-home-tW4cYI/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

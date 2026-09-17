@@ -1,0 +1,7 @@
+[mpd-ext] validator: compiled
+  /root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js
+  (source path unavailable: ../packages/mpd-ext-plugin/src/registry.ts: ERR_MODULE_NOT_FOUND: Cannot find module '/root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-ext-plugin/src/registry.ts' imported from /root/dshProj/my-power-dsh/dist/mpd-package/scripts/mpd-ext.mjs)
+  (source path unavailable: ../packages/mpd-ext-plugin/src/sdk.ts: ERR_MODULE_NOT_FOUND: Cannot find module '/root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-ext-plugin/src/sdk.ts' imported from /root/dshProj/my-power-dsh/dist/mpd-package/scripts/mpd-ext.mjs)
+  (source path unavailable: ../packages/mpd-ext-plugin/src/manifest.ts: ERR_MODULE_NOT_FOUND: Cannot find module '/root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-ext-plugin/src/manifest.ts' imported from /root/dshProj/my-power-dsh/dist/mpd-package/scripts/mpd-ext.mjs)
+  (source path unavailable: ../packages/mpd-roles-plugin/src/roles.data.ts: ERR_MODULE_NOT_FOUND: Cannot find module '/root/dshProj/my-power-dsh/dist/mpd-package/packages/mpd-roles-plugin/src/roles.data.ts' imported from /root/dshProj/my-power-dsh/dist/mpd-package/scripts/mpd-ext.mjs)
+validator EXIT=0

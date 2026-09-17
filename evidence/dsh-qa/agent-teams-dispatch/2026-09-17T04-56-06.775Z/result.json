@@ -1,0 +1,29 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-dispatch-aJxAtY",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "captainRun": {
+      "ok": true,
+      "exit": 0,
+      "tail": " the rest are moot. I'll keep it concise.\n\nActually, let me reconsider whether to just do the create now. The user is testing dispatch in headless mode; a probe requires everything this turn. Since I can't approve this turn after creating, the probe simply cannot run this turn. So the answer is: report.\n\nI could offer to create the staged plan immediately (that's the useful prep), but the user said \"nothing else\". I'll ask before creating, since creating a team is a side-effecting action that the user didn't request (they requested approval of an existing one).\n\nLet me write a concise report.\n"
+    },
+    "tasks": {
+      "total": 0
+    },
+    "memberAssignments": {
+      "count": 0,
+      "sessions": 1,
+      "labels": []
+    },
+    "secondBatchDispatched": {
+      "ok": false
+    },
+    "assignmentDelivery": {
+      "ok": false
+    }
+  }
+}

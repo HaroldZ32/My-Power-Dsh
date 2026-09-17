@@ -1,0 +1,1 @@
+`:930`, `:984`). The same four strings are the gated list (`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts:548`)

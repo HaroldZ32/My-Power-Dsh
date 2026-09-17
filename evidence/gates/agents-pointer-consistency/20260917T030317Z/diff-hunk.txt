@@ -1,0 +1,4 @@
++
++All seven are verified by `node scripts/mpd-bg.mjs --self-test` (13 arms) plus the two sandbox cases
++in `evidence/platform/harness-close/`.
++

@@ -1,0 +1,70 @@
+# t57 — anchor the five rotted bare line refs in EXTENSIONS-FOR-AGENTS.md — evidence log
+# cwd = /root/dshProj/my-power-dsh for every command
+
+## 1. THE ROT, and why the driver could not see it (the invisibility proof)
+THE FIVE REFS AS THEY WERE (doc lines 22-24, quoted verbatim before this task's edit):
+  `packages/mpd-ext-plugin/src/index.ts` (the wrapper at `:537`; the four `name:` lines at `:715`, `:807`,
+  `:930`, `:984`).
+THE DRIVER AT THAT MOMENT (the t50-era reading, evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/check-after.log):
+  ok citations:EXTENSIONS-FOR-AGENTS.md — 54 citation(s) (checked 50: path 33, dir 5, command 12; pending 0, illustrative 4), **0 unresolved**
+  => INVISIBLE: the checker only verifies ANCHORED citations (`SYMBOL`/`"phrase"` immediately before a
+     `path:line`); a bare `:NNN` token forms no citation at all, so five rotted refs still read as GREEN.
+THE ROT, demonstrated per ref (left = what the OLD line carries today, right = the symbol the ref CLAIMED):
+  `:537`  -> `    view.shadowed.filter((record) => record.kept.plane === entry.plane &`   (claimed: the safeRegisterTool wrapper)
+  `:715`  -> `                origin: { type: "string" },`                                (claimed: one of the four `name:` registrations)
+  `:807`  -> `          plane: { type: "string" },`                                       (claimed: one of the four `name:` registrations)
+  `:930`  -> `                title: { type: "string" },`                                  (claimed: one of the four `name:` registrations)
+  `:984`  -> `          description: { type: "string" },`                                  (claimed: one of the four `name:` registrations)
+  None of the five carries any symbol of the claimed kind any more.
+
+## 2. RE-MEASURED AT EDIT TIME (T-55: never copied from the old bare ref)
+$ grep -n "safeRegisterTool" packages/mpd-ext-plugin/src/index.ts
+  521:  const safeRegisterTool = (definition: any, onError: (line: string) => void): boolean => {
+  698, 790, 913, 967: the four `safeRegisterTool({` call sites
+$ grep -n 'name: "mpd_ext_list"\|name: "mpd_ext_show"\|name: "mpd_flow_list"\|name: "mpd_flow_show"' …
+  699:    name: "mpd_ext_list",
+  791:    name: "mpd_ext_show",
+  914:    name: "mpd_flow_list",
+  968:    name: "mpd_flow_show",
+
+## 3. THE FIX — each ref becomes an ANCHORED citation (`SYMBOL`, `path:line`), symbol visible in prose
+BEFORE (doc lines 22-24):
+  `mpd_flow_show` — the four `safeRegisterTool({ name: … })` registrations in
+  `packages/mpd-ext-plugin/src/index.ts` (the wrapper at `:537`; the four `name:` lines at `:715`, `:807`,
+  `:930`, `:984`). The same four strings are the gated list (`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts:532`)
+AFTER:
+  `mpd_flow_show` — the four `safeRegisterTool({ name: … })` registrations in
+  `packages/mpd-ext-plugin/src/index.ts`: the wrapper `safeRegisterTool`, `packages/mpd-ext-plugin/src/index.ts:521`;
+  the four registrations `mpd_ext_list`, `packages/mpd-ext-plugin/src/index.ts:699`; `mpd_ext_show`,
+  `packages/mpd-ext-plugin/src/index.ts:791`; `mpd_flow_list`, `packages/mpd-ext-plugin/src/index.ts:914`;
+  `mpd_flow_show`, `packages/mpd-ext-plugin/src/index.ts:968`.
+  The same four strings are the gated list (`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts:532`)
+GRAMMAR NOTE: the claim token must be a bare SYMBOL or a `"quoted phrase"` (the checker's `claimText()`), so the
+claims are the bare symbols (`safeRegisterTool`, `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show`)
+— each one is contained in its cited line, which is exactly what `content:anchors` asserts.
+
+## 4. THE DELTA IS ARITHMETIC (before/after per-file lines, same run shape)
+  BEFORE: 54 citation(s) (checked 50: path 33, dir 5, command 12), 0 unresolved | content:anchors 41 verified
+  AFTER : **59** citation(s (checked **55**: path **38**, dir 5, command 12), 0 unresolved | content:anchors **46** verified
+  DELTA : citations +5, checked +5 (path +5), anchored-verified +5 — exactly the five new anchors; nothing deleted.
+$ node evidence/extensions/docs-claims/check-citations.mjs -> **exit 0** (12/12 checks)
+$ bun run verify:docs -> exit 0: pairs=37 failed=0 violations=0 exempt=17 — PASS
+
+## 5. NOTHING ELSE MOVED (real git diff; the file is tracked and modified)
+$ git diff -U1 -- EXTENSIONS-FOR-AGENTS.md
+  hunk 1 (@@ -22,4 +22,7 @@) = THIS task: the three old lines replaced by five lines, same meaning,
+    symbols now visible and anchored.
+  hunk 2 (@@ -221,6 +224,11 @@) = t43/t50's already-terminal §9 packed-CLI correction + the two token fixes
+    (visible because those edits are also uncommitted); untouched by this task.
+  sha256: 78a61f5442df747899ae1239dc7f1ad1a71ecac4c5e5d2bae118f28bdb3c1807 (15,425 B, t50's end state)
+       -> 9a157363a16bfeab78837b73e07405306694c1e365c14001c06709fda3430bdb (15,684 B, this task)
+  New anchors in the file: `grep -c "packages/mpd-ext-plugin/src/index.ts:"` = 5 (the five new ones).
+
+## 6. BOUNDS
+- This task anchors the five refs; it does NOT attempt the durable grammar change — accepting a SYMBOL-FIRST anchor
+  with no line is T-72, and it lives in `t21`'s window (wave 2). Until then these five anchors hold the same
+  rot risk as every other `path:line` anchor in the wave.
+- The finding's source is t50's own disclosure (evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/,
+  §6 BOUND), which is what this repair was cut from.
+- No AGENTS.md, agent-references/**, docs/**, packages/**, scripts/** or skills/** byte touched; the checker and
+  its evidence tree are untouched.

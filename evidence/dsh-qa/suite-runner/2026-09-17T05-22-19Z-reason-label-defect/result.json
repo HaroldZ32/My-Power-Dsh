@@ -1,0 +1,146 @@
+{
+  "kind": "defect-record",
+  "task": "t15 deliverable (scripts/run-qa-lanes.mjs) - reason-label precision",
+  "filed_by": "qa-lane-engineer",
+  "filed_at": "2026-09-17T05:22:19.074Z",
+  "status": "FIXED (t73): the reason ladder is implemented, self-tested, and the motivating case is RE-LABELLED to `step:archive` on the recorded bytes; the earlier option list is kept above as superseded",
+  "summary": "When a lane emits no [mpd-qa] marker, classify() falls through to detectSignatures(log, root) and scans the WHOLE log, so a signature the scenario EXPECTED can be reported as the failure reason. Verdict is correct (fail); the reason= label can be drawn from a PASSING step.",
+  "measurement": {
+    "subject": "evidence/dsh-qa/full-sweep/t26-attempt7/c13-agent-teams-adopt + the lane evidence it cites",
+    "chunk": {
+      "manifestSha256": "54585caba9a5",
+      "selected": 1,
+      "complete": true,
+      "durationMs": 48941,
+      "laneVerdict": "fail",
+      "exitCode": 1
+    },
+    "steps": "installer ok | bundleRow ok | override ok | compose ok | live ok | teamState ok | archive FAILED | taskTerminal ok | webInstaller ok | webRoute ok  (9/10 green)",
+    "fence_in_a_passing_step": {
+      "step": "webRoute",
+      "ok": true,
+      "arm": "fence-refusal",
+      "status": 401,
+      "body": {
+        "error": "unauthorized"
+      }
+    },
+    "real_failure": {
+      "step": "archive",
+      "ok": false,
+      "occurrences_of_401_or_unauthorized_in_this_step": 0
+    }
+  },
+  "code_path": {
+    "file": "scripts/run-qa-lanes.mjs",
+    "marker_parse": "MARKER_FULL_RE / MARKER_SHORT_RE (lines 45-46)",
+    "fallback": "classify(): no marker -> detectSignatures(log, root)",
+    "mapping": "SIGNATURES entry {code:'unauthorized', verdict:'fail'} - deliberately NOT a prerequisite code",
+    "invariant_to_preserve": "a 401 is a real failure (the service answered and refused), never a prerequisite absence; the unavailable-vs-failed distinction stays with the runner"
+  },
+  "proposed_fix": {
+    "primary": "prefer the STRUCTURED signal the lane already records (evidence/**/result.json -> steps{name:{ok}}): the first failing step becomes the reason, and the signature scan degrades to alsoDetected",
+    "alternative": "scope the signature scan to the failing region (the tail / the non-ok steps) instead of the whole log",
+    "pin_to_add": "one self-test arm whose fixture prints an expected-fence string INSIDE a passing step and fails in a different step; assert reason == the failing step and that the fence appears only in alsoDetected",
+    "non_goals": "do not change any verdict rule; do not demote the 401 signature to a prerequisite code",
+    "superseded_by": "ladder_refinement (t73): 'structured only' leaves 15 of 34 board entries unchanged, including the motivating lane"
+  },
+  "report_gloss_required": "the three reds must read agent-teams-adopt as red on the archive step (headless-turn artefact) with the board's reason=unauthorized naming text found in a PASSING step - otherwise the mislabel reads as a plugin finding",
+  "ladder_refinement": {
+    "decided_by": "t73 (repair carrier for t32's O2), cut by the captain",
+    "rungs": [
+      "(1) the lane's own [mpd-qa] FAIL reason=... marker (unchanged)",
+      "(2) the structured steps{name:{ok}} map in the lane's OWN evidence -> reason = step:<failing step>; the whole-log scan survives only as alsoDetected",
+      "(3) failing (2), a signature scan SCOPED to the failing region (the log's tail, tailRegion()) plus the lane's evidence records"
+    ],
+    "why_not_structured_only": {
+      "measured_on": "the accepted t26 board (evidence/dsh-qa/full-sweep/t26-attempt7/board.json), 34 entries",
+      "structured_steps_present": 19,
+      "structured_steps_absent": 15,
+      "marker_emitted": 5,
+      "no_readable_path": 7,
+      "caveat": "the detector resolves .json evidence paths and otherwise probes the same directory for result.json, so 19/34 is a FLOOR, not a census — which strengthens the ladder, since a ladder degrades safely when the structured signal is not where the board points"
+    },
+    "implementation": {
+      "file": "scripts/run-qa-lanes.mjs",
+      "added": [
+        "stepFailed(entry)",
+        "failingStepFromEvidence(log, root)",
+        "tailRegion(text, lines=200)",
+        "detectSignaturesScoped(log, root)",
+        "matchSignatures(sources) (refactor so a rung picks its scope)"
+      ],
+      "changed": [
+        "classify(): the no-marker path is now rung 2 -> rung 3, with the whole-log scan demoted to alsoDetected"
+      ],
+      "invariant_preserved": "a 401 is a REAL failure, never a prerequisite absence — no verdict rule moved; fx-401 and fx-both still classify FAIL with reason=unauthorized"
+    },
+    "self_test_arm": {
+      "fixture": "fx-expected-fence.mjs (lane dir of the self-test fixture root)",
+      "shape": "prints the SAME 401 fence text fx-401 fails on, but writes evidence whose steps map marks webRoute ok=true and archive ok=false, then exits 1",
+      "asserts": [
+        "reason === 'step:archive'",
+        "signature.code === 'step:archive'",
+        "the fence appears ONLY in alsoDetected (code 'unauthorized')",
+        "verdict stays 'fail'"
+      ]
+    }
+  },
+  "relabel_measurement": {
+    "old_label": {
+      "reason": "unauthorized",
+      "source": "t26 board, chunk c13 (pre-fix runner): the fence was found by the whole-log scan while webRoute was ok=true"
+    },
+    "live_rerun": {
+      "command": "node scripts/run-qa-lanes.mjs --only=agent-teams-adopt --evidence-dir <this dir>/relabel-run",
+      "verdict": "pass",
+      "ms": 77649,
+      "note": "the lane is GREEN today, so a live run cannot demonstrate the label — recorded so nobody reads a pass as the fix"
+    },
+    "replay": {
+      "why": "replay the RECORDED bytes instead of a fresh run: the defect was about labelling a FAILING run",
+      "fixture": "<this dir>/replay (a fixture root whose only lane re-emits the recorded c13 log byte-for-byte and exits 1)",
+      "command": "node scripts/run-qa-lanes.mjs --root=<this dir>/replay --manifest=skills/dsh-qa/cases.json --only=replay-adopt --evidence-dir <this dir>/replay/out",
+      "new_label": {
+        "verdict": "fail",
+        "reason": "step:archive",
+        "signature": "the lane's own evidence marks step `archive` as failed (evidence/plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json)",
+        "alsoDetected": [
+          {
+            "code": "unauthorized",
+            "file": "(the lane's own stdout)",
+            "line": 11
+          }
+        ]
+      },
+      "verdict_line": "[mpd-qa:(only)] FAIL case=replay-adopt reason=step:archive … also=unauthorized exit=1"
+    }
+  },
+  "neutrality": {
+    "runner": {
+      "before": "f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e",
+      "after": "6bea2b38de2a4ac76ddb672b25bdc5f226e870bdd45cafb9026ae9e3c9c9ded0",
+      "sizeAfter": 44774,
+      "mtimeAfter": "2026-09-17 13:29:36 +0800"
+    },
+    "corpus": {
+      "before": "68318157344aafecabb641b9d947d0f17ab6a4bce5c399b486f18790cc7e3a9c / 323 files",
+      "after": "68318157344aafecabb641b9d947d0f17ab6a4bce5c399b486f18790cc7e3a9c / 323 files",
+      "method": "node scripts/repin-vendor.mjs (dry run), after the edit"
+    },
+    "vendor_lock": {
+      "touched_by_me": false,
+      "mtime": "2026-09-17 13:24:25 +0800 (PRE-dates my 13:29:36 edit)",
+      "skills_asset_now": "fileCount 323 / treeSha 68318157… — the captain's re-pin, matching this lane's FINAL corpus value",
+      "git": "modified vs HEAD by the re-pin, not by this task"
+    },
+    "packer": {
+      "mentions_run_qa_lanes": 0,
+      "packed_scripts": [
+        "install-mcp.mjs",
+        "mpd-ext.mjs"
+      ]
+    },
+    "scope_note": "the only non-evidence path this task wrote is scripts/run-qa-lanes.mjs"
+  }
+}

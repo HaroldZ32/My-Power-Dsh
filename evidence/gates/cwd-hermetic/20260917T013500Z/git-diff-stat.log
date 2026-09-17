@@ -1,0 +1,4 @@
+ packages/mpd-config-plugin/dist/index.js           | 12 ++++---
+ packages/mpd-config-plugin/src/settings-schema.ts  | 34 +++++++++++++++----
+ .../mpd-config-plugin/test/settings-wiring.test.ts | 39 +++++++++++++++++++---
+ 3 files changed, 69 insertions(+), 16 deletions(-)

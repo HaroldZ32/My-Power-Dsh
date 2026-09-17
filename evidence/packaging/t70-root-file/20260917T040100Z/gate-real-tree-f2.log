@@ -1,0 +1,7 @@
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  ROOT-FILE - the packed tree does not carry EXTENSIONS-FOR-AGENTS.md - the artifact's own README/docs link to it by relative path, so those links break for an author who holds only the artifact (T-70)
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/dist/mpd-package (378 asset files)

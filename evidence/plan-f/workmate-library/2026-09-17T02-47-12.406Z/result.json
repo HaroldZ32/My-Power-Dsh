@@ -1,0 +1,38 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wm-dsh-V9NWNV",
+  "wmHome": "/tmp/mpd-wm-home-3G69sV",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "flow": {
+      "ok": true,
+      "sample": "ng outside the workspace may be permitted in workspace-write mode? Typically workspace-write restricts writes, reads are often allowed... but DSH file policy might restrict reads too. We'll see. |  | Do reflect and match — they're independent, so I can call them in one block? The instruction says use tools in this exact order and report each result. To be safe and faithful to the ordering, I'll call them sequentially. Actually they're independent calls but order matters for reporting; the tool ordering is preserved in a parallel block? Better to do sequentially to strictly honor \"in this exact"
+    },
+    "files": {
+      "ok": false,
+      "note": "Deep Worker-based workmate \"alice\". Handles tiny read/summarize requests fast: locate the file, read it, return one-sentence summary, no edits (read-only discip",
+      "wmRoot": "/tmp/mpd-wm-home-3G69sV/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-3G69sV",
+      "sandboxRoot": "/tmp/mpd-wm-home-3G69sV/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

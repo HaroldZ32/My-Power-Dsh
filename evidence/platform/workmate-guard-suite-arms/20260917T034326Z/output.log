@@ -1,0 +1,27 @@
+# t67 — permanent both-sides spawn-shape arms in the package suite @ 2026-09-17T03:43:26Z
+# A4 hash pair BEFORE: src 63f9c00928aead71231d0c1859edb6d4fd82c569ac1e84586f39de39b41d7559 | dist 5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d
+# A5 real library tree digest BEFORE: aae7631eb30f6685c1a5fc857bf74d11 files=33
+
+## V1  bun test packages/mpd-workmate-plugin
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+
+1 tests failed:
+(fail) T-43 real-home guard — both sides, in the shape production uses > CONTROL: a one-sided arm table is reported as HIDING the defect (the t23 failure shape) [0.61ms]
+
+ 38 pass
+ 1 fail
+ 348 expect() calls
+Ran 39 tests across 6 files. [908.00ms]
+V1 exit=1
+
+# A4 hash pair AFTER: src 63f9c00928aead71231d0c1859edb6d4fd82c569ac1e84586f39de39b41d7559 | dist 5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d
+# A5 real library tree digest AFTER: aae7631eb30f6685c1a5fc857bf74d11 files=33
+
+# per-file reconciliation (bun reports 6 files for 3 test files — its own accounting)
+  packages/mpd-workmate-plugin/test/rename-delete.test.ts  24 pass  0 fail 
+  packages/mpd-workmate-plugin/test/sandbox-guard.test.ts  11 pass  0 fail 
+  packages/mpd-workmate-plugin/test/workmate.test.ts    4 pass  0 fail 
+  pre-existing: 24 + 4 = 28 (unchanged) | new arms file: 11 | total 39, 0 fail

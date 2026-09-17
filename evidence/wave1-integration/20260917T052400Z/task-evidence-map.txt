@@ -1,0 +1,213 @@
+t1 [completed] Requirements — re-validate the frozen watchdog contract against the current tree
+    register: T-16,T-17,T-18,T-19,T-20,T-48
+    evidence: evidence/team-watchdog/redesign/core/ evidence/team-watchdog/redesign/d2/
+t2 [completed] Requirements — emit lane B's executable acceptance for the adopted agent-teams i
+    register: T-01,T-02,T-03,T-05,T-07,T-09,T-10,T-12,T-46,T-49
+    evidence: -
+t3 [completed] Requirements/evidence — measure the 27-lane QA baseline and emit the credential 
+    register: T-53,T-58,T-59
+    evidence: evidence/plan-c/c1-team/2026-09-16T07-16-22.160Z/output.log evidence/extensions/integration-ledger/20260916T071414Z/result.json evidence/extensions/captain-suite-run/20260916T073303Z-test-qa-all.log evidence/plan-f/workmate-library/2026-09-16T07-58-07.481Z/result.json evidence/mpd-bridge/web-settings-bridge/20260916T152107Z/result.json evidence/extensions/docs-claims/check-citations.mjs
+t6 [completed] Requirements — freeze the acceptance for the docs/gate lane and the packaging la
+    register: T-32,T-38
+    evidence: -
+t7 [completed] Requirements — freeze the acceptance for the harness-close lane and the adapter 
+    register: T-21,T-23,T-24,T-26,T-37,T-43,T-50,T-54,T-55,T-60
+    evidence: evidence/platform/harness-close/ evidence/extensions/boot-repeat/20260916T064530Z/logs/boot-1..6.log evidence/extensions/boot-repeat/20260916T064530Z/repeat-boot.sh
+t8 [completed] Impl — lane A1: four-state channel predicate, §3 ladder, §4 degradation, status 
+    register: T-16,T-17,T-19,T-20,T-22,T-48,T-58
+    evidence: evidence/team-watchdog/redesign/core/20260917T013000Z/ evidence/team-watchdog/redesign/core/20260917T012445Z/boot/ evidence/team-watchdog/redesign/core/SUMMARY.md
+t9 [completed] Impl — lane B1: D2 deletes the two hold guards; the contract tool reaches every 
+    register: T-02,T-19,T-49
+    evidence: evidence/agent-teams/tools-boundaries/20260917T012056Z/
+t10 [completed] Impl — lane A3: three-layer knob agreement + honest restart disclosure in both f
+    register: T-18,T-57
+    evidence: -
+t11 [completed] Impl — lane E: the packed artifact ships templates/ + docs/, the packed CLI runs
+    register: T-35,T-36,T-45,T-51
+    evidence: evidence/pack-closure/impl/20260917T011849Z/
+t12 [completed] Impl — lane F1: lazy adapter resolution with an honest warning (T-50)
+    register: T-50,T-55
+    evidence: evidence/platform/lazy-adapter/20260917T012724Z/
+t13 [completed] Impl — lane A2: generation-scoped + self-clearing holds, PARKED derivation, knob
+    register: T-16,T-17,T-19,T-20
+    evidence: evidence/team-watchdog/redesign/holds/20260917T020000Z/ evidence/team-watchdog/redesign/holds/SUMMARY.md evidence/team-watchdog/redesign/holds/
+t14 [completed] Impl — lane B2: member-owned contracts become repairable; staged plans cannot do
+    register: T-02,T-03,T-52
+    evidence: evidence/agent-teams/contract-surfaces/20260917T014416Z/delta-table-handoff-t14.md
+t15 [completed] Impl — lane C1: manifest-driven QA runner that continues past an unavailable lan
+    register: -
+    evidence: evidence/dsh-qa/suite-runner/handover-20260917T015029Z/
+t16 [completed] Impl — lane D1: AGENTS.md fits the instruction budget with an on-demand referenc
+    register: T-22
+    evidence: -
+t17 [completed] Impl — lane C2: live lanes receive the credential the host actually has (T-58)
+    register: -
+    evidence: -
+t18 [completed] Impl — lane D2: dist freshness, unmissable row/parity gates, a derivable vendor 
+    register: T-31,T-33,T-37,T-39,T-40
+    evidence: evidence/gates/wiring/20260917T021158Z/
+t19 [completed] Impl — lane B3: deliverables stop vanishing and read-only seats get a durable ch
+    register: T-05,T-09,T-10,T-46
+    evidence: evidence/agent-teams/deliverables/20260917T015207Z/
+t20 [completed] Impl — lane B4: path ownership becomes queryable and repairable; teams carry a w
+    register: T-01,T-12
+    evidence: evidence/agent-teams/ownership/20260917T021348Z/
+t21 [completed] Impl — lane C3: the remaining red lanes, immutable-by-default evidence writes, o
+    register: T-81
+    evidence: -
+t22 [completed] Impl — lane D3: the config plugin's tests become cwd-hermetic (T-57)
+    register: T-57
+    evidence: evidence/gates/cwd-hermetic/20260917T013500Z/ evidence/gates/agents-budget/20260917T011651Z/result.json
+t23 [completed] Impl — lane F2: harness-owned frictions closed by documentation + helper/guard (
+    register: T-21,T-23,T-24,T-26,T-43,T-54,T-55,T-66
+    evidence: -
+t24 [completed] Impl — lane A driver: the RED→GREEN watchdog driver in the QA lane (contract §9)
+    register: T-53
+    evidence: evidence/team-watchdog/redesign/lane/2026-09-17T03-58-17.328Z/
+t25 [completed] Verify — lane B: the adopted-plugin batches behave as claimed in a real boot and
+    register: T-09,T-46
+    evidence: evidence/agent-teams/wave-verify/20260917T024718Z/
+t26 [completed] Verify — lane C: the suite runs to the last lane on this host and reports honest
+    register: T-23
+    evidence: evidence/dsh-qa/full-sweep/t26-attempt7/ evidence/dsh-qa/full-sweep/
+t27 [completed] Verify — lane D: every new gate fails on a seeded violation and the documented c
+    register: -
+    evidence: evidence/gates/negative-controls/20260917T022119Z/
+t28 [completed] Verify — lanes E+F: the packed artifact is self-sufficient and the harness-close
+    register: T-23,T-43,T-50
+    evidence: evidence/pack-closure/verify/20260917T024741Z/ evidence/platform/verify/20260917T024912Z/
+t29 [completed] Verify — lane A: the watchdog redesign behaves as the frozen contract requires (
+    register: -
+    evidence: evidence/team-watchdog/redesign/verify/20260917T040310Z/
+t30 [completed] Review — lane A: the watchdog claims hold up under independent re-execution
+    register: T-53
+    evidence: evidence/team-watchdog/redesign/review-delta evidence/team-watchdog/redesign/lane/2026-09-17T04-11-51.487Z evidence/team-watchdog/boot/20260917T041331Z
+t31 [completed] Review — lane B: the adopted-plugin batches do what the register items demand
+    register: T-01,T-03,T-07,T-09,T-12,T-46,T-52
+    evidence: evidence/agent-teams/wave-review/20260917T030916Z/
+t32 [completed] Review — lane C: the QA baseline is honestly reported and the plumbing works
+    register: T-53
+    evidence: evidence/dsh-qa/mcp-call/2026-09-17T05-20-36.961Z evidence/plan-c/c6-memory/2026-09-17T05-20-37.026Z evidence/dsh-qa/wave-review/20260917T051401Z/
+t33 [completed] Review — lane D: the new gates catch their class and the manual lost no rule
+    register: T-57
+    evidence: -
+t34 [completed] Review — lanes E+F: the packed artifact and the harness-close notes hold up
+    register: T-21,T-23,T-24,T-26,T-43,T-50
+    evidence: evidence/pack-closure/review/20260917T030041Z/
+t35 [in_progress] Integrate — wave 1: register reconciliation, merged-tip gate sweep, and the wave
+    register: -
+    evidence: -
+t36 [completed] Impl — lane B5: a terminal task is never re-offered to a seat (T-07, measured li
+    register: T-07
+    evidence: evidence/agent-teams/terminal-dispatch/20260917T023700Z/
+t37 [completed] Triage — wave-2 candidates: re-measure the P2 register items at the settled tip 
+    register: T-04,T-05,T-06,T-07,T-08,T-11,T-13,T-14,T-15,T-16,T-22,T-25,T-27,T-28,T-29,T-30,T-33,T-34,T-35,T-36,T-41,T-42,T-44,T-47,T-49
+    evidence: evidence/extensions/debranding-probe/20260916T061807Z/result.json
+t38 [completed] Impl — knob-count pins: the two hardcoded 12s become 13 with the new watchdog kn
+    register: -
+    evidence: evidence/gates/knob-count-pins/20260917T012901Z/
+t39 [completed] Impl — apply BOTH delta-table handoffs to the table's REAL home, and fix the two
+    register: -
+    evidence: -
+t40 [completed] Impl — rebuild the two loaded dists and prove T-50's lazy resolution is live in 
+    register: T-50
+    evidence: -
+t41 [completed] Impl — pin T-49's two refusal paths (non-participant, unknown task id) in the se
+    register: -
+    evidence: evidence/agent-teams/t49-control-pins/20260917T024111Z/
+t42 [completed] Impl — land the watchdog §1 rule-3 asymmetry row in agent-references/troubleshoo
+    register: T-55
+    evidence: evidence/gates/watchdog-asymmetry-row/20260917T025500Z/ evidence/gates/agents-budget/
+t43 [completed] Impl — correct the two doc claims that the packed-CLI fix made stale
+    register: -
+    evidence: evidence/gates/packed-cli-claims/20260917T030500Z/
+t44 [completed] Impl — bulk-rebuild the 13 stale package dists so the freshness gate is green
+    register: -
+    evidence: -
+t45 [completed] Impl — T-67 (manual half): §4/§6 name the ONE canonical dist build form and stat
+    register: T-67
+    evidence: evidence/gates/build-form/20260917T032000Z/
+t46 [completed] Review — t45: is the named build form really the one the gate reproduces, and is
+    register: T-67
+    evidence: evidence/gates/build-form-review/20260917T031910Z/
+t47 [completed] Repair — re-anchor the four extension docs so the citation checker stops failing
+    register: -
+    evidence: evidence/extensions/docs-citations-fix/20260917T024119Z/ evidence/extensions/docs-claims/runs/
+t48 [completed] Repair — rebuild the workmate dist that t23's src edit left stale (verify-dist-f
+    register: -
+    evidence: evidence/pack-closure/workmate-dist-rebuild/20260917T025436Z/
+t49 [completed] Review — t47: are the re-anchored citations TRUE, and was the checker left byte-
+    register: -
+    evidence: evidence/extensions/docs-claims/ evidence/review/t49/20260917T025127Z/
+t50 [completed] Repair — the last failing citation: EXTENSIONS-FOR-AGENTS.md:24's EXPECTED_TOOLS
+    register: T-55,T-72
+    evidence: evidence/extensions/docs-claims/check-citations.mjs evidence/extensions/docs-claims/ evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/
+t51 [completed] Repair — name the repo-root cwd in verify-dist-fresh's STALE line (closes the T-
+    register: T-67
+    evidence: evidence/gates/dist-fresh-message/20260917T025956Z/
+t52 [completed] Repair — restore the T-23 friction id on its troubleshooting row (grep T-23 retu
+    register: T-21,T-23,T-24,T-26,T-43
+    evidence: evidence/gates/troubleshooting-t23-row/20260917T030350Z/
+t53 [completed] Repair — AGENTS.md §6's delta-table pointer reverted to A1–D26 (restore D38 afte
+    register: -
+    evidence: evidence/gates/agents-pointer-consistency/20260917T030317Z/
+t54 [completed] Verify — re-judge t47's four docs under the MOVED checker (O2 fired: 5e56c82c… →
+    register: T-53,T-55
+    evidence: evidence/extensions/docs-claims/ evidence/review/t49-rejudge/20260917T033739Z/
+t55 [completed] Repair — the deliverables driver's HEADER claims an A4 tool/call its code does n
+    register: -
+    evidence: evidence/agent-teams/deliverables/20260917T015207Z/driver.mjs evidence/agent-teams/driver-header-truth/20260917T030901Z/
+t56 [completed] Repair — T-23's SECOND symptom row (fresh /tmp) still lacks its friction id (t34
+    register: T-21,T-23,T-24,T-26,T-43
+    evidence: evidence/gates/troubleshooting-t23-second-row/20260917T031123Z/
+t57 [completed] Repair — anchor the five rotted bare line refs in EXTENSIONS-FOR-AGENTS.md (invi
+    register: T-55,T-72
+    evidence: evidence/gates/extensions-unanchored-refs/20260917T035000Z/
+t58 [completed] Verify — the friction-id census: does EVERY symptom row for T-21/T-23/T-24/T-26/
+    register: T-21,T-23,T-24,T-26,T-43,T-54
+    evidence: evidence/gates/friction-id-census/20260917T031720Z/
+t59 [completed] Verify — discriminate the QA watchdog fault lane's F2/F4/F9: stale lane expectat
+    register: -
+    evidence: evidence/review/watchdog-fault-discrimination/20260917T032832Z/
+t60 [completed] Repair — §6's build-form sentence must name the 26 bundled-module path comments,
+    register: -
+    evidence: evidence/gates/build-form/20260917T033500Z-t60/REVERSED-pre-t60.AGENTS.md evidence/gates/build-form/20260917T033500Z-t60/
+t61 [pending] Verify — independently re-measure the FINAL post-t35 pack on its frozen revision
+    register: -
+    evidence: -
+t62 [completed] Repair — the T-43 real-home guard refuses the SANDBOX it is supposed to allow (o
+    register: -
+    evidence: -
+t63 [completed] Verify — re-run workmate-library green after the guard fix (the leg t21 deferred
+    register: -
+    evidence: evidence/dsh-qa/lane-reverify/2026-09-17T04-03-49Z/
+t64 [completed] Verify — independent second reading of the real-home guard under the PROCESS-STA
+    register: -
+    evidence: evidence/review/workmate-guard-postfix/20260917T034040Z/
+t65 [completed] Repair — the watchdog fault lane expects pre-redesign behaviour; drive the §1 es
+    register: -
+    evidence: evidence/dsh-qa/watchdog-fault-lane-staleness/2026-09-17T04-12-42Z/
+t66 [completed] Repair — §6's path-comment count is 13 per build, not 26 (the 26 is a diff-side 
+    register: -
+    evidence: evidence/gates/build-form/20260917T034500Z-counting-convention/ evidence/gates/build-form/20260917T040500Z-t66/
+t67 [completed] Repair — land the guard's both-sides spawn-shape arms in the PACKAGE suite (the 
+    register: -
+    evidence: -
+t68 [completed] Repair — EXTENSIONS-FOR-AGENTS.md: convert every line-number anchor to the symbo
+    register: -
+    evidence: evidence/extensions/docs-claims/t68-symbol-first-20260917T043200Z/ evidence/extensions/
+t69 [completed] Review — citation conversion semantics: every converted anchor denotes the code 
+    register: -
+    evidence: evidence/review/t69-citation-semantics/20260917T043439Z/
+t70 [completed] Lane E defect — ship EXTENSIONS-FOR-AGENTS.md in the artifact and make the closu
+    register: -
+    evidence: evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact/
+t71 [completed] Instrument defect — the twin scan cannot see a missing REQUIRED ROOT FILE (hardc
+    register: -
+    evidence: -
+t72 [completed] Repair — the twin scan's declaration PARSER truncated PLUGIN_PKGS at a comment's
+    register: -
+    evidence: -
+t73 [claimed] Repair — the runner's reason LADDER: a label must name the failing step, never t
+    register: -
+    evidence: -

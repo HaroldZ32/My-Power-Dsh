@@ -1,0 +1,84 @@
+# t43 — packed-CLI stale claims corrected — evidence log
+# cwd = /root/dshProj/my-power-dsh for every command
+
+## 1. The three edits (before → after)
+
+### (a) EXTENSIONS-FOR-AGENTS.md §9 — the FALSE packed-CLI limit
+BEFORE (read at 02:52Z, lines 222-225):
+  The developer CLI (`validate` / `scaffold` / `--self-test`) does NOT work inside a PACKED artifact: the packer ships
+  `packages/<pkg>/dist` and no `src`, while the CLI imports its validator from `src` (measured: exit 1,
+  `Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'`; `evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json`)
+  — run it from a checkout. No reload (…
+AFTER (lines 222-229):
+  The developer CLI (`validate` / `scaffold` / `--self-test` / `--validator`) works from a CHECKOUT (it imports
+  the TypeScript validator sources) AND from a PACKED artifact: the packer ships `templates/`, the `docs/` pairs,
+  `agent-references/` and `scripts/`, and emits `packages/mpd-ext-plugin/dist/validator.js` — the compiled entry
+  the CLI falls back to when `src/` is absent. Measured on a fresh `dist/mpd-package/`: every command exits 0
+  under bun and under plain node, and `--validator` prints which entry a run loaded
+  (`evidence/pack-closure/impl/20260917T011849Z/`). A SOURCE edit reaches the artifact only after a re-pack: the
+  packed tree ships `packages/*/dist/` and no `packages/*/src/` (it does carry other `.ts` files, e.g. the adopted
+  plugin's `lib/types/` declarations).
+WHY THE OLD TEXT IS FALSE (t11's measurement, cited in the new text): a real `npm run pack` output, then
+  `bun dist/mpd-package/scripts/mpd-ext.mjs validate dist/mpd-package/extensions/mpd-ext-example` → exit 0;
+  `scaffold` → exit 0; `--self-test` → exit 0 (53 checks, "[validator: compiled]"); plain `node` too;
+  `--validator` prints the entry a run loaded. Evidence: evidence/pack-closure/impl/20260917T011849Z/result.json.
+
+### (b) AGENTS.md §8 — the packer copy list was INCOMPLETE
+BEFORE (lines 441-444):
+  installs (`dsh plugin --profile web add dist/mpd-package`): it copies the built plugin
+  dists, the adopted agent-teams main code, `skills/` + `presets/`, the combined web
+  client and the docs/licences, and writes the packed-form manifest + patch — and it
+  refuses to ship a package with a missing `dist/`. A checkout install never needs it;
+AFTER (lines 441-448):
+  installs (`dsh plugin --profile web add dist/mpd-package`): it copies the built plugin
+  dists (incl. the combined web client), the adopted agent-teams main code, `skills/` +
+  `presets/`, `extensions/`, the scaffold `templates/`, the `docs/` set (EN + `*.zh-CN.md`
+  pairs), the English-only on-demand `agent-references/`, `scripts/` (the extension CLI) and
+  the licence/README files, and writes the packed-form manifest + patch — declaring all of
+  them in `files`, with the author-facing groups also in `exports` — and it refuses to ship
+  a package with a missing `dist/`. A checkout install never needs it;
+MEASURED BASIS: `dist/mpd-package/package.json` `files[]` = 13 entries (packages/**, skills/**, presets/**,
+  extensions/**, templates/**, docs/**, agent-references/**, scripts/**, cordis.patch.yml, LICENSE.md,
+  LICENSE-NOTICES.md, README.md, README.zh-CN.md); every one exists in the artifact root; the only root entry NOT
+  declared is package.json (npm always includes it). `exports` keys = ., ./package.json, ./packages/*, ./skills/*,
+  ./presets/*, ./extensions/*, ./templates/*, ./docs/*, ./agent-references/*, ./client — so "all of them in
+  `files`, with the author-facing groups also in `exports`" and NOT "all of them in exports" (no ./scripts/*).
+SCOPE NOTE (captain-approved addition): `templates/`, `docs/` and `agent-references/` are the three groups the
+  user's 2026-09-17 decision + t11's implementation added; `extensions/` and `scripts/` were ALREADY shipped but
+  were never named by the manual (measured: `git diff -U1 -- scripts/pack-mpd.mjs` shows the inline `extensionsSrc`
+  copy becoming a declarative entry, and the `scripts/` copy line unchanged as context) — naming them completes the
+  sentence about what the packer always did, with the captain's ruling as the authority for including them.
+
+### (c) AGENTS.md §3 (line 144) — the mpd-ext.mjs one-liner was INCOMPLETE
+BEFORE: │   ├── mpd-ext.mjs               # extension developer CLI (validate/scaffold/list/--self-test); shares the RUNTIME validator (imports the TS source under bun)
+AFTER:  │   ├── mpd-ext.mjs               # extension developer CLI (validate/scaffold/list/--self-test/--validator); shares the RUNTIME validator (TS sources in a checkout, the packer-generated `dist/validator.js` inside a packed artifact)
+WHY: the old line was not false, it was incomplete — the checkout form imports the TS sources, and the packed form
+  falls back to the packer-generated compiled entry. One clarifying clause, as contracted.
+
+## 2. Gates
+$ bun run verify:docs    -> exit 0: "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS"
+$ node scripts/verify-rows-parity.mjs -> exit 0: "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list"
+$ bun evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs current=AGENTS.md
+  -> sourceBytes 47510, renderedBytes 47814, truncated false, "GREEN (full content injected)" (~17.7 KB headroom)
+
+## 3. Post-edit invariants
+- `grep -c "does NOT work inside a PACKED artifact" EXTENSIONS-FOR-AGENTS.md` = 0 (the false limit is gone)
+- `grep -c 'validate` / `scaffold` / `--self-test` / `--validator`' EXTENSIONS-FOR-AGENTS.md` = 1
+- `grep -c "on-demand \`agent-references/\`" AGENTS.md` = 1
+- sizes/hashes: AGENTS.md 47,510 B sha256 994f01451ec726a966b678bbe33f899a9879a32df92165a0491215ec1a413c1b;
+  EXTENSIONS-FOR-AGENTS.md 15,419 B sha256 cae9486f806dafd159ce3b9a27d9e3bd0f75743e84cf67628ff36313d083cb7b
+
+## 4. Honesty split (per the contract's last item: accuracy, not the edit)
+- §9's old text: **FALSE as of t11** (the packed CLI was measured to work) → corrected.
+- §8's old list: **INCOMPLETE** (five shipped groups missing: templates/, docs/, agent-references/, extensions/,
+  scripts/) → completed.
+- §3:144: **INCOMPLETE, NOT false** (the checkout statement was true, it just stopped telling the whole story) →
+  one clarifying clause. Not dressed up as a stale claim.
+
+## 5. Bounds
+- Only the three regions above changed: no heading moved, no other file in either document was touched, no
+  bilingual twin is involved (both are English-only agent-facing files), and the doc-pair census is unchanged
+  (pairs=37 failed=0).
+- AGENTS.md is untracked-adjacent in the sense that other lanes' edits are uncommitted too, so `git diff` cannot
+  isolate this task's bytes; the before-texts above are quoted from the reads taken immediately before the edit
+  (02:52Z) and the after-texts from this directory's after-texts.txt capture.

@@ -22,6 +22,12 @@ export interface TeamTask {
   attempt?: number
   attemptId?: string
   updatedAt?: number
+  /**
+   * T-20 (§8): the task ids this task depends on. Carried because the watchdog derives
+   * "this member is blocked and has nothing claimable" from the RECORD ALONE — no new
+   * member-facing wait tool is added, and no other process has to tell the watchdog.
+   */
+  dependencies?: string[]
 }
 
 /** One member of the adopted record (only the fields the watchdog reads). */
@@ -47,6 +53,12 @@ export interface TeamRecord {
    * record nobody has touched for days cannot dispatch, so ticking it only manufactures noise.
    */
   activityAt: number | null
+  /**
+   * T-16 (§6): the record's own creation/approval times. Together they are the GENERATION
+   * FLOOR — a stamp older than both belongs to a previous generation of this team.
+   */
+  createdAt: number | null
+  approvedAt: number | null
   /** The raw parsed record, kept for byte-level honesty checks in tests/lanes. */
   raw: Record<string, unknown>
 }
@@ -131,8 +143,13 @@ export function readTeam(workspace: string, stateDir: string, teamId: string): T
           ...(typeof task.attempt === "number" ? { attempt: task.attempt } : {}),
           ...(typeof task.attemptId === "string" ? { attemptId: task.attemptId } : {}),
           ...(typeof task.updatedAt === "number" ? { updatedAt: task.updatedAt } : {}),
+          ...(Array.isArray(task.dependencies)
+            ? { dependencies: (task.dependencies as unknown[]).filter((id): id is string => typeof id === "string") }
+            : {}),
         })),
       activityAt: recordActivityAt(raw),
+      createdAt: typeof raw.createdAt === "number" && Number.isFinite(raw.createdAt) ? raw.createdAt : null,
+      approvedAt: typeof raw.approvedAt === "number" && Number.isFinite(raw.approvedAt) ? raw.approvedAt : null,
       raw,
     }
   } catch {
@@ -180,6 +197,40 @@ export function readTeams(workspace: string, stateDir: string): TeamRecord[] {
 /** Every non-terminal task of a team, in record order. */
 export function liveTasks(team: TeamRecord): TeamTask[] {
   return team.tasks.filter((task) => !TERMINAL_STATUSES.includes(task.status))
+}
+
+/**
+ * T-20 (§8): is this member blocked on unfinished dependencies?
+ *
+ * A member whose ONLY open tasks are blocked by dependencies that are not terminal has
+ * nothing claimable: it is WAITING, not silent, and the watchdog must report it `PARKED`
+ * rather than warn about it. Derived from the record alone.
+ *
+ * Two deliberate readings, both conservative in the SAFE direction for a watchdog:
+ *   * a dependency naming a task that is NOT in the record counts as unfinished — a task that
+ *     cannot be shown finished has not been shown finished;
+ *   * a member with NO open task is not "blocked" (there is nothing to wait for), which is the
+ *     `candidateFor` precondition's job, not this one.
+ *
+ * @param team - the projected record.
+ * @param assignee - the member name (or `captain`).
+ * @returns whether every open task of that member waits on an unfinished dependency, with the
+ *          blocking ids for diagnostics.
+ */
+export function dependencyBlocked(team: TeamRecord, assignee: string): { blocked: boolean; waiting: string[] } {
+  const owned = liveTasks(team).filter((task) => task.assignee === assignee)
+  if (owned.length === 0) return { blocked: false, waiting: [] }
+  const waiting: string[] = []
+  const blocked = owned.every((task) => {
+    const deps = task.dependencies ?? []
+    const unfinished = deps.filter((id) => {
+      const target = team.tasks.find((candidate) => candidate.id === id)
+      return target === undefined || !TERMINAL_STATUSES.includes(target.status)
+    })
+    waiting.push(...unfinished)
+    return unfinished.length > 0
+  })
+  return { blocked, waiting: [...new Set(waiting)].sort() }
 }
 
 /**

@@ -1,0 +1,17 @@
+=== ROUND TRIP: the documented command, run from the repo root, into a TEMP outfile ===
+Bundled 11 modules in 22ms
+
+  index.js  152.86 KB  (entry point)
+
+index build exit=0
+Bundled 1 module in 8ms
+
+  sdk.js  1.71 KB  (entry point)
+
+sdk build exit=0
+committed index.js : f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  152855 B
+round-trip index.js: f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  152855 B
+committed sdk.js   : 4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195  1708 B
+round-trip sdk.js  : 4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195  1708 B
+=== package-dir form (the trap) for contrast, also to a temp outfile ===
+package-dir build: a7b843e19656dbe950131f9c597222436f671a15b35ee3c62776fd4f6f76864a  152579 B (banner: // ../mpd-dsh-adapter-plugin/src/index.ts)

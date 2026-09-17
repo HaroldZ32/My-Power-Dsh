@@ -48,6 +48,7 @@ import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import zlib from "node:zlib"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PLUGIN = join(repoRoot, "packages", "mpd-agent-teams-plugin")
@@ -235,11 +236,11 @@ async function runReal() {
   const outDir = join(repoRoot, "evidence", "dsh-qa", "agent-teams-dispatch", ts)
   mkdirSync(outDir, { recursive: true })
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-dispatch-"))
-  if (existsSync(creds)) cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   if (existsSync(settings)) cpSync(settings, join(sandbox, "settings.yaml"))
   const ws = join(sandbox, "ws")
   mkdirSync(ws, { recursive: true })
-  const env = { ...process.env, DSH_HOME: sandbox }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
   const steps = {}
   let failed = false
 

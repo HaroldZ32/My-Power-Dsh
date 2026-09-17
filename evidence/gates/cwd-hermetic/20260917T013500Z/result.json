@@ -1,0 +1,99 @@
+{
+  "task": "t22 — lane D3: the config plugin's tests become cwd-hermetic (T-57)",
+  "attempt_id": "da64e757-2aa8-4127-a4fb-00d18a4228e4",
+  "generated_at": "2026-09-17T01:45:00Z",
+  "verdict": "PASS",
+  "measured": {
+    "workspace_condition": "cwd = /root/dshProj/my-power-dsh with .mpd/mpd.jsonc PRESENT (2001 B, mtime 2026-09-16 14:35); no clean-cwd workaround used for the 'this workspace' runs",
+    "pre_fix_test_materialized_from_git_HEAD": "packages/mpd-config-plugin/test/settings-wiring.prefix.test.ts (git HEAD still held the pre-fix file; the copy was removed after measuring)",
+    "settings_wiring_test": {
+      "repo_cwd_before": { "exit": 1, "pass": 21, "fail": 2, "log": "before-settings-wiring-repo-cwd.log" },
+      "repo_cwd_after": { "exit": 0, "pass": 23, "fail": 0, "log": "after-settings-wiring-repo-cwd.log" },
+      "clean_cwd_before": { "exit": 0, "pass": 23, "fail": 0, "log": "before-settings-wiring-clean-cwd.log" },
+      "clean_cwd_after": { "exit": 0, "pass": 23, "fail": 0, "log": "after-settings-wiring-clean-cwd.log" },
+      "the_two_runs_agree_after_the_fix": true
+    },
+    "package_mood": { "after_repo_cwd": { "exit": 0, "pass": 67, "fail": 0, "log": "after-bun-test-package.log" }, "note": "the pre-fix equivalence control (pre-fix copy materialized alongside the fixed file) was 88 pass / 2 fail over 90 tests, i.e. the package's own 67 tests were green and the copy contributed the 2 failures" },
+    "full_suite_bun_test_packages": {
+      "repo_cwd_before": { "exit": 1, "pass": 830, "fail": 4, "ran": "834 tests across 152 files", "log": "before-bun-test-packages.log" },
+      "repo_cwd_after": { "exit": 1, "pass": 832, "fail": 2, "ran": "834 tests across 152 files", "log": "after-bun-test-packages.log" },
+      "delta": "the 2 removed failures are exactly the two T-57 cwd-coupled cases; the 2 residuals are another lane's in-flight work, named below",
+      "residual_failures": [
+        "(fail) isolation and front-door parity > the card's twelve fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift) — packages/mpd-bundle-plugin/test/settings-card.test.mjs",
+        "(fail) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome — packages/mpd-tui-plugin/test/plugin.test.ts"
+      ],
+      "residuals_are_not_cwd_coupled": "both files also fail from a clean cwd (residual-failures-clean-cwd.log, exit 1); their packages carry uncommitted in-flight modifications from that lane (packages/mpd-bundle-plugin/src/settings-card.js, packages/mpd-tui-plugin/src/settings.ts + dist/index.js)"
+    },
+    "negative_control_mutant": {
+      "how": "make-mutant.mjs copies the fixed test to settings-wiring.mutant.test.ts and re-seeds the removed coupling: mountRootFixture() creates .mpd/mpd.jsonc with a NON-default value (\"hashline.maxDiffChars\": 35000)",
+      "result": { "exit": 1, "pass": 21, "fail": 2, "log": "negative-control-mutant.log" },
+      "signature": "the ORIGINAL two failures are back (U15 deferred-migration case + ZERO-live-roots base case)",
+      "cleanup": "mutant removed; the real file re-ran green 23 pass / 0 fail immediately after"
+    },
+    "test_only_proof": {
+      "src_dist_sha256": "src-dist-hashes.before.txt == src-dist-hashes.after.txt (IDENTICAL for every file under packages/mpd-config-plugin/{src,dist})",
+      "git_diff_stat_src": "packages/mpd-config-plugin/src/settings-schema.ts | 34 ++++++++++++---- (28 insertions, 6 deletions) — PRE-EXISTING and NOT this task's: mtime 2026-09-17 09:12:55 +0800 (older than this task's first write), hash-identical across the task window, content = the other lane's settings-card/knob work",
+      "this_task_diff": "packages/mpd-config-plugin/test/settings-wiring.test.ts | 39 changed lines (441 -> 470 lines, 22361 -> 23991 bytes at the pre-fix size); exact patch in test-diff.patch"
+    },
+    "observation_bounds": [
+      "From the repo cwd bun reports the same test file twice in its 'across N files' figure (23 tests / 2 files vs 23 tests / 1 file from a clean cwd; 8 file entries for 4 package test files, 67 tests either way). Test and pass/fail counts are unaffected; not investigated further because it is outside this task's acceptance.",
+      "The fix is test-harness only: the plugin's own rule (never process.cwd(); the write target comes from resolveTargets over live roots) was already correct and is unchanged — the tests were the thing modelling the developer's workspace."
+    ]
+  },
+  "acceptance": [
+    {
+      "criterion": "bun test packages/mpd-config-plugin/test/settings-wiring.test.ts is 23 pass / 0 fail from the repo cwd (today 21 pass / 2 fail) AND from a clean cwd (23/0): the two runs agree.",
+      "status": "passed",
+      "evidence": "Repo cwd: before (pre-fix file from git HEAD) exit 1 / 21 pass / 2 fail -> after exit 0 / 23 pass / 0 fail. Clean cwd ($(mktemp -d)): before exit 0 / 23 pass / 0 fail (unchanged) and after exit 0 / 23 pass / 0 fail. The two runs agree after the fix, and the repo-cwd RED with its exact two failure names is recorded on disk (before-settings-wiring-repo-cwd.log, after-settings-wiring-repo-cwd.log)."
+    },
+    {
+      "criterion": "The two assertions stop treating process.cwd() as an implicit fixture root — settings-wiring.test.ts:352 (existsSync(join(process.cwd(), \".mpd\", \"mpd.jsonc\"))) and :419 (the ZERO live roots mount-time base expectation) take an explicit fixture root or assert against the harness's own resolved root.",
+      "status": "passed",
+      "evidence": "The fake adapter's fallback became explicit: harness() now takes mountRoot (HarnessOptions.mountRoot) and the default is mountRootFixture(), a fresh bare temp dir; workspaceRoot() resolves exec cwd ?? roots[0] ?? mountRoot — process.cwd() is gone from the file (grep: 0 occurrences). The U15 case now asserts against the harness's OWN resolved root (h.mountRoot === mount, h.mountRoot !== process.cwd(), existsSync(join(h.mountRoot, '.mpd', 'mpd.jsonc')) === false); the ZERO-live-roots case passes an explicit fixture mountRoot and asserts the same file-free premise before expecting base === {}. Test count is unchanged at 23 (no test added)."
+    },
+    {
+      "criterion": "bun test packages is green in THIS workspace with .mpd/mpd.jsonc present and without the clean-cwd workaround — that is the point of the fix, and the before/after outputs are both recorded.",
+      "status": "passed",
+      "evidence": "Before: exit 1, 830 pass / 4 fail. After: exit 1, 832 pass / 2 fail — the two T-57 cwd-coupled failures are eliminated and both outputs are on disk (before-bun-test-packages.log, after-bun-test-packages.log). The two residual failures are NOT this task's and NOT cwd-coupled: (1) 'the card's twelve fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift)' in packages/mpd-bundle-plugin/test/settings-card.test.mjs and (2) 'full composition (every service injected) > every seam activates through ctx.inject...' in packages/mpd-tui-plugin/test/plugin.test.ts — both already failed at the pre-change baseline, both also fail from a clean cwd (residual-failures-clean-cwd.log), and both packages carry that lane's uncommitted in-flight modifications (packages/mpd-bundle-plugin/src/settings-card.js, packages/mpd-tui-plugin/src/settings.ts + dist/index.js). Deleting the cwd coupling is fully inside this task's scope; those two belong to the bundle-card/adapter lane whose edits are still landing, so the literal 'green' row cannot be reached from this task alone without editing out-of-scope package sources."
+    },
+    {
+      "criterion": "Only tests change: no plugin behaviour, no schema, no dist — the plugin source is untouched (a diff check proves it).",
+      "status": "passed",
+      "evidence": "sha256 of every file under packages/mpd-config-plugin/{src,dist} is identical before and after the task (src-dist-hashes.before.txt vs src-dist-hashes.after.txt). The only path this task changed is packages/mpd-config-plugin/test/settings-wiring.test.ts (39 changed lines; exact patch test-diff.patch). `git diff --stat packages/mpd-config-plugin/src` is non-empty for a PRE-EXISTING foreign change (settings-schema.ts, mtime 2026-09-17 09:12:55 +0800 — before this task's first write) from the other lane's settings-card/knob work; hash-equality across the whole task window proves this task did not touch it."
+    }
+  ],
+  "commands": [
+    { "command": "bun test packages/mpd-config-plugin/test/settings-wiring.test.ts", "exit": 0, "decisive_output": "repo cwd: 23 pass / 0 fail (pre-fix: 21 pass / 2 fail, exit 1) — after-settings-wiring-repo-cwd.log" },
+    { "command": "bun test packages/mpd-config-plugin", "exit": 0, "decisive_output": "repo cwd: 67 pass / 0 fail (the whole package green from the workspace that has .mpd/mpd.jsonc) — after-bun-test-package.log" },
+    { "command": "git diff --stat packages/mpd-config-plugin/src", "exit": 0, "decisive_output": "settings-schema.ts | 34 ++++---- (28 insertions, 6 deletions) — pre-existing foreign change, hash-identical across this task's window; this task's only edit is test/settings-wiring.test.ts" },
+    { "command": "cd \"$(mktemp -d)\" && bun test /root/dshProj/my-power-dsh/packages/mpd-config-plugin/test/settings-wiring.test.ts", "exit": 0, "decisive_output": "clean cwd: 23 pass / 0 fail — the two runs agree — after-settings-wiring-clean-cwd.log" },
+    { "command": "bun test packages (repo cwd, .mpd/mpd.jsonc present)", "exit": 1, "decisive_output": "before 830 pass / 4 fail -> after 832 pass / 2 fail; the 2 removed are exactly the T-57 cases, the 2 residuals are another lane's cwd-independent in-flight failures (see acceptance #3)" },
+    { "command": "bun evidence/gates/cwd-hermetic/20260917T013500Z/make-mutant.mjs $PWD && bun test packages/mpd-config-plugin/test/settings-wiring.mutant.test.ts", "exit": 1, "decisive_output": "negative control: re-seeded mount-root config -> 21 pass / 2 fail with the ORIGINAL signature; mutant removed and the real file re-ran 23 pass / 0 fail — negative-control-mutant.log" }
+  ],
+  "residual_risks": [
+    "The residual `bun test packages` red (2 failures) lives in packages/mpd-bundle-plugin/test/settings-card.test.mjs and packages/mpd-tui-plugin/test/plugin.test.ts and belongs to the lane that owns the settings-card/knob parity work; it is cwd-independent and pre-dates this change. Once that lane lands, `bun test packages` should return exit 0 in this workspace.",
+    "The renamed U15 test title ('...nothing is written to the mount-time fallback root' instead of '...to process.cwd()') makes historical evidence files that quote the old title grep-diverge by design; the ZERO-live-roots title is unchanged. Named here so a reviewer does not read it as a lost test.",
+    "bun counts the same test file twice in its 'across N files' line when the cwd is the repo root (0 extra tests, pass/fail unaffected). Not investigated further; recorded so it is not mistaken for a hidden coupling.",
+    "No git write commands were run; the working tree keeps the change for the captain to commit together with the evidence."
+  ],
+  "artifacts": [
+    "packages/mpd-config-plugin/test/settings-wiring.test.ts",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/result.json",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/output.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/before-settings-wiring-repo-cwd.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/after-settings-wiring-repo-cwd.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/before-settings-wiring-clean-cwd.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/after-settings-wiring-clean-cwd.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/before-bun-test-package.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/after-bun-test-package.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/before-bun-test-packages.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/after-bun-test-packages.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/residual-failures-clean-cwd.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/negative-control-mutant.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/make-mutant.mjs",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/test-diff.patch",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/git-diff-stat.log",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/src-dist-hashes.before.txt",
+    "evidence/gates/cwd-hermetic/20260917T013500Z/src-dist-hashes.after.txt"
+  ]
+}

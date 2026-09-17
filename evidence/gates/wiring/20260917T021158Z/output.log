@@ -1,0 +1,90 @@
+# t18 / lane D2 — gate wiring (T-37, T-39, T-40, T-33, T-31) — evidence log
+# workspace: /root/dshProj/my-power-dsh   cwd of every command below is the repo root unless stated
+# changed by this task: scripts/verify-dist-fresh.mjs, scripts/repin-vendor.mjs, scripts/dump-config.mjs (all NEW),
+#   package.json, AGENTS.md (§4/§11), docs/development{,.zh-CN}.md, docs/user-guide{,.zh-CN}.md, evidence/gates/wiring/<ts>/
+
+## 1. T-37 — deterministic rebuild-and-diff gate (scripts/verify-dist-fresh.mjs, sha256 30b796c268872e32c7166b68cdbdec63e8f152cbf2cbc29bf8f5cf0fd9b0ca1f)
+$ node scripts/verify-dist-fresh.mjs --self-test          -> exit 0, "[verify-dist-fresh self-test] 10/10 arms passed — PASS"
+    arms include: clean fixture ok; MUTATED fixture dist -> STALE + exit 1; restore -> green; src/no-dist -> MISSING;
+    dist/no-source -> NOT COVERED with reason; ext-plugin sdk entry covered; --only narrows; filter matching nothing -> NO_TARGETS exit 1;
+    bad flag -> exit 1 + usage on stderr.
+NEGATIVE CONTROL (real file, real gate): packages/mpd-config-plugin/dist/index.js
+    sha256 BEFORE = 11ab1c6da2d34a49c79d52f61eae8ac2a7446d5c234b51d96a415c9cb624b3e9
+    +48 B seeded -> sha256 a18e3ab1275c5bf1fe604bb246f62b625e2f1ba5adf914836fe17a58e52c6b0c
+    `--only mpd-config-plugin`: exit 0 ("ok: 1/1 targets fresh") -> exit 1 ("STALE: … committed (101072 B, a18e3ab1…) != fresh build (101028 B, 11ab1c6d…)") -> restore -> exit 0
+    sha256 AFTER = 11ab1c6da2d34a49c79d52f61eae8ac2a7446d5c234b51d96a415c9cb624b3e9 (identical; no marker left behind)
+
+### FINDING (real, pre-existing, out of this task's scope): 13 of 20 covered targets are STALE — 12 of them at HEAD
+$ node scripts/verify-dist-fresh.mjs                        -> exit 1: "[verify-dist-fresh] FAIL - 13 of 20 targets not fresh (STALE: 13) — ~0.8s"
+  STALE: bootstrap, boulder, codegraph, comment-checker, hashline, memory, modelchain, qa-roles-probe, team-compact, tools, ulw, workmate
+         (+ team-watchdog, which another lane is mid-edit on: 21 changed files)
+  FRESH (7): bundle-plugin, config-plugin, dsh-adapter-plugin, ext-plugin (index+sdk), roles-plugin, tui-plugin
+  NOT COVERED (7): mcp-{astgrep,gitbash,lsp}/dist/BUILD.lock (build metadata), mcp-{astgrep,gitbash,lsp}/dist/cli.js
+         (built offline by scripts/build-mcp.mjs), mpd-mcp-codegraph/dist/serve.js (sha-pinned prebuilt)
+  ROOT CAUSE (verified first-hand):
+    packages/mpd-bootstrap-plugin/src/index.ts:24 imports the adapter FROM SOURCE
+      `import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"`
+    so every consumer's dist INLINES the adapter at build time. Commit a647d47 rebuilt only the adapter:
+      `git show HEAD:packages/mpd-dsh-adapter-plugin/src/index.ts | grep -c settingsReader` = 2
+      `git show HEAD:packages/mpd-dsh-adapter-plugin/dist/index.js | grep -c settingsReader` = 1
+      `git show HEAD:packages/mpd-bootstrap-plugin/dist/index.js | grep -c settingsReader` = 0   <- consumer never rebuilt
+      fresh `bun build packages/mpd-bootstrap-plugin/src/index.ts … --outfile <tmp>` | grep -c settingsReader = 1
+      fresh vs committed: 135 diff lines, 25,707 B -> 30,352 B (+4,645 B, the shared inlined module)
+  T-37's premise reproduced: `bun test` in mpd-hashline-plugin = 11 pass/0 fail, mpd-ulw-plugin = 3 pass/0 fail — both STALE dists.
+  REMEDY (needs a writer who may touch packages/**; printed per finding by the gate):
+      bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js
+    for bootstrap, boulder, codegraph, comment-checker, hashline, memory, modelchain, qa-roles-probe, team-compact, tools, ulw, workmate;
+    serialize with the team-watchdog writer before touching that package.
+
+## 2. T-33 — derivable vendor re-pin (scripts/repin-vendor.mjs, sha256 707d0f9d6fc853e48069ca980f342803af572c03a2a21507f5778ba39f0cb096)
+$ bun run repin:vendor                -> exit 0, prints algorithm + normalization + the raw-bytes WARNING + both values per asset;
+                                         "DRY RUN: 1 asset(s) would be re-pinned; nothing was written";
+                                         sha256 VENDOR_LOCK.json 76d5914b… UNCHANGED before/after
+$ node scripts/repin-vendor.mjs --check -> exit 1 (RED): locked treeSha=c0dab864… fileCount=319 vs computed (LF) treeSha=ee716c0d… fileCount=321;
+                                         _deps in sync (d1d10603…/635, 0 normalized)
+$ cp VENDOR_LOCK.json $S/ && --write --lock $S/VENDOR_LOCK.json -> exit 0; diff -u = EXACTLY two lines:
+      -      "fileCount": 319,   ->  +      "fileCount": 321,
+      -      "treeSha": "c0dab864…" -> +      "treeSha": "ee716c0d…"
+    then `--check --lock $S/VENDOR_LOCK.json` -> exit 0 (GREEN)
+$ node scripts/repin-vendor.mjs --write  -> exit 1, guard: "refusing to --write the repository's own VENDOR_LOCK.json …";
+                                         real lock sha256 76d5914b… before == after
+$ node scripts/repin-vendor.mjs --self-test -> exit 0, "SELF-TEST PASS - 10/10 arm(s) passed" (incl. an authority-tamper negative control
+                                         that re-reads scripts/verify-vendor.mjs's decisive tokens)
+$ bun run verify:vendor               -> exit 1 = EXPECTED BOUND: "FAIL - asset skills count drifted: 321 vs 319" + "treeSha mismatch".
+    The wave's single re-pin is the captain's commit-time step:
+      node scripts/repin-vendor.mjs --write --i-know-this-is-the-captains-step      (AGENTS.md §11)
+  READINGS: the task text's t15-era values (LF 3b41bda20d333d6842661c670604c2cd51c3aff754391dcfc330f1c8a0dfc7b3 /
+  raw b283f614fd952ea7b70fb46ce484be09634cba51a2d108d0dcf88cd9f23515b3) are STALE because skills/** is being edited
+  live by another lane (fileCount 319 -> 321; the lock's own gate reports the same drift); the settled current reading is
+  LF ee716c0d01d5173cdb527bf0c312537eb0e9ca218cedfd676998cceb5ba48589 / raw d9d3825ddea263ab626ec29bc9b171e9b267e849a8a1a1d91889bfff971095e2.
+  Re-measure at commit time — the corpus is still moving.
+
+## 3. T-31 — composition-only wrapper (scripts/dump-config.mjs, sha256 10f281ad27bbb851501366b95ca80ac0c56ca5f0cec17732d608f3a6c4b0fd3a)
+$ node scripts/dump-config.mjs --self-test   -> exit 0, 6/6 arms PASS (success child; exit-3 child keeps banner+recap and propagates 3;
+                                                missing binary -> 127; --json exitCode==3; --quiet one-line; bad flag -> 1 + usage)
+$ bun run dump-config --self-test            -> exit 0 (package.json wiring proven)
+$ DSH_HOME=/tmp/dc-home node scripts/dump-config.mjs --profile web -> exit 0, 1010 lines:
+    11 banner lines first ("[dump-config] COMPOSITION ONLY — rows composed, no plugin code executed." … "…---- the composed rows below are the child's own output ----"),
+    then the child's composition (29 mpd-row hits, `# == @mpd-dsh/mpd`), then the recap line.
+    (Profile `mpd` does not exist on this box; profile `web` carries the same @mpd-dsh/mpd bundle link.)
+
+## 4. T-39/T-40 — row/parity wired where a patch edit meets them
+$ bun run verify:rows                        -> exit 0: "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list …"
+$ node skills/dsh-qa/scripts/preset-conformance.mjs --self-test -> exit 0: "ok: 31 harness rows conform against the installed schemas
+                                                (6 row(s) declare no schema), persona prefix=true, row parity 31/31"
+package.json additions (existing scripts untouched):
+  verify:dist  = node scripts/verify-dist-fresh.mjs
+  verify:gates = node scripts/verify-vendor.mjs && node scripts/verify-dist-fresh.mjs && bun run verify:rows && bun run verify:docs && node skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+  repin:vendor = node scripts/repin-vendor.mjs
+  dump-config  = node scripts/dump-config.mjs
+AGENTS.md: §4 gained Vendor(guard)/Dist freshness/Row-parity/Composition-only rows + the verify:gates note + the wrapper sentence;
+§11's sweep now names every command exactly and spells the re-pin with its required override.
+
+## 5. T-31 docs routing (instruct-to-run sites only; EN + zh-CN in the same change)
+$ bun run verify:docs -> exit 0: "[verify-docs-parity] pairs=37 failed=0 violations=0 exempt=17 — PASS"
+EDITED (a reader is told to RUN the flag): docs/user-guide.md:37 + .zh-CN.md:34 → `node scripts/dump-config.mjs --profile dsh-tui`;
+   docs/development.md:163 + .zh-CN.md:150 (the BOOT-CHECK gate row) → `node scripts/dump-config.mjs --profile <p>`.
+LEFT AS CONTRAST (deliberate, per acceptance): docs/architecture{,.zh-CN}.md "never executes plugin code",
+   docs/extension-authoring-guide{,.zh-CN}.md "One rule about evidence", docs/tui{,.zh-CN}.md "proves composition only",
+   AGENTS.md §4's own paragraph, and the mount-assert mechanism row (documents a lane, not a reader command).
+   Plan/report files (docs/plan-*.md, docs/review-p0-p3.md, docs/extension-adaptation-report*) are process records.

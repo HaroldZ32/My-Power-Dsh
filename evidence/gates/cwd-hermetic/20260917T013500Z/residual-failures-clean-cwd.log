@@ -1,0 +1,187 @@
+bun test v1.3.14 (0d9b296a)
+
+../../root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the shipped client registers a settings.section with id 'mpd', an explicit order and a label [0.85ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the Plugins tab's keyed item registration is GONE from the built client (the user's request) [11.22ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > NEGATIVE CONTROL: the absence predicate reddens the moment the retired registration returns [0.39ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the mount is DEFERRED (ctx.inject) and the client still declares only the stable seams [0.53ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the disclosure copy is the same sentence the TUI states, and no stale claim survives [0.13ms]
+11 |   // Resolved at CALL time, not import time: a test file sets MPD_REPO_ROOT after its import
+12 |   // (module evaluation runs first), so an import-time read silently ignores it and loads
+13 |   // whatever client.js `cwd` happens to point at — which made an earlier control-lane run
+14 |   // load the REAL client and pass while claiming to test a pre-fix build.
+15 |   const root = process.env.MPD_REPO_ROOT ?? ROOT;
+16 |   const source = readFileSync(join(root, "packages", "mpd-bundle-plugin", "client.js"), "utf8");
+                      ^
+error: ENOENT: no such file or directory, open '/tmp/tmp.idOM4tnJps/packages/mpd-bundle-plugin/client.js'
+      at loadBundleClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:16:18)
+      at loadMpdClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:422:25)
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:138:20)
+(fail) the registration only happens when the settings scope is served > no settingsScope -> no entry, one warning-free degrade, no throw out of apply [1.83ms]
+11 |   // Resolved at CALL time, not import time: a test file sets MPD_REPO_ROOT after its import
+12 |   // (module evaluation runs first), so an import-time read silently ignores it and loads
+13 |   // whatever client.js `cwd` happens to point at — which made an earlier control-lane run
+14 |   // load the REAL client and pass while claiming to test a pre-fix build.
+15 |   const root = process.env.MPD_REPO_ROOT ?? ROOT;
+16 |   const source = readFileSync(join(root, "packages", "mpd-bundle-plugin", "client.js"), "utf8");
+                      ^
+error: ENOENT: no such file or directory, open '/tmp/tmp.idOM4tnJps/packages/mpd-bundle-plugin/client.js'
+      at loadBundleClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:16:18)
+      at loadMpdClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:422:25)
+      at mountedCard (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:61:18)
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:146:30)
+(fail) the registration only happens when the settings scope is served > settingsScope at apply -> one SECTION entry, and its descriptor passes the whole predicate [1.38ms]
+(pass) the registration only happens when the settings scope is served > NEGATIVE CONTROL: the descriptor predicate reddens on every mutant that matters [0.73ms]
+11 |   // Resolved at CALL time, not import time: a test file sets MPD_REPO_ROOT after its import
+12 |   // (module evaluation runs first), so an import-time read silently ignores it and loads
+13 |   // whatever client.js `cwd` happens to point at — which made an earlier control-lane run
+14 |   // load the REAL client and pass while claiming to test a pre-fix build.
+15 |   const root = process.env.MPD_REPO_ROOT ?? ROOT;
+16 |   const source = readFileSync(join(root, "packages", "mpd-bundle-plugin", "client.js"), "utf8");
+                      ^
+error: ENOENT: no such file or directory, open '/tmp/tmp.idOM4tnJps/packages/mpd-bundle-plugin/client.js'
+      at loadBundleClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:16:18)
+      at loadMpdClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:422:25)
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:175:20)
+(fail) the registration only happens when the settings scope is served > a late-served settingsScope still mounts the section (provideService wakes the fiber) [0.90ms]
+11 |   // Resolved at CALL time, not import time: a test file sets MPD_REPO_ROOT after its import
+12 |   // (module evaluation runs first), so an import-time read silently ignores it and loads
+13 |   // whatever client.js `cwd` happens to point at — which made an earlier control-lane run
+14 |   // load the REAL client and pass while claiming to test a pre-fix build.
+15 |   const root = process.env.MPD_REPO_ROOT ?? ROOT;
+16 |   const source = readFileSync(join(root, "packages", "mpd-bundle-plugin", "client.js"), "utf8");
+                      ^
+ENOENT: no such file or directory, open '/tmp/tmp.idOM4tnJps/packages/mpd-bundle-plugin/client.js'
+    path: "/tmp/tmp.idOM4tnJps/packages/mpd-bundle-plugin/client.js",
+ syscall: "open",
+   errno: -2,
+    code: "ENOENT"
+
+      at loadBundleClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:16:18)
+      at loadMpdClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:422:25)
+      at mountedCard (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:61:18)
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:186:38)
+(fail) the card's form behaviour > it renders what the namespace reports (values, overridden marker, disclosure) and nothing invented [0.35ms]
+11 |   // Resolved at CALL time, not import time: a test file sets MPD_REPO_ROOT after its import
+12 |   // (module evaluation runs first), so an import-time read silently ignores it and loads
+13 |   // whatever client.js `cwd` happens to point at — which made an earlier control-lane run
+14 |   // load the REAL client and pass while claiming to test a pre-fix build.
+15 |   const root = process.env.MPD_REPO_ROOT ?? ROOT;
+16 |   const source = readFileSync(join(root, "packages", "mpd-bundle-plugin", "client.js"), "utf8");
+                      ^
+ENOENT: no such file or directory, open '/tmp/tmp.idOM4tnJps/packages/mpd-bundle-plugin/client.js'
+    path: "/tmp/tmp.idOM4tnJps/packages/mpd-bundle-plugin/client.js",
+ syscall: "open",
+   errno: -2,
+    code: "ENOENT"
+
+      at loadBundleClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:16:18)
+      at loadMpdClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:422:25)
+      at mountedCard (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:61:18)
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:199:30)
+(fail) the card's form behaviour > a save writes nested PATHS through scope.mutate with the revision fence [0.27ms]
+11 |   // Resolved at CALL time, not import time: a test file sets MPD_REPO_ROOT after its import
+12 |   // (module evaluation runs first), so an import-time read silently ignores it and loads
+13 |   // whatever client.js `cwd` happens to point at — which made an earlier control-lane run
+14 |   // load the REAL client and pass while claiming to test a pre-fix build.
+15 |   const root = process.env.MPD_REPO_ROOT ?? ROOT;
+16 |   const source = readFileSync(join(root, "packages", "mpd-bundle-plugin", "client.js"), "utf8");
+                      ^
+ENOENT: no such file or directory, open '/tmp/tmp.idOM4tnJps/packages/mpd-bundle-plugin/client.js'
+    path: "/tmp/tmp.idOM4tnJps/packages/mpd-bundle-plugin/client.js",
+ syscall: "open",
+   errno: -2,
+    code: "ENOENT"
+
+      at loadBundleClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:16:18)
+      at loadMpdClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:422:25)
+      at mountedCard (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:61:18)
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:214:30)
+(fail) the card's form behaviour > resetField asks for the file value (unset), and an invalid draft refuses to save [0.25ms]
+11 |   // Resolved at CALL time, not import time: a test file sets MPD_REPO_ROOT after its import
+12 |   // (module evaluation runs first), so an import-time read silently ignores it and loads
+13 |   // whatever client.js `cwd` happens to point at — which made an earlier control-lane run
+14 |   // load the REAL client and pass while claiming to test a pre-fix build.
+15 |   const root = process.env.MPD_REPO_ROOT ?? ROOT;
+16 |   const source = readFileSync(join(root, "packages", "mpd-bundle-plugin", "client.js"), "utf8");
+                      ^
+ENOENT: no such file or directory, open '/tmp/tmp.idOM4tnJps/packages/mpd-bundle-plugin/client.js'
+    path: "/tmp/tmp.idOM4tnJps/packages/mpd-bundle-plugin/client.js",
+ syscall: "open",
+   errno: -2,
+    code: "ENOENT"
+
+      at loadBundleClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:16:18)
+      at loadMpdClient (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/client-harness.mjs:422:25)
+      at mountedCard (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:61:18)
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:231:38)
+(fail) the card's form behaviour > a read-only scope renders read-only with a reason and writes nothing [3.43ms]
+(pass) isolation and front-door parity > web-client.js is the ONLY source that requires the card module, and the card does no I/O [0.86ms]
+260 |     // Both front doors now read the knob list from `packages/mpd-config-plugin/src/settings-schema.ts`
+261 |     // (the TUI imports it; the card mirrors it), so this compares the card against that single source.
+262 |     const shared = readFileSync(join(REPO, "packages", "mpd-config-plugin", "src", "settings-schema.ts"), "utf8")
+263 |     const { FIELDS } = (0, eval)("(" + CARD_SOURCE + ")")((name) => ({ react: {}, locales: {} })[name] ?? {})
+264 |     expect(Array.isArray(FIELDS)).toBe(true)
+265 |     expect(FIELDS).toHaveLength(12)
+                         ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 12
+Received length: 13
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:265:20)
+(fail) isolation and front-door parity > the card's twelve fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift) [1.12ms]
+
+../../root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/plugin.test.ts:
+(pass) plugin contract > exports name / Config (type + schema) / apply and NO default export [0.05ms]
+(pass) plugin contract > every config key has a default in the schema [0.68ms]
+(pass) plugin contract > the schema rejects a wrong type instead of silently dropping it [0.27ms]
+(pass) plugin contract > resolveConfig defaults every key and repairs an invalid interval [0.26ms]
+(pass) T4-INERT-1: activation requires the inject form > a ctx WITHOUT inject registers nothing, even when get() would answer [47.93ms]
+(pass) T4-INERT-1: activation requires the inject form > with inject supported but no service composed, nothing is registered and nothing throws [0.63ms]
+(pass) T4-INERT-1: activation requires the inject form > apply survives a throwing ctx.get and a ctx without effect() [0.46ms]
+294 |     expect(outcomeOf(report, "tuiRenderers").state).toBe("requested")
+295 | 
+296 |     // tuiSettingsSections: the mpd.jsonc section, with the on-screen disclosure.
+297 |     expect(calls.sections).toHaveLength(1)
+298 |     expect(calls.sections[0].ns).toBe("mpd")
+299 |     expect(calls.sections[0].fields).toHaveLength(12)
+                                           ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 12
+Received length: 13
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/test/plugin.test.ts:299:38)
+(fail) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [8.31ms]
+(pass) full composition (every service injected) > cleanup runs on the injected scope: status cleared, registrations released [1.49ms]
+(pass) full composition (every service injected) > each seam can be disabled by config, and disabling keeps apply inert [0.32ms]
+(pass) honest outcomes (no disposer-type inference) > a refused shortcut registration is reported refused, never confirmed [0.59ms]
+(pass) honest outcomes (no disposer-type inference) > a refused renderer registration is reported requested, never confirmed [0.44ms]
+(pass) honest outcomes (no disposer-type inference) > a missing decision grant with a no-op disposer is refused, and the disposer is not called as a probe [0.81ms]
+(pass) honest outcomes (no disposer-type inference) > a granted decision subscription is confirmed [0.52ms]
+(pass) honest outcomes (no disposer-type inference) > without tuiPluginHost the seam is absent and no refusal is claimed [0.88ms]
+(pass) honest outcomes (no disposer-type inference) > admin: the four intercept points are the only decision attempts [0.11ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd uses the picker, then applies the chosen action [2.55ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd falls back to the board when no dialog seam is composed [1.08ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > direct actions and the unknown-action error [2.23ms]
+(pass) settings section disclosure (t21) > every mpd.jsonc-referencing hint states that a save is NOT bridged [0.18ms]
+(pass) settings section disclosure (t21) > the marker itself says the save does not rewrite the config file [0.09ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the notice constant is the design's exact sentence and matches the exported one [0.34ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the status line publishes the notice only while the last write-back was skipped for no-live-session [2.29ms]
+
+9 tests failed:
+(fail) the registration only happens when the settings scope is served > no settingsScope -> no entry, one warning-free degrade, no throw out of apply [1.83ms]
+(fail) the registration only happens when the settings scope is served > settingsScope at apply -> one SECTION entry, and its descriptor passes the whole predicate [1.38ms]
+(fail) the registration only happens when the settings scope is served > a late-served settingsScope still mounts the section (provideService wakes the fiber) [0.90ms]
+(fail) the card's form behaviour > it renders what the namespace reports (values, overridden marker, disclosure) and nothing invented [0.35ms]
+(fail) the card's form behaviour > a save writes nested PATHS through scope.mutate with the revision fence [0.27ms]
+(fail) the card's form behaviour > resetField asks for the file value (unset), and an invalid draft refuses to save [0.25ms]
+(fail) the card's form behaviour > a read-only scope renders read-only with a reason and writes nothing [3.43ms]
+(fail) isolation and front-door parity > the card's twelve fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift) [1.12ms]
+(fail) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [8.31ms]
+
+ 29 pass
+ 9 fail
+ 180 expect() calls
+Ran 38 tests across 2 files. [328.00ms]

@@ -8,7 +8,7 @@ import { buildScene, isoBasic, mailboxUnread, readScene, writeScene } from "../s
 import { readHold, readIncidents } from "../src/sidecars"
 import { readHeartbeats } from "../src/store"
 import { readTeam } from "../src/team"
-import { agent, sandbox, stubAdapter, testConfig, writeTeam } from "./support"
+import { agent, sandbox, stubAdapter, testConfig, writeTeam, openOutstandingChannel } from "./support"
 
 function stubCtx(): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
   return { on: () => () => {} }
@@ -194,8 +194,12 @@ describe("an unwritable scene location", () => {
 
       const stub = stubAdapter({ workspace: box.workspace })
       const engine = new WatchdogEngine(stub.adapter, stubCtx(), testConfig({ stateDir: box.stateDir }))
+      engine.install()
       engine.stamp("step", agent("a1", box.workspace))
       const from = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
+      // The §1 channel authority: an open step with NO committed answer is OUTSTANDING, the
+      // only state the §3 ladder may warn/escalate from (contract §1).
+      openOutstandingChannel(stub, "a1", from)
 
       const result = await engine.tickOnce(from + 90_001)
       expect(result.decisions.map((d) => d.type)).toEqual(["warn"])

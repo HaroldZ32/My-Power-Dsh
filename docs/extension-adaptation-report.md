@@ -228,7 +228,7 @@ Basis: code-read + evidence-on-disk.
 - **F11 (low) — the R11 class assertion has no test-suite home.** R11 (the `PLUGIN_PKGS` omission
   class check) exists as a documented one-liner command in `.mpd/plans/dsh-tui-edition.md:179-183`
   only; the guard that actually runs on every pack is the packer's own positive closure check
-  (`scripts/pack-mpd.mjs:213-219`). See the P2 recommendation in §7.
+  (`scripts/pack-mpd.mjs:260-269`, re-anchored 2026-09-17). See the P2 recommendation in §7.
 
 ## 7. Prioritized recommendations
 
@@ -318,7 +318,7 @@ by t14).
 - The plugin-module hot-reload question is settled by design (no reload in v1 — restart), but no test
   asserts that a *changed* extension directory is re-read only per call in the project plane.
 - Whether the packed layout keeps working for extensions is asserted by the packer's positive closure
-  check (`scripts/pack-mpd.mjs:213-219`) and by the lane's packed arm — not by a fresh install of
+  check (`scripts/pack-mpd.mjs:260-269`) and by the lane's packed arm — not by a fresh install of
   `dist/mpd-package/` into a clean profile in this wave.
 
 ## 10. Appendix A — reproduction commands
@@ -373,7 +373,7 @@ follow-up mapping on top of it.
 
 | Item | Status | Where the fix lives | Evidence |
 |---|---|---|---|
-| F1 — the adapter-identity fallback is silent | **fixed** | the canonical note (hint `:58-92`) plus (`resolveAdapter`, `packages/mpd-ext-plugin/src/index.ts:102`), carried into the rebuilt `packages/mpd-ext-plugin/dist/index.js`; `mpd-roles-plugin` cross-references it | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
+| F1 — the adapter-identity fallback is silent | **fixed** | the canonical note (hint `:59-100`) plus (`dshAdapterIdentity`, `packages/mpd-ext-plugin/src/index.ts:497`), carried into the rebuilt `packages/mpd-ext-plugin/dist/index.js`; `mpd-roles-plugin` cross-references it | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
 | F5 — one hazard, two half-comments | **fixed** | the single canonical note (`"CANONICAL NOTE"`, `packages/mpd-ext-plugin/src/index.ts:59`), which `packages/mpd-roles-plugin/src/index.ts` points at instead of restating | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
 | F7 — an evidence checker over-claims | **fixed** | the corrected prober `evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs` (a NEW directory; `evidence/mpd-ext-debranding/20260915T074904Z/` is left byte-untouched as the record of the narrow probe) | `evidence/extensions/debranding-probe/20260916T061807Z/` |
 | F11 — the R11 class assertion has no test-suite home | **fixed** | `scripts/verify-pack-closure.mjs` — it runs alone, parses the packer's real lists, and replays red on a temp fixture — wired into `package.json` `test:qa:all` | `evidence/extensions/pack-closure-check/20260916T061527Z/` |
@@ -402,8 +402,9 @@ re-pin, in the same change set as the F8/F9/F10 edits (AGENTS.md §9/§11), veri
 ### One measured deviation: the developer CLI is RED inside a packed artifact
 
 **Not fixed in this wave** (tracked as `.mpd/TODO.md` T-51). The packer copies only
-`packages/<pkg>/dist` (`cpDist`, `scripts/pack-mpd.mjs:67-77`) and never `src`, while the developer CLI
-imports its validator from `src` (`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:35`).
+`packages/<pkg>/dist` (`cpDist`, `scripts/pack-mpd.mjs:120-132`) and never `src`, while the developer CLI
+imports its validator from `src` (`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:49`; the source table spans
+`SOURCE_VALIDATOR`, `scripts/mpd-ext.mjs:48-56` and the compiled fallback sits at `:60`).
 Inside a packed tree every CLI entry point therefore exits 1 with
 `Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'`. Measured on a probe tree built
 from the packer's own output (`evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json`,
@@ -412,6 +413,16 @@ restored, `validate` returns 0 while `scaffold` and `--self-test` still fail, be
 entry is packed either. AGENTS.md §4's Extension-CLI gate therefore holds in a CHECKOUT (where both
 `src` and `templates/` exist) and is RED in a packed artifact until the packer ships them. The agent
 contract's own copy of this limit is in `EXTENSIONS-FOR-AGENTS.md` §9.
+
+**FIXED 2026-09-17 (friction wave, lane E — `.mpd/TODO.md` T-35/T-36/T-45/T-51).** The packer now
+ships `templates/` and the `docs/` set (user decision: a packed install is author-facing), and it <!-- citation-check: illustrative: a pack-time artifact emitted by the packer into the artifact, not a repo path -->
+emits a compiled validator entry `packages/mpd-ext-plugin/dist/validator.js` — the shipped bundle
+plus ONE `export { … }` line, so the plugin module itself is untouched — which `scripts/mpd-ext.mjs`
+falls back to when `src` is absent. Measured on a freshly packed `dist/mpd-package/`: `validate`
+(the example AND the template), `scaffold` (into a temp dir) and `--self-test` are all exit 0 under
+bun and under plain `node`, and `node scripts/verify-pack-closure.mjs` fails loudly when an asset is
+seeded missing. Evidence: `evidence/pack-closure/impl/20260917T011849Z/result.json`. The paragraph
+above stays as the measurement of the wave that wrote it — the limit it records is closed.
 
 
 ### Evidence note: the template lane's three stamps

@@ -1,0 +1,100 @@
+{
+  "task": "t69 (review of t68: do the converted citations still denote the code their removed line anchors denoted?)",
+  "attempt_id": "8d8b2439-9f43-4ddb-b937-6513ad8ea5e4",
+  "verdict": "pass",
+  "revisions": {
+    "EXTENSIONS-FOR-AGENTS.md (post-t68)": "5d935524b7db27ea47d3cda913a7f53541b3db2457e7097360f92cd59ee50f27",
+    "REVERSED-pre-t68.md (the author's reversal artifact)": "9a157363a16bfeab78837b73e07405306694c1e365c14001c06709fda3430bdb",
+    "cited sources unchanged since before t68": "sdk.ts 2026-09-15 02:22 \u00b7 mcp-client.ts 2026-09-15 02:22 \u00b7 registry.ts 2026-09-15 09:22 \u00b7 mcp.ts 2026-09-15 09:22 \u00b7 docs/extensions.md 2026-09-16 13:35 \u00b7 index.ts 2026-09-17 09:25 (all BEFORE t68 at 11:32)"
+  },
+  "myOwnCommands": {
+    "banGate": "grep -cE '\\.[A-Za-z]+:[0-9]+' EXTENSIONS-FOR-AGENTS.md -> 0 (zero remaining .<ext>:<digits> anchors)",
+    "checker": "node evidence/extensions/docs-claims/check-citations.mjs --out <t69 dir>/checker-run -> exit 0, 12/12 checks passed, 0 failed, 249 citations resolved, 0 pending, 12 illustrative; EXTENSIONS-FOR-AGENTS.md 59 citations (checked 55) 0 unresolved; content:anchors 49 verified / 0 without a claim",
+    "neverInherited": "every reading above is from MY run; the author's log was not used as evidence"
+  },
+  "siteResolution": {
+    "method": "extracted the 14 removed tokens from the author's REVERSED-pre-t68.md, paired them with the current file by doc line, then read the CITED SOURCE at each removed line/range and at the named symbol's definition \u2014 the source files all predate t68, so the old numbers still resolve",
+    "sites": [
+      {
+        "doc": "12",
+        "removed": "sdk.ts:113-146",
+        "symbol": "MPD_EXT_CONTRACT",
+        "oldRangeContainsSymbol": true,
+        "denotation": "sdk.ts:113 = `export const MPD_EXT_CONTRACT = {` \u2026 146 = `} as const` \u2014 the whole frozen-constants block; the symbol names exactly that block"
+      },
+      {
+        "doc": "23",
+        "removed": "index.ts:521",
+        "symbol": "safeRegisterTool",
+        "oldRangeContainsSymbol": true,
+        "denotation": ":521 is the arrow-function const itself"
+      },
+      {
+        "doc": "24-26",
+        "removed": "index.ts:699 / :791 / :914 / :968",
+        "symbol": "mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show",
+        "oldRangeContainsSymbol": true,
+        "denotation": "each removed line is literally `name: \"mpd_ext_<tool>\"` for that tool; the sentence still names all four tool strings"
+      },
+      {
+        "doc": "27",
+        "removed": "index.ts:532",
+        "symbol": "EXPECTED_TOOLS",
+        "oldRangeContainsSymbol": true,
+        "denotation": ":532 = `const EXPECTED_TOOLS = [\"mpd_ext_list\", \"mpd_ext_show\", \"mpd_flow_list\", \"mpd_flow_show\"]` \u2014 the gated list the sentence describes"
+      },
+      {
+        "doc": "36",
+        "removed": "mcp-client.ts:99-117 and :129-135",
+        "symbol": "childEnv / publicToolName",
+        "oldRangeContainsSymbol": true,
+        "denotation": "childEnv is defined at :103 inside the 99-117 range (doc-comment through the closing brace); publicToolName is defined at :129 exactly at the range start, through :135"
+      },
+      {
+        "doc": "41 (the ONE symbol swap)",
+        "removed": "registry.ts:583",
+        "symbol": "enabled -> validateDescriptor",
+        "oldRangeContainsSymbol": false,
+        "denotation": "the removed line :583 is `enabled: input.enabled !== false,`; `validateDescriptor` is defined at registry.ts:530 and the NEXT top-level declaration after it is at :612, so :583 lies INSIDE that function's body \u2014 the new symbol denotes the enclosing gate that performs the read the sentence quotes. Verified by the declaration sweep: 612 enumerateSkillEntries / 655 buildExtension / 825 effectiveEnabled. This is the site the review's premise targets, and it holds."
+      },
+      {
+        "doc": "116",
+        "removed": "sdk.ts:144-145",
+        "symbol": "projectRejectionReason",
+        "oldRangeContainsSymbol": true,
+        "denotation": ":144-145 ARE the key and its string"
+      },
+      {
+        "doc": "117",
+        "removed": "registry.ts:678-685",
+        "symbol": "refuseHostKind",
+        "oldRangeContainsSymbol": true,
+        "denotation": ":678 is the const declaration itself through its closing brace at :685"
+      },
+      {
+        "doc": "141",
+        "removed": "mcp.ts:34",
+        "symbol": "McpServerState",
+        "oldRangeContainsSymbol": true,
+        "denotation": ":34 = `export type McpServerState = \"connecting\" | \u2026` \u2014 the union the sentence lists"
+      },
+      {
+        "doc": "233",
+        "removed": "docs/extensions.md:524",
+        "symbol": "(no symbol; a SECTION reference)",
+        "denotation": "docs/extensions.md:524 is the bullet `- **No reload** \u2014 restart dsh; a failed MCP server is retried on the next boot.`; the replacement cites the file plus `section 11 \"v1 limits and follow-ups\"`, whose heading is at :513 \u2014 so :524 is inside that section. Same locator, coarser, correct."
+      }
+    ],
+    "symbolSetDiff": "per-site backticked-symbol comparison between the pre and post files: exactly ONE line changed its symbol set \u2014 doc line 41, PRE ['enabled'] -> POST ['validateDescriptor']; every other site kept the identical symbol. So there was no silent swap anywhere else to catch."
+  },
+  "observations": [
+    {
+      "id": "O1",
+      "severity": "low",
+      "file": "EXTENSIONS-FOR-AGENTS.md",
+      "line": 25,
+      "problem": "Cosmetic self-containment: the citation on line 25 (`packages/mpd-ext-plugin/src/index.ts`) carries no claim of its own \u2014 its tool symbol `mpd_ext_show` sits on the previous line. The doc's meaning is unchanged and the claim is still checkable, so this is not a defect of the conversion; it only means four registration sites read as three inline symbol+path pairs plus one continuation.",
+      "requiredFix": "Optional: move `mpd_ext_show` onto line 25 so each citation is self-contained. No action needed for t68's acceptance."
+    }
+  ]
+}

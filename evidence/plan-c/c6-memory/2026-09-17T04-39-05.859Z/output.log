@@ -1,0 +1,36 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-c6-HXcoFb/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+All three steps are done. Results:
+
+**1. Write** — succeeded:
+- Path: `/tmp/mpd-c6-HXcoFb/ws/.mpd/memory/agents/agent-ws/repo/memory/qa-note-mu51ioeb.md`
+- `vcs=git`, `committed=git`, `reflectionDue=false`
+
+**2. Read (query `alpha`)** — **1 entry matches**:
+- `[note] qa-note: alpha beta gamma`
+
+**3. Status**:
+- `vcs=git`, root `/tmp/mpd-c6-HXcoFb/ws/.mpd/memory/agents/agent-ws`
+- `entries=1`, `journal=1`
+- Reflection: `steps=1`, `reflected_completed_steps=0`, `steps_since_last_successful_reflection=1`, `reservation=null`, `triggered=false`
+
+The write was VCS-committed, and the new note is the only entry, so the single query match is exactly the note just saved.
+dsh: reasoning:
+The user wants me to:
+1. Use mpd_memory_write to save a note titled 'qa-note' with content 'alpha beta gamma' and kind 'note'
+2. Use mpd_memory_read with query 'alpha' and report how many entries match
+3. Report mpd_memory_status
+
+Straightforward. Let me do the write first, then read, then status.
+
+Note: mpd_memory_write increments the reflection step counter; that's fine.
+
+Let me call them. The write must happen before the read for correctness, so sequential. Actually, read and status don't depend on each other but read depends on the write. Let me first do the write, then read + status together.
+dsh: reasoning:
+Now read with query 'alpha' and get status.
+[CodeGraph MCP] Shared daemon connection lost; serving this session in-process (degraded), re-serving 0 in-flight request(s).

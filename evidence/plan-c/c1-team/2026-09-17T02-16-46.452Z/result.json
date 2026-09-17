@@ -1,0 +1,121 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-c1-5CAbTt",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": false,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        []
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-623e4e97-aefe-4867-9ed2-bcb74e317094",
+          "createdAt": 1789611416360,
+          "members": [
+            {
+              "id": "",
+              "name": "librarian",
+              "role": "summarizer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789611418257,
+              "status": "idle"
+            },
+            {
+              "id": "",
+              "name": "oracle",
+              "role": "reviewer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789611418264,
+              "status": "idle"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Write a single-line summary of the QA goal for team c1qa: an end-to-end verification that the AgentTeams create → add member → task DAG → scheduled execution → status → archive lifecycle works. Deliver exactly one line of text and report it as the task output.",
+              "status": "pending",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 0,
+              "createdAt": 1789611420243,
+              "updatedAt": 1789611420243,
+              "kind": "work"
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Review librarian's one-line summary from t1 against the stated goal (\"C1 adoption QA\": verify the AgentTeams lifecycle end to end). Approve (pass) if it is a single line and accurately captures the QA goal; otherwise reject with a concrete reason. Report the verdict and the summary text.",
+              "status": "pending",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 0,
+              "createdAt": 1789611422234,
+              "updatedAt": 1789611422234,
+              "kind": "work"
+            }
+          ],
+          "taskSeq": 2,
+          "phase": "staged",
+          "planReviewState": "awaiting_review"
+        }
+      ]
+    },
+    "archive": {
+      "ok": false,
+      "archiveIds": []
+    },
+    "taskTerminal": {
+      "ok": false,
+      "tasks": 2,
+      "taskTerminal": false
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "arm": "fence-refusal",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T02-16-46.452Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

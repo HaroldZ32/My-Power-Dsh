@@ -1,0 +1,327 @@
+### run 1: real tree (expect PASS, exit 0)
+[cross-layer-defaults] root=/root/dshProj/my-power-dsh
+knob                   | machine.ts     | settings-schema  | cordis row     | §3             | verdict
+------------------------------------------------------------------------------------------------------
+warnSilenceMs          | 600000         | 600000           | 600000         | 600000         | ok
+tickIntervalMs         | 15000          | 15000            | 15000          | 15000          | ok
+warnStreakToEscalate   | 6              | 6                | 6              | 6              | ok
+actionOnEscalate       | warn-only      | warn-only        | warn-only      | warn-only      | ok
+toolInFlightMaxMs      | 900000         | 900000           | 900000         | 900000         | ok
+holdTtlMs              | 900000         | 900000           | 900000         | 900000         | ok
+[cross-layer-defaults] verdict=PASS mismatches=
+exit=0
+
+### run 2: negative control — scratch copy with machine.ts warnSilenceMs mutated 600_000 -> 90_000 (expect FAIL, exit 1)
+49:  warnSilenceMs: number
+79:  warnSilenceMs: 90_000,
+[cross-layer-defaults] root=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/config/20260917T011345Z/neg-control-root
+knob                   | machine.ts     | settings-schema  | cordis row     | §3             | verdict
+------------------------------------------------------------------------------------------------------
+warnSilenceMs          | 90000          | 600000           | 600000         | 600000         | MISMATCH
+tickIntervalMs         | 15000          | 15000            | 15000          | 15000          | ok
+warnStreakToEscalate   | 6              | 6                | 6              | 6              | ok
+actionOnEscalate       | warn-only      | warn-only        | warn-only      | warn-only      | ok
+toolInFlightMaxMs      | 900000         | 900000           | 900000         | 900000         | ok
+holdTtlMs              | 900000         | 900000           | 900000         | 900000         | ok
+[cross-layer-defaults] verdict=FAIL mismatches=warnSilenceMs
+exit=1
+
+### run 3: the same mutated root with --expect-fail (proves the exit code is the signal, expect exit 0)
+[cross-layer-defaults] root=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/config/20260917T011345Z/neg-control-root
+knob                   | machine.ts     | settings-schema  | cordis row     | §3             | verdict
+------------------------------------------------------------------------------------------------------
+warnSilenceMs          | 90000          | 600000           | 600000         | 600000         | MISMATCH
+tickIntervalMs         | 15000          | 15000            | 15000          | 15000          | ok
+warnStreakToEscalate   | 6              | 6                | 6              | 6              | ok
+actionOnEscalate       | warn-only      | warn-only        | warn-only      | warn-only      | ok
+toolInFlightMaxMs      | 900000         | 900000           | 900000         | 900000         | ok
+holdTtlMs              | 900000         | 900000           | 900000         | 900000         | ok
+[cross-layer-defaults] verdict=FAIL mismatches=warnSilenceMs
+exit=0
+
+### run 4: real tree with --expect-fail (the check is falsifiable in BOTH directions; expect exit 1)
+exit=1
+
+### verify: bun test packages/mpd-config-plugin
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-config-plugin/test/settings-wiring.test.ts:
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-WlzD0F/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > one registration, applies:'restart', and the base is the FILE layer — never the resolved value [6.67ms]
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings namespace "mpd" is already registered) — the TUI fallback owns it now.
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > a refused registration names the host's reason and leaves the TUI fallback to own it [0.39ms]
+[mpd-config] settings bridge: 2 live workspaces (/tmp/mpd-wiring-iSJWUv/ws, /tmp/mpd-wiring-xd4l9U/ws) — the namespace base is NOT derived from a file, because the file is per-workspace and the namespace is host-global; both front doors will show the schema defaults until exactly one workspace is live.
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-iSJWUv/ws, /tmp/mpd-wiring-xd4l9U/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-iSJWUv/ws, /tmp/mpd-wiring-xd4l9U/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge ambiguous-multi-root: {"writtenTo":[],"skipped":"ambiguous-multi-root","candidates":["/tmp/mpd-wiring-iSJWUv/ws","/tmp/mpd-wiring-xd4l9U/ws"],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > A3 'not a lost edit': with N roots refused, the READ-IN still resolves the new value for every workspace [1.56ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-7A9ruk/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) read-in precedence (design §1.1/§10.4, U12) > L3 outranks the file layers, and a missing L3 key falls back to the file [1.22ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-9N7Pu9/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) read-in precedence (design §1.1/§10.4, U12) > the in-namespace marker never becomes config and never reaches the file [0.72ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) read-in precedence (design §1.1/§10.4, U12) > with the namespace unserved the file layers still resolve (degraded, not fatal) [0.34ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge WROTE: {"writtenTo":["/tmp/mpd-wiring-pSybYB/ws/.mpd/mpd.jsonc"],"skipped":null,"candidates":[],"results":[{"root":"/tmp/mpd-wiring-pSybYB/ws","file":"/tmp/mpd-wiring-pSybYB/ws/.mpd/mpd.jsonc","outcome":"written"}],"applies":"restart","source":"update","revision":3}
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-pSybYB/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) the write-back target rules (design §A.1/§10.5) > U1/A2: one live root — a front-door edit rewrites exactly that file, comments intact [1.74ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migration deferred — no live session workspace to migrate into (nothing was written to process.cwd()).
+[mpd-config] settings bridge: saved to settings — not yet written to any .mpd/mpd.jsonc (no live session). Start a session in the intended workspace to persist it.
+[mpd-config] settings bridge no-live-session: {"writtenTo":[],"skipped":"no-live-session","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > U13: zero live roots writes NOTHING anywhere and says so [0.65ms]
+[mpd-config] settings bridge: 2 live workspaces (/tmp/mpd-wiring-fY9qfs/ws, /tmp/mpd-wiring-ZJXsh7/ws) — the namespace base is NOT derived from a file, because the file is per-workspace and the namespace is host-global; both front doors will show the schema defaults until exactly one workspace is live.
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-fY9qfs/ws, /tmp/mpd-wiring-ZJXsh7/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-fY9qfs/ws, /tmp/mpd-wiring-ZJXsh7/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+[mpd-config] settings bridge ambiguous-multi-root: {"writtenTo":[],"skipped":"ambiguous-multi-root","candidates":["/tmp/mpd-wiring-fY9qfs/ws","/tmp/mpd-wiring-ZJXsh7/ws"],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > U14 must-fail-on-fanout: two live roots REFUSE, name both, and touch no file [0.72ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.
+[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > A6 negative control: the switch disables the FILE write only, never the value [0.50ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.
+[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > the design's flat key (`writeBack:false`) disables it too, and both spellings are reported [0.61ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.
+[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"restart","source":"update","revision":2}
+(pass) the write-back target rules (design §A.1/§10.5) > the env lever disables it too (MPD_DSH_TUI_SETTINGS_BRIDGE=off) [0.60ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-tuaL5l/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) the write-back target rules (design §A.1/§10.5) > a provider reload is a READ-IN only: it never echoes into a file write [0.60ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-IrPiNt/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=2).
+(pass) the write-back target rules (design §A.1/§10.5) > a raw-section change with NO new leaf writes nothing (the loop gate) [0.82ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-ySUO2g/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=5).
+(pass) migration (design §6, U15) > a pre-seeded user section migrates into the file once and records the marker [3.94ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) migration (design §6, U15) > idempotence: a second boot at the recorded revision writes nothing [1.77ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migration deferred — no live session workspace to migrate into (nothing was written to process.cwd()).
+347 |     const h = harness({ roots: [], user: { ulw: { maxRounds: 9 } }, revision: 2 })
+348 |     apply(h.ctx)
+349 |     await h.settle()
+350 |     expect(h.provided.mpdConfig.states().migration).toBe("deferred-no-workspace")
+351 |     expect(h.mutates).toEqual([])
+352 |     expect(existsSync(join(process.cwd(), ".mpd", "mpd.jsonc"))).toBe(false)
+                                                                       ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-config-plugin/test/settings-wiring.test.ts:352:66)
+(fail) migration (design §6, U15) > with no live root the migration is DEFERRED and nothing is written to process.cwd() [1.72ms]
+[mpd-config] settings bridge: 2 live workspaces (/tmp/mpd-wiring-YFpA6V/ws, /tmp/mpd-wiring-KDIeIh/ws) — the namespace base is NOT derived from a file, because the file is per-workspace and the namespace is host-global; both front doors will show the schema defaults until exactly one workspace is live.
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /tmp/mpd-wiring-YFpA6V/ws, /tmp/mpd-wiring-KDIeIh/ws. Keep one session live, or edit that workspace's .mpd/mpd.jsonc directly.
+(pass) migration (design §6, U15) > two live roots defer the migration with the ambiguous reason, not a guess [1.55ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge: migration did NOT complete (unparsable unparsable for /tmp/mpd-wiring-O90wNI/ws/.mpd/mpd.jsonc); the settings document is left untouched so nothing is lost.
+(pass) migration (design §6, U15) > a refusing target aborts the migration loudly and leaves the document alone [1.89ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[mpd-config] settings bridge WROTE: {"writtenTo":["/tmp/mpd-wiring-u9Kvhm/ws/.mpd/mpd.jsonc"],"skipped":null,"candidates":[],"results":[{"root":"/tmp/mpd-wiring-u9Kvhm/ws","file":"/tmp/mpd-wiring-u9Kvhm/ws/.mpd/mpd.jsonc","outcome":"written"}],"applies":"restart","source":"update","revision":6}
+[mpd-config] settings bridge: migrated 1 saved settings value(s) into /tmp/mpd-wiring-u9Kvhm/ws/.mpd/mpd.jsonc (marker bridge.migratedRevision=5).
+[mpd-config] settings bridge: a file edit won — cleared the overlapping settings override(s) ulw.maxRounds so the file's new value applies.
+(pass) the §1.2 clearing rule (a fresh FILE edit wins over a stale override) > a file value the bridge recorded is unset from the user section under the revision fence [2.81ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ONE live root: the base is that workspace's file (a file value that differs from the schema default) [0.35ms]
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+414 | 
+415 |   test("ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults)", () => {
+416 |     const h = harness({ roots: [] })
+417 |     apply(h.ctx)
+418 |     expect(h.provided.mpdConfig.states().settings.baseReason).toBe("mount-time-root")
+419 |     expect(h.registrations[0].options?.base).toEqual({})
+                                                   ^
+error: expect(received).toEqual(expected)
+
+- {}
++ {
++   "watchdog": {
++     "actionOnEscalate": "warn-only",
++     "warnSilenceMs": 600000,
++     "warnStreakToEscalate": 6,
++   },
++ }
+
+- Expected  - 1
++ Received  + 7
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-config-plugin/test/settings-wiring.test.ts:419:46)
+(fail) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults) [0.50ms]
+[mpd-config] settings bridge: 2 live workspaces (/tmp/mpd-wiring-QaJ7D6/ws, /tmp/mpd-wiring-PrA5UV/ws) — the namespace base is NOT derived from a file, because the file is per-workspace and the namespace is host-global; both front doors will show the schema defaults until exactly one workspace is live.
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+(pass) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > N live roots: NO base is invented, the ambiguity is surfaced, and the schema defaults stand [0.51ms]
+
+packages/mpd-config-plugin/test/config.test.ts:
+(pass) stripJsonc removes comments and trailing commas [0.22ms]
+(pass) stripJsonc keeps comments inside strings [0.03ms]
+(pass) deepMerge project wins, nested merged, pollution safe [0.12ms]
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings service is unavailable) — the TUI fallback owns it now.
+(pass) mpd_config_get result is lossless JSON for a missing key (value null, never undefined) [1.58ms]
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings service is unavailable) — the TUI fallback owns it now.
+(pass) mpdConfig service get resolves dot-paths (consistent with mpd_config_get) [0.45ms]
+
+packages/mpd-config-plugin/test/bridge.test.ts:
+(pass) target set (design §A.1 — never a guessed root) > U14: exactly one live root is written; two live roots REFUSE and name both candidates [0.57ms]
+(pass) target set (design §A.1 — never a guessed root) > U14 (must-fail-if-fanout): two live roots touch NO file, the settings write is untouched [0.44ms]
+(pass) target set (design §A.1 — never a guessed root) > zero live roots writes NOTHING anywhere and reports no-live-session [0.06ms]
+(pass) target set (design §A.1 — never a guessed root) > the negative-control switch refuses to write even with a live root [0.19ms]
+(pass) happy paths > U1: a live root gets the value written with comments, order and trailing commas intact [0.50ms]
+(pass) happy paths > U11: a missing target is created with the header comment, and a repeat run is unchanged [0.59ms]
+(pass) happy paths > the writer reports per root when handed several targets (the DECIDER never hands it more than one) [1.01ms]
+(pass) loud failure paths (design §B.2/§7) > U10: a read-only target is reported denied, byte-untouched, and names the file [0.27ms]
+(pass) loud failure paths (design §B.2/§7) > U9: an unparsable target is skipped without writing a byte [0.22ms]
+(pass) loud failure paths (design §B.2/§7) > a duplicate key in the target refuses with both line numbers and no write [0.38ms]
+(pass) loud failure paths (design §B.2/§7) > U8: a human edit landing mid-write ends as conflict, leaving the human's bytes [0.58ms]
+(pass) section leaves and the change diff > a front-door edit yields only the added/changed leaves; a reset yields none [0.21ms]
+(pass) section leaves and the change diff > U12 helper: an unchanged section produces no write (the deep-equal gate cannot drop a raw change) [0.05ms]
+(pass) leavesFromSection > only declared paths become leaves, and absent paths are skipped [0.14ms]
+(pass) the settled duplicate-key ruling reaches the writer's report (nothing silent) > a duplicated leaf key is WRITTEN (last occurrence) and the per-root result carries the loud note [0.52ms]
+(pass) the settled duplicate-key ruling reaches the writer's report (nothing silent) > a duplicated INTERMEDIATE is still refused byte-untouched [0.29ms]
+
+packages/mpd-config-plugin/test/jsonc-edit.test.ts:
+(pass) U1 byte fidelity > only the edited value span changes; comments, order, trailing comma and final newline survive [0.27ms]
+(pass) U1 byte fidelity > an identical edit is a byte-level no-op (idempotence, U11) [0.10ms]
+(pass) U2 escapes and decoded keys (E1) > a neighbouring escaped string is untouched and a dotted key matches decoded text [0.14ms]
+(pass) U3/E6 nested insert > a missing intermediate object is materialised and appended as the LAST member [0.14ms]
+(pass) U3/E6 nested insert > a missing leaf inside an existing object is appended as the last member [0.10ms]
+(pass) U3/E6 nested insert > without the insert option a missing path refuses and returns no text [0.12ms]
+(pass) U4/E3 deletion span arithmetic > deleting the only member leaves valid JSONC with no dangling comma [0.60ms]
+(pass) U4/E3 deletion span arithmetic > deleting a middle member keeps the remaining members valid and ordered [0.16ms]
+(pass) U5 arrays (E4) > replace, append and delete an element, including deleting to an empty array [0.54ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: the LAST occurrence is updated, the first is byte-identical, and the note names every line [0.24ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: a top-level duplicated leaf behaves the same way (the design's U6 fixture) [0.12ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: a single occurrence carries NO note (nothing to warn about) [0.06ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > unset: EVERY occurrence is removed, so the key is genuinely gone from the parsed document [0.18ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > unset via the DELETE sentinel removes every occurrence too [0.10ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > a duplicated INTERMEDIATE still refuses as `ambiguous-intermediate`, byte-untouched, for BOTH set and unset [0.16ms]
+(pass) U7 CRLF (E7) > existing endings are preserved and an inserted line uses CRLF [0.30ms]
+(pass) E3 trailing-comma style on insert > a document that uses a trailing comma does not gain a dangling or doubled comma [0.17ms]
+(pass) U9 unparsable (E9) > a malformed document refuses with 'unparsable' and returns no text [0.30ms]
+(pass) reader parity > stripJsoncText tolerates comments and trailing commas exactly like the shipped reader [0.07ms]
+(pass) regression: the shipped reader's trailing-comma probe (found by these tests) > a trailing comma followed by a comment no longer breaks JSON.parse [0.07ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > locateValueSpan proves the exact value span and reports the comma/eol facts [0.22ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > locateValueSpan refuses with the named reasons instead of guessing [0.12ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > the DELETE sentinel is accepted by surgicalEdit and equals surgicalDelete [0.13ms]
+
+packages/mpd-config-plugin/test/settings-wiring.test.ts:
+
+packages/mpd-config-plugin/test/config.test.ts:
+
+packages/mpd-config-plugin/test/bridge.test.ts:
+
+packages/mpd-config-plugin/test/jsonc-edit.test.ts:
+
+2 tests failed:
+(fail) migration (design §6, U15) > with no live root the migration is DEFERRED and nothing is written to process.cwd() [1.72ms]
+(fail) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults) [0.50ms]
+
+ 65 pass
+ 2 fail
+ 301 expect() calls
+Ran 67 tests across 8 files. [205.00ms]
+exit=1
+
+### fall-out probe: bun test packages/mpd-tui-plugin packages/mpd-bundle-plugin (expected RED on the hardcoded knob count 12)
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config absent: the TUI's fallback registers the namespace (the composition still works) [0.44ms]
+[mpd-config] settings bridge: could not register the "mpd" namespace (settings namespace "mpd" is already registered) — the TUI fallback owns it now.
+(pass) exactly ONE successful registration per composition (design §10.1) > both plugins in ONE composition: still exactly one registration, whoever runs first [0.66ms]
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs:
+
+packages/mpd-bundle-plugin/test/settings-card.test.mjs:
+
+packages/mpd-tui-plugin/test/state.test.ts:
+
+packages/mpd-tui-plugin/test/watchdog-frontdoor.test.ts:
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+
+packages/mpd-tui-plugin/test/plugin.test.ts:
+
+packages/mpd-tui-plugin/test/two-plugin-ownership.test.ts:
+
+2 tests failed:
+(fail) isolation and front-door parity > the card's twelve fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift) [1.14ms]
+(fail) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [14.60ms]
+
+ 167 pass
+ 2 fail
+ 1159 expect() calls
+Ran 169 tests across 18 files. [11.62s]
+
+### control: same tests from a CLEAN cwd (/tmp/tmp.DOl99RMzy4) — proves the 2 repo-root failures are the workspace's .mpd/mpd.jsonc, not this change
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > the DELETE sentinel is accepted by surgicalEdit and equals surgicalDelete [0.14ms]
+
+ 67 pass
+ 0 fail
+ 302 expect() calls
+Ran 67 tests across 4 files. [172.00ms]
+
+### verify: bun run verify:rows
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+exit=0
+
+### verify: node skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+[preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+exit=0
+
+### verify: bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+### settled re-check (all three layer hashes captured around the run)
+fbe2db0b790684f6f9ec47b66da00f60fe053fc89c91741f15a7c043b3843eca  packages/mpd-team-watchdog-plugin/src/machine.ts
+9fa991edd7181aca85bea2d935a2cccfd7820bb5e2001ff242bcc87866e96f5b  packages/mpd-config-plugin/src/settings-schema.ts
+a9891438e87d3dec1fc0e4ac91554cfa5881eecb120d93120a5a11767a03f270  packages/mpd-bundle/cordis.patch.yml
+[cross-layer-defaults] root=/root/dshProj/my-power-dsh
+knob                   | machine.ts     | settings-schema  | cordis row     | §3             | verdict
+------------------------------------------------------------------------------------------------------
+warnSilenceMs          | 600000         | 600000           | 600000         | 600000         | ok
+tickIntervalMs         | 15000          | 15000            | 15000          | 15000          | ok
+warnStreakToEscalate   | 6              | 6                | 6              | 6              | ok
+actionOnEscalate       | warn-only      | warn-only        | warn-only      | warn-only      | ok
+toolInFlightMaxMs      | 900000         | 900000           | 900000         | 900000         | ok
+holdTtlMs              | 900000         | 900000           | 900000         | 900000         | ok
+[cross-layer-defaults] verdict=PASS mismatches=
+exit=0
+fbe2db0b790684f6f9ec47b66da00f60fe053fc89c91741f15a7c043b3843eca  packages/mpd-team-watchdog-plugin/src/machine.ts
+9fa991edd7181aca85bea2d935a2cccfd7820bb5e2001ff242bcc87866e96f5b  packages/mpd-config-plugin/src/settings-schema.ts
+a9891438e87d3dec1fc0e4ac91554cfa5881eecb120d93120a5a11767a03f270  packages/mpd-bundle/cordis.patch.yml
+
+### literal verify command with cwd = scratch dir whose packages/ symlinks the repo (no unrelated .mpd/mpd.jsonc at the mount-time root), scratch=/tmp/tmp.kfX9FJHUbJ
+/tmp/tmp.kfX9FJHUbJ
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > the DELETE sentinel is accepted by surgicalEdit and equals surgicalDelete [0.12ms]
+
+ 67 pass
+ 0 fail
+ 302 expect() calls
+Ran 67 tests across 4 files. [113.00ms]
+exit=0
+
+### peer cross-reference re-check 2026-09-17T01:49:06Z
+machine.ts now: ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41 (peer quoted fbe2db0b…, one revision older; values unchanged)
+------------------------------------------------------------------------------------------------------
+warnSilenceMs          | 600000         | 600000           | 600000         | 600000         | ok
+tickIntervalMs         | 15000          | 15000            | 15000          | 15000          | ok
+warnStreakToEscalate   | 6              | 6                | 6              | 6              | ok
+actionOnEscalate       | warn-only      | warn-only        | warn-only      | warn-only      | ok
+toolInFlightMaxMs      | 900000         | 900000           | 900000         | 900000         | ok
+holdTtlMs              | 900000         | 900000           | 900000         | 900000         | ok
+[cross-layer-defaults] verdict=PASS mismatches=
+peer live-boot cross-reference verified present:
+warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000

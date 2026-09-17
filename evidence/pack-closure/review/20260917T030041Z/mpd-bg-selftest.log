@@ -1,0 +1,14 @@
+[PASS] reload-check: no session -> NO-LIVE-SESSION, exit 0 — exit=0
+[PASS] fixture: projectKey reachable through the shared lib — exit=0
+[PASS] reload-check: module older than the newest session -> FRESH, exit 0 (no false alarm) — exit=0
+[PASS] reload-check: module newer than the newest session -> RESTART-REQUIRED, exit 1 — exit=1
+[PASS] check-write: a path inside the workspace -> exit 0 — exit=0
+[PASS] check-write: /root/.dsh/x -> outside-workspace, exit 1 — exit=1
+[PASS] run: returns immediately with pid + log — [mpd-bg] started pid=91 log=/tmp/mpd-bg-selftest-qbOqXY/long.log pidfile=/tmp/mpd-bg-selftest-qbOqXY/long.log.pid
+[PASS] probe: RUNNING while the child lives (kernel-only check, no cmdline match) — exit=0
+[PASS] run: the log lands in a FILE and is complete (no pipe) — LONG-DONE
+[PASS] probe: DEAD after the child exits, exit 1 — exit=1
+[PASS] probe: missing pid file -> NO-PID-FILE, exit 2 — exit=2
+[PASS] T-24: a child that spawns a grandchild holding the handle returns promptly — elapsed=48ms
+[PASS] T-24: the helper never uses stdio:'pipe' — pipeHits=0
+[mpd-bg self-test] 13/13 arms passed — PASS

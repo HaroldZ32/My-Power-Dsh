@@ -1,0 +1,6 @@
+=== artifact currency since MY pass-2 pack (2026-09-17T02:56:59.067Z) ===
+HEAD now: 646d8018a44bffb2d6e1c30afa090056f81b911e   dirty: 3267
+copied-tree writers after my pack: 0
+=== dist freshness right now (the gate my pass 2 read as 20/20) ===
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 786ms
+=== my t28 task state as the plugin sees it ===

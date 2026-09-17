@@ -1,0 +1,670 @@
+{
+  "case": "agent-teams-tools-boundaries-t49-mounted",
+  "startedAt": "2026-09-17T01:21:45.752Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "isolation": {
+    "dshHome": "/tmp/mpd-t49-dsh-3",
+    "runHome": "/tmp/mpd-t49-home-3",
+    "ws": "/tmp/mpd-t49-home-3/ws",
+    "realHomeUntouched": true,
+    "installExit": 0
+  },
+  "stub": {
+    "calls": [
+      {
+        "call": 1,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 2,
+        "seat": "member",
+        "toolCount": 0,
+        "hasContractTool": false,
+        "hasApproveTool": false,
+        "hasBash": false,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 3,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [
+          "Team \"t49-contract-seat-probe\" plan created under /tmp/mpd-t49-home-3/ws/.mpd/team/t49-contract-seat-probe. It is staged: finish the roster and DAG, then wait f"
+        ],
+        "contractResultSeen": false
+      },
+      {
+        "call": 4,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [
+          "Team \"t49-contract-seat-probe\" plan created under /tmp/mpd-t49-home-3/ws/.mpd/team/t49-contract-seat-probe. It is staged: finish the roster and DAG, then wait f",
+          "Error: member name \"Architect\" has already been used in team \"t49-contract-seat-probe\""
+        ],
+        "contractResultSeen": false
+      },
+      {
+        "call": 5,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [
+          "Team \"t49-contract-seat-probe\" plan created under /tmp/mpd-t49-home-3/ws/.mpd/team/t49-contract-seat-probe. It is staged: finish the roster and DAG, then wait f",
+          "Error: member name \"Architect\" has already been used in team \"t49-contract-seat-probe\"",
+          "Task \"T49 contract read\" created as t1 (status pending, assigned to Architect)."
+        ],
+        "contractResultSeen": false
+      },
+      {
+        "call": 6,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 7,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 8,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 9,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 10,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 11,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 12,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 13,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 14,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 15,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 16,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 17,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [
+          "Team \"t49-contract-seat-probe\" plan created under /tmp/mpd-t49-home-3/ws/.mpd/team/t49-contract-seat-probe. It is staged: finish the roster and DAG, then wait f",
+          "Error: member name \"Architect\" has already been used in team \"t49-contract-seat-probe\"",
+          "Task \"T49 contract read\" created as t1 (status pending, assigned to Architect).",
+          "Team t49-contract-seat-probe approved and running (11 members, 1 tasks)."
+        ],
+        "contractResultSeen": false
+      },
+      {
+        "call": 18,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 19,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [
+          "Team \"t49-contract-seat-probe\" plan created under /tmp/mpd-t49-home-3/ws/.mpd/team/t49-contract-seat-probe. It is staged: finish the roster and DAG, then wait f",
+          "Error: member name \"Architect\" has already been used in team \"t49-contract-seat-probe\"",
+          "Task \"T49 contract read\" created as t1 (status pending, assigned to Architect).",
+          "Team t49-contract-seat-probe approved and running (11 members, 1 tasks).",
+          "(no output)"
+        ],
+        "contractResultSeen": false
+      }
+    ],
+    "totalCalls": 19
+  },
+  "captain": {
+    "steps": [
+      {
+        "step": 1,
+        "toolCount": 99,
+        "toolResults": 0
+      },
+      {
+        "step": 2,
+        "toolCount": 99,
+        "toolResults": 1
+      },
+      {
+        "step": 3,
+        "toolCount": 99,
+        "toolResults": 2
+      },
+      {
+        "step": 4,
+        "toolCount": 99,
+        "toolResults": 3
+      },
+      {
+        "step": 5,
+        "toolCount": 99,
+        "toolResults": 4
+      },
+      {
+        "step": 6,
+        "toolCount": 99,
+        "toolResults": 5
+      }
+    ],
+    "toolNames": [
+      "agent_teams_add_member",
+      "agent_teams_approve",
+      "agent_teams_claim_task",
+      "agent_teams_create",
+      "agent_teams_create_task",
+      "agent_teams_delete",
+      "agent_teams_edit_plan",
+      "agent_teams_interject_decide",
+      "agent_teams_interject_request",
+      "agent_teams_mailbox_clear",
+      "agent_teams_reassign_task",
+      "agent_teams_remove_member",
+      "agent_teams_resume",
+      "agent_teams_send_message",
+      "agent_teams_status",
+      "agent_teams_task_contract",
+      "agent_teams_update_task",
+      "bash",
+      "create_goal",
+      "edit",
+      "exit_plan_mode",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "mcp__ast_grep__rewrite",
+      "mcp__ast_grep__scan",
+      "mcp__ast_grep__search",
+      "mcp__codegraph__codegraph_explore",
+      "mcp__context7__query-docs",
+      "mcp__context7__resolve-library-id",
+      "mcp__grep_app__searchGitHub",
+      "mcp__lsp__diagnostics",
+      "mcp__lsp__find_references",
+      "mcp__lsp__goto_definition",
+      "mcp__lsp__install_decision",
+      "mcp__lsp__prepare_rename",
+      "mcp__lsp__rename",
+      "mcp__lsp__status",
+      "mcp__lsp__symbols",
+      "mpd_boulder_complete",
+      "mpd_boulder_plan_progress",
+      "mpd_boulder_plans",
+      "mpd_boulder_start",
+      "mpd_boulder_status",
+      "mpd_boulder_task_timer",
+      "mpd_comment_check",
+      "mpd_config_get",
+      "mpd_config_reload",
+      "mpd_ext_list",
+      "mpd_ext_show",
+      "mpd_flow_list",
+      "mpd_flow_show",
+      "mpd_hashline_edit",
+      "mpd_hashline_format",
+      "mpd_hashline_read",
+      "mpd_hashline_restore",
+      "mpd_memory_read",
+      "mpd_memory_recall",
+      "mpd_memory_reflect",
+      "mpd_memory_reflect_complete",
+      "mpd_memory_save",
+      "mpd_memory_status",
+      "mpd_memory_write",
+      "mpd_modelchain_resolve",
+      "mpd_role_persona",
+      "mpd_role_spawn",
+      "mpd_roles_list",
+      "mpd_team_compact_run",
+      "mpd_team_compact_status",
+      "mpd_ultrawork",
+      "mpd_ulw",
+      "mpd_workmate_delete",
+      "mpd_workmate_init",
+      "mpd_workmate_list",
+      "mpd_workmate_match",
+      "mpd_workmate_reflect",
+      "mpd_workmate_rename",
+      "mpd_workmate_spawn",
+      "ralph",
+      "read",
+      "read_image",
+      "send_message",
+      "session-watchdog-hold",
+      "session-watchdog-resume",
+      "session-watchdog-status",
+      "skill",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "write"
+    ],
+    "hasContractTool": true
+  },
+  "member": {
+    "requests": [
+      {
+        "call": 2,
+        "seat": "member",
+        "toolCount": 0,
+        "hasContractTool": false,
+        "hasApproveTool": false,
+        "hasBash": false,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 6,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 7,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 8,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 9,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 10,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 11,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 12,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 13,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 14,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 15,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 16,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 18,
+        "seat": "member",
+        "toolCount": 90,
+        "hasContractTool": true,
+        "hasApproveTool": false,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      }
+    ],
+    "toolNames": [],
+    "hasContractTool": false,
+    "hasApproveTool": false,
+    "hasWriteTools": false
+  },
+  "sessionLog": {
+    "store": "/tmp/mpd-t49-dsh-3/sessions/--tmp-mpd-t49-home-3-ws--",
+    "sessions": [
+      {
+        "id": "14f9b08c-d7fb-4c37-9cdf-abe738696a79",
+        "records": 18,
+        "frames": 6,
+        "isMember": true,
+        "hasContractTool": true,
+        "toolCount": 90,
+        "calls": [],
+        "results": []
+      },
+      {
+        "id": "1be88150-3a6e-4b92-8705-695215d6f91a",
+        "records": 18,
+        "frames": 6,
+        "isMember": true,
+        "hasContractTool": true,
+        "toolCount": 90,
+        "calls": [],
+        "results": []
+      },
+      {
+        "id": "38b029bb-1106-499c-a6b3-1d1e0cb41270",
+        "records": 18,
+        "frames": 6,
+        "isMember": true,
+        "hasContractTool": true,
+        "toolCount": 90,
+        "calls": [],
+        "results": []
+      },
+      {
+        "id": "42cddbd6-9951-4c79-b346-9ae5b583db92",
+        "records": 18,
+        "frames": 6,
+        "isMember": true,
+        "hasContractTool": true,
+        "toolCount": 90,
+        "calls": [],
+        "results": []
+      },
+      {
+        "id": "63edd097-302f-47f2-a9ea-dd68ebbfe8c8",
+        "records": 18,
+        "frames": 6,
+        "isMember": true,
+        "hasContractTool": true,
+        "toolCount": 90,
+        "calls": [],
+        "results": []
+      },
+      {
+        "id": "7ace4f0b-a6f4-46f0-9c03-25810062b9b8",
+        "records": 18,
+        "frames": 6,
+        "isMember": true,
+        "hasContractTool": true,
+        "toolCount": 90,
+        "calls": [],
+        "results": []
+      },
+      {
+        "id": "7dcb4de5-8761-4bc6-a8f7-582f34303a20",
+        "records": 18,
+        "frames": 6,
+        "isMember": true,
+        "hasContractTool": true,
+        "toolCount": 90,
+        "calls": [],
+        "results": []
+      },
+      {
+        "id": "b923cbe4-bda6-438c-a864-868f71e59f82",
+        "records": 18,
+        "frames": 6,
+        "isMember": true,
+        "hasContractTool": true,
+        "toolCount": 90,
+        "calls": [],
+        "results": []
+      },
+      {
+        "id": "bae8c300-9e54-4e5c-ada9-47c619a76042",
+        "records": 18,
+        "frames": 6,
+        "isMember": true,
+        "hasContractTool": true,
+        "toolCount": 90,
+        "calls": [],
+        "results": []
+      },
+      {
+        "id": "bf1f6c25-86dd-4648-8368-0b9636d0d610",
+        "records": 18,
+        "frames": 6,
+        "isMember": true,
+        "hasContractTool": true,
+        "toolCount": 90,
+        "calls": [],
+        "results": []
+      },
+      {
+        "id": "f038f305-d9f3-41ae-8b92-92b759f7fdd0",
+        "records": 29,
+        "frames": 10,
+        "isMember": true,
+        "hasContractTool": true,
+        "toolCount": 90,
+        "calls": [],
+        "results": []
+      },
+      {
+        "id": "session-c84d1b98-5aeb-4c8f-bb53-29f128a7bdee",
+        "records": 81,
+        "frames": 26,
+        "isMember": false,
+        "hasContractTool": true,
+        "toolCount": 99,
+        "calls": [
+          "agent_teams_create",
+          "agent_teams_add_member",
+          "agent_teams_create_task",
+          "agent_teams_approve",
+          "bash"
+        ],
+        "results": [
+          {
+            "isError": false,
+            "text": "{\"turn\":1,\"step\":1,\"message\":{\"source\":{\"kind\":\"tool\",\"callId\":\"call_agent_teams_create_1\"},\"content\":[{\"type\":\"tool-result\",\"toolCallId\":\"call_agent_teams_create_1\",\"content\":[{\"type\":\"text\",\"text\":\"Team \\\"t49-contract-seat-probe\\\" plan created under /tmp/mpd-t49-home-3/ws/.mpd/team/t49-contract-seat-probe. It is staged: finish the roster and DAG, then wait for the user to edit and approve it. Do"
+          },
+          {
+            "isError": false,
+            "text": "{\"turn\":1,\"step\":2,\"message\":{\"source\":{\"kind\":\"tool\",\"callId\":\"call_agent_teams_add_member_3\"},\"content\":[{\"type\":\"tool-result\",\"toolCallId\":\"call_agent_teams_add_member_3\",\"content\":[{\"type\":\"text\",\"text\":\"Error: member name \\\"Architect\\\" has already been used in team \\\"t49-contract-seat-probe\\\"\"}],\"isError\":true}],\"role\":\"user\",\"id\":\"cd783dbf-7a00-41f9-bc9a-6fbcb7b8638c\"}}"
+          },
+          {
+            "isError": false,
+            "text": "{\"turn\":1,\"step\":3,\"message\":{\"source\":{\"kind\":\"tool\",\"callId\":\"call_agent_teams_create_task_4\"},\"content\":[{\"type\":\"tool-result\",\"toolCallId\":\"call_agent_teams_create_task_4\",\"content\":[{\"type\":\"text\",\"text\":\"Task \\\"T49 contract read\\\" created as t1 (status pending, assigned to Architect).\"}],\"isError\":false}],\"role\":\"user\",\"id\":\"4cfd9460-7b9d-494e-86e9-c445276ce725\"}}"
+          },
+          {
+            "isError": false,
+            "text": "{\"turn\":1,\"step\":4,\"message\":{\"source\":{\"kind\":\"tool\",\"callId\":\"call_agent_teams_approve_5\"},\"content\":[{\"type\":\"tool-result\",\"toolCallId\":\"call_agent_teams_approve_5\",\"content\":[{\"type\":\"text\",\"text\":\"Team t49-contract-seat-probe approved and running (11 members, 1 tasks).\"}],\"isError\":false}],\"role\":\"user\",\"id\":\"1d105d7b-bb2d-4bb3-b8d4-8b5fa7a3afde\"}}"
+          }
+        ]
+      }
+    ]
+  },
+  "assertions": {
+    "A1_captain_seat_classified": true,
+    "A2_member_lists_contract_tool": false,
+    "A3_member_does_not_list_approve": true,
+    "A4a_member_log_records_contract_call": false,
+    "A4b_member_log_has_nonerror_result": false,
+    "A5_member_denied_write_tools": true,
+    "A6_contract_result_returned_to_member": false
+  },
+  "ok": false,
+  "bounds": [
+    "One boot window, one stub-driven team (captain + ONE read-only member), one task.",
+    "The member's contract read is proven from the harness session log (tool/call + non-error tool/result) and from the tool result the harness returned to the model; the model itself is a local stub.",
+    "The probe drives the captain flow through the stub, so it does NOT measure a real model's choice to call the tool; it measures whether the seat CAN."
+  ],
+  "boot": {
+    "exit": 0,
+    "tail": "[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-t49-home-3/ws\n[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)\n[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)\n[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=6 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000\n[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)\n[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh\n[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)\n[mpd-team-watchdog] NEVER-STARTED t49-contract-seat-probe task=t1 member=Architect attempt=388408de-7ba7-4615-b2b9-7d9ea304a9de — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/mpd-t49-home-3/ws/.mpd/team/watchdog/incidents.jsonl\n[CodeGraph MCP] Shared daemon connection lost; serving this session in-process (degraded), re-serving 0 in-flight request(s).\nPROBE-CAPTAIN-DONE\n",
+    "applyCrash": false
+  },
+  "finishedAt": "2026-09-17T01:22:21.518Z"
+}

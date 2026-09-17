@@ -1,0 +1,77 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=2 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c9
+[mpd-qa:(only)] PASS case=software-smoke evidence=evidence/dsh-qa/software-smoke/2026-09-17T04-38-51.954Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c9/lanes/software-smoke.log ms=19746
+[mpd-qa:(only)] PASS case=ultrawork-smoke evidence=evidence/plan-c/c2-ultrawork/2026-09-17T04-39-11.808Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c9/lanes/ultrawork-smoke.log ms=86807
+[mpd-qa:(only)] summary selected=2 pass=2 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c9
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 2,
+  "startedAt": "2026-09-17T04:38:51.753Z",
+  "finishedAt": "2026-09-17T04:40:38.321Z",
+  "durationMs": 106568,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "software-smoke",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 19746,
+      "command": "bun skills/dsh-qa/scripts/software-smoke.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/software-smoke.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/software-smoke/2026-09-17T04-38-51.954Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c9/lanes/software-smoke.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "ultrawork-smoke",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 86807,
+      "command": "bun skills/dsh-qa/scripts/ultrawork-smoke.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/ultrawork-smoke.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/plan-c/c2-ultrawork/2026-09-17T04-39-11.808Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c9/lanes/ultrawork-smoke.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 2,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}
+[c9 exit=0] 2026-09-17T04:40:38Z

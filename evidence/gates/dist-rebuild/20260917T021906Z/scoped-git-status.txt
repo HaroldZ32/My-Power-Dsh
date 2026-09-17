@@ -1,0 +1,46 @@
+-- mpd-bootstrap-plugin
+    M packages/mpd-bootstrap-plugin/dist/index.js
+-- mpd-boulder-plugin
+    M packages/mpd-boulder-plugin/dist/index.js
+-- mpd-codegraph-plugin
+    M packages/mpd-codegraph-plugin/dist/index.js
+-- mpd-comment-checker-plugin
+    M packages/mpd-comment-checker-plugin/dist/index.js
+-- mpd-hashline-plugin
+    M packages/mpd-hashline-plugin/dist/index.js
+-- mpd-memory-plugin
+    M packages/mpd-memory-plugin/dist/index.js
+-- mpd-modelchain-plugin
+    M packages/mpd-modelchain-plugin/dist/index.js
+-- mpd-qa-roles-probe
+    M packages/mpd-qa-roles-probe/dist/index.js
+-- mpd-team-compact-plugin
+    M packages/mpd-team-compact-plugin/dist/index.js
+-- mpd-team-watchdog-plugin
+    M packages/mpd-team-watchdog-plugin/README.md
+    M packages/mpd-team-watchdog-plugin/README.zh-CN.md
+    M packages/mpd-team-watchdog-plugin/dist/index.js
+    M packages/mpd-team-watchdog-plugin/src/actions.ts
+    M packages/mpd-team-watchdog-plugin/src/engine.ts
+    M packages/mpd-team-watchdog-plugin/src/holds.ts
+    M packages/mpd-team-watchdog-plugin/src/index.ts
+    M packages/mpd-team-watchdog-plugin/src/machine.ts
+    M packages/mpd-team-watchdog-plugin/src/sidecars.ts
+    M packages/mpd-team-watchdog-plugin/src/team.ts
+    M packages/mpd-team-watchdog-plugin/test/failsafe.test.ts
+    M packages/mpd-team-watchdog-plugin/test/holds.test.ts
+    M packages/mpd-team-watchdog-plugin/test/machine.test.ts
+    M packages/mpd-team-watchdog-plugin/test/scene.test.ts
+    M packages/mpd-team-watchdog-plugin/test/support.ts
+    M packages/mpd-team-watchdog-plugin/test/tool-inflight.test.ts
+   ?? packages/mpd-team-watchdog-plugin/src/channel.ts
+   ?? packages/mpd-team-watchdog-plugin/src/config-file.ts
+   ?? packages/mpd-team-watchdog-plugin/test/channel-fold.test.ts
+   ?? packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts
+   ?? packages/mpd-team-watchdog-plugin/test/predicate.test.ts
+-- mpd-tools-plugin
+    M packages/mpd-tools-plugin/dist/index.js
+-- mpd-ulw-plugin
+    M packages/mpd-ulw-plugin/dist/index.js
+-- mpd-workmate-plugin
+    M packages/mpd-workmate-plugin/dist/index.js

@@ -3,9 +3,15 @@
 [English](./README.md)
 
 一个 DSH cordis 插件，用于发现 AgentTeams 团队中**卡死的回合**：某个成员（或队长）不再推进，
-却也永远不会结束。它按**模型步**和**工具调用**写入心跳，把静默升级为 **WARN**，对同一
-task+attempt 连续三次 WARN 升级为 **ESCALATE**，保存可恢复的**现场快照**，并且只为受影响的
-那一个团队写下持久的、**保留现场**的 hold。
+却也永远不会结束。它把成员自己的记录流（`session/event`）折叠为四种通道状态之一——`OUTSTANDING`、
+`IN-FLIGHT`、`ALIVE`、`PARKED`——**只有**一个超过 `warnSilenceMs` 仍未得到回答的 `OUTSTANDING`
+请求才会得到 **WARN**；连续 `warnStreakToEscalate` 次 `OUTSTANDING` 观察才升级为 **ESCALATE**，
+且只有当解析出的 `actionOnEscalate` 为 `pause` 时才会为受影响的那一个团队写下持久的、
+**保留现场**的 hold（默认是 `warn-only`）。每次状态变化都会留下可恢复的**现场快照**。
+
+心跳仍然在写，但它不再是判决者：它只界定 `tool-expired` 上报的上界，并在通道折叠无证据时作为
+**仅上报**的降级来源。**hold 只阻止新的派发**——它永远不会拒绝 `claim_task`、`update_task`
+或踢人。
 
 本包是该能力的**核心**，刻意保持窄范围：它只负责写入器、状态机、存储和自己的动作。真正让
 hold 生效的 adopted 派发闸门、以及展示它的 Web/TUI 界面，属于后续任务。
@@ -94,21 +100,57 @@ hold、绝不上升级，因为“非常长的调用”和“卡在工具里”�
 * `toolInFlightMaxMs: 0` 完全关闭该抑制（即 r6 之前的、只有 POST 的行为）；它也是 fixture 自带的
   反证开关。
 
-## WARN → ESCALATE 状态机
+## 通道谓词 —— 四种状态，唯一权威
+
+挂钟静默不再构成判决。对于每个成员（每个其拥有的 task + attempt），看门狗把该成员自己 session
+的记录流折叠为恰好一种状态：
+
+| 状态 | 记录层定义（按成员 session） | 看门狗动作 |
+|---|---|---|
+| `OUTSTANDING` | 存在**未关闭**的 step（有 `step/start` 而无 `step/end`），且该 step 没有已提交的 `assistant/message`/`assistant/attempt` | **唯一**可 WARN 的状态：请求变为 outstanding 后经过 `warnSilenceMs` 才 WARN，再按阶梯 ESCALATE |
+| `IN-FLIGHT` | 该 step 已有回答，且存在没有匹配 `tool/result` 的 `tool/call` | 在调用开始后 `toolInFlightMaxMs` 之内视为存活；超过则**只**上报一条 `tool-expired`（WARN 级：无快照、无 hold、不升级） |
+| `ALIVE` | 已有提交的回答、已完成 step/工具结果，或回合尚未关闭 | 无论多久都不是卡死 |
+| `PARKED` | 没有未关闭的回合：回合之间、被依赖阻塞、已完成但未更新、staged 计划、未被认领的任务，或成员 session 未挂载 | 永不视为卡死、永不 WARN、永不 hold |
+
+* **折叠是主信号**（`session/event`，emit 派发：监听器返回值被忽略，因此不可能否决任何回合）。
+  使用的事件：`turn/start`、`turn/end`、`step/start`、`step/end`、`assistant/message`、
+  `assistant/attempt`、`tool/call`、`tool/result`。未知（扩展）事件类型不会改变任何结论。
+* **一个结论只有一个权威**。折叠决定**状态**；心跳只界定 `tool-expired` 的**上界**，并作为下述
+  降级来源。两个来源永不共同决定同一个结论。
+* **已完成的 step 永远 ALIVE**。“多久以前”无关紧要；只有 `OUTSTANDING` 请求才拥有时钟。
+* **流式输出不等于无响应——前提是有信号**。模型正在输出长回答时，`assistant/message` 尚未提交。
+  `agent/assistant-stream` 的 START 帧（§2 增强信号，apply 时软探测）会把该 `(turn,step)` 翻转为
+  `ALIVE`。**当该增强信号不可用时，状态诚实地保持 `OUTSTANDING`**，此时 `warnSilenceMs` 上界就是
+  保护措施：这一不对称是刻意公开的（这里以及面向 agent 的排障参考文档中都写明），因为它是看门狗
+  唯一一处刻意保守而非沉默的地方。宿主完全不发出首 token 信号时同理。
+* **零 attempt／从未写心跳的任务永远不是卡死**。owner 从未写心跳的任务被报为 `never-started`
+  （派发问题观察），永不 hold、永不升级。上面的候选前提保持不变。
+* **降级必须响亮，绝不沉默（沉默的看门狗比吵闹的更糟）**。若没有 `session/event` 接缝，或某个
+  仍活着且持有未终结 attempt 的成员没有任何被折叠的事件，引擎会**降级**到心跳规则并进入
+  **仅上报**模式：每个 task+attempt 最多 WARN **一次**（cause 为 `silence-heartbeat`），
+  **永不** hold、**永不**升级。每个进程只打印一行降级告警，且 `session-watchdog-status`
+  会指明当前生效的谓词来源（`channel` 或 `heartbeat`）。
+* **waterfall 安全**。只有当监听器委托（`return next()`）、自行兜住异常、并有负控测试固定时，
+  本插件才可订阅 waterfall 事件；`agent/pre-step` 是唯一的此类订阅，其纪律保持不变。折叠自身的
+  订阅是 emit。
+
+## §3 阶梯（WARN → ESCALATE）
 
 ```
-OBSERVE（每个 tickIntervalMs）
-  silence = now - newestStamp(owner, task)
-  若该任务存在未关闭的工具调用且其年龄小于 toolInFlightMaxMs：
-      已解释 -> 不 WARN、不 ESCALATE、重置连续计数（超过上界则只写一条 tool-expired 记录）
-  否则若该 owner 的回合仍在进行中 且 silence > warnSilenceMs：
-      WARN(task, attemptId)     -> 现场快照 + 事件记录
-      streak[task+attempt] += 1
-      若 streak >= warnStreakToEscalate：
-          ESCALATE(task, attemptId) -> 快照 + HOLD(team) + 事件记录
-          该键此后终结：不会出现第四次 WARN，也不会出现第二次 ESCALATE
-  否则：
-      streak[task+attempt] = 0
+OBSERVE（每个 tickIntervalMs）—— 由通道结论决定状态
+  ALIVE / PARKED      -> 不 WARN、不 ESCALATE、重置连续计数（年龄无关）
+  IN-FLIGHT           -> 在 toolInFlightMaxMs 之内视为已解释
+                         （超过则只写一条 tool-expired 记录，永不 hold）
+  OUTSTANDING         -> silence = now -（该请求变为 outstanding 的时刻）
+                         若 silence > warnSilenceMs：
+                             WARN(task, attemptId, cause=silence-channel) -> 快照 + 事件记录
+                             streak[task+attempt] += 1
+                             若 streak >= warnStreakToEscalate：
+                                 ESCALATE(task, attemptId) -> 快照 + HOLD(team) + 事件记录
+                                 （仅当 actionOnEscalate === 'pause' 才真正写 hold）
+                                 该键此后终结：不再有 WARN，也没有第二次 ESCALATE
+  无通道证据           -> 心跳规则，仅上报（一次 WARN，cause=silence-heartbeat，
+                         永不升级，永不 hold）
 ```
 
 streak 以 `<taskId>\0<attemptId>` 为键，因此换用新 attempt 的重试从零开始。**静默候选不是
@@ -133,6 +175,20 @@ streak 以 `<taskId>\0<attemptId>` 为键，因此换用新 attempt 的重试从
 **当前这一代**没有任何心跳的任务被报为 `never-started`（这是派发问题的观察，永不升级）；其余情况按
 `warnSilenceMs` 衡量静默。
 
+**T-16 —— 静默切片带**世代**范围。** 早于该团队记录自身 `createdAt`/`approvedAt` 的心跳属于**上一代**
+团队，不能再让任务显得“静默”：该候选改报 `never-started`（只上报，永不 hold）。这修掉的实测泄漏
+（2026-09-16）：hold 曾拿下任务 `t12`，而它唯一的心跳（05:33:35Z）早于记录的 `createdAt`
+（05:51:45Z）——所谓“静默”是用记录诞生之前的心跳量出来的。两处刻意保留的不对称：该上界**只**作用于
+静默/hold 切片——派发前置条件仍把上一代心跳算作“该任务曾被交出去”（r7 固定测试），因为没人看得见的
+任务是谁都不会上报的假阴性；而记录**没有** `createdAt` 时保持宽松，因为无从界定的记录不该让看门狗
+闭嘴。
+
+**T-20 —— 等待依赖的成员是 `PARKED`，不是静默。** 若某成员所有未终结任务都被未终结的依赖阻塞，
+它没有任何可认领的工作：看门狗**仅凭 `team.json`** 推出这一点（投影携带每个任务的 `dependencies`）
+并对它抑制静默规则，报为 `PARKED`。**不**新增任何面向成员的等待工具——该推导本身就是全部机制。
+两处刻意的保守读法：依赖指向记录中不存在的任务时视为未完成（无法证明完成，就不算完成）；没有未终结
+任务的成员不算“被阻塞”（没有可等的东西）。
+
 ### 旋钮
 
 `mpd` settings 命名空间是实时权威，本行配置是默认层。全部旋钮都会在**每个 tick**以及
@@ -143,17 +199,21 @@ streak 以 `<taskId>\0<attemptId>` 为键，因此换用新 attempt 的重试从
 
 | 旋钮 | 默认值 | 含义 |
 |---|---|---|
-| `watchdog.warnSilenceMs` | `90000` | 静默超过该值即 WARN |
+| `watchdog.warnSilenceMs` | `600000` | 请求保持 `OUTSTANDING` 多久后才发出第一次 WARN |
 | `watchdog.tickIntervalMs` | `15000` | tick 周期；`>= warnSilenceMs` 时会被**收敛** |
-| `watchdog.warnStreakToEscalate` | `3` | 同一 task+attempt 连续 WARN 次数达到即 ESCALATE |
-| `watchdog.actionOnEscalate` | `pause` | `pause` 写 hold；`warn-only` 只记录 |
+| `watchdog.warnStreakToEscalate` | `6` | 第一次 WARN 之后，连续多少次 `OUTSTANDING` 观察才 ESCALATE |
+| `watchdog.actionOnEscalate` | `warn-only` | `pause` 写 hold；`warn-only` 只记录——hold 是**显式选择加入** |
 | `watchdog.enabled` | `true` | 总开关（`MPD_DSH_TEAM_WATCHDOG=off` 可强制关闭） |
-| `watchdog.toolInFlightMaxMs` | `900000` | 未关闭的工具调用最多能解释多久的静默；`0` 关闭该抑制（r6） |
+| `watchdog.toolInFlightMaxMs` | `900000` | 未关闭的工具调用最多能解释多久的静默；`0` 关闭该上界（r6） |
+| `watchdog.holdTtlMs` | `900000` | 已写入的 hold 在此上界后自动释放，并留下持久的 `hold-auto-released` 事件记录；`0` = 永不过期 |
 
-前五项在 `mpd-config` schema 与 Web 卡片自身 `FIELDS` 列表中的声明属于**那些包**，不在
-本包；`toolInFlightMaxMs` 同样经由命名空间读取，但**尚未**进入那份声明——由于 schemastery
-会保留未知键，它照旧可以从命名空间（以及本行配置）读取和设置，只是在该声明落地之前不会出现
-在两个前端界面上。
+这些数字就是冻结的 §3 表：它们同时出现在 `machine.ts` 的 `WATCHDOG_DEFAULTS`、本行自身的
+`Config` schema 以及 bundle patch 的行配置中，三层必须完全一致。前五项在 `mpd-config` schema
+与 Web 卡片自身 `FIELDS` 列表中的声明属于**那些包**，不在本包；这些旋钮经由 `mpd` 命名空间读取，
+而由于 schemastery 会保留未知键，在该声明落地之前它们照旧可以从命名空间（以及本行配置）读取和
+设置。`holdTtlMs` 已在本行声明、解析，并由 T-17 的自动释放路径消费：由 `pause` 升级写下的 hold 携带
+该值，到期（或该团队出现晚于 `since` 的心跳）即自行释放并留下 `hold-auto-released` 事件记录；手工
+hold 同样可以 `session-watchdog-resume` 立即清除（或从 hold sidecar 手工删除）。
 
 ## 现场快照
 
@@ -182,9 +242,18 @@ streak 以 `<taskId>\0<attemptId>` 为键，因此换用新 attempt 的重试从
 
 ## hold、事件记录与水位
 
-* `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt}`。写入采用
+* `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt, ttlMs}`。写入采用
   临时文件 + rename，以 `id` 幂等，并且是一个**保留式** hold：它的存在是为阻止向某一个团队
   派发**新**工作，绝不用于取消已有工作。它不是 `agent_teams_halt`（后者会取消所有未终结任务）。
+* **T-17 —— hold 会自行释放，由两个上界触发。** 每个 hold 都携带 `ttlMs`（看门狗自动写下的 hold
+  取解析后的 `watchdog.holdTtlMs`；手工调用 `session-watchdog-hold` 可用 `ttl_ms` 覆盖，`0` 表示
+  “无 TTL”）。满足**任一**条件即自动释放：`now - since >= ttlMs`（且 `ttlMs > 0`），**或**该团队出现
+  任何**晚于 `since`** 的心跳——成员确实干过活，就已证伪这次“卡死”。两条路径都会写下一条持久的
+  `hold-auto-released` 事件记录（`cause.kind: "hold-auto-released"`，`cause.release: "ttl" |
+  "activity"`）、打印一行日志，并且**不动 `team.json` 的任何一个字节**：暂停依旧是保留式的，与
+  `session-watchdog-resume` 完全一致。早于该字段存在的 hold 读作 `ttlMs: 0`，因此绝不会为它凭空
+  编出一个上界。该过程在每个 tick 开头运行，并读取 hold **文件**（持久真值），所以即使某进程的同步
+  读取器从未 hydrate，也仍能释放已到期的暂停。
 * `incidents.jsonl` = 每个 WARN/ESCALATE 一条记录，含原因、task/attempt、所写快照路径，以及
   `hold: 'applied' | 'not-applied' | 'not-requested'`。WARN 级别的观察 `never-started` 与
   `tool-expired`（r6）落在同一份文件上，带有 `scene: null` 与 `hold: 'not-requested'`——它们由
@@ -193,6 +262,24 @@ streak 以 `<taskId>\0<attemptId>` 为键，因此换用新 attempt 的重试从
   没有确认时就是永久重放——这是设计使然，并且明确写出。
 
 已被 hold 的团队**不会再写第二个快照、也不会再写第二个 hold**；事件记录仍会写入。
+
+### T-19 —— 同一个暂停面，并指明当前生效的机制
+
+团队可以被两种方式暂停：`agent_teams_halt`（会**取消**所有未终结任务）与本包自己的**保留式** hold。
+`session-watchdog-status` 打印两者的**并集**并指明谁在生效——`team-a: PAUSED — halted
+(agent_teams_halt)`、`team-a: PAUSED — held (watchdog hold)`、或 `team-a: not paused`——既出现在
+渲染文本中，也以每团队一个 `pause: {active, mechanism, halted, held}` 对象出现在 JSON 中。**不**新增
+任何 resume 动作：两种清除保持各自独立（`agent_teams_resume` / `session-watchdog-resume`），由该界面
+告诉用户该用哪一个。
+
+### §7.2/§7.3 —— 旋钮的实时值与**文件**值
+
+`.mpd/mpd.jsonc` 只在一个进程**挂载时**进入 `mpd` 命名空间一次：文件改动在下次 `dsh` 启动前不可见。
+因此状态视图会逐旋钮打印进程正在使用的**实时**值，以及（当两者不一致时的）**文件**值，外加
+`restartRequired` 布尔（形如 `warnSilenceMs=7200000 (file 900000, restartRequired)`）；引擎在首次发现
+分歧时，每个进程只打印**一行**告警，两个值都点名（`KNOBS DIVERGE (§7.3) … `）。文件从工作区读取
+（**绝不**读 `DSH_HOME`），并带一个宽容的 JSONC 读取器——注释、尾逗号、文件缺失或内容损坏都退化为
+“文件没有表态”，这只会**抑制**分歧报告，绝不会凭空造出一个。
 
 ## hold 的执行机制 —— w7 查询的读取器
 
@@ -287,7 +374,8 @@ node skills/dsh-qa/scripts/preset-conformance.mjs
 |---|---|
 | `src/index.ts` | cordis 行：仅 `name` / `Config` / `apply` |
 | `src/engine.ts` | 写入器、tick 与 WARN/ESCALATE 扇出 |
-| `src/machine.ts` | 旋钮与 WARN→ESCALATE 算术 |
+| `src/machine.ts` | 旋钮、WARN→ESCALATE 算术与 §7.2 旋钮读数 |
+| `src/channel.ts` | §1 的四态通道折叠（`session/event`） |
 | `src/store.ts` | 心跳文件、轮转与原子写入 |
 | `src/team.ts` | 对 adopted 团队记录的只读视图 |
 | `src/scene.ts` | 现场文档、原子写入与未读镜像 |

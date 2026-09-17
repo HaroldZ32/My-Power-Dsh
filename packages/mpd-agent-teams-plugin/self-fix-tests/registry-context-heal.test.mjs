@@ -579,7 +579,14 @@ test("t9: a re-materialized tools.js is REFUSED, byte-untouched, with key counts
         expect(upstreamText.match(/mpd-delta/g) ?? []).toHaveLength(0)
         writeFileSync(path, upstreamText)
         const message = healError(root, true)
-        expect(message).toMatch(/mpd-delta update-task-contract/)
+        // WHICH delta the refusal names is registry ORDER, not behaviour: it is the first region
+        // whose context pair no longer brackets a seam, so adding a region above `task-contract`
+        // (wave-1 t14 did) legitimately changes it. Pin the invariant instead — the message must
+        // name a REGISTERED delta id, which is order-independent and strictly stronger than one
+        // literal id, and can never name a phantom.
+        const named = /delta "([^"]+)"/.exec(message)?.[1]
+        expect(named, `the refusal must NAME a registered delta; got: ${message}`).toBeDefined()
+        expect(MPD_DELTAS.some((delta) => delta.id === named), `named delta "${named}" is not registered`).toBe(true)
         expect(message).toContain("restore the marked file, or re-establish the region's site and re-run --write-registry")
         expect(message).toContain("never guesses an insertion site")
         // byte-untouched: the duplicate-key shape shift (upstream twin + mpd twin, last

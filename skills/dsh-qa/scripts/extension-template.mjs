@@ -74,17 +74,29 @@ function templateToken() {
   return String(templateManifest().id ?? "")
 }
 
+let productPublicToolName = null
+
 /**
- * The harness's public tool-name formula for one raw MCP tool (measured in
- * packages/mpd-ext-plugin/src/mcp-client.ts#publicToolName): a LOSSY
- * transformation appends `_<12-hex sha256>`; this name is lossless, so it is used
- * verbatim. Kept here so the case's expected tool name is derived, not guessed.
+ * T-56: the public tool-name formula lives in the PRODUCT
+ * (`packages/mpd-ext-plugin/src/mcp-client.ts#publicToolName`) — this case must never keep its own
+ * copy of it (the copy it used to carry had a placeholder hash branch, so it could only ever agree
+ * with the product on a lossless name). Loaded LAZILY on purpose: a module-level import of a `.ts`
+ * module would crash before the case's prerequisite gate could skip, and the import needs a runtime
+ * with TypeScript type stripping (node >= 22.6 / bun).
  */
-function publicToolName(server, raw) {
-  const joined = "mcp__" + server + "__" + raw
-  const normalized = joined.replace(/[^A-Za-z0-9_-]/g, "_")
-  if (normalized === joined && normalized.length <= 64) return normalized
-  return normalized.slice(0, 51) + "_" + "0123456789ab"
+async function loadPublicToolName() {
+  if (productPublicToolName) return productPublicToolName
+  const source = join(REPO, "packages", "mpd-ext-plugin", "src", "mcp-client.ts")
+  if (!existsSync(source)) fail("T-56: the product's mcp-client.ts is missing: " + source)
+  let module
+  try {
+    module = await import(pathToFileURL(source).href)
+  } catch (error) {
+    fail("T-56: cannot import the product's publicToolName from " + source + " (a runtime with TypeScript type stripping is required): " + error.message)
+  }
+  if (typeof module.publicToolName !== "function") fail("T-56: " + source + " no longer exports publicToolName")
+  productPublicToolName = module.publicToolName
+  return productPublicToolName
 }
 
 /** Run the developer CLI (bun: it imports the TypeScript sources directly). */
@@ -123,7 +135,7 @@ function treeOf(root) {
   return out
 }
 
-function selfTest() {
+async function selfTest() {
   const problems = []
   const check = (condition, message) => { if (!condition) problems.push(message) }
 
@@ -181,11 +193,16 @@ function selfTest() {
     rmSync(sandbox, { recursive: true, force: true })
   }
 
-  // 4) the expected public MCP tool name is the harness formula's own output (a
-  //    name that needed the hash branch would make this case assert a name the
-  //    bridge never publishes), and the copy's own server really reports the four
-  //    kinds + its own root — the shape the live arm asserts out of the tool result.
-  check(publicToolName(MCP_SERVER, "describe_extension") === MCP_TOOL, "the expected MCP tool name changed: " + publicToolName(MCP_SERVER, "describe_extension"))
+  // 4) the expected public MCP tool name is the PRODUCT's own formula output (T-56: imported from
+  //    mcp-client.ts, never re-implemented here) — a name that needed the hash branch would make
+  //    this case assert a name the bridge never publishes.
+  const productFormula = await loadPublicToolName()
+  const expectedToolName = productFormula(MCP_SERVER, "describe_extension")
+  check(expectedToolName === MCP_TOOL, "the expected MCP tool name changed: " + expectedToolName)
+  const ownSource = readFileSync(join(REPO, "skills", "dsh-qa", "scripts", "extension-template.mjs"), "utf8")
+  // Built by concatenation so this check's own needle cannot appear in the file it scans.
+  check(!ownSource.includes("function public" + "ToolName("), "T-56: the case must not re-implement the product's publicToolName")
+  check(ownSource.includes('"src", "mcp-client.ts"'), "T-56: the case must load the formula from the product's mcp-client.ts")
   const serverSource = readFileSync(join(TEMPLATE_DIR, "server.mjs"), "utf8")
   check(serverSource.includes("kinds: KINDS.filter("), "the template's server no longer reports its contributed kinds")
   check(serverSource.includes("root: HERE") && serverSource.includes("enabled: parsed.enabled === true"), "the template's server no longer reports its own root/enabled flag")
@@ -364,6 +381,6 @@ async function runReal() {
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  if (process.argv.includes("--self-test")) selfTest()
+  if (process.argv.includes("--self-test")) await selfTest()
   else await runReal()
 }

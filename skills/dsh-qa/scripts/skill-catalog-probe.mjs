@@ -14,6 +14,7 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, 
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const TASK = "Call the skill tool with name 'svn-master' (the exact skill name from the session skill catalog), then reply in one line what this skill governs."
@@ -84,7 +85,7 @@ async function runReal() {
   const outDir = join(repoRoot, "evidence", "plan-d", "skill-catalog", ts)
   mkdirSync(outDir, { recursive: true })
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-skill-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   // The live provider chain lives in settings.yaml (llm-pi-ai gateway providers);
   // without it the headless boot falls back to the base deepseek-official route
   // and fails with MISSING_CREDENTIAL (AGENTS.md §7).
@@ -98,7 +99,7 @@ async function runReal() {
   // SKILLS=24 BUNDLED=18 NON_BUNDLED=<6 machine skills> -> roles-probe FAIL).
   const userHome = join(sandbox, "userhome")
   mkdirSync(userHome, { recursive: true })
-  const env = { ...process.env, DSH_HOME: sandbox, HOME: userHome }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: userHome  })
   const staged = join(repoRoot, "dist", "mpd-package")
   const profileDir = join(sandbox, "profiles", "t")
   mkdirSync(profileDir, { recursive: true })

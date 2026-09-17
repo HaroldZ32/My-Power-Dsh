@@ -1,0 +1,118 @@
+{
+  "ok": true,
+  "slug": "extension-mcp-bridge",
+  "sandbox": "/tmp/mpd-extension-mcp-bridge-KCyMi9",
+  "arms": "live (repo's own stdio MCP server, real call) | dead | hang | schema (keep-or-drop) | dup (zero tools) | containment",
+  "note": "the healthy server is packages/mpd-mcp-lsp/dist/cli.js; the failure arms are local fixture servers started by the bridge itself",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "offered": true,
+      "called": true,
+      "succeeded": true,
+      "reason": "",
+      "resultHead": "Configured LSP servers: 42\nInstalled LSP servers: 1\n\n- typescript: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx, .mjs, .cjs, .mts, .cts\n- deno: missing; source=builtin; extensions=.ts, .tsx, .js, .jsx, .mjs\n- vue: missing; sourc"
+    },
+    "dead": {
+      "vacuous": false,
+      "ok": true,
+      "offeredNoTool": true,
+      "headerSawNoTool": true,
+      "reported": true,
+      "stateText": "extension qa-mcp-dead [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-KCyMi9/run-home/.mpd/extensions/qa-mcp-dead\nsource: /tmp/mpd-extension-mcp-bridge-KCyMi9/run-home/.mpd/extensions/qa-mcp-dead/mpd-ext.json\nskills: (none)\nflows: (none)\nroles: (none)\nmcp: qa_mcp_dead=unavailable\nserved"
+    },
+    "hang": {
+      "vacuous": false,
+      "ok": true,
+      "connectTimeoutMs": 1500,
+      "durationMs": 7812,
+      "offeredNoTool": true,
+      "reported": true,
+      "stateText": "extension qa-mcp-hang [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-KCyMi9/run-home/.mpd/extensions/qa-mcp-hang\nsource: /tmp/mpd-extension-mcp-bridge-KCyMi9/run-home/.mpd/extensions/qa-mcp-hang/mpd-ext.json\nskills: (none)\nflows: (none)\nroles: (none)\nmcp: qa_mcp_hang=unavailable\nserved"
+    },
+    "schema": {
+      "vacuous": false,
+      "ok": true,
+      "goodToolOffered": true,
+      "badInputSkipped": true,
+      "badOutputOffered": true,
+      "badOutputSchemaDropped": true,
+      "reportedReason": true,
+      "stateText": "extension qa-mcp-schema [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-KCyMi9/run-home/.mpd/extensions/qa-mcp-schema\nsource: /tmp/mpd-extension-mcp-bridge-KCyMi9/run-home/.mpd/extensions/qa-mcp-schema/mpd-ext.json\nskills: (none)\nflows: (none)\nroles: (none)\nmcp: qa_mcp_schema=connected\nserved skills: (none)\nerror contributes.mcp[0]: tool \"bad_input\" skipped: its inputSchema cannot be projected onto the harness subset (schema: a schema must be an object)\nerror contributes.mcp[0]: tool \"bad_output\": its outputSchema would have to be rewritten for the harness subset (schema.properties.a: dropped unsupported keyword `pattern`) — the tool is registered WITHOUT structuredContent (the "
+    },
+    "dup": {
+      "vacuous": false,
+      "ok": true,
+      "zeroTools": true,
+      "headerZeroTools": true,
+      "stateText": "extension qa-mcp-dup [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-KCyMi9/run-home/.mpd/extensions/qa-mcp-dup\nsource: /tmp/mpd-extension-mcp-bridge-KCyMi9/run-home/.mpd/extensions/qa-mcp-dup/mpd-ext.json\nskills: (none)\nflows: (none)\nroles: (none)\nmcp: qa_mcp_dup=unavailable\nserved ski",
+      "collisionPremise": "the SAME raw name (dup_tool) advertised twice makes the tool list invalid (\"listed tool ... more than once\"), which rolls the whole generation back to ZERO tools; two DIFFERENT raw names can never collide because any lossy transformation gains a hash suffix"
+    },
+    "stderr": {
+      "vacuous": false,
+      "ok": true,
+      "cap": 2000,
+      "floodLength": 3053,
+      "reportedTailLength": 2000,
+      "headDropped": true,
+      "tailKept": true,
+      "reported": true,
+      "tailHead": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "stateHead": "extension qa-mcp-stderr [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-KCyMi9/run-home/.mpd/extensions/qa-mcp-stderr\nsource: /tmp/mpd-extension-mcp-bridge-KCyMi9/run-home/.mpd/extensions"
+    },
+    "containment": {
+      "ok": true,
+      "exit": 0,
+      "control": {
+        "liveToolOffered": true,
+        "liveCallSucceeded": true
+      },
+      "showCallOrder": [
+        "qa-mcp-dead",
+        "qa-mcp-schema",
+        "qa-mcp-dup",
+        "qa-mcp-hang",
+        "qa-mcp-stderr"
+      ],
+      "crashSignatures": [],
+      "offeredMcp": [
+        "mcp__ast_grep__rewrite",
+        "mcp__ast_grep__scan",
+        "mcp__ast_grep__search",
+        "mcp__codegraph__codegraph_explore",
+        "mcp__context7__query-docs",
+        "mcp__context7__resolve-library-id",
+        "mcp__grep_app__searchGitHub",
+        "mcp__lsp__diagnostics",
+        "mcp__lsp__find_references",
+        "mcp__lsp__goto_definition",
+        "mcp__lsp__install_decision",
+        "mcp__lsp__prepare_rename",
+        "mcp__lsp__rename",
+        "mcp__lsp__status",
+        "mcp__lsp__symbols",
+        "mcp__qa_mcp_live__diagnostics",
+        "mcp__qa_mcp_live__find_references",
+        "mcp__qa_mcp_live__goto_definition",
+        "mcp__qa_mcp_live__install_decision",
+        "mcp__qa_mcp_live__prepare_rename",
+        "mcp__qa_mcp_live__rename",
+        "mcp__qa_mcp_live__status",
+        "mcp__qa_mcp_live__symbols",
+        "mcp__qa_mcp_schema__bad_output",
+        "mcp__qa_mcp_schema__good_tool"
+      ],
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-extension-mcp-bridge-KCyMi9-ws--"
+        ]
+      }
+    }
+  }
+}

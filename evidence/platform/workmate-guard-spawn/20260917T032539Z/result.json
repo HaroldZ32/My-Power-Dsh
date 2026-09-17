@@ -1,0 +1,64 @@
+{
+  "finding": "T-43 REGRESSION — the real-home guard refuses the SANCTIONED sandboxed boot, so every QA/verification lane that mutates the workmate library under HOME=<sandbox> + DSH_HOME=<sandbox> fails with 403 real-home-refused. Reported by qa-lane-engineer; reproduced and root-caused here.",
+  "severity": "blocker for the QA lanes (t21 verify 1, workmate-team-member, any workmate step inside the agent-teams lanes)",
+  "owner_file": "packages/mpd-workmate-plugin/src/index.ts:113-129 (assertMutationSandboxed, landed by t23)",
+  "red_measurements": {
+    "dist_under_test": "packages/mpd-workmate-plugin/dist/index.js sha256 6b1715d0f8bebda0 (the t48 rebuild at 02:54:37Z, which is what brought the guard live)",
+    "probe": "import dist/index.js; call assertMutationSandboxed('probe a mutation') with env set AT SPAWN (a fresh process, exactly like a QA boot)",
+    "rows": [
+      {
+        "shape": "HOME=<sandbox>, DSH_HOME=<sandbox> (THE SANCTIONED RECIPE)",
+        "node": "REFUSED 403",
+        "bun": "REFUSED 403",
+        "expected": "ALLOWED"
+      },
+      {
+        "shape": "HOME unset, DSH_HOME set",
+        "node": "REFUSED 403",
+        "bun": "REFUSED 403",
+        "expected": "REFUSED 403"
+      },
+      {
+        "shape": "HOME=/root (real), DSH_HOME set",
+        "node": "REFUSED 403",
+        "bun": "REFUSED 403",
+        "expected": "REFUSED 403"
+      },
+      {
+        "shape": "HOME=<sandbox> + MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1",
+        "node": "ALLOWED",
+        "bun": "ALLOWED",
+        "expected": "ALLOWED (documented override)"
+      }
+    ],
+    "verdict": "row 1 is REFUSED in BOTH runtimes: the guard cannot distinguish the sandbox from the real home, so it refuses the very recipe its own message prescribes."
+  },
+  "root_cause": {
+    "predicate": "resolve(home) !== resolve(realHome) where realHome = homedir() (node:os)",
+    "why_tautological": "on POSIX os.homedir() reads $HOME (node: measured /tmp/fakehome with HOME=/tmp/fakehome; bun: same), so resolve(home) === resolve(realHome) in every boot that sets HOME at spawn, and the predicate can only pass if HOME is mutated AFTER process start — a shape production never uses.",
+    "my_own_invalid_verification": "evidence/platform/harness-close/20260917T022913Z/guard-cases.mjs:49 sets process.env.HOME INSIDE the running process; under bun the cached start home then differs from the new HOME, so all four arms passed while proving the wrong shape. The production shape (env at spawn) was never tested, and packages/mpd-workmate-plugin/test/ has NO guard test at all (grep for assertMutationSandboxed/real-home-refused in test/*.ts: 0 hits). This is the same failure class as the stale-green: a verdict anchored to a shape nobody runs.",
+    "timeline_consistency": "the QA lane passed at 02:53Z against the pre-t48 dist (built 02:20Z, BEFORE t23's 02:31Z src edit, so it carried no guard) and failed from 03:08Z onwards, after the t48 rebuild at 02:54:37Z pulled the guard into the dist. Consistent with the reported timeline; the pre-t48 dist bytes are overwritten so this half is inference, not measurement."
+  },
+  "refinement_of_the_recommended_fix": "The recommended one-liner (realHome = userInfo().homedir) is correct for PRODUCTION — dsh is node (`#!/usr/bin/env node`, measured), and node's userInfo() is passwd-derived (/root with HOME=/tmp/fakehome). It is NOT correct under bun, where userInfo().homedir follows HOME too (measured: /tmp/fakehome) — so the guard would stay broken in `bun test` and any bun-run tooling. The patch therefore reads the passwd entry for the effective uid first (HOME-independent in both runtimes) and keeps userInfo() — accepted only when it DIFFERS from HOME — as the fallback; undeterminable returns undefined, which makes the guard refuse (fail closed) with an added clause in the message.",
+  "patch": {
+    "path": "evidence/platform/workmate-guard-spawn/20260917T032539Z/proposed.patch",
+    "state": "UNVERIFIED — written but NOT applied; nothing under packages/** was modified by me",
+    "construction": "edited a temp copy of src/index.ts with 5 unique-anchor replacements (each asserted exactly once) and generated the diff with `diff -u`, so it applies cleanly",
+    "hunks": [
+      "import: { homedir } -> { homedir, userInfo } from node:os",
+      "new realUserHome(): passwd-by-uid, then userInfo() iff it differs from HOME, else undefined",
+      "predicate: adds `realHome !== undefined` so the undeterminable case fails closed",
+      "message: appends '(the real home could not be determined on this host)' in that case",
+      "docstring for the helper explaining why homedir() is unusable here"
+    ]
+  },
+  "required_follow_through_before_claiming_the_fix": [
+    "add spawn-shape test arms to the PACKAGE suite (packages/mpd-workmate-plugin/test/): spawn a child with env AT SPAWN and assert allowed(sandbox HOME) / refused(HOME unset) / refused(HOME=real) / allowed(override) — the missing coverage that let this land",
+    "rebuild dist from the repo ROOT per §6 (canonical form) and re-run node scripts/verify-dist-fresh.mjs -> 20/20",
+    "re-run the four shapes x two runtimes against the REBUILT dist and record the GREEN",
+    "tell qa-lane-engineer so t21's verify 1 can be re-run",
+    "the re-pack must FOLLOW this change (the workmate dist is packed), so it lands before packaging-engineer's last action"
+  ],
+  "bound": "The RED is measured on the committed dist in the production shape and in both runtimes. The patch is a candidate only: it is unapplied and unverified, and no GREEN may be claimed until the rebuilt dist is re-probed and the test arms exist.",
+  "attribution": "reported by qa-lane-engineer (evidence/dsh-qa/red-lanes/20260917T023000Z-t21/BLOCKER-workmate-real-home-guard.md); reproduced, root-caused, and patched-for-review by platform-engineer — the defect is mine (T-43, t23)."
+}

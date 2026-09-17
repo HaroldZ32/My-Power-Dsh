@@ -1,0 +1,5 @@
+=== T-21/T-23/T-24/T-26/T-43 — the helper's own self-test (13 arms) ===
+[PASS] probe: missing pid file -> NO-PID-FILE, exit 2 — exit=2
+[PASS] T-24: a child that spawns a grandchild holding the handle returns promptly — elapsed=76ms
+[PASS] T-24: the helper never uses stdio:'pipe' — pipeHits=0
+[mpd-bg self-test] 13/13 arms passed — PASS

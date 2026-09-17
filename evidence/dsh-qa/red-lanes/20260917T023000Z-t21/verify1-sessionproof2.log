@@ -1,0 +1,7 @@
+[workmate-library] ok=false -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-17T03-14-09.939Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0,"attempts":2,"retryNotes":["attempt 1 did not complete the flow (missing tools: none; files present: false) — retrying once"]}
+  flow: {"ok":true,"tools":["agent_teams_add_member","agent_teams_approve","agent_teams_claim_task","agent_teams_create","agent_teams_create_task","agent_teams_delete","agent_teams_edit_plan","agent_teams_interject_decide","agent_teams_interject_request","agent_teams_
+  files: {"ok":false,"uses":null,"noteChars":0,"memoryChars":0,"note":"","wmRoot":"/tmp/mpd-wm-home-m21fmP/.mpd/workmate"}
+  isolation: {"ok":true,"realWm":"/root/.mpd/workmate","before":".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer","after":".archive,agent-teams-engineer,code-reviewer,docs-gat

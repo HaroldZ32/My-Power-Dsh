@@ -1,0 +1,81 @@
+=== t61 PRE-MEASUREMENT REVISION PIN (2026-09-17T05:36:35Z) — nothing inherited ===
+HEAD 646d8018a44bffb2d6e1c30afa090056f81b911e  dirty 4297
+--- the three script fingerprints (expected b4aff7cc / b7f940b4 / e9e5c780; RE-MEASURED) ---
+  79563bc5fdd6518e  scripts/pack-mpd.mjs
+  b82941ec2d4cd744  scripts/verify-pack-closure.mjs
+  e9e5c78007e88610  scripts/mpd-ext.mjs
+--- the packed manifest (its stamp is what the twin scan reports) ---
+  sha256: eaa0919702bf5b334332d5b701b6a2a85ab5aa0a84cc4ccd9b4faa6636ebf61c
+  mtime : 2026-09-17T05:19:48Z
+  bytes : 1440
+--- the twin-scan instrument (hash quoted before AND after the run) ---
+  sha256_16: 858cd130b6caacad   bytes: 18056   mtime: 2026-09-17 12:35:13.988540018 +0800
+--- ANY shipped-tree write after the pack instant (pre-condition) ---
+  files newer than the manifest: 2
+
+=== t61 RUN (attempt 5, attemptId 56e1d3af…) — MEASUREMENT ONLY, nothing under dist/mpd-package/** is written ===
+### [1] INSTRUMENT HASH BEFORE ###
+  packed-twin-scan sha256_16 858cd130b6caacad  bytes 18056
+### [2] TWIN SCAN, FIRST PASS (2026-09-17T05:37:24Z) ###
+  exit=0
+  packStampUtc: 2026-09-17T05:19:48.266Z
+  identical: 1187 | drift: 0 | missing: 0 | afterPack: 0 | noTwin: 1 | byDesign: 2 | ok: True
+   BY-DESIGN package.json | packer-generated packed-form manifest (scripts/pack-mpd.mjs:372)
+   BY-DESIGN packages/mpd-ext-plugin/dist/validator.js | packer-generated CLI validator entry (scripts/pack-mpd.mjs:125)
+### [3] CONTENT ASSERTION (T-23 ids) ###
+  source   : grep -c 'T-23' = 2  sha f6b4d1bec8745da6
+  artifact : grep -c 'T-23' = 2  sha f6b4d1bec8745da6
+### [4] CLOSURE (the contract's verify command) ###
+  [verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/my-power-dsh/dist/mpd-package (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact
+  exit=0
+### [5] LEG (a) directional artifact→source (3 generated allowlisted) ###
+  compared=1187 drift=0 no-source=0
+### [6] LEG (c) six wholesale groups completeness ###
+  skills: missing=0
+  presets: missing=0
+  extensions: missing=0
+  docs: missing=0
+  templates: missing=0
+  agent-references: missing=0
+### [7] PACKED CLI LEGS (from INSIDE the packed tree) (2026-09-17T05:37:43Z) ###
+  validate example exit=0
+  validate template exit=0
+  [mpd-ext] --self-test passed (53 checks) [validator: compiled]
+  --self-test exit=0
+  scaffold exit=0 (into /tmp/tmp.Vo4bcx6YDf)
+    produced: flows mpd-ext.json personas README.md README.zh-CN.md skills 
+### [8] --root DOC PARITY (packed tree) ###
+  repo: [verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+  packed: [verify-docs-parity] root=dist/mpd-package pairs=35 failed=0 violations=0 exempt=17 — PASS
+### [9] DIST HALF: every packed packages/*/dist/*.js vs its checkout twin, with count ###
+  packed dist .js files=24 byte-identical=23 differing=0 no-checkout-twin=1| rebuilt-after-pack=0
+   NO-TWIN [ 'packages/mpd-ext-plugin/dist/validator.js' ]
+### [10] the two checkout files newer than the manifest — are they SHIPPED? ###
+  newer: skills/dsh-qa/SKILL.md
+  newer: scripts/run-qa-lanes.mjs
+  SHIPPED+IDENTICAL skills/dsh-qa/SKILL.md
+  NOT SHIPPED scripts/run-qa-lanes.mjs
+### [11] TWIN SCAN, SECOND PASS + INSTRUMENT HASH AFTER (2026-09-17T05:37:56Z) ###
+  instrument sha256_16 AFTER 858cd130b6caacad  (before was 858cd130b6caacad)
+  exit=0
+  before: {'identical': 1187, 'drift': 0, 'noTwin': 1, 'missing': 0, 'afterPack': 0, 'packStampUtc': '2026-09-17T05:19:48.266Z', 'ok': True}
+  after : {'identical': 1187, 'drift': 0, 'noTwin': 1, 'missing': 0, 'afterPack': 0, 'packStampUtc': '2026-09-17T05:19:48.266Z', 'ok': True}
+  MEASUREMENT-ONLY PROOF: artifact unchanged across my run = True
+### [12] VOIDING CHECK: any shipped-tree write AFTER the pin (05:36:35Z)? ###
+  count: 0
+### [13] THE THREE FINGERPRINTS, re-measured (never inherited) ###
+  79563bc5fdd6518e  scripts/pack-mpd.mjs
+  b82941ec2d4cd744  scripts/verify-pack-closure.mjs
+  e9e5c78007e88610  scripts/mpd-ext.mjs
+  acceptance expected: b4aff7cc (packer) / b7f940b4 (closure) / e9e5c780 (CLI)
+### [14] nothing under dist/mpd-package was written by this task ###
+  manifest mtime (unchanged by measurement): 2026-09-17T05:19:48Z
+  my evidence dir mtime: 2026-09-17T05:37:56Z
+
+=== t61 VERDICT (attempt 5) ===
+PASS — the artifact MAY SHIP on revision packStampUtc 2026-09-17T05:19:48.266Z (manifest eaa0919702bf5b33…, 1440 B).
+Four twin-scan clauses hold: drift [] / missing [] / afterPack [] (empty list) / ok true, with identical=1187, noTwin=1, byDesign=2 (the two by-design non-twins named: package.json, packages/mpd-ext-plugin/dist/validator.js). Instrument sha256_16 858cd130b6caacad before AND after; scan identical across the run -> measurement-only proof.
+Content assertion: packed `grep -c 'T-23'` = 2 and packed sha == source sha (f6b4d1be…), source count 2 quoted as the target.
+Legs: (a) compared=1187 drift=0 no-source=0; (c) six wholesale groups missing=0; closure exit 0 (379 asset files, 23/23 declared packages, root files 1/1, agent refs 3/3); packed CLI validate(example)=0 validate(template)=0 --self-test=0 (53 checks) scaffold=0; parity repo 37/0 PASS + packed 35/0 PASS. Dist half: 24 packed dist .js, 23 byte-identical, 0 differing, 1 by-design no-twin (validator.js), 0 rebuilt after the pack.
+Findings (non-blocking): F-1 two stale expectations in the task text (packer 79563bc5 vs expected b4aff7cc; closure b82941ec vs expected b7f940b4; CLI e9e5c780 matches). F-2 two post-pack checkout writes, neither staling the artifact (skills/dsh-qa/SKILL.md shipped+identical; scripts/run-qa-lanes.mjs not shipped).
+Voiding check: 0 shipped-tree writes after the 05:36:35Z pin.

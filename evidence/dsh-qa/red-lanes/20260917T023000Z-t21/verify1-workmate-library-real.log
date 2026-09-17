@@ -1,0 +1,7 @@
+[workmate-library] ok=false -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-17T02-47-12.406Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0}
+  flow: {"ok":true,"sample":"ng outside the workspace may be permitted in workspace-write mode? Typically workspace-write restricts writes, reads are often allowed... but DSH file policy might restrict reads too. We'll see. |  | Do reflect and match — they're independ
+  files: {"ok":false,"note":"Deep Worker-based workmate \"alice\". Handles tiny read/summarize requests fast: locate the file, read it, return one-sentence summary, no edits (read-only discip","wmRoot":"/tmp/mpd-wm-home-3G69sV/.mpd/workmate"}
+  isolation: {"ok":true,"realWm":"/root/.mpd/workmate","before":".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer","after":".archive,agent-teams-engineer,code-reviewer,docs-gat

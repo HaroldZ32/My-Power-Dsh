@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wm-dsh-O9UdQI",
+  "wmHome": "/tmp/mpd-wm-home-Gzh12A",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0,
+      "attempts": 1,
+      "retryNotes": []
+    },
+    "flow": {
+      "ok": true,
+      "calls": {
+        "mpd_workmate_init": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_list": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_spawn": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_reflect": {
+          "called": true,
+          "succeeded": true
+        },
+        "mpd_workmate_match": {
+          "called": true,
+          "succeeded": true
+        }
+      },
+      "unproven": [],
+      "availableTools": 102,
+      "source": "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+      "sample": "Gzh12A/ws, DSH_HOME /tmp/mpd-wm-dsh-O9UdQI. But glob defaults to session workspace — hidden files included. Let's glob \"**/note.md\" in ws, and also in DSH_HOME and HOME paths. |  | Actually the sandbox may deny access outside workspace. Let's try reading via tool; if denied, escalate? First locate by glob within allowed roots. |  | Let me run glob patterns: | - path /tmp/mpd-wm-home-Gzh12A, pattern \"**/alice/note.md\" | - path /tmp/mpd-wm-dsh-O9UdQI, pattern \"**/note.md\" |  | Hmm, workspace-write policy allows writes under session workspace; reads elsewhere may be allowed. The bash cat failed o"
+    },
+    "files": {
+      "ok": true,
+      "uses": 2,
+      "noteChars": 284,
+      "memoryChars": 489,
+      "note": "Deep Worker-based workmate \"alice\". Verilog counter specialist; also handles trivial read-only doc-summary tasks; treats a minimal/empty README as valid input a",
+      "wmRoot": "/tmp/mpd-wm-home-Gzh12A/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-Gzh12A",
+      "sandboxRoot": "/tmp/mpd-wm-home-Gzh12A/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

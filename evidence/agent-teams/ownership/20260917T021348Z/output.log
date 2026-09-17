@@ -1,0 +1,19 @@
+t20 evidence — lane B4 (T-01, T-12)
+
+RED at HEAD 646d801:
+  refusal  : inScope overlaps ${other.id} at <patterns>; serialize these tasks or split the paths
+  surface  : 0 matches for agent_teams_path_owner / _move_path / _rollover; 17 tools total
+  waves    : no wave field anywhere in the state layer
+
+GREEN (this tree):
+  refusal  : names the owner (id + subject + assignee + status) and the repair call
+  surface  : 20 tools, incl. path_owner / move_path / rollover
+  waves    : wave label + durable waves/<label>.json archive + status render
+  registry : 71 regions, --check clean
+
+GATES:
+  ownership-and-wave tests    : 5 pass / 0 fail
+  registry-context-heal tests : 21 pass / 0 fail
+  full adopted-plugin suite   : 237 pass / 1 fail (the out-of-inScope surface pin)
+  patch-agent-teams-fixes --check : exit 0 (71 regions)
+  typecheck                   : exit 0, 0 errors

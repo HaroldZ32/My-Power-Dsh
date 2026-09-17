@@ -1,0 +1,327 @@
+{
+  "startedAt": "2026-09-17T03:56:18.620Z",
+  "finishedAt": "2026-09-17T03:56:18.693Z",
+  "red": {
+    "root": "/root/dshProj/my-power-dsh/.mpd/red-baseline",
+    "generation": "legacy",
+    "defaults": {
+      "enabled": true,
+      "warnSilenceMs": 90000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 3,
+      "actionOnEscalate": "pause",
+      "toolInFlightMaxMs": 900000
+    },
+    "fingerprints": {
+      "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+      "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+      "channel": "(absent)",
+      "team": "02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58",
+      "dist": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4",
+      "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+    }
+  },
+  "green": {
+    "root": "/root/dshProj/my-power-dsh",
+    "generation": "fold",
+    "defaults": {
+      "enabled": true,
+      "warnSilenceMs": 600000,
+      "tickIntervalMs": 15000,
+      "warnStreakToEscalate": 6,
+      "actionOnEscalate": "warn-only",
+      "toolInFlightMaxMs": 900000,
+      "holdTtlMs": 900000
+    },
+    "fingerprints": {
+      "machine": "ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41",
+      "engine": "47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694",
+      "channel": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+      "team": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+      "dist": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8",
+      "tools": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f"
+    }
+  },
+  "fingerprints": {
+    "before": {
+      "red": {
+        "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+        "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+        "channel": "(absent)",
+        "team": "02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58",
+        "dist": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4",
+        "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+      },
+      "green": {
+        "machine": "ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41",
+        "engine": "47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694",
+        "channel": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+        "team": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+        "dist": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8",
+        "tools": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f"
+      }
+    },
+    "after": {
+      "red": {
+        "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+        "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+        "channel": "(absent)",
+        "team": "02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58",
+        "dist": "09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4",
+        "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+      },
+      "green": {
+        "machine": "ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41",
+        "engine": "47c24bd678ae45e0655c10373d1e64655b495c1ba8f136a66e44eda38c177694",
+        "channel": "b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84",
+        "team": "c3f495118d547abb7b658062b9b118430ca24861e9ae404688d37a34e1eb0168",
+        "dist": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8",
+        "tools": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f"
+      }
+    }
+  },
+  "settleMs": 0,
+  "settled": null,
+  "redPinned": true,
+  "rows": [
+    {
+      "id": "e",
+      "title": "a tool call past `toolInFlightMaxMs` — the r6 PIN",
+      "required": "exactly ONE `tool-expired`, never a hold (the contract's RED column says r6 was already green)",
+      "redPrediction": "PIN, not contrast: the same reading is REQUIRED on both trees, and a difference is itself the defect signal",
+      "kind": "pin",
+      "red": {
+        "tree": "red",
+        "scenario": "e",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-57-00Z-row-e/raw/e-red-mDM5Rr",
+        "ticks": [
+          {
+            "offset": 900001,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 1800000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 90000,
+          "warnStreakToEscalate": 3,
+          "actionOnEscalate": "pause",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": null,
+        "states": null,
+        "stats": {
+          "ticks": 2,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 0,
+          "sceneFailures": 0,
+          "holdsApplied": 0,
+          "holdsFailed": 0,
+          "incidents": 1,
+          "incidentFailures": 0,
+          "neverStarted": 0,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 1,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 0,
+          "stream": 0
+        },
+        "counts": {},
+        "firstWarnAt": null,
+        "firstEscalateAt": null,
+        "anyWarn": false,
+        "anyEscalate": false,
+        "anyHold": false,
+        "holdOnDiskAtEnd": false,
+        "noWarnBelowThreshold": true,
+        "channelAlive": false,
+        "channelParked": false
+      },
+      "green": {
+        "tree": "green",
+        "scenario": "e",
+        "workspace": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-57-00Z-row-e/raw/e-green-CSfaX9",
+        "ticks": [
+          {
+            "offset": 900001,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          },
+          {
+            "offset": 1800000,
+            "decisions": [],
+            "holds": [],
+            "holdOnDisk": false
+          }
+        ],
+        "defaults": {
+          "warnSilenceMs": 600000,
+          "warnStreakToEscalate": 6,
+          "actionOnEscalate": "warn-only",
+          "toolInFlightMaxMs": 900000
+        },
+        "predicateSource": "heartbeat",
+        "states": {},
+        "stats": {
+          "ticks": 2,
+          "tickErrors": 0,
+          "tickSkips": 0,
+          "heartbeatWrites": 0,
+          "heartbeatFailures": 0,
+          "rotations": 0,
+          "scenes": 0,
+          "sceneFailures": 0,
+          "holdsApplied": 0,
+          "holdsFailed": 0,
+          "incidents": 1,
+          "incidentFailures": 0,
+          "neverStarted": 0,
+          "skippedTeams": 0,
+          "toolStarts": 0,
+          "toolExpired": 1,
+          "channelEvents": 0,
+          "channelFallbacks": 2,
+          "streamFrames": 0,
+          "channelDetached": 0,
+          "channelDependencyBlocked": 0,
+          "holdsAutoReleased": 0,
+          "holdsAutoReleaseFailures": 0,
+          "lastError": null
+        },
+        "teamBytesUntouched": true,
+        "eventListeners": {
+          "session": 1,
+          "stream": 1
+        },
+        "counts": {},
+        "firstWarnAt": null,
+        "firstEscalateAt": null,
+        "anyWarn": false,
+        "anyEscalate": false,
+        "anyHold": false,
+        "holdOnDiskAtEnd": false,
+        "noWarnBelowThreshold": true,
+        "channelAlive": false,
+        "channelParked": false
+      }
+    }
+  ],
+  "replay": null,
+  "contractRed": {
+    "machine": "fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef",
+    "engine": "f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b",
+    "tools": "49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2"
+  },
+  "reconstructionOf": {
+    "incidents": "/root/dshProj/my-power-dsh/.mpd/team/watchdog/incidents.jsonl"
+  },
+  "ok": false,
+  "checks": [
+    {
+      "id": "CLEAN",
+      "ok": false,
+      "detail": "every §9 row ran exactly once, both trees (e)"
+    },
+    {
+      "id": "R-a",
+      "ok": false,
+      "detail": "row (a) RED missing: no reading for row a"
+    },
+    {
+      "id": "G-a",
+      "ok": false,
+      "detail": "row (a) GREEN missing: no reading for row a"
+    },
+    {
+      "id": "R-b",
+      "ok": false,
+      "detail": "row (b) RED missing: no reading for row b"
+    },
+    {
+      "id": "G-b",
+      "ok": false,
+      "detail": "row (b) GREEN missing: no reading for row b"
+    },
+    {
+      "id": "R-c",
+      "ok": false,
+      "detail": "row (c) RED missing: no reading for row c"
+    },
+    {
+      "id": "G-c",
+      "ok": false,
+      "detail": "row (c) GREEN missing: no reading for row c"
+    },
+    {
+      "id": "R-d",
+      "ok": false,
+      "detail": "row (d) RED missing: no reading for row d"
+    },
+    {
+      "id": "G-d",
+      "ok": false,
+      "detail": "row (d) GREEN missing: no reading for row d"
+    },
+    {
+      "id": "R-e",
+      "ok": true,
+      "detail": "row (e) RED PIN pin: counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states=null depParked=null source=null"
+    },
+    {
+      "id": "G-e",
+      "ok": true,
+      "detail": "row (e) GREEN green: counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states={} depParked=0 source=heartbeat"
+    },
+    {
+      "id": "R-f",
+      "ok": false,
+      "detail": "row (f) RED missing: no reading for row f"
+    },
+    {
+      "id": "G-f",
+      "ok": false,
+      "detail": "row (f) GREEN missing: no reading for row f"
+    },
+    {
+      "id": "KNOBS",
+      "ok": true,
+      "detail": "the two trees carry the two tuples the contract names: RED {\"enabled\":true,\"warnSilenceMs\":90000,\"tickIntervalMs\":15000,\"warnStreakToEscalate\":3,\"actionOnEscalate\":\"pause\",\"toolInFlightMaxMs\":900000} vs §3 {\"enabled\":true,\"warnSilenceMs\":600000,\"tickIntervalMs\":15000,\"warnStreakToEscalate\":6,\"actionOnEscalate\":\"warn-only\",\"toolInFlightMaxMs\":900000,\"holdTtlMs\":900000}"
+    },
+    {
+      "id": "PIN-RED",
+      "ok": true,
+      "detail": "the RED tree reproduces the contract's §0/A2 hashes and carries NO channel.ts ({\"machine\":\"fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef\",\"engine\":\"f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b\",\"channel\":\"(absent)\",\"team\":\"02db86fb9a874322e832243d61ded4d5c7751e2b9856074a664745549d1bfd58\",\"dist\":\"09ee67120f80eb2ca4663e7fa70320d06b6b9eab28ec8a115505bf23517dd0a4\",\"tools\":\"49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2\"})"
+    },
+    {
+      "id": "SETTLED",
+      "ok": true,
+      "detail": "no settle window requested (--settle-ms 0): the fingerprints were taken once"
+    },
+    {
+      "id": "FOLD-AUTHORITY",
+      "ok": false,
+      "detail": "on the working tree the fold is the AUTHORITY for rows a,b,d (predicateSource [null,null,null]), so the suppression cannot be credited to the heartbeat fallback"
+    },
+    {
+      "id": "REPLAY",
+      "ok": false,
+      "detail": "the recorded incidents were replayed through BOTH machines on the pinned file (undefined rows, sha256 undefined…): the legacy machine reproduces null escalations (the reconstruction is faithful), while of the undefined recorded escalations that HELD a team the fold predicate reproduces null when the channel is reconstructed pessimistically (OUTSTANDING) and null under §4 report-only (no channel evidence)"
+    }
+  ],
+  "evidenceDir": "/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-57-00Z-row-e"
+}

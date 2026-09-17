@@ -13,14 +13,27 @@
 // engine is a plain class so a test or a lane can drive `tickOnce(now)` with an
 // injected clock and a stub adapter, without a boot.
 import { type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
-import { HOLD_TOOL, applyHold } from "./actions.js"
-import type { HoldRegistry } from "./holds.js"
-import { candidateFor, readKnobs, WatchdogMachine, type Decision, type ResolvedKnobs, type SilenceCandidate, type WatchdogKnobs } from "./machine.js"
+import { HOLD_TOOL, applyHold, applyResume } from "./actions.js"
+import { ChannelFold, type ChannelView } from "./channel.js"
+import { readWatchdogSection } from "./config-file.js"
+import { heldTeamIds, type HoldRegistry } from "./holds.js"
+import {
+  candidateFor,
+  knobReadings,
+  readKnobs,
+  WatchdogMachine,
+  type ChannelState,
+  type Decision,
+  type KnobReading,
+  type ResolvedKnobs,
+  type SilenceCandidate,
+  type WatchdogKnobs,
+} from "./machine.js"
 import { sceneDir } from "./paths.js"
 import { buildScene, mailboxUnread, writeScene, type SceneIncident } from "./scene.js"
 import { appendIncident, readHold, readIncidents, readWatermarks, type IncidentRecord } from "./sidecars.js"
-import { appendHeartbeat, message, readHeartbeats, rotateHeartbeats, type HeartbeatKind, type HeartbeatStamp } from "./store.js"
-import { agentIds, CAPTAIN_KEY, currentTask, readTeams, resolveIdentity, teamOf, type TeamRecord } from "./team.js"
+import { appendHeartbeat, listHeartbeatKeys, message, readHeartbeats, rotateHeartbeats, type HeartbeatKind, type HeartbeatStamp } from "./store.js"
+import { agentIds, CAPTAIN_KEY, currentTask, dependencyBlocked, readTeams, resolveIdentity, teamOf, type TeamRecord } from "./team.js"
 
 /** Fully-resolved engine configuration (no optional key left). */
 export interface EngineConfig {
@@ -45,6 +58,11 @@ export interface EngineConfig {
    * (WARN-class only). 0 disables the suppression entirely — the pre-r6 behaviour.
    */
   toolInFlightMaxMs: number
+  /**
+   * T-17's hold TTL (§3): how long a hold a `pause` escalation persisted may live before it is
+   * auto-released with a durable incident. `0` = never expire.
+   */
+  holdTtlMs: number
   /** Print skipped-team reasons to the console as well as the debug channel. */
   verboseSkips: boolean
   logPrefix: string
@@ -71,7 +89,38 @@ export interface EngineStats {
   toolStarts: number
   /** `tool-expired` reports recorded (r6's secondary bound fired). */
   toolExpired: number
+  /** `session/event` records folded into the four-state channel predicate (§1). */
+  channelEvents: number
+  /** Candidates whose owner session the fold could not answer for (§4 fallback). */
+  channelFallbacks: number
+  /** `agent/assistant-stream` start frames that flipped an OUTSTANDING step ALIVE. */
+  streamFrames: number
+  /** Members reported PARKED because their session is not attached (§1's PARKED row). */
+  channelDetached: number
+  /** T-20: members reported PARKED because every open task waits on an unfinished dependency. */
+  channelDependencyBlocked: number
+  /** T-17: holds released by the TTL or the activity path (each also wrote an incident). */
+  holdsAutoReleased: number
+  /** T-17: auto-release attempts that could not clear the hold (reported, never silent). */
+  holdsAutoReleaseFailures: number
   lastError: string | null
+}
+
+/** Which predicate concluded the states this process is running on (§4's honest answer). */
+export interface PredicateStatus {
+  /** `channel` = the §1 fold is the authority; `heartbeat` = the §4 report-only fallback. */
+  source: "channel" | "heartbeat"
+  /** Why the source is what it is (one line, for the status view and the boot log). */
+  reason: string
+  /** Whether the `agent/assistant-stream` enrichment is installed (§2). */
+  enrichment: boolean
+  /** Fold counters: events consumed and sessions known. */
+  events: number
+  sessions: number
+  /** The current state per known session id. */
+  states: Record<string, ChannelState>
+  /** Fallback announcements made (once per process, §4). */
+  announced: boolean
 }
 
 /** The result of one tick. */
@@ -111,6 +160,26 @@ function toolValue(raw: unknown): Record<string, unknown> | undefined {
   const candidate = (raw as { value?: unknown }).value
   if (candidate !== null && typeof candidate === "object") return candidate as Record<string, unknown>
   return raw as Record<string, unknown>
+}
+
+/**
+ * The session id a harness payload names.
+ *
+ * A `session/event` delivers the `Session` itself (`session.id`); an agent payload (the
+ * `agent/assistant-stream` frame wrapper) delivers an agent whose own session carries it.
+ * Only ids are read here — no event payload is ever written to disk.
+ */
+function sessionIdOf(value: unknown): string | null {
+  if (value === null || typeof value !== "object") return null
+  const record = value as Record<string, unknown>
+  const direct = record.id
+  if (typeof direct === "string" && direct !== "") return direct
+  const session = record.session
+  if (session !== null && typeof session === "object") {
+    const id = (session as Record<string, unknown>).id
+    if (typeof id === "string" && id !== "") return id
+  }
+  return null
 }
 
 /** One diagnostic line on stderr; never throws. */
@@ -168,6 +237,30 @@ export class WatchdogEngine {
   private ticking = false
   private stopped = false
   private turnSeq = 0
+  /**
+   * THE FOUR-STATE CHANNEL FOLD (contract §1): the process's single fold, fed by the
+   * `session/event` firehose through the adapter. It is the ONE authority for a member's
+   * state; the heartbeat stamps decide only the `tool-expired` bound and remain the §4
+   * fallback source.
+   */
+  private readonly fold = new ChannelFold()
+  /** Whether the §2 enrichment (`agent/assistant-stream`) is installed. */
+  private enrichment = false
+  /** The predicate source actually running, and why (named in the status view, §4). */
+  private predicateSource: "channel" | "heartbeat" = "heartbeat"
+  private predicateReason = "not installed yet"
+  /** Whether the once-per-process §4 fallback announcement was made. */
+  private fallbackAnnounced = false
+  /** §7.3: whether the once-per-process knob-divergence warning was made. */
+  private divergenceAnnounced = false
+  /** §7.2: the last computed per-knob live-vs-file reading (for the status view). */
+  private knobView: { readings: KnobReading[]; divergent: string[]; restartRequired: boolean; file: string | null; fileFound: boolean } = {
+    readings: [],
+    divergent: [],
+    restartRequired: false,
+    file: null,
+    fileFound: false,
+  }
   /** Set by `apply` so a live cadence change can rebuild the single timer. */
   onKnobsChanged: ((knobs: ResolvedKnobs) => void) | undefined
   private readonly stats: EngineStats = {
@@ -187,6 +280,13 @@ export class WatchdogEngine {
     skippedTeams: 0,
     toolStarts: 0,
     toolExpired: 0,
+    channelEvents: 0,
+    channelFallbacks: 0,
+    streamFrames: 0,
+    channelDetached: 0,
+    channelDependencyBlocked: 0,
+    holdsAutoReleased: 0,
+    holdsAutoReleaseFailures: 0,
     lastError: null,
   }
 
@@ -217,6 +317,28 @@ export class WatchdogEngine {
   /** The current streak/escalate/in-flight state (diagnostics). */
   getMachineState(): ReturnType<WatchdogMachine["snapshot"]> {
     return this.machine.snapshot()
+  }
+
+  /**
+   * WHICH PREDICATE IS RUNNING, and what it concluded (§4: "the `session-watchdog-status`
+   * output names the active predicate source"). A diagnostics read, never a decision input.
+   */
+  predicateStatus(): PredicateStatus {
+    const snapshot = this.fold.snapshot()
+    return {
+      source: this.predicateSource,
+      reason: this.predicateReason,
+      enrichment: this.enrichment,
+      events: snapshot.events,
+      sessions: snapshot.sessions,
+      states: snapshot.states,
+      announced: this.fallbackAnnounced,
+    }
+  }
+
+  /** The channel view of one member session, or null when the fold has no data (§4). */
+  channelViewOf(sessionId: string): ChannelView | null {
+    return this.fold.view(sessionId)
   }
 
   /** Every workspace root the engine will tick over. */
@@ -256,7 +378,54 @@ export class WatchdogEngine {
       warnStreakToEscalate: this.config.warnStreakToEscalate,
       actionOnEscalate: this.config.actionOnEscalate,
       toolInFlightMaxMs: this.config.toolInFlightMaxMs,
+      holdTtlMs: this.config.holdTtlMs,
     }
+  }
+
+  /**
+   * §4's degradation announcement: ONE warning line per process.
+   *
+   * A watchdog that goes quiet is worse than a noisy one, so the fallback is never silent —
+   * but it is also not a per-tick stream: the callers that discover it run every tick, and
+   * the announcement is what a user needs, not a flood.
+   */
+  private noteFallback(reason: string): void {
+    this.stats.channelFallbacks += 1
+    this.predicateSource = "heartbeat"
+    this.predicateReason = reason
+    if (this.fallbackAnnounced) return
+    this.fallbackAnnounced = true
+    this.warn(
+      "PREDICATE FALLBACK (§4): " + reason +
+        " — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) " +
+        "and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.",
+    )
+  }
+
+  /**
+   * The live-agent registry, with the `known` flag the liveness gate uses.
+   *
+   * `known` is deliberately conservative: it is true only when the adapter reports the
+   * agents capability AND the registry returned at least one entry. An empty or absent
+   * registry must never make the watchdog conclude "nobody is attached" — that would turn
+   * a missing seam into a silent watchdog, the one failure mode this wave exists to remove.
+   */
+  private liveIds(): { known: boolean; ids: Set<string> } {
+    const ids = new Set<string>()
+    let known = false
+    try {
+      const capabilities = (this.dsh as { capabilities?: () => { agents?: boolean } }).capabilities?.()
+      known = capabilities?.agents === true
+      if (known) {
+        for (const agent of this.dsh.liveAgents() ?? []) {
+          const id = (agent as { id?: unknown } | undefined)?.id
+          if (typeof id === "string" && id !== "") ids.add(id)
+        }
+      }
+    } catch {
+      return { known: false, ids: new Set<string>() }
+    }
+    return { known: known && ids.size > 0, ids }
   }
 
   /** Drop the team-record cache (tests and lanes use it after rewriting a record). */
@@ -398,6 +567,59 @@ export class WatchdogEngine {
       this.warn("this context exposes no event seam — heartbeat writers not installed")
     }
 
+    // ── THE PRIMARY SIGNAL (contract §2): the `session/event` firehose ───────────────
+    // `session/event` is an EMIT (`@mode emit` in `dsh-session`'s own declaration), so a
+    // listener's return value is IGNORED and this subscription can never veto a turn —
+    // unlike `agent/pre-step`, whose waterfall semantics cost us the 2026-09-16 incident.
+    // The fold is incremental and per session; the tick reads it, nothing else does.
+    if (typeof this.dsh.onEvent === "function") {
+      const offSession = this.dsh.onEvent("session/event", (session: unknown, event: unknown) => {
+        try {
+          const sessionId = sessionIdOf(session)
+          if (sessionId === null) return
+          const view = this.fold.apply(sessionId, event)
+          if (view === null) return
+          this.stats.channelEvents += 1
+        } catch (error) {
+          // contained: a malformed event must never take the watchdog down
+          this.warn("the session/event fold threw (the tick keeps its last state): " + message(error))
+        }
+      })
+      if (typeof offSession === "function") {
+        disposers.push(offSession)
+        this.predicateSource = "channel"
+        this.predicateReason = "session/event firehose subscribed (§1 fold is the authority)"
+      } else {
+        this.noteFallback("the adapter's onEvent seam answered undefined for session/event")
+      }
+    } else {
+      this.noteFallback("the adapter exposes no onEvent seam")
+    }
+
+    // ── THE ENRICHMENT (contract §2, soft-probe, never required) ────────────────────
+    // The `start` frame of `agent/assistant-stream` proves the model is DELIVERING a long
+    // answer, which flips the open step to ALIVE while no `assistant/message` is committed
+    // yet. Absent, the fold still works and §1 rule 3's asymmetry applies — stated in the
+    // README and in AGENTS.md, never hidden here.
+    if (typeof this.dsh.onEvent === "function") {
+      const offStream = this.dsh.onEvent("agent/assistant-stream", (payload: unknown) => {
+        try {
+          const record = payload !== null && typeof payload === "object" ? (payload as Record<string, unknown>) : {}
+          const sessionId = sessionIdOf(record.agent)
+          if (sessionId === null) return
+          if (this.fold.noteStreamFrame(sessionId, record.frame ?? payload)) this.stats.streamFrames += 1
+        } catch (error) {
+          this.warn("the assistant-stream enrichment threw: " + message(error))
+        }
+      })
+      if (typeof offStream === "function") {
+        disposers.push(offStream)
+        this.enrichment = true
+      } else {
+        this.info("enrichment unavailable (no agent/assistant-stream): a long streaming answer stays OUTSTANDING until its assistant/message commits (§1 rule 3)")
+      }
+    }
+
     // The POST hook stamps on COMPLETION only (W-9: it is the COMPLETION half of the pair —
     // the PRE half is the `tool-start` stamp installed above from the observe-only
     // `tools/pre-execute` hook, and the two are matched by `callId`).
@@ -489,7 +711,22 @@ export class WatchdogEngine {
         this.warn("knob re-read failed: " + message(error))
       }
       if (!this.knobs.enabled) return { decisions, scenes, holds, skipped: "disabled" }
+      // §7.3: the file layer of the `mpd` namespace is NOT live in this process, so a divergence
+      // between it and the running values is announced ONCE per process, naming both values.
+      try {
+        this.noteKnobDivergence()
+      } catch (error) {
+        this.warn("knob divergence check failed: " + message(error))
+      }
       for (const workspace of this.knownRoots()) {
+        // T-17: a hold that outlived its TTL, or that a member's own stamps have disproved,
+        // releases itself BEFORE the teams are observed — the pause stays PRESERVING (only the
+        // hold sidecar and the incident log are written; not one byte of team.json moves).
+        try {
+          await this.autoReleaseHolds(workspace, now)
+        } catch (error) {
+          this.warn("auto-release pass failed for " + workspace + ": " + message(error))
+        }
         for (const team of this.teams(workspace, now)) {
           // ONE gate for EVERY decision path: a record that cannot dispatch is not observed at
           // all — no never-started record, no WARN, no ESCALATE, no hold (r4). Skipping here
@@ -583,7 +820,11 @@ export class WatchdogEngine {
         reason: desc + " has NO live agent: neither the captain session nor any of its " + team.members.length + " member id(s) is in this process's live registry (" + live.size + " live agent(s))",
       }
     }
-    const grace = this.config.deadTeamGraceMs
+    // A missing/non-finite bound is treated as 0 (tick everything): the r4 grace exists to avoid
+    // watching dead RECORDS, and "I have no bound" must never become "I watch nothing" — a
+    // watchdog that stops observing is the one failure this whole package exists to prevent.
+    const configured = this.config.deadTeamGraceMs
+    const grace = typeof configured === "number" && Number.isFinite(configured) ? configured : 0
     if (grace <= 0 || team.activityAt === null) {
       return { tickable: true, reason: desc + " ticked: no usable liveness signal (registry " + (agentsKnown ? "empty" : "absent") + ", bound " + grace + "ms) — the pre-r4 behaviour" }
     }
@@ -593,6 +834,122 @@ export class WatchdogEngine {
       tickable: false,
       reason: desc + " has no live agent and its newest activity is " + age + "ms old (> " + grace + "ms grace): a dead record, not a dispatch problem",
     }
+  }
+
+  /**
+   * T-17 (§6) — the two auto-release paths, and the ONLY thing that may clear a hold by itself.
+   *
+   * A hold is released when EITHER
+   *   * `ttlMs > 0 && now - hold.since >= ttlMs` (cause `ttl`), or
+   *   * any heartbeat stamp for THAT team is newer than `hold.since` (cause `activity`): a
+   *     member that demonstrably worked has disproved the wedge the hold was raised for.
+   *
+   * Both paths write ONE durable `hold-auto-released` incident, log ONE line, and leave every
+   * team byte untouched — the pause stays PRESERVING (the same promise `session-watchdog-resume`
+   * keeps). The hold sidecar is cleared through the plugin's own `applyResume`, so the
+   * synchronous reader the w7 gates consult is updated in the same step the file is.
+   *
+   * A hold that cannot be cleared is COUNTED and reported, never silently retried forever.
+   */
+  private async autoReleaseHolds(workspace: string, now: number): Promise<void> {
+    let held: string[] = []
+    try {
+      held = this.registry?.heldTeams(workspace) ?? []
+    } catch {
+      held = []
+    }
+    // The hold FILE is the durable truth and the only thing the release may trust: a process
+    // whose registry was never hydrated (a fresh boot, a direct engine construction, a lane)
+    // must still release an expired hold, or a stale pause would outlive every reader.
+    if (held.length === 0) held = heldTeamIds(workspace, this.config.stateDir)
+    if (held.length === 0) return
+    let stampsByTeam: HeartbeatStamp[] | null = null
+    for (const teamId of held) {
+      const hold = readHold(workspace, this.config.stateDir, teamId)
+      if (hold === undefined) continue
+      const age = now - hold.since
+      let release: "ttl" | "activity" | null = null
+      if (hold.ttlMs > 0 && age >= hold.ttlMs) release = "ttl"
+      else {
+        if (stampsByTeam === null) stampsByTeam = this.teamStamps(workspace)
+        if (stampsByTeam.some((stamp) => stamp.teamId === teamId && Number.isFinite(stamp.at) && stamp.at > hold.since)) release = "activity"
+      }
+      if (release === null) continue
+      const resumed = applyResume(workspace, this.config.stateDir, { team_id: teamId }, this.registry)
+      if (!resumed.resumed) {
+        this.stats.holdsAutoReleaseFailures += 1
+        this.warn("hold auto-release FAILED for " + teamId + " (" + String(resumed.reason) + "): the hold is still persisted, so the team stays paused")
+        continue
+      }
+      this.stats.holdsAutoReleased += 1
+      const incident: IncidentRecord = {
+        id: teamId + "#hold-auto-released#" + release + "#" + now,
+        teamId,
+        kind: "hold-auto-released",
+        at: now,
+        cause: { kind: "hold-auto-released", ms: age, release },
+        taskId: hold.taskId,
+        attemptId: hold.attemptId,
+        scene: null,
+        hold: "not-requested",
+        acknowledgedBy: [],
+      }
+      const logged = appendIncident(workspace, this.config.stateDir, incident)
+      if (logged.ok) this.stats.incidents += 1
+      else {
+        this.stats.incidentFailures += 1
+        this.warn("hold-auto-released incident append failed at " + logged.path + ": " + String(logged.error))
+      }
+      this.info(
+        "HOLD AUTO-RELEASED team=" + teamId +
+          " cause=" + release +
+          " age=" + age + "ms" +
+          " ttl=" + (hold.ttlMs === 0 ? "none" : hold.ttlMs + "ms") +
+          " since=" + hold.since +
+          " — the pause lifted itself; every team byte is untouched (PRESERVING)" +
+          (logged.ok ? " record=" + logged.path : " record=FAILED"),
+      )
+    }
+  }
+
+  /** Every heartbeat stamp this workspace's store holds, in one pass (T-17's activity path). */
+  private teamStamps(workspace: string): HeartbeatStamp[] {
+    const out: HeartbeatStamp[] = []
+    for (const key of listHeartbeatKeys(workspace, this.config.stateDir)) {
+      for (const stamp of readHeartbeats(workspace, this.config.stateDir, key)) out.push(stamp)
+    }
+    return out
+  }
+
+  /**
+   * §7.2/§7.3 — the per-knob live-vs-file reading, refreshed on every tick.
+   *
+   * The FILE value is the workspace's own `.mpd/mpd.jsonc` (never `DSH_HOME`), read for
+   * DIVERGENCE only: `.mpd/mpd.jsonc` reaches a process's `mpd` namespace once, at mount, so a
+   * file edit is invisible until the next boot. Saying that out loud — per knob, with a
+   * `restartRequired` flag — is the honest fix; re-registering the namespace would be a lie.
+   */
+  private noteKnobDivergence(): void {
+    const workspace = this.workspaceOf(undefined)
+    const { found, path, section } = readWatchdogSection(workspace)
+    const readings = knobReadings(this.knobs, section)
+    const divergent = readings.filter((reading) => reading.differs).map((reading) => reading.knob)
+    this.knobView = { readings, divergent, restartRequired: divergent.length > 0, file: path, fileFound: found }
+    if (divergent.length === 0 || this.divergenceAnnounced) return
+    this.divergenceAnnounced = true
+    const detail = readings
+      .filter((reading) => reading.differs)
+      .map((reading) => reading.knob + ": live=" + String(reading.live) + " file=" + String(reading.file))
+      .join(", ")
+    this.warn(
+      "KNOBS DIVERGE (§7.3): " + path + " states " + divergent.length + " value(s) the running process is NOT using (" + detail +
+        ") — a .mpd/mpd.jsonc edit applies at the NEXT dsh boot, never mid-process",
+    )
+  }
+
+  /** §7.2: the last per-knob live-vs-file reading (the status view prints it). */
+  knobDivergence(): { readings: KnobReading[]; divergent: string[]; restartRequired: boolean; file: string | null; fileFound: boolean } {
+    return { ...this.knobView, readings: this.knobView.readings.map((reading) => ({ ...reading })) }
   }
 
   /** A skipped team is SILENT to the user: debug channel only, console only when asked for. */
@@ -612,7 +969,16 @@ export class WatchdogEngine {
     }
   }
 
-  /** The silence candidates of one team (design §0/GAP-1's candidate set). */
+  /**
+   * The silence candidates of one team (design §0/GAP-1's candidate set), each carrying the
+   * §1 CHANNEL VERDICT for its owner's session.
+   *
+   * This is the seam where the predicate becomes per-member. The candidate set itself (who
+   * is worth looking at) is unchanged — the r7 dispatch precondition still decides it — but
+   * what the machine CONCLUDES now comes from the fold, not from the age of a stamp. A
+   * candidate whose owner session the fold cannot answer for is flagged
+   * `heartbeatFallback`, which is §4's report-only degradation.
+   */
   private candidates(workspace: string, team: TeamRecord): SilenceCandidate[] {
     const cache = new Map<string, HeartbeatStamp[]>()
     const stampsOf = (memberKey: string): readonly HeartbeatStamp[] => {
@@ -622,7 +988,63 @@ export class WatchdogEngine {
       cache.set(memberKey, stamps)
       return stamps
     }
-    return candidateFor({ id: team.id, tasks: team.tasks }, stampsOf, (assignee) => assignee)
+    // T-16 (§6): the projection carries the record's own generation floor, so a stamp from a
+    // PREVIOUS generation of this team can never make a task silent (and therefore never hold).
+    const base = candidateFor({ id: team.id, tasks: team.tasks, createdAt: team.createdAt, approvedAt: team.approvedAt }, stampsOf, (assignee) => assignee)
+    const live = this.liveIds()
+    // T-20 (§8): a member whose ONLY open tasks wait on unfinished dependencies has nothing
+    // claimable — it is PARKED, not silent, and the silence rule is suppressed for it. Derived
+    // from the record alone; no new member-facing wait tool exists.
+    const blockedOf = new Map<string, { blocked: boolean; waiting: string[] }>()
+    const memberSessions = new Map<string, string>()
+    for (const member of team.members) if (member.id !== "" && member.name !== "") memberSessions.set(member.name, member.id)
+    // §1's PARKED row ("member session not attached") may only be applied by a registry that
+    // demonstrably knows THIS team's sessions — one of its own member ids is in it. An
+    // absent/empty registry answers nothing, and "no answer" must never read as "not
+    // attached": that would be exactly the silent watchdog this wave removes.
+    const registryKnowsTeam = live.known && team.members.some((member) => member.id !== "" && live.ids.has(member.id))
+
+    return base.map((candidate) => {
+      // T-20 runs BEFORE every channel question: a blocked member is PARKED whether or not the
+      // fold has data for it, and never falls into the §4 report-only path that could warn.
+      let blocked = blockedOf.get(candidate.assignee)
+      if (blocked === undefined) {
+        blocked = dependencyBlocked(team, candidate.assignee)
+        blockedOf.set(candidate.assignee, blocked)
+      }
+      if (blocked.blocked) {
+        this.stats.channelDependencyBlocked += 1
+        return {
+          ...candidate,
+          channelState: "PARKED",
+          outstandingSince: null,
+          channelInFlightSince: null,
+          channelInFlightTool: null,
+          heartbeatFallback: false,
+        }
+      }
+      const sessionId = candidate.assignee === CAPTAIN_KEY ? team.captainSessionId ?? null : memberSessions.get(candidate.assignee) ?? null
+      if (sessionId === null) {
+        this.noteFallback("team " + team.id + " carries no session id for task owner " + candidate.assignee)
+        return { ...candidate, channelState: null, heartbeatFallback: true }
+      }
+      const view = this.fold.view(sessionId)
+      if (view === null) {
+        this.noteFallback("no session/event fold data for member " + candidate.assignee + " (session " + sessionId + ")")
+        return { ...candidate, channelState: null, heartbeatFallback: true }
+      }
+      const channelState: ChannelState =
+        registryKnowsTeam && view.state !== "PARKED" && !live.ids.has(sessionId) ? "PARKED" : view.state
+      if (channelState !== view.state) this.stats.channelDetached += 1
+      return {
+        ...candidate,
+        channelState,
+        outstandingSince: view.outstandingSince,
+        channelInFlightSince: view.inFlightSince,
+        channelInFlightTool: view.inFlightTool,
+        heartbeatFallback: false,
+      }
+    })
   }
 
   /** Act on one WARN/ESCALATE decision. */
@@ -690,7 +1112,7 @@ export class WatchdogEngine {
       teamId: team.id,
       kind: decision.type,
       at: now,
-      cause: { kind: "silence", ms: decision.silenceMs },
+      cause: { kind: decision.cause, ms: decision.silenceMs },
       taskId: decision.taskId,
       attemptId: decision.attemptId,
       scene: scenePath,
@@ -711,6 +1133,8 @@ export class WatchdogEngine {
         " " + team.id +
         " task=" + decision.taskId +
         " member=" + decision.assignee +
+        " cause=" + decision.cause +
+        " state=" + (decision.state ?? "heartbeat") +
         " silence=" + decision.silenceMs + "ms" +
         " streak=" + decision.streak +
         " hold=" + holdState +
@@ -835,6 +1259,9 @@ export class WatchdogEngine {
       attempt_id: decision.attemptId,
       cause: "silence",
       scene_at: now,
+      // T-17: the escalation-driven hold carries the resolved snapshot of `holdTtlMs`, so the
+      // bound travels with the hold through the tool seam AND the direct-write fallback.
+      ttl_ms: this.knobs.holdTtlMs,
     }
     try {
       const runtime = this.dsh.toolRuntime()

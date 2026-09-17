@@ -1,0 +1,6 @@
+
+> @mpd-dsh/mpd@0.9.1 pack
+> node scripts/pack-mpd.mjs
+
+[pack-mpd] modes normalized: 1138 files (644: 1126, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package

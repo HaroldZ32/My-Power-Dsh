@@ -1,0 +1,57 @@
+--- packages/mpd-workmate-plugin/src/index.ts	2026-09-17 10:31:00.688652201 +0800
++++ evidence/platform/workmate-guard-spawn/20260917T032539Z/new-index.ts	2026-09-17 11:25:39.997227138 +0800
+@@ -12,7 +12,7 @@
+ // exception to the workspace-scoped state rule (AGENTS.md §6); QA boots with
+ // HOME=<sandbox> so tests never touch the real home.
+ import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
+-import { homedir } from "node:os"
++import { homedir, userInfo } from "node:os"
+ import { join, resolve, sep } from "node:path"
+ import { createDshAdapter, workspaceRootOf, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+ 
+@@ -110,20 +110,42 @@
+  */
+ export const WORKMATE_ALLOW_REAL_HOME_ENV = "MPD_DSH_WORKMATE_ALLOW_REAL_HOME"
+ 
++/** A HOME-INDEPENDENT home for the real user. `homedir()` must NOT be used for that comparison:
++ * on POSIX it reads $HOME, so comparing $HOME against it is a tautology — which is how the T-43 guard
++ * came to refuse the SANCTIONED sandboxed boot while being unable to tell it from the real home. node's
++ * `userInfo()` is passwd-derived, but bun's follows $HOME, so the passwd entry for the effective uid is
++ * consulted first and `userInfo()` stays as the fallback. `undefined` means undeterminable. */
++function realUserHome(): string | undefined {
++  try {
++    const uid = typeof process.getuid === "function" ? process.getuid() : undefined
++    if (uid !== undefined) {
++      const line = readFileSync("/etc/passwd", "utf8").split("\n").find((l) => l.split(":")[2] === String(uid))
++      const home = line === undefined ? undefined : line.split(":")[5]
++      if (home !== undefined && home !== "") return home
++    }
++  } catch { /* fall through to the API below */ }
++  try {
++    const api = userInfo().homedir
++    if (api !== "" && resolve(api) !== resolve(process.env.HOME ?? api)) return api
++  } catch { /* undeterminable on this host */ }
++  return undefined
++}
++
+ export function assertMutationSandboxed(operation: string): void {
+   const dshHome = process.env.DSH_HOME
+   if (dshHome === undefined || dshHome === "") return                 // normal session: unaffected
+   if (process.env[WORKMATE_ALLOW_REAL_HOME_ENV] === "1") return       // explicit, documented override
+   const root = workmateRoot()
+   const home = process.env.HOME
+-  const realHome = homedir()                                          // bun caches the process-start value
++    const realHome = realUserHome()
+   const inside = (h: string): boolean => root === h || root.startsWith(h.endsWith(sep) ? h : h + sep)
+-  if (home !== undefined && home !== "" && resolve(home) !== resolve(realHome) && inside(resolve(home))) return
++  if (home !== undefined && home !== "" && realHome !== undefined && resolve(home) !== resolve(realHome) && inside(resolve(home))) return
+   throw new WorkmateError(
+     "real-home-refused",
+     "mpd_workmate: refusing to " + operation + " inside the REAL library " + root
+       + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set "
+-      + WORKMATE_ALLOW_REAL_HOME_ENV + "=1 to override deliberately",
++      + WORKMATE_ALLOW_REAL_HOME_ENV + "=1 to override deliberately"
++      + (realHome === undefined ? " (the real home could not be determined on this host)" : ""),
+     403,
+   )
+ }

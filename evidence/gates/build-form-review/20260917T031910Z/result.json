@@ -1,0 +1,72 @@
+{
+  "task": "t46 (review of t45, T-67 manual half)",
+  "attempt_id": "c79d66cf-3b69-4575-b2e9-7212e6d6a489",
+  "verdict": "pass",
+  "canonicalFormReMeasured": {
+    "method": "executed the DOCUMENTED command from the repo root into a temp outfile in this review dir, then sha256-compared with the committed dist - my own numbers, not the author's",
+    "mpd-team-watchdog-plugin": {
+      "sha256": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8",
+      "bytes": 153319,
+      "committed_sha256": "7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8",
+      "committed_bytes": 153319,
+      "verdict": "IDENTICAL"
+    },
+    "mpd-tui-plugin": {
+      "sha256": "d75ddd8917d434a85a20d05e1d31556afe5acb3be20712976d10f3038522b196",
+      "bytes": 149134,
+      "committed_sha256": "d75ddd8917d434a85a20d05e1d31556afe5acb3be20712976d10f3038522b196",
+      "committed_bytes": 149134,
+      "verdict": "IDENTICAL"
+    },
+    "mpd-ext-plugin": {
+      "sha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a",
+      "bytes": 152855,
+      "committed_sha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a",
+      "committed_bytes": 152855,
+      "verdict": "IDENTICAL - matches t45's cited hash exactly"
+    }
+  },
+  "packageDirTrapReMeasured": {
+    "method": "emulated the three package-local build scripts exactly (cd packages/<p> && bun build src/index.ts --target node --format esm --outfile <review dir>/<p>-pkg.js)",
+    "mpd-team-watchdog-plugin": {
+      "sha256_prefix": "ddb30834942b3b4f",
+      "bytes": 152791,
+      "deltaBytes": -528,
+      "committed_equal": false
+    },
+    "mpd-tui-plugin": {
+      "sha256_prefix": "a46a7b8c6958a54a",
+      "bytes": 148654,
+      "deltaBytes": -480,
+      "committed_equal": false
+    },
+    "mpd-ext-plugin": {
+      "sha256_prefix": "a7b843e19656dbe9",
+      "bytes": 152579,
+      "deltaBytes": -276,
+      "committed_equal": false
+    },
+    "verdict": "byte-DIFFERENT for all three; deltas reproduce the numbers the register row and t45 quote (-528/-480/-276), so following any of those scripts and committing its output makes the gate call that dist STALE"
+  },
+  "residualBothDirections": {
+    "positive": "exactly THREE packages carry any build script at all (mpd-ext-plugin, mpd-team-watchdog-plugin, mpd-tui-plugin) and each uses the package-local form (read from their package.json) - the manual names exactly that set",
+    "negative": "following one of those scripts today yields bytes the gate calls STALE (measured above), so the manual is not over-warning",
+    "manualS6": "'Build - from the REPO ROOT, with path-qualified args' names the canonical command, states bun writes the entry path RELATIVE TO CWD, that verify-dist-fresh reproduces THESE bytes, that the package-directory build is flagged STALE, and names the three packages + the wave-2 residual (T-67)",
+    "manualS4": "the Dist-freshness row points at S6's Build line ('the canonical REBUILD command - repo root, path-qualified args - and the package-directory trap are named in S6's Build line') - the F3 pointer is in place"
+  },
+  "gateReRead": {
+    "command": "node scripts/verify-dist-fresh.mjs",
+    "exit": 0,
+    "raw": "ok: 20/20 targets fresh (each rebuilt twice, byte-identical) - 7 NOT COVERED files listed - 1036ms",
+    "gateSource": "runBuild(srcAbs, outAbs, cwd) with the repo-root cwd; its own STALE diagnostic (line 365) carries the same guidance"
+  },
+  "docsGate": {
+    "command": "bun run verify:docs",
+    "exit": 0,
+    "reading": "pairs=37 failed=0 violations=0 exempt=17 - PASS"
+  },
+  "scriptHalfUntouched": {
+    "evidence": "the three committed dists carry mtimes BEFORE t45's window (watchdog 10:20:15, tui 09:13:09, ext 09:33:52 local; AGENTS.md edited 11:03:17) and are byte-identical to a fresh ROOT-form build, so no in-place package-form build corrupted them; my own builds wrote only into this review dir and the dist mtimes are unchanged after them; t45's declared scope is AGENTS.md + evidence/gates/build-form",
+    "bound": "the tree is dirty from many lanes, so git status alone cannot attribute the dists' M state to anyone - the available proof is the mtime ordering plus the gate's 20/20 green, and that is what is claimed, not a stronger statement"
+  }
+}

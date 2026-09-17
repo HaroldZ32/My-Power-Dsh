@@ -1,0 +1,5 @@
+[verify-rows-parity] FAIL - installer vs bundle patch row ids differ
+  bundle patch inserts (25): mcp-astgrep, mcp-gitbash, mcp-lsp, mcp-codegraph, mpd-web-compat, mpd-dsh-adapter, mpd-config, mpd-team-watchdog, mpd-tools, mpd-modelchain, mpd-ext, mpd-roles, mpd-ulw, mpd-hashline, mpd-boulderSEEDED, mpd-comment-checker, mpd-codegraph, mpd-memory, mpd-workmate, mpd-team-compact, mpd-bootstrap, mpd-tui, agent-teams, mcp-context7, mcp-grepapp
+  installer rows       (25): mpd-web-compat, mcp-astgrep, mcp-gitbash, mcp-lsp, mcp-codegraph, mcp-context7, mcp-grepapp, mpd-codegraph, mpd-tools, mpd-modelchain, mpd-ulw, mpd-hashline, mpd-boulder, mpd-dsh-adapter, mpd-config, mpd-comment-checker, mpd-memory, mpd-ext, mpd-roles, mpd-workmate, mpd-team-compact, mpd-team-watchdog, mpd-bootstrap, mpd-tui, agent-teams
+  MISSING from scripts/install-profile.mjs: mpd-boulderSEEDED
+  EXTRA in scripts/install-profile.mjs (not in the patch): mpd-boulder

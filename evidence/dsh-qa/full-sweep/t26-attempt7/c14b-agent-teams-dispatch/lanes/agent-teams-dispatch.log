@@ -1,0 +1,7 @@
+[agent-teams-dispatch] ok=false -> /root/dshProj/my-power-dsh/evidence/dsh-qa/agent-teams-dispatch/2026-09-17T04-56-06.775Z
+  installer: {"ok":true,"exit":0}
+  captainRun: {"ok":true,"exit":0,"tail":" the rest are moot. I'll keep it concise.\n\nActually, let me reconsider whether to just do the create now. The user is testing dispatch in headless mode; a probe requires everything this turn. Since I can't approve this turn after creating, the probe simply cannot run th
+  tasks: {"total":0}
+  memberAssignments: {"count":0,"sessions":1,"labels":[]}
+  secondBatchDispatched: {"ok":false}
+  assignmentDelivery: {"ok":false}

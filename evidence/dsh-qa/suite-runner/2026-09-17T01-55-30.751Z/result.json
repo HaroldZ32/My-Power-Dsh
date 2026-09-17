@@ -1,0 +1,68 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86",
+  "suite": "all",
+  "selected": 33,
+  "startedAt": "2026-09-17T01:55:30.753Z",
+  "finishedAt": null,
+  "durationMs": null,
+  "complete": false,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "agent-teams-adopt",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "unauthorized",
+      "note": "the lane's own output/evidence records this failure — the service answered and refused",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 128961,
+      "command": "bun skills/dsh-qa/scripts/agent-teams-adopt.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "marker": null,
+      "signature": {
+        "code": "unauthorized",
+        "label": "HTTP 401 / unauthorized route",
+        "file": "(the lane's own stdout)",
+        "line": 11
+      },
+      "alsoDetected": [
+        {
+          "code": "absent-credentials",
+          "file": "evidence/plan-c/c1-team/2026-09-17T01-55-30.817Z/output.log",
+          "line": 869
+        }
+      ],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/plan-c/c1-team/2026-09-17T01-55-30.817Z/web.log",
+      "logPath": "evidence/dsh-qa/suite-runner/2026-09-17T01-55-30.751Z/lanes/agent-teams-adopt.log",
+      "outputTail": [
+        "  live: {\"ok\":false,\"exit\":1}",
+        "  teamState: {\"ok\":false,\"teamIds\":[],\"inbox\":[],\"teamJson\":[]}",
+        "  archive: {\"ok\":false,\"archiveIds\":[]}",
+        "  taskTerminal: {\"ok\":false,\"tasks\":0,\"taskTerminal\":false}",
+        "  webInstaller: {\"ok\":true,\"exit\":0}",
+        "  webRoute: {\"ok\":false,\"status\":401,\"body\":\"{\\\"error\\\":\\\"unauthorized\\\"}\",\"webLog\":\"/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T01-55-30.817Z/web.log\"}"
+      ],
+      "suite": "all"
+    }
+  ],
+  "counts": {
+    "pass": 0,
+    "unavailable": 0,
+    "fail": 1
+  },
+  "exitCode": 1
+}

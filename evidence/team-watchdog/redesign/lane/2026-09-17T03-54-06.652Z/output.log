@@ -1,0 +1,76 @@
+[watchdog-redesign] [2026-09-17T03:54:06.652Z] contract §9 rows a,b,c,d,e,f — RED /root/dshProj/my-power-dsh/.mpd/red-baseline vs GREEN /root/dshProj/my-power-dsh
+[watchdog-redesign] generations: red=legacy green=fold
+[watchdog-redesign] knobs: red {"warnSilenceMs":90000,"streak":3,"action":"pause"} | green {"warnSilenceMs":600000,"streak":6,"action":"warn-only"}
+[redesign-red] WARN team-a task=t1 member=Architect silence=4201000ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/a-red-WD5Qda/.mpd/team/watchdog/scene/team-a/20260917T040407Z-warn.json
+[redesign-red] WARN team-a task=t1 member=Architect silence=4300000ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/a-red-WD5Qda/.mpd/team/watchdog/scene/team-a/20260917T040546Z-warn.json
+[redesign-red] ESCALATE team-a task=t1 member=Architect silence=4400000ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/a-red-WD5Qda/.mpd/team/watchdog/scene/team-a/20260917T040726Z-escalate.json
+[watchdog-redesign] 
+[watchdog-redesign] row (a) a member streaming a long answer, no tool call, 10+ min simulated
+[watchdog-redesign]   required     : NO warn, NO hold — the open step is ALIVE while the answer streams
+[watchdog-redesign]   RED   verdict: RED — counts={"warn":2,"escalate":1} firstWarnAt=601000 firstEscalateAt=800000 holdFileAtEnd=true states=null depParked=null source=null
+[watchdog-redesign]   GREEN verdict: GREEN — counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states={"a1":"ALIVE"} depParked=0 source=channel
+[watchdog-redesign]   row verdict  : red=red green=green
+[redesign-red] WARN team-a task=t1 member=Architect silence=4201000ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/b-red-o5HP37/.mpd/team/watchdog/scene/team-a/20260917T040407Z-warn.json
+[redesign-red] WARN team-a task=t1 member=Architect silence=4300000ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/b-red-o5HP37/.mpd/team/watchdog/scene/team-a/20260917T040546Z-warn.json
+[redesign-red] ESCALATE team-a task=t1 member=Architect silence=4400000ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/b-red-o5HP37/.mpd/team/watchdog/scene/team-a/20260917T040726Z-escalate.json
+[redesign-green] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=601000ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/b-green-CYbiDu/.mpd/team/watchdog/scene/team-a/20260917T040407Z-warn.json
+[redesign-green] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=700000ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/b-green-CYbiDu/.mpd/team/watchdog/scene/team-a/20260917T040546Z-warn.json
+[redesign-green] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=800000ms streak=3 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/b-green-CYbiDu/.mpd/team/watchdog/scene/team-a/20260917T040726Z-warn.json
+[redesign-green] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=900000ms streak=4 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/b-green-CYbiDu/.mpd/team/watchdog/scene/team-a/20260917T040906Z-warn.json
+[watchdog-redesign] 
+[watchdog-redesign] row (b) a member whose open tasks are all dependency-blocked
+[watchdog-redesign]   required     : NO warn, NO hold, and the member is reported PARKED (dependency projection)
+[watchdog-redesign]   RED   verdict: RED — counts={"warn":2,"escalate":1} firstWarnAt=601000 firstEscalateAt=800000 holdFileAtEnd=true states=null depParked=null source=null
+[watchdog-redesign]   GREEN verdict: FAIL — counts={"warn":4} firstWarnAt=601000 firstEscalateAt=null holdFileAtEnd=false states={"a1":"OUTSTANDING"} depParked=0 source=channel
+[watchdog-redesign]   row verdict  : red=red green=fail
+[watchdog-redesign] 
+[watchdog-redesign] row (c) work finished on disk, terminal `update_task` pending, a hold on the team
+[watchdog-redesign]   required     : the terminal `update_task` SUCCEEDS while the hold exists (and `claim_task` too)
+[watchdog-redesign]   RED   verdict: RED — update=rejected claim=rejected holdReadsFromTools=2 reInjectRejected=false guardInSource=true tools=17 error="team probe-team is held by the team watchdog (hold hold-probe-1 since 2026-09-17T03:54:06.736Z: silence); the team must be released with th
+[watchdog-redesign]   GREEN verdict: GREEN — update=resolved claim=resolved holdReadsFromTools=0 reInjectRejected=true guardInSource=false tools=20
+[watchdog-redesign]   row verdict  : red=red green=green
+[redesign-red] WARN team-a task=t1 member=Architect silence=91000ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/d-red-LYb3aL/.mpd/team/watchdog/scene/team-a/20260917T035538Z-warn.json
+[redesign-red] WARN team-a task=t1 member=Architect silence=181000ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/d-red-LYb3aL/.mpd/team/watchdog/scene/team-a/20260917T035708Z-warn.json
+[redesign-red] ESCALATE team-a task=t1 member=Architect silence=271000ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/d-red-LYb3aL/.mpd/team/watchdog/scene/team-a/20260917T035838Z-escalate.json
+[redesign-green] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600001ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/d-green-cGfbWF/.mpd/team/watchdog/scene/team-a/20260917T040407Z-warn.json
+[redesign-green] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=610000ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/d-green-cGfbWF/.mpd/team/watchdog/scene/team-a/20260917T040417Z-warn.json
+[redesign-green] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=620000ms streak=3 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/d-green-cGfbWF/.mpd/team/watchdog/scene/team-a/20260917T040427Z-warn.json
+[redesign-green] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=630000ms streak=4 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/d-green-cGfbWF/.mpd/team/watchdog/scene/team-a/20260917T040437Z-warn.json
+[redesign-green] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=640000ms streak=5 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/d-green-cGfbWF/.mpd/team/watchdog/scene/team-a/20260917T040447Z-warn.json
+[redesign-green] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=650000ms streak=6 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/d-green-cGfbWF/.mpd/team/watchdog/scene/team-a/20260917T040457Z-escalate.json
+[watchdog-redesign] 
+[watchdog-redesign] row (d) an OUTSTANDING request with no response — the ladder and its numbers
+[watchdog-redesign]   required     : first WARN only at this tree's `warnSilenceMs`, then ESCALATE per the ladder, and NO hold while `actionOnEscalate` is warn-only
+[watchdog-redesign]   RED   verdict: RED — counts={"warn":2,"escalate":1} firstWarnAt=91000 firstEscalateAt=271000 holdFileAtEnd=true states=null depParked=null source=null
+[watchdog-redesign]   GREEN verdict: GREEN — counts={"warn":5,"escalate":1} firstWarnAt=600001 firstEscalateAt=650000 holdFileAtEnd=false states={"a1":"OUTSTANDING"} depParked=0 source=channel
+[watchdog-redesign]   row verdict  : red=red green=green
+[redesign-red] TOOL-EXPIRED team-a task=t1 member=Architect tool=bash inFlight=910001ms (since 1789617237092, bound=900000ms) — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone record=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/e-red-uHx4NN/.mpd/team/watchdog/incidents.jsonl
+[redesign-green] TOOL-EXPIRED team-a task=t1 member=Architect tool=bash inFlight=910001ms (since 1789617237093, bound=900000ms) — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone record=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/e-green-eAAsye/.mpd/team/watchdog/incidents.jsonl
+[watchdog-redesign] 
+[watchdog-redesign] row (e) a tool call past `toolInFlightMaxMs` — the r6 PIN
+[watchdog-redesign]   required     : exactly ONE `tool-expired`, never a hold (the contract's RED column says r6 was already green)
+[watchdog-redesign]   RED   verdict: PIN — counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states=null depParked=null source=null
+[watchdog-redesign]   GREEN verdict: GREEN — counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states={} depParked=0 source=heartbeat
+[watchdog-redesign]   row verdict  : red=pin green=green
+[redesign-red] WARN team-a task=t1 member=Architect silence=86401000ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/f-red-OIKxsz/.mpd/team/watchdog/scene/team-a/20260917T035408Z-warn.json
+[redesign-red] WARN team-a task=t1 member=Architect silence=86402000ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/f-red-OIKxsz/.mpd/team/watchdog/scene/team-a/20260917T035409Z-warn.json
+[redesign-red] ESCALATE team-a task=t1 member=Architect silence=86403000ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/f-red-OIKxsz/.mpd/team/watchdog/scene/team-a/20260917T035410Z-escalate.json
+[redesign-green] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw/f-green-YNdTZS/.mpd/team/watchdog/incidents.jsonl
+[watchdog-redesign] 
+[watchdog-redesign] row (f) a team whose only evidence is a PREVIOUS generation's stamp (and a task nobody attempted)
+[watchdog-redesign]   required     : never holdable: no hold, no escalate, and the pre-`createdAt` stamp is reported never-started, not silence
+[watchdog-redesign]   RED   verdict: RED — counts={"warn":2,"escalate":1} firstWarnAt=1000 firstEscalateAt=3000 holdFileAtEnd=true states=null depParked=null source=null
+[watchdog-redesign]   GREEN verdict: GREEN — counts={} firstWarnAt=null firstEscalateAt=null holdFileAtEnd=false states={} depParked=0 source=heartbeat
+[watchdog-redesign]   row verdict  : red=red green=green
+[watchdog-redesign] 
+[watchdog-redesign] incidents replay (189 recorded rows, sha256 3d62027e31fb…, 18 of 31 escalations held a team):
+[watchdog-redesign]   legacy machine: {"warn":70,"escalate":25} (held-key escalations reproduced 13)
+[watchdog-redesign]   fold   machine: {"warn":79,"escalate":4} (held-key escalations reproduced 3)
+[watchdog-redesign]     reproduced mpd-default|t12| — recorded rows 6, max recorded silence 3064494 ms (cause {"warn":4,"escalate":2})
+[watchdog-redesign]     reproduced mpd-default|t16| — recorded rows 12, max recorded silence 681335 ms (cause {"warn":9,"escalate":3})
+[watchdog-redesign]     reproduced mpd-default|t18| — recorded rows 12, max recorded silence 681605 ms (cause {"warn":9,"escalate":3})
+[watchdog-redesign]   fold   §4 report-only: {"warn":32} (held-key escalations reproduced 0)
+[watchdog-redesign]   bound: the recorded rows carry no channel state, so each silence row is replayed as the MOST PESSIMISTIC candidate (OUTSTANDING since `at - cause.ms`); the counts are an UPPER BOUND on what that predicate would produce, never a replay of the recorded run — and the §4 variant (`foldReportOnly`) is the other bound, where the fold has no evidence at all
+[watchdog-redesign] 
+[watchdog-redesign] RED pin (contract §0/A2): machine=fc10fc41 engine=f529ca2c tools=49025f4d channel=(absent) → redPinned=true
+[watchdog-redesign] settled=not requested (--settle-ms 0) | green fingerprint: {"machine":"ce8bd54cba51","engine":"47c24bd678ae","channel":"b9d7acaf6350","tools":"0e0908e5b002"}

@@ -1,0 +1,101 @@
+### BEFORE revision (pre-edit, 2026-09-17T03:11:23Z) ###
+finding source: t34's review F2 (T-23 owns TWO symptom rows; only the nohup row is id-greppable after t52)
+file: agent-references/troubleshooting.md
+sha256: cfc98118f2b2e86d8fa5cf68fd3b504e7cc48270854ce8a12568706b4e28c219
+bytes: 35541  lines: 69
+grep -c 'T-23' -> 1   (ONE line today, as the contract states)
+--- grep -n 'T-23' BEFORE (the single existing hit) ---
+17:| long background work started with `nohup … &` inside a bash call dies mid-run | the file sandbox is `bwrap --die-with-parent`, so a d
+--- the fresh-/tmp symptom row(s): which line, and does it carry an id? ---
+16:| a scratch file written under `/tmp` in an earlier bash call is gone in the next call | every bash tool call gets a 
+25:| codegraph `skipped: project excluded` | the project root contains an `.mpd` segment or is under /tmp — use a norm
+
+### AFTER revision (post-edit) ###
+sha256: f6b4d1bec8745da6928e2d2a7cdfbc054efbe47f37ec02c4e494dfb4f0f7f955
+bytes: 35548  lines: 69
+grep -c 'T-23' -> 2   (contract requires 2)
+--- grep -n 'T-23' AFTER (must hit BOTH symptom rows) ---
+16:| a scratch file written under `/tmp` in an earlier bash call is gone in the next call | every bash tool ca
+17:| long background work started with `nohup … &` inside a bash call dies mid-run | the file sandbox is `bw
+--- byte-delta arithmetic ---
+  before 35541 B -> after 35548 B   delta = 7
+
+### RECONSTRUCTIVE EQUALITY (the wave's method for untracked files; a plain git diff is EMPTY here) ###
+  git status: ?? agent-references/troubleshooting.md  <- untracked at HEAD, so git has no pre-edit blob
+  reconstructed before sha256: cfc98118f2b2e86d8fa5cf68fd3b504e7cc48270854ce8a12568706b4e28c219
+  recorded before     sha256: cfc98118f2b2e86d8fa5cf68fd3b504e7cc48270854ce8a12568706b4e28c219
+  MATCH: YES -> the ONLY delta is the 7-byte append on the fresh-/tmp row
+### single-hunk diff -U0 (reconstructed before -> file) ###
+  --- evidence/gates/troubleshooting-t23-second-row/20260917T031123Z/reconstructed-before.md	2026-09-17 11:11:53.891671564 +0800
+  +++ agent-references/troubleshooting.md	2026-09-17 11:11:38.043278614 +0800
+  @@ -16 +16 @@
+  -| a scratch file written under `/tmp` in an earlier bash call is gone in the next call | every bash tool call gets a FRESH `/tmp` (measured wave 3). Keep cross-call state inside the workspace (e.g. `<evidence>/…/raw/`) or finish the work in one call — never assume `/tmp` persistence between calls. |
+  +| a scratch file written under `/tmp` in an earlier bash call is gone in the next call | every bash tool call gets a FRESH `/tmp` (measured wave 3). Keep cross-call state inside the workspace (e.g. `<evidence>/…/raw/`) or finish the work in one call — never assume `/tmp` persistence between calls (T-23). |
+### id census (all five harness-close frictions) ###
+  T-21  count=1
+  T-23  count=2
+  T-24  count=1
+  T-26  count=1
+  T-43  count=1
+### doc-pair gate ###
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+verify:docs exit=0
+### no twin, no rename ###
+agent-teams-deltas.md
+index.md
+troubleshooting.md
+### FINAL settle re-hash (2026-09-17T03:12:06Z) ###
+sha256 now: f6b4d1bec8745da6928e2d2a7cdfbc054efbe47f37ec02c4e494dfb4f0f7f955  (expected f6b4d1be…)
+grep -c 'T-23' -> 2  lines=69  bytes=35548
+evidence dir: evidence/gates/troubleshooting-t23-second-row/20260917T031123Z
+output.log
+reconstructed-before.md
+### do the OTHER four ids also own secondary rows that lack the id? (measurement to support the routing note; no edit) ###
+--- T-21 (id count = 1) ---
+  line 15  15:| an adopted-plugin / plugin-module edit does not show up in a runn  id_on_row=1
+--- T-24 (id count = 1) ---
+  line 29  29:| bash tool hangs after dsh | MCP children hold fds — stdio to fi  id_on_row=1
+--- T-26 (id count = 1) ---
+  line 17  17:| long background work started with `nohup … &` inside a bash cal  id_on_row=0
+  line 22  22:| `MISSING_CREDENTIAL` in isolated QA | sandbox has no `.credential  id_on_row=0
+  line 24  24:| a plugin change looks green in `--dump-config` but does nothing a  id_on_row=0
+  line 30  30:| a write fails with `[sandbox: file access denied under workspace-  id_on_row=1
+  line 31  31:| a QA/verification run refuses to touch the workmate library (`403  id_on_row=0
+  line 32  32:| a sandboxed profile copy boots with `cannot resolve profile bundl  id_on_row=0
+--- T-43 (id count = 1) ---
+  line 15  15:| an adopted-plugin / plugin-module edit does not show up in a runn  id_on_row=0
+  line 24  24:| a plugin change looks green in `--dump-config` but does nothing a  id_on_row=0
+  line 27  27:| codegraph provision crash | **RESOLVED (wave 3 t4).** With no `.t  id_on_row=0
+  line 31  31:| a QA/verification run refuses to touch the workmate library (`403  id_on_row=1
+  line 46  46:| leftover `$DSH_HOME/skills` or `.agent-presets/mpd*` after upgrad  id_on_row=0
+
+### decisive endgame check: does the CURRENT artifact carry both T-23 ids? (t56 aged its copy at 03:11:38Z) ###
+  artifact copy exists; mtime 2026-09-17 10:56:58.890365035 +0800
+  bytes: 35534  (source: 35548)
+  grep -c 'T-23' in the ARTIFACT: 0   (must be 2 after the final re-pack; source has 2)
+  sha256: DRIFT (source f6b4d1bec8745da6… vs artifact b4032f41a33ffea2…) -> the re-pack is MANDATORY, not a formality
+  re-check after the final pack, one command: grep -c 'T-23' dist/mpd-package/agent-references/troubleshooting.md   # expect 2
+
+### ATTRIBUTION FORENSICS: did a pack run at 03:01:30Z? (2026-09-17T03:15:28Z) ###
+--- the artifact root's own file stamps (a pack rewrites every one of them) ---
+  dist/mpd-package/package.json            2026-09-17 10:56:59.067369444 +0800
+  dist/mpd-package/cordis.patch.yml        2026-09-17 10:56:59.067369444 +0800
+  dist/mpd-package/README.md               2026-09-17 10:56:58.985367402 +0800
+  outDir mtime: 2026-09-17 11:01:30.659223432 +0800
+--- top-level entries whose OWN mtime is in the 03:01:30Z neighbourhood ---
+  2026-09-17T11:01:30.6592234320 dist/mpd-package
+--- any file ANYWHERE in the artifact with that mtime? ---
+  2026-09-17T11:01:30.6592234320 dist/mpd-package
+  (empty above = no file was written then; only the DIRECTORY entry table changed)
+--- newest 5 files in the artifact ---
+sort: write failed: 'standard output': Broken pipe
+sort: write error
+  2026-09-17T10:56:59.0673694440 dist/mpd-package/package.json
+  2026-09-17T10:56:59.0673694440 dist/mpd-package/cordis.patch.yml
+  2026-09-17T10:56:59.0003677750 dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js
+  2026-09-17T10:56:58.9953676510 dist/mpd-package/packages/mpd-mcp-shared/bin-resolve.mjs
+  2026-09-17T10:56:58.9953676510 dist/mpd-package/packages/mpd-mcp-codegraph/NOTICE
+--- current drift on the one file that matters ---
+  source   f6b4d1bec8745da6  35548 B  ids=2
+  artifact b4032f41a33ffea2  35534 B  ids=0

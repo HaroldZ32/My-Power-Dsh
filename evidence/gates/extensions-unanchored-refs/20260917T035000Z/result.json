@@ -1,0 +1,92 @@
+{
+  "task": "t57 (repair) — anchor the five rotted bare line refs in EXTENSIONS-FOR-AGENTS.md, invisible to the driver today",
+  "attempt_id": "5b843e79-1e80-44af-86f8-17fbdb8561e4",
+  "generated_at": "2026-09-17T03:56:00Z",
+  "verdict": "PASS",
+  "measured": {
+    "the_rot_and_invisibility_proof": {
+      "refs_as_they_were": "doc lines 22-24: `packages/mpd-ext-plugin/src/index.ts` (the wrapper at `:537`; the four `name:` lines at `:715`, `:807`, `:930`, `:984`)",
+      "driver_reading_at_that_moment": "ok citations:EXTENSIONS-FOR-AGENTS.md — 54 citation(s) (checked 50: path 33, dir 5, command 12; pending 0, illustrative 4), 0 unresolved — the driver verifies only ANCHORED citations, so five bare `:NNN` tokens form no citation and read GREEN",
+      "rot_per_ref": [
+        "`:537` → `    view.shadowed.filter((record) => record.kept.plane === entry.plane &` (claimed the safeRegisterTool wrapper)",
+        "`:715` → `                origin: { type: \"string\" },` (claimed one of the four `name:` registrations)",
+        "`:807` → `          plane: { type: \"string\" },` (claimed one of the four `name:` registrations)",
+        "`:930` → `                title: { type: \"string\" },` (claimed one of the four `name:` registrations)",
+        "`:984` → `          description: { type: \"string\" },` (claimed one of the four `name:` registrations)"
+      ],
+      "source_of_the_finding": "t50's own disclosure (evidence/extensions/docs-citations-fix-extensions/20260917T033000Z/, §6 BOUND)"
+    },
+    "re_measurement_at_edit_time": {
+      "wrapper": "521:  const safeRegisterTool = (definition: any, onError: (line: string) => void): boolean => {  (call sites at 698/790/913/967)",
+      "registrations": ["699:    name: \"mpd_ext_list\",", "791:    name: \"mpd_ext_show\",", "914:    name: \"mpd_flow_list\",", "968:    name: \"mpd_flow_show\","]
+    },
+    "the_fix": "each ref became an ANCHORED citation in the checker's grammar (`SYMBOL`, `path:line`) with the symbol kept visible in prose: `safeRegisterTool`, …:521; `mpd_ext_list`, …:699; `mpd_ext_show`, …:791; `mpd_flow_list`, …:914; `mpd_flow_show`, …:968. The claims are bare symbols because claimText() accepts only a bare SYMBOL or a \"quoted phrase\", and each symbol is contained in its cited line.",
+    "delta_is_arithmetic": {
+      "before": "54 citation(s) (checked 50: path 33, dir 5, command 12), 0 unresolved; content:anchors 41 verified",
+      "after": "59 citation(s) (checked 55: path 38, dir 5, command 12), 0 unresolved; content:anchors 46 verified",
+      "delta": "citations +5, checked +5 (path +5), anchored-verified +5 — exactly the five new anchors, nothing deleted"
+    },
+    "gates": {
+      "checker": "node evidence/extensions/docs-claims/check-citations.mjs → exit 0 (12/12 checks)",
+      "verify_docs": "exit 0 — pairs=37 failed=0 violations=0 exempt=17"
+    },
+    "identity_and_diff": {
+      "sha256_before": "78a61f5442df747899ae1239dc7f1ad1a71ecac4c5e5d2bae118f28bdb3c1807 (15,425 B, t50's end state)",
+      "sha256_after": "9a157363a16bfeab78837b73e07405306694c1e365c14001c06709fda3430bdb (15,684 B)",
+      "git_diff": "the file is TRACKED and modified, so a real diff is available: hunk 1 (@@ -22,4 +22,7 @@) is THIS task; hunk 2 (@@ -221,6 +224,11 @@) is t43/t50's already-terminal §9 correction, untouched here and visible only because those edits are also uncommitted",
+      "new_anchor_count": "grep -c 'packages/mpd-ext-plugin/src/index.ts:' = 5"
+    }
+  },
+  "acceptance": [
+    {
+      "criterion": "The five refs are quoted AS THEY ARE TODAY and the driver's current GREEN reading is quoted beside them as the proof of INVISIBILITY; the rot is demonstrated per ref (the symbol that used to be there vs what is there now).",
+      "status": "passed",
+      "evidence": "output.log §1 quotes the refs verbatim and the t50-era driver line (`54 citation(s) … 0 unresolved`) as the invisibility proof, then lists all five refs with the text the old line carries today (a `view.shadowed.filter(...)` line, `origin:`/`plane:`/`title:`/`description:` schema-property lines) and the symbol class each claimed — none carries it any more."
+    },
+    {
+      "criterion": "Each of the five becomes an ANCHORED citation in the checker's documented grammar (`SYMBOL`, `path:line`) with the SYMBOL kept visible in the prose, and the line number is re-measured at edit time per T-55 — never copied from the old bare ref.",
+      "status": "passed",
+      "evidence": "Before/after quoted in output.log §3. The wrapper is now `safeRegisterTool`, `packages/mpd-ext-plugin/src/index.ts:521` (re-measured: the definition line) and the four registrations are `mpd_ext_list`@699, `mpd_ext_show`@791, `mpd_flow_list`@914, `mpd_flow_show`@968 (each re-measured with `grep -n`, and each symbol appears verbatim in the prose)."
+    },
+    {
+      "criterion": "The driver exits 0 after the change AND its checked-citation count rises by exactly the five new anchors (before/after per-file line quoted so the delta is arithmetic).",
+      "status": "passed",
+      "evidence": "exit 0 (12/12 checks). Before: 54 citations / checked 50 (path 33). After: 59 citations / checked 55 (path 38). Delta = +5 citations, +5 checked, +5 path; `content:anchors` 41 → 46 (+5 verified). Nothing was deleted or renumbered as a substitute."
+    },
+    {
+      "criterion": "Nothing else moves: the surrounding prose keeps its meaning, the sha256 pair is recorded, and a real diff is expected (the file is tracked).",
+      "status": "passed",
+      "evidence": "A real `git diff -U1` is in the evidence: hunk 1 is this task's single-region change (lines 22-28) with the meaning preserved; hunk 2 belongs to t43/t50's terminal §9 correction (untouched). sha256 `78a61f54…` (15,425 B) → `9a157363…` (15,684 B); the file's five new `path:line` anchors are counted by grep."
+    },
+    {
+      "criterion": "bun run verify:docs stays green (pairs=37, failed=0) and the file's citation totals stay consistent (no citation deleted, only anchored).",
+      "status": "passed",
+      "evidence": "`bun run verify:docs` exit 0 (pairs=37 failed=0 violations=0 exempt=17). Citation totals moved in one direction only (54 → 59, all five new), and the checker's own `0 unresolved` holds before and after."
+    },
+    {
+      "criterion": "The evidence names the source of the finding (t50's disclosure) and does NOT attempt the durable grammar change — T-72 lives in t21's window, wave 2.",
+      "status": "passed",
+      "evidence": "output.log §1 names t50's disclosure as the source and §6 states the bound: the five anchors keep the wave's normal `path:line` rot risk, and symbol-first acceptance (T-72) is t21's window — deliberately not attempted. No edit outside EXTENSIONS-FOR-AGENTS.md and this evidence directory."
+    }
+  ],
+  "commands": [
+    { "command": "node evidence/extensions/docs-claims/check-citations.mjs", "exit": 0, "decisive_output": "12/12 checks; `citations:EXTENSIONS-FOR-AGENTS.md — 59 citation(s) (checked 55: path 38, dir 5, command 12; pending 0, illustrative 4), 0 unresolved`; `content:anchors — 46 anchored citation(s) verified … 0 anchor(s) without a content claim`" },
+    { "command": "bun run verify:docs", "exit": 0, "decisive_output": "[verify-docs-parity] pairs=37 failed=0 violations=0 exempt=17 — PASS" },
+    { "command": "grep -n 'safeRegisterTool|name: \"mpd_ext_*\"|name: \"mpd_flow_*\"' packages/mpd-ext-plugin/src/index.ts", "exit": 0, "decisive_output": "safeRegisterTool definition at 521 (calls at 698/790/913/967); `name:` lines at 699/791/914/968" },
+    { "command": "git diff -U1 -- EXTENSIONS-FOR-AGENTS.md", "exit": 0, "decisive_output": "two hunks: @@ -22,4 +22,7 @@ (this task) and @@ -221,6 +224,11 @@ (t43/t50's terminal §9 correction)" }
+  ],
+  "residual_risks": [
+    "These five anchors are line-based like every other in the wave and will rot on the next growth of `packages/mpd-ext-plugin/src/index.ts`; the durable answer is T-72 (symbol-first acceptance in the checker), which is t21's window and was deliberately not attempted here.",
+    "The driver cannot see unanchored refs at all — this repair converted the five it was told about; a future scan for bare `:NNN` tokens in the subject files is not part of any current lane.",
+    "No git writes; the captain commits."
+  ],
+  "artifacts": [
+    "EXTENSIONS-FOR-AGENTS.md",
+    "evidence/gates/extensions-unanchored-refs/20260917T035000Z/result.json",
+    "evidence/gates/extensions-unanchored-refs/20260917T035000Z/output.log",
+    "evidence/gates/extensions-unanchored-refs/20260917T035000Z/check-after.log",
+    "evidence/gates/extensions-unanchored-refs/20260917T035000Z/verify-docs.log",
+    "evidence/gates/extensions-unanchored-refs/20260917T035000Z/git-diff.txt",
+    "evidence/gates/extensions-unanchored-refs/20260917T035000Z/sha-after.txt"
+  ]
+}

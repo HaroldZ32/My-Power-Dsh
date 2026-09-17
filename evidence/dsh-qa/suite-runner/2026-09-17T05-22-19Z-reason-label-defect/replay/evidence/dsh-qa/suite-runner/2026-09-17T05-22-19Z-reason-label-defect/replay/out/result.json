@@ -1,0 +1,68 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh/evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/replay",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "7f69989bdb31db9a2209c7b5d2a831008cb9f2095e6a5107d4071d20dbf557b0",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-09-17T05:31:51.030Z",
+  "finishedAt": "2026-09-17T05:31:51.121Z",
+  "durationMs": 91,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "replay-adopt",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "step:archive",
+      "note": "the lane's own evidence marks this STEP failed — signatures found elsewhere in its output are reported under alsoDetected, never as the reason",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 77,
+      "command": "bun skills/dsh-qa/scripts/replay-adopt.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/replay-adopt.mjs",
+      "marker": null,
+      "signature": {
+        "code": "step:archive",
+        "label": "the lane's own evidence marks step `archive` as failed",
+        "file": "../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json",
+        "line": null
+      },
+      "alsoDetected": [
+        {
+          "code": "unauthorized",
+          "file": "(the lane's own stdout)",
+          "line": 11
+        }
+      ],
+      "declaredPrereq": [],
+      "evidencePath": "../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/web.log",
+      "logPath": "evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/replay/out/lanes/replay-adopt.log",
+      "outputTail": [
+        "  live: {\"ok\":true,\"exit\":0}",
+        "  teamState: {\"ok\":true,\"teamIds\":[\"c1qa\"],\"inbox\":[[\"captain.jsonl\"]],\"teamJson\":[{\"name\":\"c1qa\",\"id\":\"c1qa\",\"description\":\"C1 adoption QA\",\"captainSessionId\":\"session-0ec47b76-5430-41f5-8323-0b0c664b76ba\",\"createdAt\":1789620564608,\"members\":[{\"id\":\"fbaec5fa-eeb7-4753-95df-f8e9cd33b86f\",\"name\":\"librarian\",\"role",
+        "  archive: {\"ok\":false,\"archiveIds\":[]}",
+        "  taskTerminal: {\"ok\":true,\"tasks\":2,\"taskTerminal\":true}",
+        "  webInstaller: {\"ok\":true,\"exit\":0}",
+        "  webRoute: {\"ok\":true,\"arm\":\"fence-refusal\",\"status\":401,\"body\":\"{\\\"error\\\":\\\"unauthorized\\\"}\",\"webLog\":\"/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T04-49-06.038Z/web.log\"}"
+      ],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 0,
+    "unavailable": 0,
+    "fail": 1
+  },
+  "exitCode": 1
+}

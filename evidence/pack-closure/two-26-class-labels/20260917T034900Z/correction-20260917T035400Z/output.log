@@ -1,0 +1,21 @@
+=== NESTED CORRECTION to the parent record: the artifact-wide 26 is RETIRED as an origin; and the '26 - 2 = 24, two entry banners' clause is NOT reproducible — 2026-09-17T03:54:30Z UTC (host +0800) ===
+
+parent (byte-untouched): ../result.json
+
+1) is there an 'entry banner' line to drop in either form?
+   dist/mpd-package/packages/mpd-ext-plugin/dist/index.js
+     line1: // packages/mpd-dsh-adapter-plugin/src/index.ts
+   dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js
+     line1: // packages/mpd-dsh-adapter-plugin/src/index.ts
+   packages/mpd-ext-plugin/dist/index.js
+     line1: // packages/mpd-dsh-adapter-plugin/src/index.ts
+
+2) the package-dir form, rebuilt to a scratch path (canonical repo-root args are NOT used here on purpose):
+     line1: // ../mpd-dsh-adapter-plugin/src/index.ts
+     path comments: 13
+
+3) counts (unchanged from the parent record, re-measured at 03:49:14Z):
+   dist/mpd-package/packages/mpd-ext-plugin/dist/index.js  bytes=152855  pathComments=13  distinct=11  allSlashSlash=13
+   dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js  bytes=153262  pathComments=13  distinct=11  allSlashSlash=16
+
+CONCLUSION: line 1 of BOTH forms is the first inlined module's path comment (adapter module), never a banner, and it DIFFERS between the forms (root: '// packages/mpd-dsh-adapter-plugin/src/index.ts'; package-dir: '// ../mpd-dsh-adapter-plugin/src/index.ts'). Dropping one line from 26 gives 25, not 24, and no two identifiable items exist to drop — so the old '24 remain' figure is UNEXPLAINED and must be retracted, not re-derived as '26 - 2'.

@@ -1,0 +1,5 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=7f69989bdb31 lanes=1 evidence=evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/replay/out
+[mpd-qa:(only)] FAIL case=replay-adopt reason=step:archive prereq="the lane's own evidence marks step `archive` as failed" signature=../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json:null also=unauthorized exit=1 evidence=../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/web.log log=evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/replay/out/lanes/replay-adopt.log ms=77
+[mpd-qa:(only)] summary selected=1 pass=0 unavailable=0 fail=1
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/replay/out
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

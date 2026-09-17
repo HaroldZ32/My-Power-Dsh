@@ -1,0 +1,136 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-c1-Yj9NIP",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        [
+          "captain.jsonl"
+        ]
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-112c57a7-ce0d-4eec-9ec6-93f221d2bf90",
+          "createdAt": 1789623018690,
+          "members": [
+            {
+              "id": "164b485c-bcdb-4b4d-aefe-bcf47e432b0a",
+              "name": "librarian",
+              "role": "librarian",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789623020208,
+              "status": "removed"
+            },
+            {
+              "id": "dbb98a2d-7402-4581-ab4e-d3110a7af4c8",
+              "name": "oracle",
+              "role": "reviewer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789623020242,
+              "status": "removed"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Read the team goal ('C1 adoption QA') and write a single-line summary of what this QA run is verifying. Reply with exactly one line of plain text; no files, no tool calls needed beyond reading this task description.",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1789623021855,
+              "updatedAt": 1789623033549,
+              "kind": "work",
+              "deliverables": [
+                "one-line summary in the task output"
+              ],
+              "attemptId": "f2db1821-2f9c-495e-943a-ec6490820e91",
+              "reassigning": false,
+              "output": "QA goal: verify that C1 (the AgentTeams/MPD team capability) is successfully adopted — a real c1qa team can be created, staffed, and driven through the full claim → work → verify → review task handoff with terminal results and no protocol defects."
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Read the one-line summary produced by t1 (from the task output of t1). Decide whether it accurately and adequately summarizes the team goal 'C1 adoption QA'. Reply in one line starting with 'APPROVE:' or 'REJECT:' followed by your reason.",
+              "status": "completed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1789623023271,
+              "updatedAt": 1789623058350,
+              "kind": "work",
+              "deliverables": [
+                "one-line APPROVE/REJECT verdict in the task output"
+              ],
+              "attemptId": "82a5c7c8-ac74-48df-a1c6-40e77eeae265",
+              "reassigning": false,
+              "output": "APPROVE: t1's summary accurately expands the goal \"C1 adoption QA\" into the concrete capability under test — a real c1qa team created and staffed, driven through the full claim → work → verify → review handoff to terminal results with no protocol defects; it explicitly marks the \"C1 = AgentTeams/MPD team capability\" reading as an interpretation (the workspace holds no other C1 definition, team.json description is only \"C1 adoption QA\"), adds no unsupported claims, and is adequate as the QA goal statement. Reviewer evidence: .mpd/team/c1qa/team.json (description \"C1 adoption QA\"; members librarian + oracle; tasks t1→t2 with claim→work flow), and a workspace-wide grep for \"C1\" returning no other source material.",
+              "verdict": "pass"
+            }
+          ],
+          "taskSeq": 2
+        }
+      ]
+    },
+    "archive": {
+      "ok": true,
+      "archiveIds": [
+        "c1qa"
+      ]
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "arm": "fence-refusal",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T05-30-02.318Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

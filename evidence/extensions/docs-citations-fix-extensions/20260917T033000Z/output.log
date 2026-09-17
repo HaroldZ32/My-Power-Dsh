@@ -1,0 +1,64 @@
+# t50 — the last citation blocker: EXTENSIONS-FOR-AGENTS.md re-anchor — evidence log
+# cwd = /root/dshProj/my-power-dsh for every command
+
+## 1. THE RED, reproduced raw (before any edit)
+$ node evidence/extensions/docs-claims/check-citations.mjs      -> exit 1
+  the five subject files' verdicts:
+    ok   citations:docs/extension-authoring-guide.md           0 unresolved   (t47's fix holds)
+    ok   citations:docs/extension-authoring-guide.zh-CN.md     0 unresolved
+    FAIL citations:EXTENSIONS-FOR-AGENTS.md — 56 citation(s) (checked 52: path 34, dir 6, command 12; pending 0, illustrative 4), **3 unresolved**:
+         doc line 24 : the cited line/range does not carry the claim `EXPECTED_TOOLS` (packages/mpd-ext-plugin/src/index.ts:548)
+         doc line 224: packages/mpd-ext-plugin/dist/validator.js does not exist
+         doc line 225: src does not exist
+    ok   citations:docs/extension-adaptation-report.md         0 unresolved
+    ok   citations:docs/extension-adaptation-report.zh-CN.md   0 unresolved
+    ok   annotations:pending — none
+    ok   annotations:illustrative — 12 illustrative citation(s) (extension-root-relative, not repo paths)
+  FINDING vs the contract's expectation: the task text predicted ONE unresolved (the line-24 anchor). Measured: THREE —
+  the other two were introduced by t43's §9 rewrite (`packages/mpd-ext-plugin/dist/validator.js`, which exists only
+  inside the packed artifact, and a bare `src/` token). Both are flagged by the checker's own grammar
+  (PATH_PATTERN = slash-path + file extension; DIR_PATTERN = backticked path ending in `/` whose first segment is
+  one of the ten ROOT_DIRS, `src/` among them). t50 fixes all three, because its reason to exist is the WHOLE-FILE green.
+
+## 2. The re-anchor, proven on the cited line (T-55: re-measured, never trusted)
+$ grep -n "const EXPECTED_TOOLS" packages/mpd-ext-plugin/src/index.ts
+  532:  const EXPECTED_TOOLS = ["mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show"]
+$ sed -n '548p' packages/mpd-ext-plugin/src/index.ts
+   * (`snapshot()` -> `provider.list()` -> `snapshot()`).        <- the claimed line carries an unrelated comment
+BEFORE (doc line 24): … the gated list (`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts:548`)
+AFTER  (doc line 24): … the gated list (`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts:532`)
+=> the number is right AND the symbol stays visible beside it, so the anchor can be found again after the next move.
+
+## 3. The other two unresolved citations, fixed minimally (both in the same file, inScope)
+BEFORE (doc lines 224-225):
+  `agent-references/` and `scripts/`, and emits `packages/mpd-ext-plugin/dist/validator.js` — the compiled entry
+  the CLI falls back to when `src/` is absent. Measured on a fresh `dist/mpd-package/`: every command exits 0
+AFTER:
+  `agent-references/` and `scripts/`, and emits the compiled `validator.js` entry — the one
+  the CLI falls back to when the package's TypeScript sources are absent. Measured on a fresh `dist/mpd-package/`: every command exits 0
+WHY THESE WORDS: `validator.js` alone is not a PATH_PATTERN match (no slash) and the file exists only inside the
+packed artifact, so the old full path could never resolve in this repository; the bare `src/` token was a
+DIR_PATTERN match against ROOT_DIRS and does not exist as a repo directory. The MEANING is unchanged.
+
+## 4. THE GREEN (this task's reason to exist)
+$ node evidence/extensions/docs-claims/check-citations.mjs      -> **exit 0**
+  ok   citations:EXTENSIONS-FOR-AGENTS.md — 54 citation(s) (checked 50: path 33, dir 5, command 12; pending 0, illustrative 4), 0 unresolved
+  ok   annotations:pending — none
+  ok   annotations:illustrative — 12 illustrative citation(s) (extension-root-relative, not repo paths)
+  … all twelve checks ok, 0 failed
+$ bun run verify:docs                                            -> exit 0: pairs=37 failed=0 violations=0 exempt=17 — PASS
+
+## 5. Identity / minimality
+BEFORE: 15,419 B sha256 cae9486f806dafd159ce3b9a27d9e3bd0f75743e84cf67628ff36313d083cb7b
+AFTER : 15,425 B sha256 78a61f5442df747899ae1239dc7f1ad1a71ecac4c5e5d2bae118f28bdb3c1807
+Only THREE lines changed (24, 224, 225); `grep -c 'index.ts:532'` = 1, `grep -c 'index.ts:548'` = 0,
+`grep -c 'dist/validator.js'` = 0. No checker edit, no other path edited.
+
+## 6. BOUND / routed observation (pre-existing, not caused by this task, deliberately NOT fixed here)
+The same line 23 carries FIVE unanchored legacy line refs — `:537`, `:715`, `:807`, `:930`, `:984` — which the
+driver does NOT check (a citation is "anchored" only when a claim sits immediately before `path:line`). Measured
+now, all five are rotted (they point at unrelated lines: `:537` → a `view.shadowed.filter(...)` line, `:715` →
+`origin: { type: "string" }`, `:807` → `plane: { type: "string" }`, `:930` → `title: { type: "string" }`,
+`:984` → `description: { type: "string" }`). That is T-55's class again (cite by symbol, never by line) in text
+that predates this wave. Fixing it would exceed "nothing else in the file moves"; it should be a symbol-first
+rewrite in the follow-up that owns that region.

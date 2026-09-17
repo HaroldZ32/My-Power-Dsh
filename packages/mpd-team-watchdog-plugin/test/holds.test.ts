@@ -18,7 +18,7 @@ import { apply } from "../src/index"
 import { HOLD_TOOL, RESUME_TOOL, applyHold, applyResume } from "../src/actions"
 import { readHold } from "../src/sidecars"
 import { readHeartbeats } from "../src/store"
-import { agent, pluginCtx, sandbox, stubAdapter, testConfig, writeTeam } from "./support"
+import { agent, pluginCtx, sandbox, stubAdapter, testConfig, writeTeam, openOutstandingChannel } from "./support"
 
 function stubCtx(): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
   return { on: () => () => {} }
@@ -190,10 +190,21 @@ describe("the engine keeps the reader in step with its own hold", () => {
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
       const ctx = pluginCtx(box.workspace)
-      const report = apply(ctx, { stateDir: box.stateDir, teamCacheMs: 0, tickIntervalMs: 3_600_000, warnSilenceMs: 90_000 })
+      const report = apply(ctx, {
+        stateDir: box.stateDir,
+        teamCacheMs: 0,
+        tickIntervalMs: 3_600_000,
+        warnSilenceMs: 90_000,
+        // §3: `pause` is no longer the default (`warn-only` is), so the hold path is asked
+        // for explicitly — an ESCALATE holds ONLY when the resolved action says `pause`.
+        warnStreakToEscalate: 3,
+        actionOnEscalate: "pause",
+      })
       const engine = report.engine!
       engine.stamp("step", agent("a1", box.workspace))
       const from = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
+      // OUTSTANDING channel: the only state the §3 ladder may escalate (and hold) from.
+      openOutstandingChannel(ctx.__stub, "a1", from)
       await engine.tickOnce(from + 90_001)
       await engine.tickOnce(from + 90_002)
       const escalated = await engine.tickOnce(from + 90_003)
@@ -224,6 +235,7 @@ describe("the engine keeps the reader in step with its own hold", () => {
       const engine = report.engine!
       engine.stamp("step", agent("a1", box.workspace))
       const from = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
+      openOutstandingChannel(ctx.__stub, "a1", from)
       expect((await engine.tickOnce(from + 30_000)).decisions).toEqual([])
       // The namespace appears now, with a much lower threshold.
       ctx.__stub.setSettings({ watchdog: { warnSilenceMs: 20_000, tickIntervalMs: 3_600_000 } })

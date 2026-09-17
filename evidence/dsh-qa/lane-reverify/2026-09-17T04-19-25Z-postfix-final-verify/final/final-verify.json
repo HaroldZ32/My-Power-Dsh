@@ -1,0 +1,53 @@
+{
+  "task": "t21 final verification",
+  "recordedAt": "2026-09-17T04:22:46.653Z",
+  "allGreen": true,
+  "expected": "all four exit 0, docs-claims 12/12 with 0 failed, workmate-library flow proven from the session log and files present",
+  "guardPredicateFixed": true,
+  "t55SymbolFirstFormDurable": false,
+  "artifacts": {
+    "skills/dsh-qa/scripts/workmate-library.mjs": null,
+    "skills/dsh-qa/scripts/extension-template.mjs": null,
+    "skills/dsh-qa/scripts/lib/immutable-output.mjs": null,
+    "evidence/extensions/docs-claims/check-citations.mjs": null
+  },
+  "results": [
+    {
+      "command": "bun skills/dsh-qa/scripts/workmate-library.mjs --no-skip",
+      "exitCode": 0,
+      "status": "passed",
+      "durationMs": 200380,
+      "log": "final/verify1-workmate-library-real.log",
+      "summary": "[workmate-library] ok=true -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-17T04-19-25.871Z | [workmate-library] PASS"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-template.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "durationMs": 253,
+      "log": "final/verify2-extension-template-selftest.log",
+      "summary": "[extension-template self-test] ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots (ids, flow cross-reference, persona and MCP name pinned) + SKILL.md row present"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/workmate-library.mjs --self-test",
+      "exitCode": 0,
+      "status": "passed",
+      "durationMs": 49,
+      "log": "final/verify3-workmate-library-selftest.log",
+      "summary": "[workmate-library self-test] ok: 19 checks"
+    },
+    {
+      "command": "node evidence/extensions/docs-claims/check-citations.mjs",
+      "exitCode": 0,
+      "status": "passed",
+      "durationMs": 156,
+      "log": "final/verify4-check-citations.log",
+      "summary": "[docs-claims] 12/12 checks passed, 0 failed, 249 citation(s) resolved, 0 pending, 12 illustrative",
+      "docsChecks": {
+        "passed": 12,
+        "total": 12,
+        "failed": 0
+      }
+    }
+  ]
+}

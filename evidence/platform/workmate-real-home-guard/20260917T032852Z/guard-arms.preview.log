@@ -1,0 +1,14 @@
+# t62 PRE-FLIGHT: the staged predicate's logic vs the A3 arms (scratch module, product untouched) 2026-09-17T03:33:42Z
+# (arms expect: A ALLOWED, B REFUSED, C REFUSED, D ALLOWED — post-fix shape)
+
+[guard-arms] dist=evidence/platform/workmate-real-home-guard/20260917T032852Z/patched-guard-preview.mjs realHome=/root
+  PASS node arm A: sandbox HOME + DSH_HOME (sanctioned recipe) expect=ALLOWED got=ALLOWED
+  PASS node arm B: HOME unset + DSH_HOME                      expect=REFUSED got=REFUSED
+  PASS node arm C: real HOME + DSH_HOME                       expect=REFUSED got=REFUSED
+  PASS node arm D: sandbox HOME + override                    expect=ALLOWED got=ALLOWED
+  PASS bun  arm A: sandbox HOME + DSH_HOME (sanctioned recipe) expect=ALLOWED got=ALLOWED
+  PASS bun  arm B: HOME unset + DSH_HOME                      expect=REFUSED got=REFUSED
+  PASS bun  arm C: real HOME + DSH_HOME                       expect=REFUSED got=REFUSED
+  PASS bun  arm D: sandbox HOME + override                    expect=ALLOWED got=ALLOWED
+[guard-arms] ok=true (both sides × both runtimes must agree)
+exit=0

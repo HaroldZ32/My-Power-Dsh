@@ -47,6 +47,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, 
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const SLUG = "readonly-deny"
@@ -236,7 +237,7 @@ function makeSandbox(tag) {
   const ws = join(runHome, "ws")
   mkdirSync(ws, { recursive: true })
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
-  if (existsSync(creds)) cpSync(creds, join(dshHome, ".credentials.yaml"))
+  seedSandboxCredentials(dshHome, { credentialsFile: creds })
   const settings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(settings)) cpSync(settings, join(dshHome, "settings.yaml"))
   if (join(dshHome).startsWith(homedir() + "/.dsh")) fail("isolation assertion: DSH_HOME points at the real home")

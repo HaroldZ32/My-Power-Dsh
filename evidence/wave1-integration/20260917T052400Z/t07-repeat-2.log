@@ -1,0 +1,14 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs:
+(pass) T-07 positive control: a READY task still reaches its assignee (no blanket refusal) [12.41ms]
+(pass) T-07 regression: a TERMINAL task is never delivered, and a refused dispatch never writes a status onto it [2.61ms]
+(pass) T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake [3.17ms]
+(pass) T-07: the delivery-boundary re-check is REGISTERED (a re-materialize cannot silently drop it) [9.84ms]
+
+packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs:
+
+ 4 pass
+ 0 fail
+ 20 expect() calls
+Ran 4 tests across 2 files. [252.00ms]

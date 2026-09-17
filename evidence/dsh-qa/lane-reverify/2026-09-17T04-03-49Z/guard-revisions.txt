@@ -1,0 +1,2 @@
+63f9c00928aead71231d0c1859edb6d4fd82c569ac1e84586f39de39b41d7559 packages/mpd-workmate-plugin/src/index.ts
+5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d packages/mpd-workmate-plugin/dist/index.js

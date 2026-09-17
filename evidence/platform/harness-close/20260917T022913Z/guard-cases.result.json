@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "cases": [
+    {
+      "id": "negative-1 isolated boot + HOME=<sandbox> -> allowed",
+      "ok": true,
+      "detail": "renamed {\"ok\":true,\"name\":\"oracle-renamed\",\"from\":\"oracle-one\",\"renamedFrom\":[\"oracle-one\"]}"
+    },
+    {
+      "id": "negative-2 normal session (DSH_HOME unset) -> allowed",
+      "ok": true,
+      "detail": "renamed {\"ok\":true,\"name\":\"oracle-two-renamed\",\"from\":\"oracle-two\",\"renamedFrom\":[\"oracle-two\"]}"
+    },
+    {
+      "id": "positive isolated boot + HOME unset -> refused, real library untouched",
+      "ok": true,
+      "detail": "code=real-home-refused realLibraryUnchanged=true"
+    },
+    {
+      "id": "override MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1 -> guard does not throw",
+      "ok": true,
+      "detail": "released"
+    }
+  ]
+}

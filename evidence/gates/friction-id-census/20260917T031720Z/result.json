@@ -1,0 +1,116 @@
+{
+  "task": "t58",
+  "kind": "repair",
+  "attemptId": "4cea8bf0-93a0-4c51-82f5-1f911fd98d39",
+  "objective": "the complete friction-id census for the five harness-close ids (T-21/T-23/T-24/T-26/T-43) in agent-references/troubleshooting.md, closing any row that describes a friction without carrying its id",
+  "sources": [
+    "t56's closing note (this seat): T-23 owned TWO symptom rows — t52 fixed the `nohup` row, t34's review F2 caught the fresh-`/tmp` row — and the same 'one friction, several symptom rows' pattern was UNCHECKED for the other four ids",
+    "t34's review, finding F2 — the class was found there, not by a fresh sweep"
+  ],
+  "started_at": "2026-09-17T03:17:20Z",
+  "revision": {
+    "head": "646d8018a44bffb2d6e1c30afa090056f81b911e",
+    "branch": "fix/todo-register-p1",
+    "file": "agent-references/troubleshooting.md",
+    "sha256_before_census": "f6b4d1bec8745da6928e2d2a7cdfbc054efbe47f37ec02c4e494dfb4f0f7f955",
+    "sha256_after_census": "f6b4d1bec8745da6928e2d2a7cdfbc054efbe47f37ec02c4e494dfb4f0f7f955",
+    "lines": 69,
+    "bytes": 35548,
+    "tracked": "UNTRACKED at HEAD (`?? agent-references/troubleshooting.md`) — a plain `git diff` is empty for it by construction"
+  },
+  "outcome": "COMPLETE, ZERO APPENDS. Every symptom row for all five ids already carries its id: T-23's are two rows (16 and 17) and both carry it, the other four ids have exactly one symptom row each and each carries it. No edit was manufactured to justify the task; the file is byte-identical to the census-start revision (sha f6b4d1be… before and after).",
+  "table": [
+    {
+      "id": "T-21",
+      "friction": "no plugin-module hot reload (ESM caches the module at session start)",
+      "symptom_rows": 1,
+      "lines": [15],
+      "rows_carrying_the_id": 1,
+      "rows_missing_the_id": 0,
+      "grep_c_before": 1,
+      "grep_c_after": 1,
+      "append_made": false,
+      "opening_words": { "15": "| an adopted-plugin / plugin-module edit does not show up in a running session (e.g. `agent_teams_update_task` still answers with the pre-fix wording)" }
+    },
+    {
+      "id": "T-23",
+      "friction": "fresh `/tmp` per bash call + `bwrap --die-with-parent`",
+      "symptom_rows": 2,
+      "lines": [16, 17],
+      "rows_carrying_the_id": 2,
+      "rows_missing_the_id": 0,
+      "grep_c_before": 2,
+      "grep_c_after": 2,
+      "append_made": false,
+      "opening_words": {
+        "16": "| a scratch file written under `/tmp` in an earlier bash call is gone in the next call (id appended by t56 at 03:11:38Z)",
+        "17": "| long background work started with `nohup … &` inside a bash call dies mid-run (id appended by t52 at 03:03:59Z)"
+      }
+    },
+    {
+      "id": "T-24",
+      "friction": "MCP children inherit fds (never pipe a long-lived dsh; kernel-only probe)",
+      "symptom_rows": 1,
+      "lines": [29],
+      "rows_carrying_the_id": 1,
+      "rows_missing_the_id": 0,
+      "grep_c_before": 1,
+      "grep_c_after": 1,
+      "append_made": false,
+      "opening_words": { "29": "| bash tool hangs after dsh | MCP children hold fds — stdio to files, or `setsid … > log` pattern … (T-24)" }
+    },
+    {
+      "id": "T-26",
+      "friction": "the file sandbox is workspace-write (check-write before a write; extra-write root for cross-area work)",
+      "symptom_rows": 1,
+      "lines": [30],
+      "rows_carrying_the_id": 1,
+      "rows_missing_the_id": 0,
+      "grep_c_before": 1,
+      "grep_c_after": 1,
+      "append_made": false,
+      "opening_words": { "30": "| a write fails with `[sandbox: file access denied under workspace-write mode]` | the file sandbox is WORKSPACE-WRITE (T-26)" }
+    },
+    {
+      "id": "T-43",
+      "friction": "the workmate library lives under HOME (QA must sandbox HOME; `403 real-home-refused`; deliberate override)",
+      "symptom_rows": 1,
+      "lines": [31],
+      "rows_carrying_the_id": 1,
+      "rows_missing_the_id": 0,
+      "grep_c_before": 1,
+      "grep_c_after": 1,
+      "append_made": false,
+      "shape_note": "row 31 carries the id INLINE — 'that is the T-43 guard doing its job' — not in the trailing `(T-XX).` shape. It IS greppable, so appending a trailing id would DUPLICATE it; left as is on purpose, recording the shape deviation rather than 'fixing' a row that is not broken.",
+      "opening_words": { "31": "| a QA/verification run refuses to touch the workmate library (`403 real-home-refused`) | that is the T-43 guard doing its job" }
+    }
+  ],
+  "ambiguous_or_adjacent_rows_declared_and_left_alone": [
+    { "line": 22, "opens": "| `MISSING_CREDENTIAL` in isolated QA | sandbox has no `.credentials.yaml`", "verdict": "DIFFERENT friction", "reason": "credential plumbing in a sandbox HOME (the QA lane's T-58/T-7 class), not the write sandbox of T-26; shares only the word 'sandbox'." },
+    { "line": 25, "opens": "| codegraph `skipped: project excluded` | the project root contains an `.mpd` segment or is under /tmp", "verdict": "DIFFERENT friction", "reason": "a project-PATH policy for the codegraph indexer (it mentions /tmp as a path segment, not the fresh-/tmp rule of T-23 nor the write sandbox of T-26)." },
+    { "line": 32, "opens": "| a sandboxed profile copy boots with `cannot resolve profile bundle \"@mpd-dsh/mpd\"`", "verdict": "DIFFERENT friction", "reason": "T-54 — profile-copy DEPTH; carries its own id already, so tagging T-26 would be doubly wrong." },
+    { "line": 43, "opens": "| installed presets stale / agents miss tools (e.g. bash)", "verdict": "DIFFERENT friction", "reason": "install/bundle staleness (a stale profile or packed install), not T-21's LIVE-PROCESS module cache; the remedy overlaps ('restart dsh') but the cause and the fix path differ." },
+    { "line": 45, "opens": "| skills missing in a session", "verdict": "DIFFERENT friction", "reason": "a missing mount or a stale built `dist/index.js` — again a build/install staleness, not the ESM cache; flagged rather than tagged because the vocabulary (`stale`, `rebuild`) is T-21-adjacent." },
+    { "line": 52, "opens": "| `mpd_workmate_*` reports \"mpdRoles service unavailable\"", "verdict": "DIFFERENT friction", "reason": "workmate PATH domain but a missing `mpd-roles` row; nothing to do with T-43's HOME-sandbox guard." },
+    { "line": 53, "opens": "| `mpd_workmate_rename` / `mpd_workmate_delete` is refused \"is in use by …\" (409 `in-use`)", "verdict": "DIFFERENT friction", "reason": "the in-use gate scanning non-archived team records — same path domain again, different mechanism." },
+    { "line": 54, "opens": "| an archived workmate must come back", "verdict": "AMBIGUOUS — declared, left alone", "reason": "the closest call in the whole census: it operates on `~/.mpd/workmate/.archive/`, i.e. the SAME state root T-43 protects, but its symptom is archive-first recovery (an intended design: no in-product restore, recover with `mv`). It does not describe T-43's friction — the HOME location and the `403 real-home-refused` guard. Tagging it `(T-43)` would make `grep T-43` return a row that does not explain T-43, and a WRONG id is worse than a missing one (the contract's own rule). Not tagged; recorded here so the decision is auditable." },
+    { "line": 68, "opens": "| task creation is refused `inScope overlaps <task> at <paths>`", "verdict": "DIFFERENT friction", "reason": "labels the inScope-overlap validator. Its trailing remark 'or the process predates the fix (restart `dsh`)` reuses T-21's REMEDY, not its symptom — a remedy overlap, not a symptom row. If it ever confused a reader, the fix would be wording, not an id." }
+  ],
+  "method": {
+    "discovery": "distinctive tokens per friction (not generic vocabulary like `sandbox`/`HOME`, which matched 6 and 5 rows respectively and produced exactly the false positives this census had to adjudicate): T-21 `hot-reload|reload-check|ESM caches|newer than the newest session`; T-23 `die-with-parent|nohup|FRESH \\`/tmp\\`|mpd-bg run`; T-24 `hold fds|never uses a pipe|stdio to files`; T-26 `workspace-write|check-write|extra-write root`; T-43 `real-home-refused|MPD_DSH_WORKMATE_ALLOW_REAL_HOME|\\.mpd/workmate`",
+    "adjudication": "every candidate row was read in full and classified symptom / different-friction / ambiguous, with the reason recorded in the table above",
+    "sole_delta": "NOT APPLICABLE — zero appends were made, and the proof of zero delta is stronger than reconstruction: the file's sha256 is IDENTICAL before and after the census (`f6b4d1be…`), 69 lines / 35,548 bytes both times. The reconstructive-equality method the two earlier repairs used is a per-append check; with no append there is nothing to reconstruct, and saying so is the honest reading rather than manufacturing a delta."
+  },
+  "gate": {
+    "command": "bun run verify:docs",
+    "exit": 0,
+    "line": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS",
+    "note": "census unchanged; agent-references/** is outside the gate's discovery, so no zh-CN twin was added and nothing was renamed (`ls agent-references/` = agent-teams-deltas.md, index.md, troubleshooting.md)"
+  },
+  "scope": {
+    "changedPaths": ["evidence/gates/friction-id-census/20260917T031720Z"],
+    "file_edits": "NONE — agent-references/troubleshooting.md is byte-identical to the revision the census started from",
+    "untouched": ["AGENTS.md", "docs/**", "packages/**", "scripts/**", "skills/**", "EXTENSIONS-FOR-AGENTS.md"]
+  },
+  "bound": "the census belongs to HEAD 646d8018 + the revision stamped above (sha f6b4d1be…, 69 lines). Any later writer to agent-references/troubleshooting.md invalidates it: a NEW row could introduce a fresh symptom row for one of the five ids, and this census would have to be re-run rather than extended by assumption."
+}

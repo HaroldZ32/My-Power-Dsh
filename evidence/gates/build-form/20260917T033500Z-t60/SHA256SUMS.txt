@@ -1,0 +1,8 @@
+# t60 evidence artefacts — final values (the output.log self-entry in output.log §7 is a mid-write value; these are authoritative)
+e9f076503ed40e202542b92bf1568fa5d0679f76d6f299164d3145acb52bd5e6  evidence/gates/build-form/20260917T033500Z-t60/budget.current.json
+d45cb15cf42011d01457fffa3ab5a80f9bd353dea01b95eee7b777c4fd04890a  evidence/gates/build-form/20260917T033500Z-t60/checks.stage1.log
+d0a2d9f8db9baba6ede29c919d405bd13306f9de050fde2e72d0666be1215df5  evidence/gates/build-form/20260917T033500Z-t60/output.log
+eb526cb3e42199643c31602fce4c7ecc6fc62b59b268e830dc5a95a82f9d7452  evidence/gates/build-form/20260917T033500Z-t60/REVERSED-pre-t60.AGENTS.md
+59de17e227eb529caf1046dab656a37184ab25b602ceeb47d161467d719afa7d  evidence/gates/build-form/20260917T033500Z-t60/result.json
+1b04a2876be012d5da698a1fca9d2512544b98db1b4a0ed29302911587c9417b  evidence/gates/build-form/20260917T033500Z-t60/two-forms-method.txt
+41f9e58466a226d854dcd2c06f8d31434b76ac3f59ce4b2c22028f0b5cf34b55  evidence/gates/build-form/20260917T033500Z-t60/whole-file-before.txt

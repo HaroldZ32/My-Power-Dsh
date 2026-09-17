@@ -1,0 +1,8 @@
+
+### dist-live-probe re-run (provider fiber state captured DURING the consumer's apply)
+[pending-window] {"providerFiberStateDuringApply":"not-ACTIVE (state 1)","markerDuringApply":"undefined (temporary adapter)","identityDuringApply":"pending:provider-not-active","warnings":1,"warningIsHonest":true,"warningBlamesRowOrder":false}
+[recovery-after-activation] {"providerFiberState":2,"markerAfterActivation":"mounted","identityAfterActivation":"mounted:mpdDsh"}
+[absent-provider] {"identity":"fallback:createDshAdapter","warningBlamesRowOrder":true,"warningClaimsNotYetActive":false}
+[shipped-bytes] {"adapter":{"createLazyDshAdapter":2,"dshAdapterIdentity":2,"pendingIdentityLiteral":true,"eagerInlineIdiom":0},"ext":{"createLazyDshAdapter":2,"dshAdapterIdentity":3,"pendingIdentityLiteral":true,"eagerInlineIdiom":0},"roles":{"createLazyDshAdapter":2,"dshAdapterIdentity":3,"pendingIdentityLiteral":true,"eagerInlineIdiom":0}}
+[dist-live-probe] ok=true
+exit=0

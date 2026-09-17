@@ -1,0 +1,4 @@
+$ bun run verify:docs
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+[exit=0]

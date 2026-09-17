@@ -1,0 +1,130 @@
+
+########## d12: MPD_EXT_CONTRACT @ packages/mpd-ext-plugin/src/sdk.ts:113-146
+  OLD-LINE 113: export const MPD_EXT_CONTRACT = {
+  OLD-LINE 114: apiVersion: MPD_EXT_API_VERSION,
+  OLD-LINE 115: manifestFile: MPD_EXT_MANIFEST_FILE,
+  OLD-LINE 116: idPattern: MPD_EXT_ID_PATTERN,
+  OLD-LINE 117: skillNamePattern: MPD_EXT_SKILL_NAME_PATTERN,
+  OLD-LINE 118: serverNamePattern: MPD_EXT_SERVER_NAME_PATTERN,
+  OLD-LINE 119: defaultRank: MPD_EXT_DEFAULT_RANK,
+  OLD-LINE 120: defaultConnectTimeoutMs: 10_000,
+  OLD-LINE 121: defaultToolCallTimeoutMs: 60_000,
+  OLD-LINE 122: descriptorKeys: ["apiVersion", "id", "description", "enabled", "contributes"],
+  OLD-LINE 123: contributesKeys: ["skills", "flows", "mcp", "roles"],
+  OLD-LINE 124: skillsItemKeys: ["root", "rank"],
+  OLD-LINE 125: flowsItemKeys: ["dir", "rank"],
+  OLD-LINE 126: mcpItemKeys: [
+  OLD-LINE 127: "serverName",
+  OLD-LINE 128: "transport",
+  OLD-LINE 129: "command",
+  OLD-LINE 130: "args",
+  OLD-LINE 131: "env",
+  OLD-LINE 132: "cwd",
+  OLD-LINE 133: "toolCallTimeoutMs",
+  OLD-LINE 134: "connectTimeoutMs",
+  OLD-LINE 135: ],
+  OLD-LINE 136: rolesItemKeys: ["name", "description", "readonly", "persona", "provider", "model"],
+  OLD-LINE 137: /** Kinds a per-call (project) extension may contribute: skills and flows only. */
+  OLD-LINE 138: projectKinds: ["skills", "flows"],
+  OLD-LINE 139: /** Kinds a host-wide (user / bundle) extension may contribute. */
+  OLD-LINE 140: hostKinds: ["skills", "flows", "mcp", "roles"],
+  OLD-LINE 141: planes: ["project", "user", "bundle"],
+  OLD-LINE 142: origins: ["plugin", "directory"],
+  OLD-LINE 143: /** Told to every project manifest that declares a host-wide kind. */
+  OLD-LINE 144: projectRejectionReason:
+  OLD-LINE 145: "project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session",
+  OLD-LINE 146: } as const
+  SYMBOL occurrences: ['5:// MPD_EXT_CONTRACT instead of re-stating the rules, so a rule can never be', '113:export const MPD_EXT_CONTRACT = {']
+  OLD RANGE CONTAINS SYMBOL: True
+
+########## d23: safeRegisterTool @ packages/mpd-ext-plugin/src/index.ts:521
+  OLD-LINE 521: const safeRegisterTool = (definition: any, onError: (line: string) => void): boolean => {
+  SYMBOL occurrences: ['521:  const safeRegisterTool = (definition: any, onError: (line: string) => void): boolean => {', '698:  safeRegisterTool({', '790:  safeRegisterTool({']
+  OLD RANGE CONTAINS SYMBOL: True
+
+########## d24: mpd_ext_list @ packages/mpd-ext-plugin/src/index.ts:699
+  OLD-LINE 699: name: "mpd_ext_list",
+  SYMBOL occurrences: ['18://   mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show', '51:// `mpd_ext_list` -> `unknown tool`). Every other row in this repo declares its', '300:        // extension (deduplicated) so mpd_ext_list/mpd_ext_show report it too.']
+  OLD RANGE CONTAINS SYMBOL: True
+
+########## d25a: mpd_ext_show @ packages/mpd-ext-plugin/src/index.ts:791
+  OLD-LINE 791: name: "mpd_ext_show",
+  SYMBOL occurrences: ['18://   mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show', '300:        // extension (deduplicated) so mpd_ext_list/mpd_ext_show report it too.', '532:  const EXPECTED_TOOLS = ["mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show"]']
+  OLD RANGE CONTAINS SYMBOL: True
+
+########## d25b: mpd_flow_list @ packages/mpd-ext-plugin/src/index.ts:914
+  OLD-LINE 914: name: "mpd_flow_list",
+  SYMBOL occurrences: ['18://   mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show', '532:  const EXPECTED_TOOLS = ["mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show"]', '914:    name: "mpd_flow_list",']
+  OLD RANGE CONTAINS SYMBOL: True
+
+########## d26: mpd_flow_show @ packages/mpd-ext-plugin/src/index.ts:968
+  OLD-LINE 968: name: "mpd_flow_show",
+  SYMBOL occurrences: ['18://   mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show', '532:  const EXPECTED_TOOLS = ["mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show"]', '968:    name: "mpd_flow_show",']
+  OLD RANGE CONTAINS SYMBOL: True
+
+########## d27: EXPECTED_TOOLS @ packages/mpd-ext-plugin/src/index.ts:532
+  OLD-LINE 532: const EXPECTED_TOOLS = ["mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show"]
+  SYMBOL occurrences: ['532:  const EXPECTED_TOOLS = ["mpd_ext_list", "mpd_ext_show", "mpd_flow_list", "mpd_flow_show"]', '1063:  const missingTools = EXPECTED_TOOLS.filter((name) => !registeredToolNames.includes(name))', '1065:    warn("FATAL: only " + registeredToolNames.length + "/" + EXPECTED_TOOLS.length + " tools registered (']
+  OLD RANGE CONTAINS SYMBOL: True
+
+########## d36a: childEnv @ packages/mpd-ext-plugin/src/mcp-client.ts:99-117
+  OLD-LINE 99: /**
+  OLD-LINE 100: * The environment a child receives: the SDK's safe inherit list (minus anything
+  OLD-LINE 101: * credential-shaped, as defense-in-depth) plus the extension's declared values.
+  OLD-LINE 102: */
+  OLD-LINE 103: export function childEnv(
+  OLD-LINE 104: declared: Record<string, string> = {},
+  OLD-LINE 105: parent: NodeJS.ProcessEnv = process.env,
+  OLD-LINE 106: ): Record<string, string> {
+  OLD-LINE 107: const env: Record<string, string> = {}
+  OLD-LINE 108: for (const key of INHERITED_ENV_VARS) {
+  OLD-LINE 109: const value = parent[key]
+  OLD-LINE 110: if (typeof value !== "string") continue
+  OLD-LINE 111: if (isCredentialShapedEnvName(key)) continue
+  OLD-LINE 112: env[key] = value
+  OLD-LINE 113: }
+  OLD-LINE 114: for (const [key, value] of Object.entries(declared)) {
+  OLD-LINE 115: if (typeof value === "string") env[key] = value
+  OLD-LINE 116: }
+  OLD-LINE 117: return env
+  SYMBOL occurrences: ['103:export function childEnv(', '265:      env: childEnv(this.spec.env),']
+  OLD RANGE CONTAINS SYMBOL: True
+
+########## d36b: publicToolName @ packages/mpd-ext-plugin/src/mcp-client.ts:129-135
+  OLD-LINE 129: export function publicToolName(serverName: string, rawName: string): string {
+  OLD-LINE 130: const joined = `mcp__${serverName}__${rawName}`
+  OLD-LINE 131: const normalized = joined.replace(INVALID_NAME_CHARS, "_")
+  OLD-LINE 132: if (normalized === joined && normalized.length <= MAX_PUBLIC_NAME_LENGTH) return normalized
+  OLD-LINE 133: const hash = createHash("sha256").update(`${serverName}\0${rawName}`).digest("hex").slice(0, HASH_LENGTH)
+  OLD-LINE 134: return `${normalized.slice(0, MAX_PUBLIC_NAME_LENGTH - HASH_LENGTH - 1)}_${hash}`
+  OLD-LINE 135: }
+  SYMBOL occurrences: ['123: * Byte-for-byte the harness algorithm (`publicToolName`,', '129:export function publicToolName(serverName: string, rawName: string): string {']
+  OLD RANGE CONTAINS SYMBOL: True
+
+########## d42: validateDescriptor @ packages/mpd-ext-plugin/src/registry.ts:583
+  OLD-LINE 583: enabled: input.enabled !== false,
+  SYMBOL occurrences: ['530:export function validateDescriptor(input: unknown): DescriptorValidation {', '656:  const validation = validateDescriptor(options.input)']
+  OLD RANGE CONTAINS SYMBOL: False
+
+########## d116: projectRejectionReason @ packages/mpd-ext-plugin/src/sdk.ts:144-145
+  OLD-LINE 144: projectRejectionReason:
+  OLD-LINE 145: "project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session",
+  SYMBOL occurrences: ['111: * anything outside it is rejected per item with `projectRejectionReason`.', '144:  projectRejectionReason:']
+  OLD RANGE CONTAINS SYMBOL: True
+
+########## d117: refuseHostKind @ packages/mpd-ext-plugin/src/registry.ts:678-685
+  OLD-LINE 678: const refuseHostKind = (kind: "mcp" | "roles", index: number): boolean => {
+  OLD-LINE 679: if (!projectOnly) return false
+  OLD-LINE 680: errors.push({
+  OLD-LINE 681: item: `contributes.${kind}[${index}]`,
+  OLD-LINE 682: reason: MPD_EXT_CONTRACT.projectRejectionReason,
+  OLD-LINE 683: })
+  OLD-LINE 684: return true
+  OLD-LINE 685: }
+  SYMBOL occurrences: ['678:  const refuseHostKind = (kind: "mcp" | "roles", index: number): boolean => {', '732:    if (refuseHostKind("roles", index)) {', '767:    if (refuseHostKind("mcp", index)) return']
+  OLD RANGE CONTAINS SYMBOL: True
+
+########## d141: McpServerState @ packages/mpd-ext-plugin/src/mcp.ts:34
+  OLD-LINE 34: export type McpServerState = "connecting" | "connected" | "unavailable" | "failed" | "disabled"
+  SYMBOL occurrences: ['34:export type McpServerState = "connecting" | "connected" | "unavailable" | "failed" | "disabled"', '40:  state: McpServerState', '148:  private state: McpServerState = "connecting"']
+  OLD RANGE CONTAINS SYMBOL: True

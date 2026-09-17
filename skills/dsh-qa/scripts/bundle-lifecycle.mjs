@@ -22,6 +22,7 @@ import { cpSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rea
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PKG = "@mpd-dsh/mpd"
@@ -74,7 +75,7 @@ async function runReal() {
   const profile = join(home, "profiles", "w")
   mkdirSync(profile, { recursive: true })
   mkdirSync(userHome, { recursive: true })
-  cpSync(creds, join(home, ".credentials.yaml"))
+  seedSandboxCredentials(home, { credentialsFile: creds })
   // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
 // model chain is configured through gateway providers (llm-pi-ai), so without it the
 // sandbox falls back to the base `deepseek-official` route and the boot dies with
@@ -83,7 +84,7 @@ async function runReal() {
 // already passed.
   const qaSettings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(qaSettings)) cpSync(qaSettings, join(home, "settings.yaml"))
-  const env = { ...process.env, DSH_HOME: home, HOME: userHome }
+  const env = credentialEnv({ ...process.env, DSH_HOME: home, HOME: userHome  })
   const probePatch = join(sandbox, "probe.yml")
   // The probe overlay adds only the QA probe; the boot carries the FULL bundle
   // (every row enabled), so the evidence also proves the whole unit boots.
