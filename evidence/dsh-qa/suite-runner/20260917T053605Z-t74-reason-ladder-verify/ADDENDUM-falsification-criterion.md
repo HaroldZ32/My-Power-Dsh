@@ -13,14 +13,17 @@
 My own fixture (NOT the author's): `evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay/`
 — my mini-manifest + my lane re-emitting the RECORDED log `…/t26-attempt7/c13-agent-teams-adopt/lanes/agent-teams-adopt.log`
 (973 B) and exiting 1.
+recorded stdout line (`output.log:8`, byte-equal in `replay.log:4`):
 ```
-FAIL case=replay-adopt reason=step:archive
-  prereq="the lane's own evidence marks step `archive` as failed"
-  signature=…/plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json:null
-  also=unauthorized   exit=1
+[mpd-qa:(only)] FAIL case=replay-adopt reason=step:archive prereq="the lane's own evidence marks step `archive` as failed" signature=../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json:null also=unauthorized exit=1 evidence=../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/web.log log=evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay/out/lanes/replay-adopt.log ms=38
 ```
-structured record: `signature.code = step:archive`; `alsoDetected = [{code: unauthorized, file: "(the lane's own
-stdout)", line: 11}]` ⇒ the fence appears **only** under `alsoDetected`, never as the reason. **Clause (a) holds.**
+structured record (`replay/evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/replay/out/result.json`,
+`complete:true`, `exitCode:1`): `signature = {code: step:archive, label: "the lane's own evidence marks step
+\`archive\` as failed", file: "../../../../plan-c/c1-team/2026-09-17T04-49-06.038Z/result.json", line: null}` and
+`alsoDetected = [{code: unauthorized, file: "(the lane's own stdout)", line: 11}]` ⇒ the fence appears **only**
+under `alsoDetected`, never as the reason. The two signature shapes also differ structurally: the step signature
+names the lane's own evidence FILE with `line: null`, the fence signature a stdout LINE (11).
+**Clause (a) holds.**
 
 ## CLAUSE (b) — CHECKED, NOT REFUTED
 `node scripts/run-qa-lanes.mjs --self-test` → **exit 0**, and the assertion that would fail loudly if the

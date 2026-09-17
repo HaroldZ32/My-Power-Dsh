@@ -1,12 +1,12 @@
 {
-  "todo_sha256_prefix": "94bf0cfc43fb30e5",
+  "todo_sha256_prefix": "c0046ee33e4b0785",
   "fixed_section_rows": 36,
   "already_fixed": 3,
   "partial": 5,
   "touched_originals": 44,
   "untouched_originals_listed": 16,
   "sum": 60,
-  "new_rows_appended": 20,
+  "new_rows_appended": 22,
   "new_row_ids": [
     "T-61",
     "T-62",
@@ -27,13 +27,22 @@
     "T-79",
     "T-80",
     "T-81",
-    "T-82"
+    "T-82",
+    "T-83",
+    "T-84"
   ],
   "section_5_non_original_ids": [
     "T-67"
   ],
   "direction_1_internal": "clean",
   "direction_2_coverage": "clean",
+  "direction_3_prose": {
+    "fixed": 36,
+    "touched": 44,
+    "untouched": 16,
+    "new rows": 22
+  },
+  "prose_matches_sections": true,
   "disagreements": [],
   "section_5_non_original_note": "a \u00a78.6 new row carried in \u00a78.5 as deferred after partial work",
   "fixed_ids": [

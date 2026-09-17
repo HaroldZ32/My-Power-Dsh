@@ -1,5 +1,5 @@
 t35 integration record — derived from on-disk readings by build-result.py
-recorded_at_utc 2026-09-17T05:42:29Z  .mpd/TODO.md sha256 94bf0cfc43fb30e5
+recorded_at_utc 2026-09-17T05:50:21Z  .mpd/TODO.md sha256 c0046ee33e4b0785
 
 SETTLED REVISION
   settle-pin-1.log: pin 2026-09-17T05:25:30Z dirty 284 VENDOR_LOCK 6ca531d2b20afb19 skills 323 packer 79563bc5fdd6 closure b82941ec2d4c artifact manifest eaa0919702bf5b33 files 1190 mtime 05:19:48Z instrument 858cd130b6ca
@@ -28,7 +28,7 @@ PACKED ARTIFACT (current stamp)
   [check-relative-links] links to EXTENSIONS-FOR-AGENTS.md: 10 (resolving: 10, broken: 0)
 
 REGISTER PARTITION
-  === register partition re-check (two directions) — .mpd/TODO.md sha256 94bf0cfc43fb30e5 ===
+  === register partition re-check (three directions) — .mpd/TODO.md sha256 c0046ee33e4b0785 ===
   §8.2 FIXED rows            = 36
   §8.3 ALREADY-FIXED rows    = 3  -> T-04 T-07 T-38
   §8.4 PARTIAL rows          = 5  -> T-05 T-16 T-18 T-19 T-48
@@ -36,17 +36,18 @@ REGISTER PARTITION
   §8.5 untouched originals   = 16
   §8.5 also lists            = T-67
   ARITHMETIC                 = 36 + 3 + 5 + 16 = 60 (must be 60)
-  §8.6 new rows              = 20; ids: T-61 T-62 T-63 T-64 T-65 T-66 T-67 T-68 T-69 T-70 T-71 T-72 T-75 T-76 T-77 T-78 T-79 T-80 T-81 T-82
+  §8.6 new rows              = 22; ids: T-61 T-62 T-63 T-64 T-65 T-66 T-67 T-68 T-69 T-70 T-71 T-72 T-75 T-76 T-77 T-78 T-79 T-80 T-81 T-82 T-83 T-84
   DIRECTION 1 (internal)     = CLEAN
   DIRECTION 2 (coverage list from team.json) = CLEAN — every FIXED item carries an implementation task, no UNTOUCHED item does
+  DIRECTION 3 (§8.1 prose vs the sections) = {'fixed': 36, 'touched': 44, 'untouched': 16, 'new rows': 22}
   DISAGREEMENTS              = 0
 
 VENDOR_LOCK RE-PIN DELTA (reported, not written)
 
 CHANGED PATHS
-  4305 entries — XY histogram {'??': 9, 'A ': 4185, 'AM': 7, 'M ': 104}
-  RE-ADD required (staged then modified again): 7 — RED-CLASSIFICATION.md, changed-paths.txt, output.log, register-partition-check.json, register-partition-check.log, result.json, result.json.sha256
-  staged raw noise: 2686 paths; top dirs evidence/pack-closure/impl/20260917T011849Z/raw/final (2410), evidence/team-watchdog/redesign/lane/2026-09-17T03-52-18.485Z/raw (21), evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw (21) — captain's call before committing; bytes {'evidence/pack-closure/impl/20260917T011849Z/raw/final': 29186126, 'evidence/team-watchdog/redesign/lane/2026-09-17T03-52-18.485Z/raw': 1294000, 'evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw': 1294210}
+  24 entries — XY histogram {' M': 11, '??': 13}
+  RE-ADD required (staged then modified again): 0 — 
+  staged raw noise: 0 paths; top dirs  — captain's call before committing; bytes {}
   do NOT stage (untracked lane scratch): .qa-before-dir .qa-run-stamp .qa-t15-dir .qa-t17-after .qa-t17-after-runner .qa-t17-dir .qa-t17-final .qa-t21-dir
   register .mpd/TODO.md tracked: False (ignored by .gitignore:21:.mpd/) — the register is workspace state, never committed
 

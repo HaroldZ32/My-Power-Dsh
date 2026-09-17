@@ -81,8 +81,26 @@ def main() -> int:
     n_un = len([i for i in untouched if i in originals])
     total = n_fixed + n_already + n_partial + n_un
 
+    # Direction 3: §8.1's PROSE numbers must equal the values derived from the sections. The first two drafts
+    # of §8.1 drifted from its own lists (31/40 against a 34-row table, then 34/42 against 36), so the prose is
+    # now checked mechanically instead of trusted.
+    prose_patterns = {
+        "fixed": (r"FIXED this wave.*?:\s*(\d+)\*\*", n_fixed),
+        "touched": (r"Touched by this wave:\s*\*\*(\d+)\*\*", n_fixed + n_already + n_partial),
+        "untouched": (r"Untouched:\s*\*\*(\d+)\*\*", n_un),
+        "new rows": (r"New rows discovered and appended:\s*\*\*(\d+)\*\*", len(new_rows)),
+    }
+    prose_seen = {}
+    for label, (pattern, derived) in prose_patterns.items():
+        m = re.search(pattern, todo, re.S)
+        prose_seen[label] = int(m.group(1)) if m else None
+        if not m:
+            problems.append(f"§8.1 prose: the '{label}' number is not found")
+        elif int(m.group(1)) != derived:
+            problems.append(f"§8.1 prose says {label}={m.group(1)} but the sections give {derived}")
+
     lines = [
-        f"=== register partition re-check (two directions) — .mpd/TODO.md sha256 "
+        f"=== register partition re-check (three directions) — .mpd/TODO.md sha256 "
         f"{__import__('hashlib').sha256((ROOT / '.mpd/TODO.md').read_bytes()).hexdigest()[:16]} ===",
         f"§8.2 FIXED rows            = {n_fixed}",
         f"§8.3 ALREADY-FIXED rows    = {n_already}  -> {' '.join(sorted(set(already)))}",
@@ -95,6 +113,7 @@ def main() -> int:
         f"DIRECTION 1 (internal)     = {'CLEAN' if not problems else 'DISAGREEMENT'}",
         f"DIRECTION 2 (coverage list from team.json) = {'CLEAN' if not problems else 'DISAGREEMENT'}"
         " — every FIXED item carries an implementation task, no UNTOUCHED item does",
+        f"DIRECTION 3 (§8.1 prose vs the sections) = {prose_seen}",
         f"DISAGREEMENTS              = {len(problems)}" + ("" if not problems else "\n  - " + "\n  - ".join(problems)),
     ]
     log = "\n".join(lines) + "\n"
@@ -114,6 +133,8 @@ def main() -> int:
                 "section_5_non_original_ids": sorted(set(untouched) - set(originals)),
                 "direction_1_internal": "clean" if not problems else "disagreement",
                 "direction_2_coverage": "clean" if not problems else "disagreement",
+                "direction_3_prose": prose_seen,
+                "prose_matches_sections": all(prose_seen.get(k) == v for k, (_, v) in prose_patterns.items()),
                 "disagreements": problems,
                 "section_5_non_original_note": "a §8.6 new row carried in §8.5 as deferred after partial work" if set(untouched) - set(originals) else None,
                 "fixed_ids": sorted(set(fixed)),
