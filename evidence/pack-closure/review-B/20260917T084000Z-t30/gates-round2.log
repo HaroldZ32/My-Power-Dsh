@@ -1,0 +1,20 @@
+== t30 round-2 gate readings — Thu Sep 17 08:35:13 AM UTC 2026 ==
+-- closure
+  exit=0
+content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent
+-- closure --self-test
+  exit=0
+[verify-pack-closure] self-test PASS: 34/34 arms
+  FAIL-shaped lines: 16
+-- dist-fresh (repo)
+  exit=0
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 490m
+-- dist-fresh --only mpd-ext-plugin
+  exit=0
+ok: 2/2 targets fresh
+-- dist-fresh --only mpd-tui-plugin
+  exit=0
+ok: 1/1 targets fresh
+-- dist-fresh --self-test
+  exit=0
+[verify-dist-fresh self-test] 12/12 arms passed — PASS

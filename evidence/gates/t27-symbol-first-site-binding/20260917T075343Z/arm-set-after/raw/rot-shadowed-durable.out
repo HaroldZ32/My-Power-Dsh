@@ -1,0 +1,14 @@
+docs-claims checker (t72: existence + range + SITE-PAIRED content claims + symbol-first enforcement + negative control)
+repo /root/dshProj/my-power-dsh/evidence/gates/t27-symbol-first-site-binding/20260917T075343Z/arm-set-after/fixtures/rot-shadowed
+
+  FAIL citations:docs/extension-authoring-guide.md — 2 citation(s) (checked 2: path 2, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: line-number-only anchor `src/reviewprobe.ts:2`: a line number is not a citation (T-55) — it rots as soon as the cited file is edited. Cite the symbol instead: `SYMBOL`, `src/reviewprobe.ts` (no :line) resolves against the whole file.
+  ok   citations:docs/extension-authoring-guide.zh-CN.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:EXTENSIONS-FOR-AGENTS.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   citations:docs/extension-adaptation-report.zh-CN.md — 0 citation(s) (checked 0: path 0, dir 0, command 0; pending 0, illustrative 0), 0 unresolved
+  ok   annotations:pending — none
+  ok   annotations:illustrative — none
+  FAIL content:anchors — 1 citation(s) verified against their claim: 0 symbol-first (line-free, whole file), 1 line-dependent (the line is a hint — rot risk); 1 line-number-only anchor(s) FLAGGED as rot
+  FAIL content:rot — 1 line-number-only anchor(s): docs/extension-authoring-guide.md:3 src/reviewprobe.ts:2
+
+[docs-claims] 6/9 checks passed, 3 failed, 2 citation(s) resolved, 0 symbol-first, 1 line-dependent, 1 rot-flagged, 0 pending, 0 illustrative

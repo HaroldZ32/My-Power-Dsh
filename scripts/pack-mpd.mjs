@@ -4,6 +4,8 @@
 // with dsh.bundle.patch, whose cordis.patch.yml references plugins via the resolvable
 // name '@mpd-dsh/mpd/packages/...' and every path-bearing value via the loader's
 // baseUrl (the profile directory) — no checkout-absolute paths anywhere.
+// `--out <dir>` stages somewhere else (T-63's scratch arms, T-85's lane change); with no flag the
+// target is unchanged, so the canonical artifact and every existing caller behave exactly as before.
 import { spawnSync } from "node:child_process"
 import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
@@ -11,7 +13,37 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const dev = repoRoot.replace(/\\/g, "/")
-const outDir = join(repoRoot, "dist", "mpd-package")
+// The default target is the SAME expression this file always used, so an invocation with no flags
+// stages exactly what it staged before. `--out <dir>` exists for the scratch-pack consumers (T-63's
+// byte-rule arms and lane D's T-85 lane change): before it, a caller that needed a scratch artifact had
+// to REWRITE this file's constants (`evidence/packaging/t70-root-file/…/scratch-pack.mjs`), which is a
+// copy of the packer that drifts the moment the packer moves. `--out` keeps ONE packer.
+const DEFAULT_OUT_DIR = join(repoRoot, "dist", "mpd-package")
+
+function parseOutDir(argv) {
+  if (argv.includes("--help") || argv.includes("-h")) {
+    console.log("usage: node scripts/pack-mpd.mjs [--out <dir>]")
+    console.log("  no flags        stage into " + DEFAULT_OUT_DIR)
+    console.log("  --out <dir>     stage into another directory (repo-relative or absolute); the canonical artifact is never touched")
+    process.exit(0)
+  }
+  const flag = argv.indexOf("--out")
+  if (flag === -1) return { dir: DEFAULT_OUT_DIR, source: "default (<repo>/dist/mpd-package)" }
+  const value = argv[flag + 1]
+  if (value === undefined || value.startsWith("--")) {
+    console.error("[pack-mpd] FAIL: --out needs a directory, got " + JSON.stringify(value ?? ""))
+    process.exit(2)
+  }
+  const dir = resolve(repoRoot, value)
+  if (dir === repoRoot || dir === "/" || dir === "") {
+    console.error("[pack-mpd] FAIL: --out " + JSON.stringify(value) + " resolves to " + dir + " — refusing to stage a pack over the repository root (or /)")
+    process.exit(2)
+  }
+  return { dir, source: "command line (--out " + value + ")" }
+}
+
+const OUT = parseOutDir(process.argv.slice(2))
+const outDir = OUT.dir
 const devPatch = join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml")
 const PKG_NAME = "@mpd-dsh/mpd"
 const BP = "(typeof baseUrl === \"string\" ? baseUrl.replace(/^file:\\/\\//, \"\").replace(/\\/+$/, \"\") : \"\")"
@@ -511,7 +543,7 @@ function main() {
   if (raw.includes(dev)) { console.error("[pack-mpd] FAIL: dev path leaked into staged patch"); process.exit(1) }
   const modes = normalizeModes(outDir)
   console.log("[pack-mpd] modes normalized: " + modes.files + " files (644: " + modes.made644 + ", 755: " + modes.kept755 + ")")
-  console.log("[pack-mpd] staged package -> " + outDir)
+  console.log("[pack-mpd] staged package -> " + outDir + "  (out-dir source: " + OUT.source + ")")
 }
 
 main()

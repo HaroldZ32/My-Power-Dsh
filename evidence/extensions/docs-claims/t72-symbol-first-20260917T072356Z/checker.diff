@@ -1,0 +1,298 @@
+--- evidence/extensions/docs-claims/check-citations.mjs	2026-09-17 13:42:47.183943428 +0800
++++ scripts/check-citations.mjs	2026-09-17 15:28:00.931973936 +0800
+@@ -1,12 +1,14 @@
+ #!/usr/bin/env node
+ 
+-// t9 docs-claims checker — every repo path, line anchor, directory and command the
+-// three adaptation documents cite must resolve on disk, and the two docs must be
+-// structurally split rather than cosmetically different.
++// t72 docs-claims checker — the DURABLE home of the t9/t21 checker, moved out of the evidence
++// tree by T-72. Every repo path, line anchor, directory and command the three adaptation
++// documents cite must resolve on disk, and the two docs must be structurally split rather than
++// cosmetically different. On top of that it ENFORCES the T-55 anchor discipline: a citation
++// resolves by SYMBOL, a line number is an optional HINT, and a line-number-only anchor is ROT.
+ //
+ // Run it with node, from anywhere:
+ //
+-//   node evidence/extensions/docs-claims/check-citations.mjs
++//   node scripts/check-citations.mjs
+ //
+ // It is deterministic and offline: it spawns only the developer CLI (`validate`) and
+ // never a dsh boot. A citation that cannot be resolved is a FAILURE unless the line
+@@ -14,6 +16,7 @@
+ // which is reported separately as a PENDING citation (a documented gap, never a
+ // silent one).
+ import { spawnSync } from "node:child_process"
++import { createHash } from "node:crypto"
+ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+ import { tmpdir } from "node:os"
+ import { dirname, extname, join, relative, resolve, sep } from "node:path"
+@@ -21,15 +24,19 @@
+ // T-53: evidence is immutable by default — a plain run writes to a FRESH timestamped directory and
+ // an existing target is refused instead of overwritten (this script used to rewrite the canonical
+ // result.json/output.log next to itself on every run).
+-import { exitOnRefusal, refuseOverwrite, resolveOutputDir, timestamp, writeImmutable } from "../../../skills/dsh-qa/scripts/lib/immutable-output.mjs"
++import { exitOnRefusal, refuseOverwrite, resolveOutputDir, timestamp, writeImmutable } from "../skills/dsh-qa/scripts/lib/immutable-output.mjs"
+ 
+ const HERE = dirname(fileURLToPath(import.meta.url))
+ const OUT_FLAG = process.argv.findIndex((a) => a === "--out" || a.startsWith("--out="))
+ const OUT_EXPLICIT = OUT_FLAG === -1 ? undefined : (process.argv[OUT_FLAG].startsWith("--out=") ? process.argv[OUT_FLAG].slice("--out=".length) : process.argv[OUT_FLAG + 1])
+-const OUT_ROOT = resolveOutputDir(OUT_EXPLICIT, HERE, "run")
++// T-72: the durable home is `<repo>/scripts`, but a plain run keeps landing in the evidence tree
++// that holds every earlier revision's run (`evidence/extensions/docs-claims/runs/<slug>-<ts>`), so
++// the durable checker's record stays comparable with the record it supersedes.
++const OUT_BASE = join(HERE, "..", "evidence", "extensions", "docs-claims")
++const OUT_ROOT = resolveOutputDir(OUT_EXPLICIT, OUT_BASE, "run")
+ // t21: the repo root is overridable so the offline NEGATIVE CONTROL can run this SAME
+ // checker over a fixture repo — a deliberately mis-anchored citation must fail there.
+-const REPO = process.env.DOCS_CLAIMS_REPO ? resolve(process.env.DOCS_CLAIMS_REPO) : resolve(HERE, "..", "..", "..")
++const REPO = process.env.DOCS_CLAIMS_REPO ? resolve(process.env.DOCS_CLAIMS_REPO) : resolve(HERE, "..")
+ const MANIFEST_FILE = "mpd-ext.json"
+ const TEMPLATE_TOKEN = "mpd-extension-template"
+ const SKELETON_ID = "for-agents-skeleton"
+@@ -83,7 +90,7 @@
+ function reportedEvidence(output) {
+   return output
+     .split("\n")
+-    .filter((line) => line.includes("citations:") || line.includes("does not contain the claim") || line.includes("does not carry the claim"))
++    .filter((line) => line.includes("citations:") || line.includes("does not contain the claim") || line.includes("does not carry the claim") || line.includes("line-number-only anchor"))
+     .join(" | ")
+     .slice(0, 320)
+ }
+@@ -98,6 +105,15 @@
+   return readFileSync(absolute, "utf8").split("\n").length
+ }
+ 
++/** sha256 of a file, or null when it is absent — recording a revision must never kill a run. */
++function fileHash(absolute) {
++  try {
++    return createHash("sha256").update(readFileSync(absolute)).digest("hex")
++  } catch {
++    return null
++  }
++}
++
+ // ── citation extraction ──────────────────────────────────────────────────────
+ function analyze(file, subject) {
+   const absolute = join(REPO, file)
+@@ -212,15 +228,44 @@
+ }
+ 
+ /**
+- * The t21 content assertion: an anchored citation must carry a CLAIM and the cited
+- * line/range must actually CONTAIN it. A missing claim is a failure, not a pass —
+- * that gap is exactly what let nine wrong anchors stay green (t12/t16).
++ * T-72 — THE ANCHOR RULE, named: a citation resolves by SYMBOL (T-55), and a line number is an
++ * optional hint, never a locator of its own.
++ *
++ * The r-E acceptance measured the residual as ENFORCEMENT, not extraction: `PATH_PATTERN` and
++ * `CLAIM_PATTERN` already accept a line-less anchor, but claim matching was per (path,line) over
++ * the WHOLE document — so a bare `path:line` was ACCEPTED whenever ANY other anchor in the same
++ * document carried a claim for that same path:line (measured on the frozen revision: exit 0), and
++ * the remedy this checker taught was the line-bearing form.
++ *
++ * The site window: a claim belongs to a citation only when it names the same path/line/endLine
++ * AND sits within `ROT_SITE_WINDOW` lines of it (the docs wrap, so the claim may be the line
++ * above). Measured on the recorded subjects BEFORE choosing it: 32 line-bearing path citations,
++ * 31 claims at distance 0 and 1 at distance 1, none farther (`probe-claim-proximity.mjs`).
+  */
+-function contentClaimProblem(citation, claims) {
+-  const claim = claims.find((entry) => entry.path === citation.value && entry.line === citation.line && entry.endLine === citation.endLine)
+-  if (claim === undefined) {
+-    return `no content claim: write \`SYMBOL\`, \`${citation.value}:${citation.line}\` so the anchor can be checked against its symbol`
+-  }
++const ROT_SITE_WINDOW = 1
++
++/** The claim written AT THIS ANCHOR'S SITE, or undefined when the anchor carries only a line. */
++function claimForSite(citation, claims) {
++  const matching = claims.filter((entry) => entry.path === citation.value && entry.line === citation.line && entry.endLine === citation.endLine)
++  const atSite = matching.filter((entry) => Math.abs(entry.docLine - citation.docLine) <= ROT_SITE_WINDOW)
++  if (atSite.length === 0) return undefined
++  return atSite.sort((a, b) => Math.abs(a.docLine - citation.docLine) - Math.abs(b.docLine - citation.docLine))[0]
++}
++
++/**
++ * T-72's ROT verdict: the anchor's only locator is a line number. Reported per anchor (the file,
++ * the line and the fix) and able to fail the run — a flag that cannot redden is decoration.
++ */
++function lineNumberOnlyProblem(citation) {
++  const span = `${citation.value}:${citation.line}${citation.endLine === undefined ? "" : `-${citation.endLine}`}`
++  return `line-number-only anchor \`${span}\`: a line number is not a citation (T-55) — it rots as soon as the cited file is edited. Cite the symbol instead: \`SYMBOL\`, \`${citation.value}\` (no :line) resolves against the whole file.`
++}
++
++/**
++ * The t21 content assertion, now SITE-BOUND: the claim at the anchor must sit on the cited
++ * line/range. A missing claim is no longer a separate message — it is the ROT verdict above.
++ */
++function claimContentProblem(citation, claim) {
+   const text = claimText(claim.claim)
+   if (text === undefined || text.length < 2) {
+     return `the claim \`${claim.claim}\` is neither a symbol nor a quoted phrase`
+@@ -349,17 +394,19 @@
+ function negativeControl() {
+   // `anchor` is the WHOLE inline anchor clause, so one maker serves the line-anchored arms and the
+   // T-55 symbol-first arms (a claim with no line number).
+-  const make = (anchor) => {
+-    const root = mkdtempSync(join(tmpdir(), "t21-docs-claims-"))
++  const make = (anchor, options = {}) => {
++    const root = mkdtempSync(join(tmpdir(), "t72-docs-claims-"))
+     mkdirSync(join(root, "docs"), { recursive: true })
+     mkdirSync(join(root, "src"), { recursive: true })
+-    writeFileSync(join(root, "src", "probe.ts"), ["// fixture", "export const alphaSymbol = 1", "export const betaSymbol = 2", ""].join("\n"))
+-    const guide = `# fixture guide\n\nSee ${anchor} for the constant.\n`
++    const source = options.source ?? ["// fixture", "export const alphaSymbol = 1", "export const betaSymbol = 2", ""]
++    writeFileSync(join(root, "src", "probe.ts"), source.join("\n"))
++    const siblingAnchor = options.siblingAnchor ?? "`alphaSymbol`, `src/probe.ts:2`"
++    const guide = `# fixture guide\n\nSee ${anchor} for the constant.${options.extra === undefined ? "" : `\n\n${options.extra}`}\n`
+     writeFileSync(join(root, GUIDE_EN), guide)
+     writeFileSync(join(root, GUIDE_ZH), guide)
+-    writeFileSync(join(root, AI_DOC), "# fixture contract\n\nSee `alphaSymbol`, `src/probe.ts:2`.\n")
+-    writeFileSync(join(root, REPORT_EN), "# fixture report\n\n## 12. Status\n\nSee `alphaSymbol`, `src/probe.ts:2`.\n")
+-    writeFileSync(join(root, REPORT_ZH), "# fixture report\n\n## 12. Status\n\nSee `alphaSymbol`, `src/probe.ts:2`.\n")
++    writeFileSync(join(root, AI_DOC), `# fixture contract\n\nSee ${siblingAnchor}.\n`)
++    writeFileSync(join(root, REPORT_EN), `# fixture report\n\n## 12. Status\n\nSee ${siblingAnchor}.\n`)
++    writeFileSync(join(root, REPORT_ZH), `# fixture report\n\n## 12. Status\n\nSee ${siblingAnchor}.\n`)
+     return root
+   }
+   const run = (root) => {
+@@ -378,16 +425,37 @@
+   // i.e. the form was accepted but silently unchecked.
+   const symbolPresent = run(make("`alphaSymbol`, `src/probe.ts`"))
+   const symbolAbsent = run(make("`gammaSymbol`, `src/probe.ts`"))
++  // T-72 arms — the ROT class in the three shapes it takes, plus the positive control that makes
++  // the pair falsifiable. Each one must be FLAGGED:
++  //   bare     : the anchor's only locator is the line number;
++  //   shadowed : a SIBLING claim for the same path:line elsewhere in the document must NOT excuse
++  //              it (measured on the frozen pre-T-72 revision — this fixture exits 0 there);
++  //   drifted  : the line the anchor pins has MOVED because the cited file was edited — the rot
++  //              T-72 names, and the reason a line number is not a citation.
++  const shifted = ["// fixture", "// a later edit inserted this line", "export const alphaSymbol = 1", "export const betaSymbol = 2", ""]
++  const rotBare = run(make("`src/probe.ts:2`"))
++  const rotShadowed = run(make("`alphaSymbol`, `src/probe.ts:2`", { extra: "And `src/probe.ts:2` is cited here." }))
++  const rotDrifted = run(make("`src/probe.ts:2`", { source: shifted, siblingAnchor: "`alphaSymbol`, `src/probe.ts`" }))
++  const symbolFirstShifted = run(make("`alphaSymbol`, `src/probe.ts`", { source: shifted, siblingAnchor: "`alphaSymbol`, `src/probe.ts`" }))
++  const rotFlagged = (arm) => arm.exitCode === 1 && /line-number-only anchor/.test(arm.output)
+   const arms = {
+     green: { command: "check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<correct fixture>)", exitCode: green.exitCode, passed: green.exitCode === 0, evidence: green.output.trim().split("\n").filter((line) => line.includes("citations:")).join(" | ").slice(0, 200) },
+     red: { command: "check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<mis-anchored fixture>)", exitCode: red.exitCode, passed: red.exitCode === 1 && /does not carry the claim/.test(red.output), evidence: red.output.trim().split("\n").filter((line) => line.includes("does not carry the claim")).join(" | ").slice(0, 300) },
+     symbolOnlyPresent: { command: "check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<symbol-first, symbol present>)", exitCode: symbolPresent.exitCode, passed: symbolPresent.exitCode === 0, evidence: reportedEvidence(symbolPresent.output) },
+     symbolOnlyAbsent: { command: "check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<symbol-first, symbol ABSENT>)", exitCode: symbolAbsent.exitCode, passed: symbolAbsent.exitCode === 1 && /does not contain the claim/.test(symbolAbsent.output), evidence: reportedEvidence(symbolAbsent.output) },
++    rotLineOnly: { command: "check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<line-number-only anchor>)", exitCode: rotBare.exitCode, passed: rotFlagged(rotBare), evidence: reportedEvidence(rotBare.output) },
++    rotLineOnlyShadowed: { command: "check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<line-number-only anchor shadowed by a sibling claim for the same path:line>)", exitCode: rotShadowed.exitCode, passed: rotFlagged(rotShadowed), evidence: reportedEvidence(rotShadowed.output) },
++    rotLineOnlyDrifted: { command: "check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<line-number-only anchor whose pinned line MOVED under it>)", exitCode: rotDrifted.exitCode, passed: rotFlagged(rotDrifted), evidence: reportedEvidence(rotDrifted.output) },
++    symbolFirstSurvivesShift: { command: "check-citations.mjs --citations-only (DOCS_CLAIMS_REPO=<symbol-first anchor, cited file shifted>)", exitCode: symbolFirstShifted.exitCode, passed: symbolFirstShifted.exitCode === 0, evidence: reportedEvidence(symbolFirstShifted.output) },
+   }
+   record("negative-control:correct-fixture", arms.green.passed, `${arms.green.command} - exit ${arms.green.exitCode} (a correct anchor must pass)`)
+   record("negative-control:mis-anchored-fixture", arms.red.passed, `${arms.red.command} - exit ${arms.red.exitCode}; ${arms.red.evidence === "" ? "NO mismatch reported" : arms.red.evidence}`)
+   record("negative-control:symbol-first-present", arms.symbolOnlyPresent.passed, `${arms.symbolOnlyPresent.command} - exit ${arms.symbolOnlyPresent.exitCode} (T-55: the line-less form must be ACCEPTED and verified)`)
+   record("negative-control:symbol-first-absent", arms.symbolOnlyAbsent.passed, `${arms.symbolOnlyAbsent.command} - exit ${arms.symbolOnlyAbsent.exitCode} (T-55: an absent symbol must FAIL, not pass silently); ${arms.symbolOnlyAbsent.evidence === "" ? "NO mismatch reported" : arms.symbolOnlyAbsent.evidence}`)
++  record("negative-control:rot-line-number-only", arms.rotLineOnly.passed, `${arms.rotLineOnly.command} - exit ${arms.rotLineOnly.exitCode} (T-72: a line-number-only anchor must be FLAGGED as rot, not accepted); ${arms.rotLineOnly.evidence === "" ? "NO rot reported" : arms.rotLineOnly.evidence}`)
++  record("negative-control:rot-line-number-only-shadowed", arms.rotLineOnlyShadowed.passed, `${arms.rotLineOnlyShadowed.command} - exit ${arms.rotLineOnlyShadowed.exitCode} (T-72: a sibling claim for the same path:line must not excuse a line-number-only anchor at another site — the frozen pre-T-72 revision ACCEPTS this fixture, exit 0); ${arms.rotLineOnlyShadowed.evidence === "" ? "NO rot reported" : arms.rotLineOnlyShadowed.evidence}`)
++  record("negative-control:rot-line-number-only-drifted", arms.rotLineOnlyDrifted.passed, `${arms.rotLineOnlyDrifted.command} - exit ${arms.rotLineOnlyDrifted.exitCode} (T-72: the pinned line moved under the document — the rot the row names); ${arms.rotLineOnlyDrifted.evidence === "" ? "NO rot reported" : arms.rotLineOnlyDrifted.evidence}`)
++  record("negative-control:symbol-first-survives-a-source-shift", arms.symbolFirstSurvivesShift.passed, `${arms.symbolFirstSurvivesShift.command} - exit ${arms.symbolFirstSurvivesShift.exitCode} (T-55/T-72: the line-free form still resolves after the cited file moves under it — the same shift that reddens the line-only fixture)`)
+   return arms
+ }
+ 
+@@ -395,7 +463,7 @@
+ const negativeControlArms = process.argv.includes("--self-test") ? negativeControl() : undefined
+ 
+ // ── run ──────────────────────────────────────────────────────────────────────
+-log("docs-claims checker (t21: existence + range + CONTENT claims + negative control)")
++log("docs-claims checker (t72: existence + range + SITE-PAIRED content claims + symbol-first enforcement + negative control)")
+ log(`repo ${REPO}`)
+ log("")
+ 
+@@ -413,20 +481,32 @@
+ let totalCitations = 0
+ let contentVerified = 0
+ let symbolOnlyVerified = 0
+-let unclaimedAnchors = 0
++let lineDependentVerified = 0
++let rotAnchors = 0
++const rot = []
+ for (const entry of analyzed) {
+   const failures = []
+   for (const citation of entry.citations) {
+     if (citation.flag !== undefined) continue
+     const problem = checkCitation(citation)
+     if (problem !== undefined) failures.push(`doc line ${citation.docLine}: ${problem}`)
+-    // t21 CONTENT arm: every ANCHORED citation must carry a claim its target really has.
++    // T-72 arm: a LINE-BEARING anchor is verified against the claim at ITS OWN SITE. When no
++    // such claim exists, the anchor's only locator is the line number — ROT: flagged, counted,
++    // reported per anchor, and able to fail the run (T-72 clause (b)).
+     if (citation.kind === "path" && citation.line !== undefined) {
+-      const missing = contentClaimProblem(citation, entry.claims)
+-      if (missing === undefined) contentVerified += 1
+-      else {
+-        if (missing.startsWith("no content claim")) unclaimedAnchors += 1
+-        failures.push(`doc line ${citation.docLine}: ${missing}`)
++      const claim = claimForSite(citation, entry.claims)
++      if (claim === undefined) {
++        rotAnchors += 1
++        rot.push(`${entry.file}:${citation.docLine} ${citation.value}:${citation.line}${citation.endLine === undefined ? "" : `-${citation.endLine}`}`)
++        failures.push(`doc line ${citation.docLine}: ${lineNumberOnlyProblem(citation)}`)
++      } else {
++        const problem = claimContentProblem(citation, claim)
++        if (problem === undefined) {
++          contentVerified += 1
++          lineDependentVerified += 1
++        } else {
++          failures.push(`doc line ${citation.docLine}: ${problem}`)
++        }
+       }
+     }
+     // T-55 SYMBOL-FIRST arm: a line-LESS path citation that carries a claim must find that claim in
+@@ -462,7 +542,12 @@
+ // the documented-pending and illustrative sets are reported, never hidden
+ record("annotations:pending", true, pending.length === 0 ? "none" : `${pending.length} documented pending citation(s): ${pending.join(" | ")}`)
+ record("annotations:illustrative", true, illustrative.length === 0 ? "none" : `${illustrative.length} illustrative citation(s) (extension-root-relative, not repo paths): ${illustrative.join(" | ")}`)
+-record("content:anchors", unclaimedAnchors === 0, `${contentVerified} anchored citation(s) verified against their claimed symbol/phrase on the cited line; ${unclaimedAnchors} anchor(s) without a content claim`)
++record(
++  "content:anchors",
++  rotAnchors === 0,
++  `${contentVerified} citation(s) verified against their claim: ${symbolOnlyVerified} symbol-first (line-free, whole file), ${lineDependentVerified} line-dependent (the line is a hint — rot risk); ${rotAnchors} line-number-only anchor(s) FLAGGED as rot`,
++)
++record("content:rot", rotAnchors === 0, rotAnchors === 0 ? "no line-number-only anchors" : `${rotAnchors} line-number-only anchor(s): ${rot.join(" | ")}`)
+ 
+ // ── the remaining arms (skipped by --citations-only, which the negative control uses) ──
+ const citationsOnly = process.argv.includes("--citations-only")
+@@ -520,15 +605,28 @@
+ 
+ const failed = results.filter((entry) => entry.status === "failed")
+ const report = {
+-  task: "t21 (upgraded from the t9 checker: CONTENT claims + negative control)",
++  task: "t72 (durable home of the t21/t9 checker: SITE-PAIRED claims + SYMBOL-FIRST enforcement — a line-number-only anchor is ROT)",
++  // T-72: every run quotes WHICH revision it ran and which frozen revision it supersedes, so the
++  // checker's intermediate revisions are diffable, not merely hash-comparable.
++  checker: {
++    path: relative(REPO, fileURLToPath(import.meta.url)),
++    sha256: fileHash(fileURLToPath(import.meta.url)),
++    supersedes: { path: "evidence/extensions/docs-claims/check-citations.mjs", sha256: fileHash(join(REPO, "evidence", "extensions", "docs-claims", "check-citations.mjs")) },
++  },
+   attempt_id: "d1cf78ee-43ed-4ec3-8bdc-5d1aee8c6740",
+   subjects: SUBJECTS.map((subject) => subject.path),
+   citations_checked: totalCitations - pending.length - illustrative.length,
+   anchored_citations_content_verified: contentVerified,
+-  // T-55: how many of those used the line-LESS symbol-first form (`` `SYMBOL`, `path/file.ts` ``),
+-  // which this build verifies against the whole file instead of a line.
++  // T-72: the two ACCEPTED forms are counted apart, because only one of them survives an edit.
++  // SYMBOL-FIRST (`` `SYMBOL`, `path/file.ts` ``): verified against the WHOLE file, line-free.
+   symbol_only_anchors_verified: symbolOnlyVerified,
+-  anchored_citations_without_a_claim: unclaimedAnchors,
++  // LINE-DEPENDENT (`` `SYMBOL`, `path/file.ts:12` ``): still verified, and still a ROT RISK — the
++  // line is a hint, so an edit that shifts the cited file can redden a correct document. Kept
++  // green on purpose (acceptance (c)): the recorded citations must not be mass-re-anchored.
++  line_dependent_anchors_verified: lineDependentVerified,
++  // ROT: line-number-only anchors — the class this revision stops accepting (T-72 clause (b)).
++  rot_line_number_only_anchors: rotAnchors,
++  rot,
+   citations_pending: pending.length,
+   citations_illustrative: illustrative.length,
+   pending,
+@@ -558,5 +656,5 @@
+   log("[docs-claims] evidence -> " + relative(REPO, OUT_ROOT))
+ }
+ log("")
+-log(`[docs-claims] ${report.passed}/${report.total} checks passed, ${failed.length} failed, ${report.citations_checked} citation(s) resolved, ${pending.length} pending, ${illustrative.length} illustrative`)
++log(`[docs-claims] ${report.passed}/${report.total} checks passed, ${failed.length} failed, ${report.citations_checked} citation(s) resolved, ${report.symbol_only_anchors_verified} symbol-first, ${report.line_dependent_anchors_verified} line-dependent, ${report.rot_line_number_only_anchors} rot-flagged, ${pending.length} pending, ${illustrative.length} illustrative`)
+ process.exitCode = failed.length === 0 ? 0 : 1

@@ -1,0 +1,6 @@
+# hashes after the index.md correction (2026-09-17T07:26:18Z)
+4b87934c5a32fab4fe00918cfb72337df88704c85007b8a67e1cabcecd7e12df  scripts/verify-docs-parity.mjs
+a5ba27f66aec2b5549df0fcbe66f97f1f258054f3f3f2b400f3c49b3d32ce0aa  AGENTS.md
+67696cfe3bb2fa444506a19f0a1bec81f01a0aa27dc9c26d657eedb3cdacef7e  agent-references/index.md
+1485be855df9adccc9f7e9c91f6596e073d03caec4276bb06fe887d6a9b49a1f  agent-references/agent-teams-deltas.md
+5388c56fe4e9d061dacb5973df411ed7a10a1f1559454b65169148a2f6109e2d  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js

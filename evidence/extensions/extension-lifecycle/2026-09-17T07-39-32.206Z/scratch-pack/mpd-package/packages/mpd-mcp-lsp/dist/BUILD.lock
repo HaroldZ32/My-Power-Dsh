@@ -1,0 +1,18 @@
+{
+  "source": "8c57e46",
+  "sourceDir": "packages/lsp-daemon",
+  "builtAt": "2026-09-14T10:08:15.426Z",
+  "build": [
+    "bun build src/cli.ts --outdir dist --target node --format esm"
+  ],
+  "externalDeps": {
+    "js-yaml": "js-yaml@5.3.0@@repo.huaweicloud.com@@@1",
+    "jsonc-parser": "jsonc-parser@3.3.1@@repo.huaweicloud.com@@@1",
+    "zod": "zod@4.4.3@@repo.huaweicloud.com@@@1"
+  },
+  "artifact": {
+    "file": "cli.js",
+    "sha256": "a7cebcf9ec79ec480c98d3a9cd1392837927ada57bf9bbb18e0620ba863f3148",
+    "bytes": 234821
+  }
+}

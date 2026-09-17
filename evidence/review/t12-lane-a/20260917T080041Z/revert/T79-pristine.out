@@ -1,0 +1,94 @@
+bun test v1.3.14 (0d9b296a)
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+(pass) T-79(a): the compose's ROTATION PRIMITIVE refuses terminal work, naming the status [2.86ms]
+(pass) T-79(b): the real scheduler, in-process, never re-arms or delivers a TERMINAL task [12.86ms]
+(pass) T-79(c): the sanctioned revive path survives — reassign_task re-opens with a FRESH id [23.17ms]
+(pass) T-79(d): a STALE capability on terminal work is REFUSED (captain's idempotent path) [11.01ms]
+(pass) T-79 negative control: with both guards removed, the SAME calls rotate and answer success [58.82ms]
+(pass) T-79 restart leg: a FRESH PROCESS sees the same refusal (the restart-based re-observation) [175.64ms]
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+evidence/review/t12-lane-a/20260917T080041Z/revert/T79-pkg/self-fix-tests/terminal-rearm-refusal.test.mjs:
+
+ 6 pass
+ 0 fail
+ 44 expect() calls
+Ran 6 tests across 41 files. [6.27s]

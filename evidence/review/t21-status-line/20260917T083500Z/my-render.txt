@@ -1,0 +1,22 @@
+REGISTERED TOOL NAMES: agent_teams_add_member, agent_teams_approve, agent_teams_claim_task, agent_teams_create, agent_teams_create_task, agent_teams_delete, agent_teams_edit_plan, agent_teams_interject_decide, agent_teams_interject_request, agent_teams_mailbox_clear, agent_teams_move_path, agent_teams_path_owner, agent_teams_reassign_task, agent_teams_remove_member, agent_teams_resume, agent_teams_rollover, agent_teams_send_message, agent_teams_status, agent_teams_task_contract, agent_teams_update_task
+
+== held
+   line: Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold hold-review-1 set since 2023-11-14T22:13:20.000Z — review probe (released only by its own session-wat
+   payload: mechanism=agent_teams_halt active=True halt=False | internal state=held hold_id=hold-review-1 reason=review probe released_by=session-watchdog-resume
+   clauses: one mechanism named=OK, hold = INTERNAL implementation=OK, old peer wording ABSENT=OK, old deferral ABSENT=OK
+== not-held
+   line: Pause: agent-teams halt not active (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: no hold is set)
+   payload: mechanism=agent_teams_halt active=False halt=False | internal state=not-held hold_id=None reason=None released_by=session-watchdog-resume
+   clauses: one mechanism named=OK, hold = INTERNAL implementation=OK, old peer wording ABSENT=OK, old deferral ABSENT=OK
+== absent
+   line: Pause: agent-teams halt not active (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold state not readable on this host (the watchdog service is not loaded))
+   payload: mechanism=agent_teams_halt active=False halt=False | internal state=not-readable hold_id=None reason=None released_by=session-watchdog-resume
+   clauses: one mechanism named=OK, hold = INTERNAL implementation=OK, old peer wording ABSENT=OK, old deferral ABSENT=OK
+== throwing
+   line: Pause: agent-teams halt not active (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold state not readable on this host (the watchdog service is not loaded))
+   payload: mechanism=agent_teams_halt active=False halt=False | internal state=not-readable hold_id=None reason=None released_by=session-watchdog-resume
+   clauses: one mechanism named=OK, hold = INTERNAL implementation=OK, old peer wording ABSENT=OK, old deferral ABSENT=OK
+== halt-only
+   line: Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold state not readable on this host (the watchdog service is not loaded))
+   payload: mechanism=agent_teams_halt active=True halt=True | internal state=not-readable hold_id=None reason=None released_by=session-watchdog-resume
+   clauses: one mechanism named=OK, hold = INTERNAL implementation=OK, old peer wording ABSENT=OK, old deferral ABSENT=OK

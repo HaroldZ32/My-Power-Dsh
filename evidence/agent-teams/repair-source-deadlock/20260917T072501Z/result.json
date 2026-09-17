@@ -1,0 +1,45 @@
+{
+  "item": "T-81",
+  "register_row": "[trap] `kind=repair` + `sourceTaskId` creates an IMPLICIT dependency that can DEADLOCK. P1.",
+  "register_source": ".mpd/TODO.md §8.6 line 538 (read from the file)",
+  "lane": "A / t8 (agent-teams-engineer), wave friction-p2-wave",
+  "surface": {
+    "module": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "symbols": ["validateCreateTask", "the repair auto-wire (dependencies.push(input.sourceTaskId))"],
+    "region": "mpd-delta repair-source-open-edge",
+    "rule": "the edge is wired only for a NON-open source: completed keeps the protection; failed/cancelled KEEP the edge so the existing refusal still fires; an open (pending/claimed/in_progress) source keeps sourceTaskId as PROVENANCE and acquires no edge"
+  },
+  "starting_reading": {
+    "wave_1_instance": "a repair created on a task whose own verify was blocked by the very defect the repair existed to fix acquired the edge repair -> source; the captain had to take the task over to break the cycle",
+    "quoted_from": ".mpd/team/archive/friction-p1-wave/team.json task t21 (as cited by the t1 acceptance) + .mpd/TODO.md §8.6 line 538"
+  },
+  "red_leg_as_committed": {
+    "method": "scratch lib/ copy with HEAD (c826f16) tools.js + state.js + quality-gates.js",
+    "driver": "evidence/agent-teams/repair-source-deadlock/20260917T072501Z/driver.mjs",
+    "fixture": "source A is `in_progress` and its own verify names the guard the repair R exists to land; create R with sourceTaskId=A",
+    "reading": "ok=true, repairDependencies=['A'], unsatisfiedForRepair=['A'], dispatchableNow=false — the wave-1 deadlock shape"
+  },
+  "green_leg": {
+    "reading": "ok=true, repairDependencies=[], sourceTaskIdKept='A', unsatisfiedForRepair=[], dispatchableNow=true"
+  },
+  "arms": {
+    "paths": [
+      "packages/mpd-agent-teams-plugin/self-fix-tests/repair-source-deadlock.test.mjs",
+      "packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs (Fix1 arm REQUALIFIED)"
+    ],
+    "cases": [
+      "T-81: a repair on an OPEN source does NOT acquire the deadlock edge, keeps provenance, and is claimable at once",
+      "T-81 regression control: a review of an OPEN source still wires the edge (the premature-dispatch protection is intact)",
+      "T-81 negative control: with the pre-fix unconditional wire (scratch lib/ copy, condition neutralised), the SAME fixture PARKS",
+      "quality-loop Fix1 (requalified): completed source keeps the edge; all three OPEN statuses lose it and keep sourceTaskId; failed/cancelled sources still refuse with `must not depend on <status> task`"
+    ]
+  },
+  "evidence_logs": [
+    "evidence/agent-teams/repair-source-deadlock/20260917T072501Z/driver.mjs",
+    "evidence/agent-teams/repair-source-deadlock/20260917T072501Z/output.log"
+  ],
+  "honest_bounds": [
+    "Only the auto-wire is conditional; an EXPLICITLY declared dependency on an open source is still honoured exactly as written (the gate refuses nonexistent/failed/cancelled ones as before).",
+    "The pair can still be serialized deliberately by the captain via an explicit `dependencies: [A]`; this change removes only the IMPLICIT edge."
+  ]
+}

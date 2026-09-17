@@ -1,0 +1,28 @@
+{
+  "schema": "laneB/root-file-gap/1",
+  "captured_at": "2026-09-17T07:45:59.515Z",
+  "closure_exit": 1,
+  "finding": "  ROOT-FILE - the packed EXTENSIONS-FOR-AGENTS.md differs byte-wise from /root/dshProj/my-power-dsh/EXTENSIONS-FOR-AGENTS.md - the artifact would ship bytes no reading was taken on",
+  "healthy_readings": {
+    "content": "content bytes: 1180 file(s) compared, 1160 identical, 0 drift, 20 expected-after-pack",
+    "completeness": "completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent"
+  },
+  "writer": {
+    "task": "t25",
+    "lane": "B2 (citation-checker-engineer, T-72 carry-forward)",
+    "path": "EXTENSIONS-FOR-AGENTS.md",
+    "source_mtime": "2026-09-17T07:43:40Z",
+    "source_sha256_16": "a7e57dec8e8017b5",
+    "source_bytes": 15636
+  },
+  "artifact": {
+    "sha256_16": "5d935524b7db27ea",
+    "bytes": 15660,
+    "stamp": "2026-09-17T05:19:48Z"
+  },
+  "proposal_file": "PROPOSAL.md",
+  "digests": {
+    "PROPOSAL.md": "4aa3e22b8e55dd01",
+    "closure-red.log": "c077f3e71829c19c"
+  }
+}

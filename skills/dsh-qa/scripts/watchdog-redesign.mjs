@@ -40,6 +40,7 @@
 //   bun skills/dsh-qa/scripts/watchdog-redesign.mjs [--red <tree>] [--green <tree>] [--row a,c]
 //                                                    [--out <dir>] [--settle-ms <ms>] [--list] [--json]
 // Evidence -> evidence/team-watchdog/redesign/lane/<timestamp>/{result.json,output.log,raw/}
+import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs"
 import { createHash } from "node:crypto"
 import { dirname, join, resolve } from "node:path"
@@ -66,9 +67,9 @@ const CONTRACT_RED = {
 /** §3: the frozen numbers the redesign must run with. */
 const CONTRACT_KNOBS = { red: { warnSilenceMs: 90_000, warnStreakToEscalate: 3, actionOnEscalate: "pause" }, green: { warnSilenceMs: 600_000, warnStreakToEscalate: 6, actionOnEscalate: "warn-only" } }
 
-const ROW_IDS = ["a", "b", "c", "d", "e", "f"]
+const ROW_IDS = ["a", "b", "c", "d", "e", "f", "g"]
 /** `pin` = the contract expects the same reading on both trees (§9 row e). */
-const ROW_KIND = { a: "contrast", b: "contrast", c: "contrast", d: "contrast", e: "pin", f: "contrast" }
+const ROW_KIND = { a: "contrast", b: "contrast", c: "contrast", d: "contrast", e: "pin", f: "contrast", g: "contrast" }
 /** Rows whose GREEN reading is decided by the channel fold (must show `predicateSource: channel`). */
 const ROW_FOLD = { a: true, b: true, d: true }
 
@@ -276,7 +277,60 @@ const SCENARIOS = [
     // 600 s threshold included.
     green: (reading) => (reading.stats?.neverStarted ?? 0) >= 1 && (reading.counts.escalate ?? 0) === 0 && !reading.holdOnDiskAtEnd,
   },
+  {
+    id: "g",
+    title: "the KICK arm (T-48, frozen D-2): a HOLD stops NEW DELIVERY only",
+    required: "while held: the kick is ANSWERED with a NAMED decline, ZERO deliveries, the team bytes untouched, and claim/update still SUCCEED; after the release the SAME kick delivers exactly ONCE",
+    redPrediction: "the two negative controls: neutering the hold read delivers while held, and the re-injected pre-redesign tool guard REFUSES the same calls",
+    kind: "suite",
+    red: (reading) => testState(reading.tests?.kickControl) === "pass" && testState(reading.tests?.claimUpdateControl) === "pass",
+    green: (reading) => testState(reading.tests?.readings) === "pass" && reading.exit === 0,
+  },
 ]
+
+const KICK_INSTRUMENT = "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts"
+// The row's DRIVING is delegated to the plugin's OWN instrument (the instrument-home ruling): lane C's
+// suite already carries the four D-2 readings AND both negative controls, so this row re-runs it and
+// verdicts from ITS result instead of inventing a second home.
+const KICK_TESTS = {
+  readings: "held: the kick is ANSWERED with a NAMED decline, zero deliveries, team bytes untouched; claim+update still SUCCEED",
+  kickControl: "CONTROL (kick): neutering the hold read site delivers while held — the KICK arm REDDENS",
+  claimUpdateControl: "CONTROL (claim/update): re-injecting the pre-redesign tool guard REFUSES the same calls",
+}
+function testState(entry) {
+  if (entry === undefined) return "absent"
+  return entry.passed === true ? "pass" : "fail"
+}
+/** Row (g): run the plugin's own T-48 instrument and read ITS verdicts. Tree-independent by design. */
+async function runKickRow() {
+  const proc = spawnSync("bun", ["test", KICK_INSTRUMENT], { cwd: REPO, encoding: "utf8", timeout: 600_000, env: { ...process.env, NO_COLOR: "1" } })
+  const text = String(proc.stdout ?? "") + String(proc.stderr ?? "")
+  const tests = {}
+  for (const [key, name] of Object.entries(KICK_TESTS)) {
+    const line = text.split("\n").find((entry) => entry.includes(name) && (entry.includes("(pass)") || entry.includes("(fail)")))
+    tests[key] = line === undefined ? undefined : { name, present: true, passed: line.includes("(pass)") }
+  }
+  return {
+    tree: "instrument-suite (tree-independent: the plugin's own test/** arm IS the instrument)",
+    treeIndependent: true,
+    instrument: KICK_INSTRUMENT,
+    instrumentSha256: sha256(readFileSync(join(REPO, KICK_INSTRUMENT), "utf8")),
+    exit: proc.status,
+    tests,
+    readingsHeld: testState(tests.readings),
+    controlsDetected: [testState(tests.kickControl), testState(tests.claimUpdateControl)],
+    suiteTail: text.trim().split("\n").slice(-6).join(" | ").slice(0, 600),
+  }
+}
+/** One row's reading: the engine arm, the tools arm, or the suite arm (cached — it is tree-independent). */
+async function produceReading(tree, scenario, rawRoot, suiteReadings) {
+  if (scenario.kind === "tools") return runHoldRow(tree, rawRoot)
+  if (scenario.kind === "suite") {
+    if (!suiteReadings.has(scenario.id)) suiteReadings.set(scenario.id, await runKickRow())
+    return suiteReadings.get(scenario.id)
+  }
+  return runScenario(tree, scenario, rawRoot)
+}
 
 // ── the engine arm: one scenario, one tree, one sandbox ──────────────────────────────────
 async function runScenario(tree, scenario, rawRoot) {
@@ -559,6 +613,11 @@ function describe(id, reading) {
       " guardInSource=" + reading.guardInToolsSource + " tools=" + reading.registeredTools +
       (reading.update?.ok === false ? " error=" + JSON.stringify(reading.update.error).slice(0, 140) : "")
   }
+  if (id === "g") {
+    return "instrument=" + reading.instrument + " exit=" + reading.exit +
+      " readings=" + testState(reading.tests?.readings) + " kickControl=" + testState(reading.tests?.kickControl) +
+      " claimUpdateControl=" + testState(reading.tests?.claimUpdateControl)
+  }
   return "counts=" + JSON.stringify(reading.counts) + " firstWarnAt=" + reading.firstWarnAt + " firstEscalateAt=" + reading.firstEscalateAt +
     " holdFileAtEnd=" + reading.holdOnDiskAtEnd + " states=" + JSON.stringify(reading.states) +
     " depParked=" + (reading.stats?.channelDependencyBlocked ?? null) + " source=" + reading.predicateSource
@@ -686,10 +745,11 @@ async function run(argv) {
   say(SLUG, "knobs: red " + JSON.stringify({ warnSilenceMs: redTree.defaults.warnSilenceMs, streak: redTree.defaults.warnStreakToEscalate, action: redTree.defaults.actionOnEscalate }) + " | green " + JSON.stringify({ warnSilenceMs: greenTree.defaults.warnSilenceMs, streak: greenTree.defaults.warnStreakToEscalate, action: greenTree.defaults.actionOnEscalate }))
 
   const rows = []
+  const suiteReadings = new Map()
   for (const scenario of SCENARIOS) {
     if (!opts.rows.includes(scenario.id)) continue
-    const red = scenario.kind === "tools" ? await runHoldRow(redTree, rawRoot) : await runScenario(redTree, scenario, rawRoot)
-    const green = scenario.kind === "tools" ? await runHoldRow(greenTree, rawRoot) : await runScenario(greenTree, scenario, rawRoot)
+    const red = await produceReading(redTree, scenario, rawRoot, suiteReadings)
+    const green = await produceReading(greenTree, scenario, rawRoot, suiteReadings)
     const redJudge = judgeRow(scenario.id, "red", red)
     const greenJudge = judgeRow(scenario.id, "green", green)
     rows.push({
@@ -800,6 +860,13 @@ if (argv.includes("--self-test")) {
     f: {
       red: greenFold({ defaults: CONTRACT_KNOBS.red, ticks: [tick(1_000, ["warn"]), tick(2_000, ["warn"]), tick(3_000, ["warn", "escalate"], ["team-a"], true)] }),
       green: greenFold({ stats: { neverStarted: 1 }, ticks: [tick(601_000, []), tick(1_100_000, [])] }),
+    },
+    // Row (g) is SUITE-driven, so its fixture is the instrument's OWN verdict shape: the four D-2
+    // readings held (green) and BOTH controls detected their mutant (red) — the same object serves
+    // both sides because the instrument carries both directions in one run.
+    g: {
+      red: { instrument: "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts", exit: 0, tests: { readings: { present: true, passed: true }, kickControl: { present: true, passed: true }, claimUpdateControl: { present: true, passed: true } } },
+      green: { instrument: "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts", exit: 0, tests: { readings: { present: true, passed: true }, kickControl: { present: true, passed: true }, claimUpdateControl: { present: true, passed: true } } },
     },
   }
   const healthy = {

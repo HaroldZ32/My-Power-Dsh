@@ -1,0 +1,8 @@
+# hashes at evidence run (settled reading, 2026-09-17T07:20:46Z)
+7780cf853becf8829abf6c4251b7543adb5520ff70e10c94d053fe3a14dd9b89  scripts/verify-docs-parity.mjs
+a5ba27f66aec2b5549df0fcbe66f97f1f258054f3f3f2b400f3c49b3d32ce0aa  AGENTS.md
+1485be855df9adccc9f7e9c91f6596e073d03caec4276bb06fe887d6a9b49a1f  agent-references/agent-teams-deltas.md
+48da5daa779d6c9393d47ee4af4acd23bfa0bacf6f5c7a9059a8c723fe42a331  agent-references/index.md
+5388c56fe4e9d061dacb5973df411ed7a10a1f1559454b65169148a2f6109e2d  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+7c0a985aee63b2dc895cefd354cb4bc83ae5a3c0c04571fd0e9827a1f6fc4d39  packages/mpd-agent-teams-plugin/lib/tools.js
+1b0eb60e61765f5eb55dfab94bdeed5fff916a4b8d2fb9081fde5ec9ed4f4ad6  packages/mpd-agent-teams-plugin/lib/quality-gates.js

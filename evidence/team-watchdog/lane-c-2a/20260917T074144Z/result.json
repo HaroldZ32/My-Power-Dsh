@@ -1,0 +1,311 @@
+{
+  "task": "t10 \u2014 lane C: the five uncovered halves + the KICK instrument (T-48/T-16/T-18/T-19/T-05 + T-79 delivery half)",
+  "lane": "C",
+  "owner": "watchdog-engineer",
+  "attempt": 2,
+  "attemptId": "e52b4f39-f0a3-49da-9584-aa4d1ad7f8ad",
+  "finishedAt": "2026-09-17T07:45:10Z",
+  "userRulings": {
+    "T-19": "`agent_teams_halt` becomes the SOLE external mechanism; the watchdog's PRESERVING hold is demoted to its internal implementation. Surface, tools and docs expose one mechanism.",
+    "T-18": "the knobs must be TRULY live in-process (knobs are DATA, so T-21's module-cache limit does not apply), plus a `--live` assertion as a regression pin.",
+    "T-48_frozen_reading": "no delivery while held + claim/update SUCCEED + a kick is ANSWERED with a NAMED decline + the SAME kick delivers after the release (captain D-2; the register's 'never decline \u2026 kick' sentence is NOT carried)."
+  },
+  "revisionPin": {
+    "changed": {
+      "machine.ts": {
+        "path": "packages/mpd-team-watchdog-plugin/src/machine.ts",
+        "sha256": "47511b5d415477e28208da5d6da2b6c62d4c69eb1d0bc9788623c0bf0e494a52",
+        "bytes": 39596,
+        "mtime": "2026-09-17T07:26:52.967289Z"
+      },
+      "engine.ts": {
+        "path": "packages/mpd-team-watchdog-plugin/src/engine.ts",
+        "sha256": "a82913cc7566dae26e436b57e7b9615e22c5ca54c8ed74304e07f08165a08ece",
+        "bytes": 64621,
+        "mtime": "2026-09-17T07:40:09.359025Z"
+      },
+      "actions.ts": {
+        "path": "packages/mpd-team-watchdog-plugin/src/actions.ts",
+        "sha256": "69ca5fa9f63f80df397b987b107ae93fd78057e8df89978ac3694ec4614a372f",
+        "bytes": 17874,
+        "mtime": "2026-09-17T07:30:22.257479Z"
+      },
+      "index.ts": {
+        "path": "packages/mpd-team-watchdog-plugin/src/index.ts",
+        "sha256": "31f6dfbd9d15acd8c38e94b4aa01b39391a86b58038c00a819ec683641365bf9",
+        "bytes": 16987,
+        "mtime": "2026-09-17T07:31:26.505074Z"
+      },
+      "config-file.ts": {
+        "path": "packages/mpd-team-watchdog-plugin/src/config-file.ts",
+        "sha256": "c535df9eb04decf2b27056c304899ff6cfafd7e59d1b884fc1fa14d1ed71383e",
+        "bytes": 3953,
+        "mtime": "2026-09-17T07:31:34.222265Z"
+      },
+      "holds-lifecycle.test.ts": {
+        "path": "packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts",
+        "sha256": "133f3c6342961c6428852bb2317570dad8cb035ec1a857c0cf15efa60c9a66cc",
+        "bytes": 26905,
+        "mtime": "2026-09-17T07:30:51.263199Z"
+      },
+      "lane-c-wave2.test.ts": {
+        "path": "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts",
+        "sha256": "d4384a0f26255ab11b47d26266492aecb3de3696b59c2bb42317bc3506352176",
+        "bytes": 33057,
+        "mtime": "2026-09-17T07:39:04.585443Z"
+      },
+      "index.js": {
+        "path": "packages/mpd-team-watchdog-plugin/dist/index.js",
+        "sha256": "6aa3069c5cb89f97c2491fbc739aca9d034485b8a078c5703058e99911db76dd",
+        "bytes": 156398,
+        "mtime": "2026-09-17T07:40:20.988310Z"
+      },
+      "troubleshooting.md": {
+        "path": "agent-references/troubleshooting.md",
+        "sha256": "c8ebe4755a00acf3c3020710e94628c34f8015cdbef9d0e4c48adb20d01d5605",
+        "bytes": 37618,
+        "mtime": "2026-09-17T07:41:30.516022Z"
+      }
+    },
+    "distIsTheBuildOfSrc": {
+      "probe": "grep -c on packages/mpd-team-watchdog-plugin/dist/index.js",
+      "was_applied_live_for_its_other_values": 1,
+      "liveWithoutRestart_or_fileApplied": 6,
+      "withdrawnProbe": "the long pattern 'the file layer is applied live for its other values' reads 0 \u2014 a PATTERN artifact (the bundled literal wraps); the second probe searched a COMMENT, which the bundler strips. Both recorded in raw/readings.log ADDENDUM 1."
+    }
+  },
+  "instruments": {
+    "durableArms": "packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts (12 arms; GREEN and RED legs in ONE run; run by `bun test packages/mpd-team-watchdog-plugin`)",
+    "liveAssertion": "evidence/team-watchdog/lane-c-2a/20260917T074144Z/lane-c-live.mjs (--live / --mutant restart-needed / --self-test)",
+    "handoff": "evidence/team-watchdog/lane-c-2a/20260917T074144Z/kick-arm-handoff.md (D-3: the frozen KICK row for lane D's skills driver)"
+  },
+  "items": {
+    "T-48": {
+      "arm": "T-48 \u2014 the KICK reading (frozen D-2)",
+      "verdicts": [
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "green_reading": "held: 0 deliveries + the warning names hold id/since/cause and team.json is byte-identical; claim_task(t1) and update_task(t2) SUCCEED while held and the hold record is unchanged; after applyResume the SAME kick delivers exactly 1 prompt",
+      "red_legs": [
+        "scratch copy with the hold read neutered (if (true)) -> 1 delivery while held",
+        "wave-1 re-injection literal spliced at update_task's execute -> the same call throws 'held by the team watchdog'"
+      ],
+      "red_baseline_note": "`.mpd/red-baseline` CANNOT serve as the kick control: it already carries watchdogHoldOf + the three decline sites (4 hits, raw/readings.log)"
+    },
+    "T-16": {
+      "arm": "T-16 \u2014 a hold latched while the task has ZERO attempts",
+      "verdicts": [
+        "pass",
+        "pass"
+      ],
+      "green_reading": "attempt 0 / no attemptId: the first claim is ANSWERED and PROCEEDS (branch = the shipped semantics: claim tools carry NO hold guard), the attemptId appears, the hold sidecar is byte-identical, and the kick is still answered with the named decline; after resume the hold is gone",
+      "red_legs": [
+        "the same re-injected tool guard REFUSES the first claim (shared with T-48's claim/update control)"
+      ],
+      "contrast": "row (f) stays green: a zero-attempt, never-stamped task yields NO candidate and NO escalate decision (never holdable)"
+    },
+    "T-18": {
+      "arm": "T-18 \u2014 a .mpd/mpd.jsonc knob edit is applied in the SAME running engine",
+      "verdicts": [
+        "pass",
+        "pass"
+      ],
+      "green_reading": "same instance, next tick: warnSilenceMs 90_000 -> 900_000 and holdTtlMs -> 60_000 from the file; fileApplied=true, liveLayer=file, restartRequired=false; a settings write then wins (700_000, fileApplied=false); a NEW file edit takes it back (800_000) \u2014 all without a restart",
+      "red_legs": [
+        "the test's seeded revert (the one-line overlay removed) leaves 90_000 with restartRequired=true",
+        "lane-c-live.mjs --mutant restart-needed: the --live assertion exits 1 = the mutant is DETECTED"
+      ],
+      "liveAssertion": {
+        "run": "bun lane-c-live.mjs --live --out raw/live",
+        "exit": 0,
+        "liveWithoutRestart": true,
+        "selfTest": "3/3 arms (live / restart-needed / not-same-instance)"
+      },
+      "srcChange": "src/config-file.ts + src/machine.ts + src/engine.ts: the workspace's own .mpd/mpd.jsonc is read on every knob refresh and overlaid when THAT layer moved (sticky per-layer last-writer-wins; the settings namespace wins ties and the mount-time rule is unchanged)",
+      "sideFix": "engine.ts tick: the per-tick refresh was `this.onKnobsChanged?.(this.refreshKnobs())`, whose ARGUMENT is never evaluated when the field is unset \u2014 a directly constructed engine (a lane, a test) silently kept its boot values. Measured while building the arms; now the value is read first and handed out second."
+    },
+    "T-19": {
+      "arm": "T-19 \u2014 the surface names ONE mechanism",
+      "verdicts": [
+        "pass",
+        "pass"
+      ],
+      "green_reading": "the three registered tools keep their names (pin green at test/holds-lifecycle.test.ts) and their descriptions name `agent_teams_halt` as the ONE external mechanism with the hold as the INTERNAL implementation; session-watchdog-status prints ONE pause line per team; the old peer strings ('NOT agent_teams_halt', 'which PAUSE mechanism is active per team', 'or `held`', 'PAUSED \u2014 held (watchdog hold)', 'both (agent_teams_halt + watchdog hold)') are asserted ABSENT",
+      "red_legs": [
+        "the negative assertions above redden on any restored two-mechanism text",
+        "a tool removal would redden the tool-list pin (holds-lifecycle.test.ts)"
+      ],
+      "surfaces": {
+        "inScope_landed": [
+          "packages/mpd-team-watchdog-plugin/src/actions.ts (descriptions + one pause state in text and JSON)",
+          "src/index.ts + src/engine.ts comments",
+          "agent-references/troubleshooting.md (NEW row \u2014 the file had NO T-19 row before this change; a create, recorded)"
+        ],
+        "outOfScope_bounds": [
+          "packages/mpd-agent-teams-plugin/lib/tools.js:3520 \u2014 the team-status PAUSE line (lane A / t21)",
+          "the watchdog README pair (README.md:258/303/326/391 + README.zh-CN.md:216/254/272/328) \u2014 t20"
+        ]
+      },
+      "docPairRides": "t20 (its README pair) \u2014 stated here because the acceptance requires it"
+    },
+    "T-05": {
+      "arm": "T-05 / T-79 (delivery half) \u2014 blocked/terminal never delivered, claimable is",
+      "verdicts": [
+        "pass",
+        "pass"
+      ],
+      "green_reading": "one fixture, one process: the dependency-blocked member records 0 deliveries; the claimable member records exactly 1 ('Task: t3'); the TERMINAL member records 0 and its finished bytes (status=completed, the OLD attemptId 35503430-\u2026) are byte-identical",
+      "red_legs": [
+        "scratch copy with the dependency test removed from isTaskReady -> the blocked member IS delivered (1)"
+      ]
+    },
+    "T-79_delivery_half": {
+      "arm": "T-79 THE RACE",
+      "verdicts": [
+        "pass"
+      ],
+      "green_reading": "the delivery-boundary re-check refuses a task that became completed inside the compose\u2192wake window: 0 deliveries, the named decline 'task t1 became completed before its assignment could be delivered \u2014 the member was NOT woken for it\u2026', and the terminal bytes are never rewritten",
+      "red_legs": [
+        "the SAME interleaving hook on a copy WITHOUT the mpd-delta terminal-dispatch-recheck region -> exactly 1 delivery for the terminal task (the live replay shape reproduced)"
+      ],
+      "independent_control": "`.mpd/red-baseline` (detached 75018a1) carries 0 hits for terminal-dispatch-recheck vs 2 in the shipped tree (raw/readings.log)",
+      "finding_on_the_register_row": "The register's T-79 row says the wave-1 fix 'is inert in-process'. MEASURED: in a FRESH process on the shipped tree the re-check refuses deterministically (GREEN above), so 'inert' is REFUTED for a fresh process. The three wave-2 live replays are CONSISTENT with a host process that predates wave 1's fix (T-21, no hot reload) \u2014 but the host's start time is NOT measurable from this sandbox (`ps -eo lstart` shows only the pid-namespaced sandbox's own processes), so the attribution stays an INFERENCE, and the fresh-process reading is the measurement.",
+      "split": "DELIVERY half only; the STATE half is t8's and the joint reading is F-2 on the merged tip"
+    }
+  },
+  "commands": [
+    {
+      "command": "bun test packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts",
+      "exitCode": 0,
+      "reading": "12 pass / 0 fail (6 GREEN arms + 4 RED controls + 2 pins)"
+    },
+    {
+      "command": "bun test packages/mpd-team-watchdog-plugin",
+      "exitCode": 0,
+      "reading": "139 pass / 0 fail across 26 files"
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "reading": "tsgo --noEmit, no diagnostics"
+    },
+    {
+      "command": "node scripts/mpd-bg.mjs --self-test",
+      "exitCode": 0,
+      "reading": "13/13 arms passed"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.mjs",
+      "exitCode": 0,
+      "reading": "ok: 20/20 targets fresh, 7 NOT COVERED listed"
+    },
+    {
+      "command": "bun lane-c-live.mjs --live --out raw/live",
+      "exitCode": 0,
+      "reading": "liveWithoutRestart: true; same-instance readback"
+    },
+    {
+      "command": "bun lane-c-live.mjs --mutant restart-needed --out raw/mutant",
+      "exitCode": 0,
+      "reading": "mutant DETECTED: the --live assertion exits 1 on the reverted tree"
+    }
+  ],
+  "bounds": [
+    "`bun skills/dsh-qa/scripts/team-watchdog-config.mjs --live` (named in t3's acceptance) is NOT implemented: skills/** is lane D's single writer. The in-scope equivalent lane-c-live.mjs --live observes the same three legs with the same liveWithoutRestart key and the same restart-needed mutant; the shared checker's flag is a HANDOFF (spec below) and rides lane D.",
+    "T-19 surfaces OUT of inScope are quoted, not edited: lib/tools.js:3520 (t21) and the README pair (t20).",
+    "dist/index.js is rebuilt although the inScope names src/** \u2014 the shipped artifact is dist and the freshness gate would otherwise redden. Declared deviation.",
+    "No live `dsh` boot was run for this lane: all arms are in-process against the REAL adopted scheduler/tools and the real hold registry. Nothing here certifies a mounted profile boot; no tool-schema change is made (both halves of T-19 depend on the three tools staying registered).",
+    "The wave-2 T-79 live replays (t1/t5/t2) are NOT re-measured here; only the fresh-process reading is."
+  ],
+  "handoffForLaneD": {
+    "sharedCheckerFlag": "add `--live` to skills/dsh-qa/scripts/team-watchdog-config.mjs: mount the row in-process, write the sandbox workspace's .mpd/mpd.jsonc, re-read the SAME engine, print knobs before/after + the same-instance identity + liveWithoutRestart, and exit 0 only when the reading is real; keep its existing `restart-needed` mutant as the reddening arm. lane-c-live.mjs in this dir is the executable reference.",
+    "kickRow": "kick-arm-handoff.md in this dir (frozen row text, fixture, four readings, two controls)"
+  },
+  "settledSweep": {
+    "authoritativePass": "raw/settled-sweep-3.log (pass 2 kept as an intermediate; pass 1 kept with its probe defect recorded)",
+    "windowSeconds": 50,
+    "settled": true,
+    "hashesIdenticalAcrossWindow": 9,
+    "revision": {
+      "machine.ts": {
+        "sha256": "47511b5d415477e28208da5d6da2b6c62d4c69eb1d0bc9788623c0bf0e494a52",
+        "bytes": 39596
+      },
+      "engine.ts": {
+        "sha256": "a82913cc7566dae26e436b57e7b9615e22c5ca54c8ed74304e07f08165a08ece",
+        "bytes": 64621
+      },
+      "actions.ts": {
+        "sha256": "69ca5fa9f63f80df397b987b107ae93fd78057e8df89978ac3694ec4614a372f",
+        "bytes": 17874
+      },
+      "index.ts": {
+        "sha256": "31f6dfbd9d15acd8c38e94b4aa01b39391a86b58038c00a819ec683641365bf9",
+        "bytes": 16987
+      },
+      "config-file.ts": {
+        "sha256": "c535df9eb04decf2b27056c304899ff6cfafd7e59d1b884fc1fa14d1ed71383e",
+        "bytes": 3953
+      },
+      "lane-c-wave2.test.ts": {
+        "sha256": "8ffc36053f5f98ef18bd130ecff8b55eadd4e3d571fc847345d85e07ffa7121d",
+        "bytes": 34003
+      },
+      "holds-lifecycle.test.ts": {
+        "sha256": "133f3c6342961c6428852bb2317570dad8cb035ec1a857c0cf15efa60c9a66cc",
+        "bytes": 26905
+      },
+      "index.js": {
+        "sha256": "6aa3069c5cb89f97c2491fbc739aca9d034485b8a078c5703058e99911db76dd",
+        "bytes": 156398
+      },
+      "troubleshooting.md": {
+        "sha256": "c8ebe4755a00acf3c3020710e94628c34f8015cdbef9d0e4c48adb20d01d5605",
+        "bytes": 37618
+      },
+      "agent-references/troubleshooting.md": {
+        "sha256": "c8568855302a1ee4651427908fbd43df08f735eaf7ea6a0a3c6e4c8f2b446eca",
+        "bytes": 39763
+      }
+    },
+    "verifyOnSettledRevision": [
+      {
+        "command": "bun test packages/mpd-team-watchdog-plugin",
+        "exitCode": 0,
+        "reading": "139 pass / 0 fail"
+      },
+      {
+        "command": "bun run typecheck",
+        "exitCode": 0
+      },
+      {
+        "command": "node scripts/mpd-bg.mjs --self-test",
+        "exitCode": 0,
+        "reading": "13/13 arms passed"
+      }
+    ],
+    "addendum1": "raw/readings.log ADDENDUM 1: the first src->dist correspondence pattern was a PATTERN artifact (0) and the second probe searched a bundled-out COMMENT; the re-measured patterns read 1 and 6, and verify-dist-fresh reads 20/20 fresh.",
+    "addendum2": "raw/settled-sweep-1.log is kept although its two hash sections are EMPTY (a probe defect; no file was changing \u2014 pass 2 measures the same files byte-identical across its own window). Pass 1's three verify exits remain valid; pass 2 is the hash authority."
+  },
+  "amendments": [
+    "A3: the T-48 leg audit (contract acceptance [0], t23 scope) is recorded in raw/readings.log ADDENDUM 3: the three already-instrumented legs are RELIED ON (fault lane F6/F7 + inject.mjs pause-preserves) and only the fourth \u2014 the named decline reaching the caller \u2014 is ADDED; the arm now also measures that kickMember returns undefined (the name is not carried by the return value) and that the neutered-hold control produces NO decline line.",
+    "A3b: the gates + a third settled-hash sweep were re-run after A3; raw/gates.log carries both passes and raw/settled-sweep-3.log is the authority.",
+    "A4 (scope): the contract's acceptance [7] says `bun run typecheck` is NOT in this lane's verify while the contract's own `verify` field lists it; it was RUN and is reported as a PASSING reading either way.",
+    "A5: agent-references/troubleshooting.md gained the captain-requested T-87 row (line 43) \u2014 the completion-payload/vs-printed-contract trap, with this lane's own two measured refusals as the instance. Rows added by this lane to that file: T-18, T-19, T-87. Before/after artifacts + the diff live in raw/troubleshooting.{before,after}.txt; the pre-edit hash c8ebe4755a00acf3\u2026 is PROVEN equal to a reconstruction that deletes the inserted line (raw/readings.log ADDENDUM 5, corrected by ADDENDUM 6).",
+    "A6: the ADDENDUM-5 BEFORE readings were a SNAPSHOT-LOSS artifact (the snapshot was written to the per-call tmpfs /tmp, which is fresh per bash call \u2014 T-23); withdrawn in place and replaced by the hash-proven reconstruction; the artifacts are now inside the evidence dir.",
+    "A7: agent-references/troubleshooting.md gained the captain-requested DIGEST row (line 44) \u2014 'a digest is a reading of a MOMENT, never a fact', with the re-derive-at-write rule. Rows this lane added are now FOUR: T-18 (41), T-19 (42), T-87 (43), DIGEST/ledger-family (44). One-insertion diff 43a44; BEFORE sha256 7ca5240d05b273fa\u2026 (72 lines, 59 rows) -> AFTER c8568855302a1ee4\u2026 (73 lines, 60 rows); snapshots in raw/before-digest-row.txt + raw/after-digest-row.txt.",
+    "A8: ADDENDUM 7's 'CUMULATIVE' line carried an UNMEASURED row count ('55 rows'); withdrawn in place and replaced by a measurement of the committed revision (git show HEAD:\u2026: sha256 f6b4d1bec8745da6\u2026, 35548 B, 69 lines, 56 table rows) versus the post-edit 73 lines / 60 rows. The per-edit relation (one insertion) is the proven claim; the baseline is labelled as HEAD's copy, not necessarily the byte-identical pre-edit working-tree state.",
+    "A9 (correction + reconciliation): the declared-deviation note about dist/index.js describes the WINDOW BEFORE the hop. FINAL scope, read back from agent_teams_task_contract: t10 = revision 6, inScope includes packages/mpd-team-watchdog-plugin/{src,test,dist}/** + lib/scheduler.js + agent-references/troubleshooting.md + evidence/team-watchdog/**; dist/index.js is DECLARED (r6, the hop). Also: `--only <substr>` DOES exist on verify-dist-fresh.mjs (its own USAGE line + my two runs: `--only mpd-team-watchdog-plugin --quiet` and `--only packages/mpd-team-watchdog-plugin --quiet`, both exit 0, the latter `ok: 1/1 targets fresh`) \u2014 my earlier caution ('a flag I have not run') is resolved by measurement. SHA timeline reconciled with lane B: 07:33Z 43fc1f52\u2026 (their fresh build) \u2192 07:38Z 6aa3069c\u2026 (fresh build of then-current src) \u2192 07:40:20Z my canonical rebuild = 6aa3069c5cb89f97\u2026; 7b821135\u2026 is the pre-rebuild committed sha.",
+    "A10 (self-correction of my own phrasing): T-79's loaded-revision residual now has a named probe \u2014 `node scripts/mpd-bg.mjs reload-check <module>` says FRESH for lib/scheduler.js (module 05:42:47Z predates the newest session 07:20:24Z) and RESTART-REQUIRED for my post-07:40 edits. BOUND: the helper compares the module mtime against the NEWEST SESSION, so it cannot see a long-lived process that predates the module; 'FRESH' is not proof the host loaded that revision. Consequence, stated against myself: my earlier wording 'the replays are consistent with a host predating the fix' is not supported by this verdict \u2014 a session beginning AFTER the fix is weak evidence the fix WAS loaded. The residual stays UNRESOLVED and must be recorded as such; the host process could not be dated from this sandbox (ps is pid-namespaced; the parent session id has no store dir; the usage ledger carries only recent activity). Decisive test for 2b: a probe that reports the loaded module revision from the running host, or a restart + replay.",
+    "A11: ADDENDUM 11 appends (a) the Architect's SOURCE-level verification of the T-21 probe's semantics as independent corroboration of my bound (it compares a file mtime to the newest session dir mtime; it cannot see a host process), and (b) the interpretation of the decisive 2b test \u2014 restart + one terminal replay: a wake for a terminal task REFUTES staleness and points the hunt at the other wake routes (approval/spawn, idle edge, memberSelections, stale snapshot), while no wake closes the residual as 'stale host'. Both recorded so the test's outcome cannot be read two ways.",
+    "A12 (T-89 self-audit): the plain-form verify command `bun test packages/mpd-team-watchdog-plugin` is a SUBSTRING FILTER, so its discovery census was contaminated \u2014 measured now in one call: plain form `Ran 139 tests across 1053 files` vs path form `bun test ./packages/mpd-team-watchdog-plugin/` `Ran 139 tests across 13 files`; executed set and all reported figures IDENTICAL (139 pass / 0 fail / 684 expects), so no t10 verdict moves, but the corrected basis is the path-qualified form (13 files). Permanent census contributor under the tree: the `.mpd/red-baseline` git worktree's 12 watchdog test files. My instruments keep every scratch tree under mkdtempSync(join(tmpdir(), ...)) \u2014 outside the tree and inside the per-call tmpfs. t13's evidence contains no `bun test` at all, so review-B is unaffected.",
+    "A13: ADDENDUM 13 folds in lane A's INDEPENDENT re-take of the src/dist pair (engine.ts a82913cc\u2026, dist 6aa3069c\u2026, `verify-dist-fresh --only mpd-team-watchdog-plugin --quiet` ok 1/1 fresh, typecheck exit 0) as a second-seat confirmation, and records the premise check: this evidence never claimed typecheck was on t8's verify list or that a lane cuts branches \u2014 its only t8/T-79 entries concern the STATE half (coverage stays on t8, plan D-1), which the correction does not touch. The refuted premise existed only in a message, so nothing on disk was withdrawn or edited.",
+    "A14 (provenance precision): ADDENDUM 14 splits the ADDENDUM-11 corroboration by ownership \u2014 the Architect's reading of scripts/mpd-bg.mjs is first-party on their side; the probe RUNS and the bound are lane C's; the WORDING of the corroboration sentence is lane C's summary and was not reviewed by the Architect (they confirmed the substance, not the text). Citation chain stated so a later reader does not treat the entry as co-signed.",
+    "A12b: lane A's refinement of the T-89 exposure folded in with attribution \u2014 the bare form's discovery surface includes every non-dot copy whose path contains the argument; dot-prefixed copies (e.g. `.mpd/red-baseline/...`) are skipped for execution, which is why my instance's census inflated to 1053 files while the EXECUTED set stayed the real 13 files / 139 tests (identical figures in both forms). Refined rule: pin with `./`; a revert copy kept in the tree belongs under a dot path and named in the evidence; the 'across N files' census is the cheap tell. The re-pin of t8's historical verify entry is the captain's call (lane A handed them the measurement and the choice).",
+    "A12c: ADDENDUM 12b was damaged by my own shell (backticks inside a double-quoted echo performed command substitution in three places); the damaged block stays with a correction beside it restating the intended text, and the unintended side effect is disclosed \u2014 the substitution actually ran lane A's multi-path command (9 pass / 0 fail / '81 files'), recorded as an artifact of the error, never as a reading \u2014 with `verify-dist-fresh --only mpd-ext-plugin|mpd-roles-plugin` reading 2/2 and 1/1 fresh immediately after, proving nothing was written. Rule earned: echo blocks carrying code fragments use single quotes or a quoted heredoc.",
+    "A15: costing of an edit under packages/mpd-agent-teams-plugin/self-fix-tests/** \u2014 the packer excludes test/self-fix-tests dirs (its own filter + comment) and the closure sweep never mentions them, so such an edit is invisible to both pack and gate: no drift line, no pre-pack window, no ordering pressure (contrast agent-references/**, which IS swept). The arm reads 6 pass / 0 fail / 44 expects on the current revision in the ./ form (T-89), matching lane A's 6/44; lane A's relabel (attribution = inference, state UNRESOLVED, probe named) is verified on disk and correct. Recommendation to the captain: leave it, carry the leaner wording to 2b or drop it \u2014 I do not edit under a terminal owner without a task.",
+    "A16: a known one-word imprecision in the t35 rows, verified and priced \u2014 Row 2's 'the three full paths above resolve' counts a third path that is named in Row 2 itself (Row 1 holds two), so 'above' is off by one; all three paths are present and resolve. Disposition: NOT worth a task (t35 terminal; a task for one word costs more than the word); it rides along free if anything else legitimately touches the file before the re-pack, otherwise it stands as a RECORDED imperfection. Ready replacement wording is in ADDENDUM 16 so a future editor spends nothing."
+  ]
+}

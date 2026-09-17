@@ -1,0 +1,62 @@
+{
+  "item": "T-61",
+  "register_row": "[defect] `agent_teams_update_task` silently ignores unknown argument names — snake-case payloads are reported as APPLIED but store nothing. P1.",
+  "register_source": ".mpd/TODO.md §8.6 line 517 (read from the file)",
+  "lane": "A / t8 (agent-teams-engineer), wave friction-p2-wave",
+  "surface": {
+    "module": "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "symbols": [
+      "UPDATE_TASK_ARGUMENT_NAMES",
+      "assertKnownToolArguments",
+      "agent_teams_update_task execute (first statement)"
+    ],
+    "regions": [
+      "mpd-delta strict-tool-arguments",
+      "mpd-delta strict-tool-arguments-apply"
+    ],
+    "root_cause_read_from_dependency": "packages/mpd-agent-teams-plugin/_deps/dsh-tools/lib/index.js, parameterSchemaSpecToJsonSchema — the flat parameter map compiles with no additionalProperties:false, so an unknown key passes validation and execute never reads it"
+  },
+  "red_leg_as_committed": {
+    "method": "git show HEAD:packages/mpd-agent-teams-plugin/lib/tools.js (tree was clean at HEAD c826f16 for these three files) materialised into a scratch lib/ copy; _deps symlinked",
+    "driver": "evidence/agent-teams/unknown-args/20260917T071840Z/driver.mjs",
+    "reading": "call returns {task_id:t1,status:in_progress,attempt:1,attempt_id:att-1,output:'PART 1/2'} — success — while storedAcceptanceResults stays null; the record changes only by its updatedAt tick",
+    "head_tools_sha256": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f"
+  },
+  "green_leg": {
+    "reading": "the same call throws: agent_teams_update_task: unknown argument name(s) \"acceptance_results\" — the call was REFUSED and NOTHING was stored. Declared arguments: task_id, status, output, output_append, artifact, replace_output, attempt_id, verdict, findings, changedPaths, acceptanceResults, commandsRun, amend.",
+    "record_byte_identical": true
+  },
+  "arms": {
+    "path": "packages/mpd-agent-teams-plugin/self-fix-tests/strict-task-arguments.test.mjs",
+    "cases": [
+      "T-61: an unknown snake_case argument name is REFUSED, named, and stores NOTHING (team.json sha256 before == after)",
+      "T-61 control: every DECLARED argument name still works (a guard that refuses everything is red)",
+      "T-61 drift pin: the declared-name list EQUALS the registered tool's compiled schema keys",
+      "T-61 negative control: with the guard call removed (scratch lib/ copy), the SAME payload succeeds and stores nothing"
+    ],
+    "negative_control": "an in-file scratch copy of lib/ with the guard call stripped, asserting exactly one occurrence was removed; the pre-fix behaviour (success + nothing stored) is reproduced there"
+  },
+  "evidence_logs": [
+    "evidence/agent-teams/unknown-args/20260917T071840Z/driver.mjs",
+    "evidence/agent-teams/unknown-args/20260917T071840Z/output.log"
+  ],
+  "honest_bounds": [
+    "The guard is applied to agent_teams_update_task (the measured surface, and the row's own title). Other tools registered by the same module keep the adopted behaviour; the helper is generic and the literal list is drift-pinned, so extending it to another tool is additive work, not a redesign.",
+    "The wave-1 instance (t35) was recorded from the harness-side surface; this fix makes the PLUGIN's tool loud, which is the surface lane A owns."
+  ],
+  "append_channel_readings_mandated_by_contract_r4": {
+    "requirement": "t8 contract revision 4: 'T-61's ARM MUST CARRY BOTH READINGS OF THE APPEND CHANNEL … The arm must NOT claim the channel was ever absent: the difference is which module revision the live process loaded'",
+    "reading_i_wave1_false_green": {
+      "source": "evidence/wave1-integration/20260917T052400Z/POST-COMPLETION-append-channel-unreachable.md (t35) + the nested correction correction-20260917T054822Z-append-channel-restart-blocked.md (captain, same directory)",
+      "verdict": "T-21 restart-blocked, NOT a missing feature: the module declaring `output_append` was written 05:42:47Z while the process serving the session started 04:06:39Z, so the registered schema was the pre-channel one and the key was tolerated and dropped",
+      "reproduced_in_the_arm_as": "'T-61 append channel (i)': a `defineTool` definition whose parameter map lacks the key returns SUCCESS and stores nothing; the same caller with the key declared LANDS the append (two-sided control proving the mechanism is the SCHEMA, not the caller)",
+      "explicitly_not_claimed": "the channel was never absent — the code declares the key (proved by the (ii) case reading it out of the real compiled schema) and it is independently reviewed"
+    },
+    "reading_ii_todays_verified_append": {
+      "source": ".mpd/plans/friction-p2-wave-captain-log.md (the paragraph after A-4): the requirements seat's `output_append` on the terminal `t4` succeeded AND stored, confirmed by read-back",
+      "reproduced_in_the_arm_as": "'T-61 append channel (ii)': the registered schema CARRIES `output_append`; on a TERMINAL task the append returns success, the stored bytes GROW and the previous value stays a byte-prefix; status stays completed",
+      "falsification_criterion_satisfied": "correction criterion (1) schema carries the key + (2) append GROWS the bytes with the old value a prefix — both measured in-process"
+    },
+    "T21_bound_for_this_lane": "`node scripts/mpd-bg.mjs reload-check` on the tree as edited: lib/tools.js RESTART-REQUIRED (07:23:16Z > session 07:20:24Z), lib/state.js RESTART-REQUIRED (07:21:47Z), lib/quality-gates.js FRESH — so the strict-args guard and the rotation guard are inert in THIS live session and effective after a restart, exactly the class the correction names; no claim in this delivery rests on the live session's behaviour"
+  }
+}

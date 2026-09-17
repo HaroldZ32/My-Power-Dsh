@@ -1,0 +1,121 @@
+bun test v1.3.14 (0d9b296a)
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+(pass) D2: the two tool-boundary guards and tools.js's reader copy are gone; scheduler keeps its own [4.53ms]
+(pass) D2: with a LIVE hold present, claim_task and update_task SUCCEED (the hold no longer blocks a write) [25.19ms]
+(pass) D2 NEGATIVE CONTROL: the deleted guard re-injected into a scratch copy makes the same call FAIL [40.29ms]
+(pass) T-49: the contract tool is a MEMBER tool in BOTH deny computations [2.39ms]
+287 |         const status = tools.get("agent_teams_status")
+288 |         // The stub's hold is LIVE (HOLD_VIEW), so this render is the state the OLD surface got
+289 |         // wrong: it printed `agent-teams halt not active` while the team was held.
+290 |         const held = await status.execute({}, { agent: member })
+291 |         const heldText = status.output.render({}, held)[0].text
+292 |         expect(heldText, "one mechanism, named once").toContain("Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt")
+                                                            ^
+error: one mechanism, named once
+
+Expected to contain: "Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt"
+Received: "Team \"tool-boundary probe\"\nWave: w1 (open since 2026-09-17T08:43:36.990Z)\nPause: agent-teams halt not active · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)\nLoop: running — Work remains on the shared task list; wait for the scheduler or complete owned tasks.\nViewing as: Architect\nMembers (1):\n  - Architect [architect] idle/idle\nTasks (1):\n  - t1 [pending] verification attempt 0 the guarded task → Architect\nDelivery: blocked (t1 (verification) is not completed)\nCaptain inbox (0):"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:292:55)
+(fail) T-19: the status surface names ONE pause mechanism and reports the hold as its INTERNAL implementation [14.47ms]
+339 |         }
+340 |         registerAgentTeamsTools(ctx, { stateDir: STATE_DIR })
+341 |         const status = tools.get("agent_teams_status")
+342 |         const value = await status.execute({}, { agent: member })
+343 |         const rendered = status.output.render({}, value)[0].text
+344 |         expect(rendered).toContain("hold state not readable on this host")
+                               ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "hold state not readable on this host"
+Received: "Team \"tool-boundary probe\"\nWave: w1 (open since 2026-09-17T08:43:37.005Z)\nPause: agent-teams halt not active · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)\nLoop: running — Work remains on the shared task list; wait for the scheduler or complete owned tasks.\nViewing as: Architect\nMembers (1):\n  - Architect [architect] idle/idle\nTasks (1):\n  - t1 [pending] verification attempt 0 the guarded task → Architect\nDelivery: blocked (t1 (verification) is not completed)\nCaptain inbox (0):"
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:344:26)
+(fail) T-19: with NO watchdog service the status says the hold is NOT READABLE — never a guessed hold [5.97ms]
+(pass) t41: the contract tool refuses a NON-PARTICIPANT and an UNKNOWN id NAMING the known ids — both FALSIFIABLE [52.09ms]
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+evidence/review/t21-status-line/20260917T083500Z/revert/t21-pkg/arms-hidden/tool-boundary-hold-and-contract-seat.test.mjs:
+
+ 5 pass
+ 2 fail
+ 49 expect() calls
+Ran 7 tests across 41 files. [5.40s]

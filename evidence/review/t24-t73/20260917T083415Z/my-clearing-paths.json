@@ -1,0 +1,314 @@
+{
+ "instrument": "t33 reviewer driver (real lib/state.js)",
+ "module": "packages/mpd-agent-teams-plugin/lib/state.js",
+ "probes": [
+  {
+   "id": "drop-pending-first-dispatch",
+   "what": "a PENDING task's first dispatch (new generation)",
+   "expect": "DROP",
+   "kept": false,
+   "before": {
+    "status": "pending",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "LEFTOVER"
+   },
+   "after": {
+    "status": "claimed",
+    "assignee": "Architect",
+    "attempt": 2,
+    "attemptId": "61428121-bc7b-47a1-9230-bd0593c0d406",
+    "reassigning": false
+   },
+   "returned": "61428121-bc7b-47a1-9230-bd0593c0d406"
+  },
+  {
+   "id": "drop-handover-compose",
+   "what": "a compose naming a DIFFERENT assignee (handover)",
+   "expect": "DROP",
+   "kept": false,
+   "before": {
+    "status": "in_progress",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "EARNED-DELIVERABLE"
+   },
+   "after": {
+    "status": "claimed",
+    "assignee": "Beta",
+    "attempt": 1,
+    "attemptId": "ad9968a0-a86b-4b20-8681-dbfd71d02973",
+    "reassigning": false
+   },
+   "returned": "ad9968a0-a86b-4b20-8681-dbfd71d02973"
+  },
+  {
+   "id": "drop-amend-chain",
+   "what": "an amend-invalidated generation: invalidateTaskAttempt then the new owner arms",
+   "expect": "DROP",
+   "kept": false,
+   "before": {
+    "status": "in_progress",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "EARNED-DELIVERABLE"
+   },
+   "after": {
+    "status": "claimed",
+    "assignee": "Beta",
+    "attempt": 2,
+    "attemptId": "b78667de-b8d2-4dce-885a-d27bbe385af1",
+    "reassigning": false
+   },
+   "returned": {
+    "afterInvalidate": {
+     "status": "pending",
+     "assignee": "Beta",
+     "attempt": 1,
+     "handoffId": "67e78d4e-a5bc-4008-a719-357be165171a",
+     "reassigning": true
+    },
+    "id": "b78667de-b8d2-4dce-885a-d27bbe385af1"
+   }
+  },
+  {
+   "id": "drop-unassigned-incoming",
+   "what": "an OPEN task with NO assignee receiving a first owner",
+   "expect": "DROP",
+   "kept": false,
+   "before": {
+    "status": "in_progress",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "EARNED-DELIVERABLE"
+   },
+   "after": {
+    "status": "claimed",
+    "assignee": "Architect",
+    "attempt": 2,
+    "attemptId": "cca3f323-c5c4-4e00-bb89-85eba7dc0124",
+    "reassigning": false
+   },
+   "returned": "cca3f323-c5c4-4e00-bb89-85eba7dc0124"
+  },
+  {
+   "id": "keep-same-generation-in_progress",
+   "what": "the same-generation re-dispatch (open + same assignee)",
+   "expect": "KEEP",
+   "kept": true,
+   "before": {
+    "status": "in_progress",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "EARNED-DELIVERABLE"
+   },
+   "after": {
+    "status": "claimed",
+    "assignee": "Architect",
+    "attempt": 2,
+    "attemptId": "96a97c24-bee3-4d4d-a74d-909b421c359b",
+    "output": "EARNED-DELIVERABLE",
+    "reassigning": false
+   },
+   "returned": "96a97c24-bee3-4d4d-a74d-909b421c359b"
+  },
+  {
+   "id": "keep-same-generation-claimed",
+   "what": "the same-generation re-dispatch from CLAIMED",
+   "expect": "KEEP",
+   "kept": true,
+   "before": {
+    "status": "claimed",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "EARNED-DELIVERABLE"
+   },
+   "after": {
+    "status": "claimed",
+    "assignee": "Architect",
+    "attempt": 2,
+    "attemptId": "ed5497e2-baec-4b3e-8d29-a17b54924f96",
+    "output": "EARNED-DELIVERABLE",
+    "reassigning": false
+   },
+   "returned": "ed5497e2-baec-4b3e-8d29-a17b54924f96"
+  },
+  {
+   "id": "refuse-completed",
+   "what": "T-79: a COMPLETED task with an earned summary",
+   "expect": "REFUSE",
+   "kept": true,
+   "before": {
+    "status": "completed",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "EARNED"
+   },
+   "after": {
+    "status": "completed",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "EARNED"
+   },
+   "threw": "task t1 is completed: the attempt rotation is REFUSED for terminal work — a terminal task is never re-armed (the record "
+  },
+  {
+   "id": "refuse-cancelled",
+   "what": "T-79: a CANCELLED task holding an output (cancelUnfinishedTask shape)",
+   "expect": "REFUSE",
+   "kept": true,
+   "before": {
+    "status": "cancelled",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "CANCELLED-NOTE"
+   },
+   "after": {
+    "status": "cancelled",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "CANCELLED-NOTE"
+   },
+   "threw": "task t1 is cancelled: the attempt rotation is REFUSED for terminal work — a terminal task is never re-armed (the record "
+  },
+  {
+   "id": "refuse-failed",
+   "what": "T-79: a FAILED task",
+   "expect": "REFUSE",
+   "kept": true,
+   "before": {
+    "status": "failed",
+    "assignee": "Architect",
+    "attempt": 1,
+    "output": "EARNED-DELIVERABLE"
+   },
+   "after": {
+    "status": "failed",
+    "assignee": "Architect",
+    "attempt": 1,
+    "output": "EARNED-DELIVERABLE"
+   },
+   "threw": "task t1 is failed: the attempt rotation is REFUSED for terminal work — a terminal task is never re-armed (the record was"
+  },
+  {
+   "id": "adv-handover-in-flight",
+   "what": "OPEN + same assignee + reassigning/handoffId set (a handover in flight)",
+   "expect": "DROP?",
+   "kept": true,
+   "before": {
+    "status": "in_progress",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "EARNED-DELIVERABLE",
+    "handoffId": "h-1",
+    "reassigning": true
+   },
+   "after": {
+    "status": "claimed",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "6f25de8e-68e1-4119-a79e-3cd2e516d3ef",
+    "output": "EARNED-DELIVERABLE",
+    "reassigning": false
+   },
+   "returned": "6f25de8e-68e1-4119-a79e-3cd2e516d3ef"
+  },
+  {
+   "id": "adv-capability-revoked",
+   "what": "CLAIMED + same assignee + attemptId UNDEFINED (capability revoked)",
+   "expect": "DROP?",
+   "kept": true,
+   "before": {
+    "status": "claimed",
+    "assignee": "Architect",
+    "attempt": 1,
+    "output": "EARNED-DELIVERABLE"
+   },
+   "after": {
+    "status": "claimed",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "34756979-b49e-45cd-96e7-11754ff4ea30",
+    "output": "EARNED-DELIVERABLE",
+    "reassigning": false
+   },
+   "returned": "34756979-b49e-45cd-96e7-11754ff4ea30"
+  },
+  {
+   "id": "adv-stale-output-prev-attempt",
+   "what": "OPEN + same assignee, attempt 2, output written under attempt 1",
+   "expect": "DROP?",
+   "kept": true,
+   "before": {
+    "status": "in_progress",
+    "assignee": "Architect",
+    "attempt": 2,
+    "attemptId": "att-2",
+    "output": "EARNED-DELIVERABLE"
+   },
+   "after": {
+    "status": "claimed",
+    "assignee": "Architect",
+    "attempt": 3,
+    "attemptId": "0a00385f-7055-4802-9375-e5d770eb9542",
+    "output": "EARNED-DELIVERABLE",
+    "reassigning": false
+   },
+   "returned": "0a00385f-7055-4802-9375-e5d770eb9542"
+  },
+  {
+   "id": "adv-owner-reused-after-cancel",
+   "what": "OPEN + same assignee whose cancelled generation was re-opened by hand",
+   "expect": "DROP?",
+   "kept": true,
+   "before": {
+    "status": "in_progress",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "PRE-CANCEL"
+   },
+   "after": {
+    "status": "claimed",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "9df32588-b757-4c01-9cbf-c18b7c366701",
+    "output": "PRE-CANCEL",
+    "reassigning": false
+   },
+   "returned": "9df32588-b757-4c01-9cbf-c18b7c366701"
+  },
+  {
+   "id": "adv-same-name-different-seat",
+   "what": "OPEN + same assignee NAME, but the seat is a re-spawned member",
+   "expect": "DROP?",
+   "kept": true,
+   "before": {
+    "status": "in_progress",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "att-1",
+    "output": "EARNED-DELIVERABLE"
+   },
+   "after": {
+    "status": "claimed",
+    "assignee": "Architect",
+    "attempt": 1,
+    "attemptId": "ef3b041e-0770-473d-a099-3dbfbc4f3a30",
+    "output": "EARNED-DELIVERABLE",
+    "reassigning": false
+   },
+   "returned": "ef3b041e-0770-473d-a099-3dbfbc4f3a30"
+  }
+ ]
+}

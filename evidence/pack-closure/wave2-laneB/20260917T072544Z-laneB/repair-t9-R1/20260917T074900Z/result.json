@@ -1,0 +1,58 @@
+{
+  "schema": "laneB/repair-t9-R1/1",
+  "captured_at": "2026-09-17T07:49:21.210Z",
+  "finding": "t9-R1 — the pre-existing REQUIRED_ROOT_FILES byte rule hard-reddened for a POST-PACK WRITER (t25, lane B2, T-72 carry-forward) instead of classifying it",
+  "repair": "rule 5b keeps its EXISTENCE half; its BYTE half moved into the content sweep as a third pass over REQUIRED_ROOT_FILES with compareBytes(..., ROOT_FILE_KIND), so the kind survives and the EXPECTED class applies",
+  "readings": {
+    "closure": {
+      "exitCode": 0,
+      "verdict": "ok",
+      "content": "content bytes: 1181 file(s) compared, 1160 identical, 0 drift, 21 expected-after-pack",
+      "completeness": "completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent"
+    },
+    "closureSelftest": {
+      "exitCode": 0,
+      "arms": "self-test PASS: 34/34 arms",
+      "by_design_fail_lines": 16
+    },
+    "distFreshSelftest": {
+      "exitCode": 0,
+      "arms": "12/12"
+    },
+    "distFreshExtPlugin": {
+      "exitCode": 0,
+      "line": "[verify-dist-fresh] ok: 2/2 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 172ms"
+    },
+    "distFreshTuiPlugin": {
+      "exitCode": 0,
+      "line": "[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 111ms"
+    }
+  },
+  "writer_named": {
+    "task": "t25",
+    "lane": "B2 (citation-checker-engineer, T-72 carry-forward) - path_owner read",
+    "path": "EXTENSIONS-FOR-AGENTS.md",
+    "source": {
+      "sha256": "a7e57dec8e8017b5c76b035798a17df56619cb5e27fcb3a0c16e63ef6562beb5",
+      "sha256_16": "a7e57dec8e8017b5",
+      "bytes": 15636,
+      "mtime": "2026-09-17T07:43:40.983Z"
+    },
+    "artifact": {
+      "sha256": "5d935524b7db27ea47d3cda913a7f53541b3db2457e7097360f92cd59ee50f27",
+      "sha256_16": "5d935524b7db27ea",
+      "bytes": 15660,
+      "mtime": "2026-09-17T05:19:48.162Z"
+    },
+    "reported_as": "[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - EXTENSIONS-FOR-AGENTS.md: source mtime 2026-09-17T07:43:40.983Z is AFTER the artifact stamp 2026-09-17T05:19:48.265Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation"
+  },
+  "handoff_to_t18": "this is a POST-PACK drift by design: the artifact carries the 05:19:48Z bytes and t25's rewrite landed at 07:43:40Z. The gate now names it as EXPECTED instead of reddening; the reading clears at the captain's ONE re-pack in t18, where the artifact catches up with every lane's writes (the wave's single re-pack, one writer at a time).",
+  "digests": {
+    "build-result.mjs": "2367abc9159259c5",
+    "closure-selftest.log": "824039de2553665e",
+    "closure.log": "f76a33f3771ec420",
+    "dist-fresh-ext-plugin.log": "7ffc04a92c627030",
+    "dist-fresh-selftest.log": "d7d7c48179768ff6",
+    "dist-fresh-tui-plugin.log": "d7f1a0389a0bde97"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "task": "t33 — review — falsify t24: the T-73 data-loss fix, attacked in BOTH directions (keeps too little / keeps too much)",
+  "reviewedTask": "t24",
+  "kind": "review",
+  "attemptId": "919981f3-c71b-4019-bb2b-93bdde177804",
+  "reviewer": "code-reviewer",
+  "date": "2026-09-17",
+  "verdict": "pass",
+  "pinnedRevisions": {
+    "pin1Utc": "2026-09-17T08:34:15Z",
+    "pin2Utc": "2026-09-17T08:39:17Z",
+    "pin3Utc": "2026-09-17T08:39:27Z",
+    "t73SubjectsStableAcrossReview": {
+      "packages/mpd-agent-teams-plugin/lib/state.js": "6092febdb28e66c8 (PIN-1 == PIN-2 == PIN-3)",
+      "packages/mpd-agent-teams-plugin/self-fix-tests/composed-ticket-output-preserved.test.mjs": "82f578cfd4857f46 (PIN-1 == PIN-2 == PIN-3)",
+      "packages/mpd-agent-teams-plugin/lib/scheduler.js": "4b824797195996fa (PIN-1 == PIN-2)"
+    },
+    "movedByT21InFlight": {
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "21226fb694ff7f26 (79 regions) -> 6dce6f1f3598c77b (81 regions)",
+      "agent-references/agent-teams-deltas.md": "7c12851990f5f6b1 (sentence 79) -> 8716eaf51b0e32b8 (sentence 81)",
+      "packages/mpd-agent-teams-plugin/lib/tools.js": "pre-t21 5fe18cdf62af6801 -> in-flight b08a7d6c38194311 -> 6021bf6dfce594ed"
+    }
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "Every claim in t24's output is REPRODUCED independently on a pinned revision (quote command + reading) — including the wipe on a pre-fix tree and the deliverable intact on the fixed tree",
+      "status": "passed",
+      "evidence": "FIXED TREE: `bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/composed-ticket-output-preserved.test.mjs` -> 6 pass / 0 fail, exit 0 (1 file). WIPE ON A PRE-FIX TREE, two independent ways: (a) the author's instrument reproduced by me — `bun evidence/agent-teams/composed-ticket-output/20260917T075659Z/prefix-tree-run.mjs` -> its own exit 0 with runs='pre-fix tree (HEAD state.js): exit 1, failed 2, passed 4', failedCases naming 'the deterministic probe' and the negative control; (b) MY OWN out-of-band revert (a copy of the package at `evidence/review/t24-t73/20260917T083415Z/revert/t73-pkg`, `self-fix-tests` renamed `arms-hidden`, then `if (!sameGenerationRedispatch)` -> `if (true)` — every rotation clears again, occurrence count asserted 1) -> `bun test <copy>/arms-hidden/composed-ticket-output-preserved.test.mjs` -> exit 1, 5 pass / 1 fail, and the failure diff is the wipe exactly: `before={\"output\":\"THE STORED DELIVERABLE — findings the member already recorded on this task\",\"status\":\"in_progress\",\"attempt\":1} after={\"status\":\"claimed\",\"attempt\":2}`, Expected the deliverable, Received `undefined` — i.e. status claimed, attempt 1→2, output GONE. The copy was deleted after the run (readings kept). My own driver also reproduces the keep on the shipped tree (below)."
+    },
+    {
+      "criterion": "THE DANGEROUS DIRECTION IS ATTACKED EXPLICITLY: at least one case per clearing path (pending first dispatch / amend-invalidated generation / handover), each dropping `output`; and the 'clearing is now an explicit invalidateTaskAttempt action' claim falsified, not restated",
+      "status": "passed",
+      "evidence": "MY OWN driver `my-clearing-paths.mjs` (imports the REAL lib/state.js, crafts records, no author harness) — ALL FOUR DROP-PATHS DROP: `drop-pending-first-dispatch` (status pending + leftover output -> output ABSENT, status claimed), `drop-handover-compose` (open + incoming assignee Beta -> ABSENT — and note this clear came from activateTaskAttempt ITSELF, no invalidate call), `drop-amend-chain` (invalidateTaskAttempt(Beta,true) then beginTaskAttempt -> ABSENT, the invalidate cleared first), `drop-unassigned-incoming` (open, no assignee -> ABSENT). KEEPS are exactly the declared same-generation re-dispatch: `keep-same-generation-in_progress` and `keep-same-generation-claimed` (output intact; status claimed; attempt 1→2). The author's sentence is FALSIFIED AS PHRASING (observation O1): clearing is not only an explicit invalidate action — `activateTaskAttempt` still clears as its own side effect for both the pending and the cross-assignee shapes; the outcomes are as specified, the mechanism sentence over-states it."
+    },
+    {
+      "criterion": "The arm is shown able to REDDEN (pre-fix tree), with BOTH readings kept",
+      "status": "passed",
+      "evidence": "Both kept side by side: shipped tree 6 pass / 0 fail exit 0 (`revert/arm-on-shipped.out`); my reverted copy 5 pass / 1 fail exit 1 with the probe failing (`revert/arm-on-reverted.out`), plus the author's prefix-tree run reproduced (2 failed / 4 passed on the HEAD-state tree). The in-arm negative control (case 2) neutralises the new condition in a scratch copy and requires the wipe to reappear — it passes on the shipped tree and, on my reverted copy, the probe is the failing case."
+    },
+    {
+      "criterion": "T-79's state half is shown un-regressed in the SAME function, joint reading left to F-2",
+      "status": "passed",
+      "evidence": "My driver: `refuse-completed`, `refuse-cancelled`, `refuse-failed` all THROW ('task t1 is completed/cancelled/failed: the attempt rotation is REFUSED') with the record untouched (output intact, attempt unchanged) — `assertTaskRearmable` runs above the T-73 condition in the same function, measured. `bun test ./packages/mpd-agent-teams-plugin/self-fix-tests/terminal-rearm-refusal.test.mjs` -> 6 pass / 0 fail, 1 file, exit 0. The JOINT reading is explicitly left to F-2 on the merged tip — I do not read this arm as the whole of T-79."
+    },
+    {
+      "criterion": "The shared derived value is verified end-to-end (registry 79 + --check exit 0 + the new region in registry AND source + the derived count sentence and pointer range true, verify:docs exit 0)",
+      "status": "passed",
+      "evidence": "CURRENT revision (the registry MOVED 79 → 81 during this review, by t21's regeneration; see O2): `node scripts/patch-agent-teams-fixes.mjs --check` -> exit 0, 'already applied: 81 mpd delta region(s) across 9 adopted file(s)'; registry ids = 81; `bun run verify:docs` -> exit 0, pairs=37 failed=0 violations=0 exempt=17 derived=3, with the DERIVED note 'agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **81**/9 vs derived 81/9 … (live `//#region mpd-delta` markers agree: 81)' and the doc sentence now reading 'live registry is **81** regions across **9**' — registry and sentence AGREE, so there is NO drift finding. t24's own region is present in BOTH: `mpd-delta composed-ticket-output-preserved` x2 in lib/state.js and x2 in lib/mpd-deltas.js. t24's 79-region reading was correct at ITS revision; the number moved afterwards."
+    },
+    {
+      "criterion": "Findings, if any, are structured and FAIL this task; the review is independent (no self-approval)",
+      "status": "passed",
+      "evidence": "No blocking finding: nothing in t24's output was falsified. Five non-blocking observations are recorded below (O1 phrasing, O2 state move, O3 transient red attributed, O4 name-keyed identity bound, O5 preserved-output semantics). I authored nothing in t24/t33's objects; the objects were read from disk and re-measured with my own instruments."
+    }
+  ],
+  "observations": [
+    { "id": "O1", "severity": "low", "file": "packages/mpd-agent-teams-plugin/lib/state.js", "problem": "The region comment says clearing 'becomes an explicit invalidate action instead of a side effect of every compose'. Measured with my driver: `activateTaskAttempt` STILL clears `output` itself for the pending and cross-assignee shapes (`drop-handover-compose` cleared with no invalidate call), so the sentence over-states the mechanism even though the outcomes match the acceptance.", "requiredFix": "reword to: the three clearing shapes still clear — for handover/amend the reassign path clears explicitly first and the compose keeps its own clear as a backstop; only a same-owner re-dispatch of an OPEN generation keeps `output`." },
+    { "id": "O2", "severity": "info", "file": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js", "problem": "The shared derived value MOVED during this review (79 → 81 regions, doc sentence 79 → 81) because t21 is in flight and regenerated the registry; the derived arm agrees (81/9), so no drift. Recorded so t24's 79-era numbers are not read as false.", "requiredFix": "none; the captain's t21/t32 chain owns the number." },
+    { "id": "O3", "severity": "info", "file": "packages/mpd-agent-teams-plugin/lib/tools.js", "problem": "TRANSIENT RED, attributed and resolved: while t21's edit was unregistered, the self-fix dir read 91 pass / 16 fail and `--check` FAILED with 'delta \"mpd-delta status-pause-mechanisms\" … no longer matches this script's registered block … run --write-registry'. All 15 heal arms and the 1 'T-19 … names BOTH pause mechanisms' arm follow mechanically from that out-of-sync registry / the old assertion; after t21 regenerated the registry the same commands read 108 pass / 0 fail (15 files) and --check exit 0 (81 regions). NOT a t24 regression.", "requiredFix": "none for t24; t21's own verify must re-take the status-surface arm the collapse invalidated." },
+    { "id": "O4", "severity": "low", "file": "packages/mpd-agent-teams-plugin/lib/state.js", "problem": "The keep-decision keys on the assignee NAME (`task.assignee === assignee`): a re-spawned member wearing the same name inherits the kept deliverable (measured in `adv-same-name-different-seat`). The code model has no stronger seat identity, and the pre-fix behaviour wiped everything, so this is a design bound rather than a regression.", "requiredFix": "none; recorded as a bound for any future identity work." },
+    { "id": "O5", "severity": "low", "file": "packages/mpd-agent-teams-plugin/lib/state.js", "problem": "A preserved deliverable survives an attempt rotation, so after the compose the record reads `attempt: N+1` with a NEW attemptId while `output` holds bytes produced under attempt N (measured: attempt 1 → 2 with the bytes intact). That is the intended recoverOwned keep, and T-46's replacement guard covers a later different long summary (the author's stated bound) — but a consumer reading `output` as 'the current attempt's deliverable' now sees a stale one.", "requiredFix": "none; documented here so the semantic is explicit." }
+  ],
+  "bounds": [
+    "Three adversarial keep-shapes are NOT reachable from the shipped paths and stay synthetic probes: `open + reassigning/handoffId set` (the only `reassigning = true` site is `invalidateTaskAttempt`, which sets `pending` and clears), `claimed + attemptId undefined` (the undefined-assignment sites set `pending` or `cancelled`), and `cancelled-then-hand-reopened` (cancelled is terminal and refused). Verified by a reachability audit of every status/attemptId/reassigning assignment site in lib/*.js.",
+    "The joint T-79 reading stays F-2's on the merged tip.",
+    "My revert copy lived at evidence/review/t24-t73/20260917T083415Z/revert/t73-pkg with `self-fix-tests` renamed `arms-hidden` (T-89: no substring filter could reach it) and was DELETED after the run; every reading is kept in revert/*.out.",
+    "All suite commands used the `./` PATH form; the self-fix dir reading names its discovered set (15 files)."
+  ]
+}

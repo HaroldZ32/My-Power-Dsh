@@ -1,0 +1,222 @@
+{
+  "task": "t30 review-round-2 \u2014 falsify lane B's repaired evidence driver (reviewed: t29)",
+  "reviewer": "watchdog-engineer (lane C)",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [],
+  "finishedAt": "2026-09-17T08:37:19Z",
+  "revision": {
+    "head": "c826f16",
+    "closure_gate_sha256": "c0814334013c0da50317e8e64a4b6a341ae31cb6402cdc9dbf937dfd1b745e7d",
+    "dist_fresh_sha256": "0df995fc98f7450c2e29b50c20150e6e8e16ffe5b170d1939a54c80a538c8d5a",
+    "packer_sha256": "95d55ab9fda96bafc16e3a3e6388c4ab6e773706b71e9b8f75c0510e5071dbcd",
+    "driver_sha256": "cae90588897ecb0d5c1fad494c35227ed29e6ce739ab547750058a954a7ab0eb",
+    "artifact_stamp": "ff5f96da7c43a056",
+    "artifact_files": 1190,
+    "artifact_stamp_method": "sha256 over the UNSORTED `find dist/mpd-package -type f -printf '%P\\t%s\\t%T@\\n'` listing (+ file count)",
+    "artifact_untouched": true
+  },
+  "F1_closure": {
+    "fresh_dir_run_exit": 0,
+    "steps_executed": 11,
+    "harnesses_regenerated_in_fresh_dir": [
+      "t67-build-form-diff.json",
+      "t63-t76-seeded-mutation.json",
+      "t63-out-flag-equivalence.json",
+      "t67-round-trip.json"
+    ],
+    "resolved_harnesses_from": "/root/dshProj/my-power-dsh/evidence/pack-closure/wave2-laneB/20260917T072544Z-laneB",
+    "output_dir": "/root/dshProj/my-power-dsh/evidence/pack-closure/review-B/20260917T084000Z-t30/fresh-run",
+    "error_path_falsified": {
+      "method": "one harness copy replaced with a non-JSON printer, scratch dir",
+      "driver_exit": 1,
+      "harness_parse_errors": {
+        "t67-build-form-diff": "no JSON object found in the harness output"
+      }
+    }
+  },
+  "F2_closure": {
+    "probes_planted": [
+      "planted-empty.tmp (0 bytes)",
+      "planted-old.txt (non-empty, mtime 07:00Z)"
+    ],
+    "digests": 17,
+    "digests_skipped": {
+      "driver.stdout.log": "empty file at digest time (0 bytes) - not evidence",
+      "planted-empty.tmp": "empty file at digest time (0 bytes) - not evidence"
+    },
+    "empty_probe": "skipped with reason",
+    "old_nonempty_probe": "digested (documented rule)",
+    "result_json": "excludes itself"
+  },
+  "acceptance": [
+    {
+      "i": 0,
+      "status": "passed"
+    },
+    {
+      "i": 1,
+      "status": "passed"
+    },
+    {
+      "i": 2,
+      "status": "passed"
+    },
+    {
+      "i": 3,
+      "status": "passed"
+    },
+    {
+      "i": 4,
+      "status": "passed"
+    },
+    {
+      "i": 5,
+      "status": "passed"
+    },
+    {
+      "i": 6,
+      "status": "passed"
+    },
+    {
+      "i": 7,
+      "status": "passed"
+    },
+    {
+      "i": 8,
+      "status": "passed"
+    }
+  ],
+  "falsification_legs": {
+    "mutation_bytes_templates": {
+      "target": "templates/mpd-extension/server.mjs",
+      "exitCode": 1,
+      "hard_findings_naming_target": 1,
+      "expected_findings_naming_target": 0,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] FAIL - 1 closure violation(s)",
+        "  CONTENT-DRIFT - templates/mpd-extension/server.mjs differs byte-wise from /root/dshProj/my-power-dsh/templates/mpd-extension/server.mjs (source 8e97014e099d\u2026 / 4243 B, artifact 347917014a93\u2026 / 4308 B) and the source was NOT written after the artifact stamp 2026-09-17T05:19:48.265Z (source mtime 2026-09-16T08:24:20.513Z) - the artifact ships bytes no reading was taken on (T-63)",
+        "  packed tree: /tmp/t13-falsify-ECRbcT/mutated-bytes-templates (379 asset files); content bytes: 1181 file(s) compared, 1155 identical, 1 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp))"
+      ]
+    },
+    "mutation_deleted_templates": {
+      "target": "templates/mpd-extension/server.mjs",
+      "exitCode": 1,
+      "hard_findings_naming_target": 0,
+      "expected_findings_naming_target": 0,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] FAIL - 2 closure violation(s)",
+        "  packed tree: /tmp/t13-falsify-ECRbcT/deleted-templates (378 asset files); content bytes: 1180 file(s) compared, 1155 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 404 present, 1 declared exemption(s), 1 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp))"
+      ]
+    },
+    "mutation_bytes_skills": {
+      "target": "skills/ultimate-browsing/SKILL.md",
+      "exitCode": 1,
+      "hard_findings_naming_target": 1,
+      "expected_findings_naming_target": 0,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] FAIL - 1 closure violation(s)",
+        "  CONTENT-DRIFT - skills/ultimate-browsing/SKILL.md differs byte-wise from /root/dshProj/my-power-dsh/skills/ultimate-browsing/SKILL.md (source 76e5c14e2e66\u2026 / 11220 B, artifact a83b959f32b8\u2026 / 11285 B) and the source was NOT written after the artifact stamp 2026-09-17T05:19:48.265Z (source mtime 2026-09-14T18:22:57.454Z) - the artifact ships bytes no reading was taken on (T-63)",
+        "  packed tree: /tmp/t13-falsify-ECRbcT/mutated-bytes-skills (379 asset files); content bytes: 1181 file(s) compared, 1155 identical, 1 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp))"
+      ]
+    },
+    "mutation_deleted_skills": {
+      "target": "skills/ultimate-browsing/SKILL.md",
+      "exitCode": 1,
+      "hard_findings_naming_target": 0,
+      "expected_findings_naming_target": 0,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] FAIL - 1 closure violation(s)",
+        "  packed tree: /tmp/t13-falsify-ECRbcT/deleted-skills (378 asset files); content bytes: 1180 file(s) compared, 1155 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 404 present, 1 declared exemption(s), 1 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp))"
+      ]
+    },
+    "mutation_bytes_docs": {
+      "target": "docs/review-p0-p3.md",
+      "exitCode": 1,
+      "hard_findings_naming_target": 1,
+      "expected_findings_naming_target": 0,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] FAIL - 1 closure violation(s)",
+        "  CONTENT-DRIFT - docs/review-p0-p3.md differs byte-wise from /root/dshProj/my-power-dsh/docs/review-p0-p3.md (source e664a37cf7ab\u2026 / 6826 B, artifact 97d07934cf85\u2026 / 6891 B) and the source was NOT written after the artifact stamp 2026-09-17T05:19:48.265Z (source mtime 2026-09-15T09:57:18.419Z) - the artifact ships bytes no reading was taken on (T-63)",
+        "  packed tree: /tmp/t13-falsify-ECRbcT/mutated-bytes-docs (379 asset files); content bytes: 1181 file(s) compared, 1155 identical, 1 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp))"
+      ]
+    },
+    "mutation_deleted_docs": {
+      "target": "docs/review-p0-p3.md",
+      "exitCode": 1,
+      "hard_findings_naming_target": 0,
+      "expected_findings_naming_target": 0,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] FAIL - 2 closure violation(s)",
+        "  packed tree: /tmp/t13-falsify-ECRbcT/deleted-docs (378 asset files); content bytes: 1180 file(s) compared, 1155 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 404 present, 1 declared exemption(s), 1 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp))"
+      ]
+    },
+    "mutation_root_file": {
+      "target": "EXTENSIONS-FOR-AGENTS.md",
+      "exitCode": 0,
+      "hard_findings_naming_target": 0,
+      "expected_findings_naming_target": 1,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/t13-falsify-ECRbcT/mutated-root (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js"
+      ]
+    }
+  },
+  "falsification_verdicts": {
+    "clean_control_green": true,
+    "packed_byte_mutation_reddens_and_is_NAMED": true,
+    "packed_file_deletion_detected": true,
+    "per_group_legs": 3,
+    "root_file_packed_mutation_class": "REPORTED in the EXPECTED class (exit 0; lane B's REPORT.md \u00a75 bound 1 predicts exactly this)"
+  },
+  "gate_readings": {
+    "closure": {
+      "command": "node scripts/verify-pack-closure.mjs",
+      "exitCode": 0,
+      "evidence": "[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - EXTENSIONS-FOR-AGENTS.md: source mtime 2026-09-17T07:43:40.983Z is AFTER the artifact stamp 2026-09-17T05:19:48.265Z (a"
+    },
+    "closure_selftest": {
+      "command": "node scripts/verify-pack-closure.mjs --self-test",
+      "exitCode": 0,
+      "evidence": "[verify-pack-closure] self-test PASS: 34/34 arms"
+    },
+    "dist_fresh": {
+      "command": "node scripts/verify-dist-fresh.mjs",
+      "exitCode": 0,
+      "evidence": "[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) \u2014 7 NOT COVERED files listed \u2014 490ms"
+    },
+    "dist_fresh_ext": {
+      "command": "node scripts/verify-dist-fresh.mjs --only mpd-ext-plugin",
+      "exitCode": 0,
+      "evidence": "[verify-dist-fresh] ok: 2/2 targets fresh (each rebuilt twice, byte-identical) \u2014 7 NOT COVERED files listed \u2014 53ms"
+    },
+    "dist_fresh_tui": {
+      "command": "node scripts/verify-dist-fresh.mjs --only mpd-tui-plugin",
+      "exitCode": 0,
+      "evidence": "[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) \u2014 7 NOT COVERED files listed \u2014 39ms"
+    },
+    "dist_fresh_selftest": {
+      "command": "node scripts/verify-dist-fresh.mjs --self-test",
+      "exitCode": 0,
+      "evidence": "[verify-dist-fresh self-test] 12/12 arms passed \u2014 PASS"
+    }
+  },
+  "bounds": [
+    "the repaired driver requires the output dir to exist (loud throw, exit 1) rather than creating it",
+    "digests mixes run-written and inherited-but-eligible files; the header documents the rule and exclusions carry reasons, but there is no per-entry run-written flag",
+    "verify-gates exit 1 is lane D's corpus condition, recorded as expected:reported (t18 owns the aggregate)",
+    "no live dsh boot; no skills/** write; no git write; canonical artifact never written"
+  ],
+  "evidence_dir": "evidence/pack-closure/review-B/20260917T084000Z-t30",
+  "digests": {
+    "REVIEW.md": "71c023182996dc84",
+    "ar-absent.log": "29f20d8fd1a50be8",
+    "ar-bytes.log": "ce0a9df23e331ab4",
+    "closure-selftest.log": "e5af84a4ed54f3d2",
+    "closure.log": "6e5ab7269b0a5918",
+    "dist-fresh-ext.log": "5bd00d5fb2fd7da9",
+    "dist-fresh-selftest.log": "d7d7c48179768ff6",
+    "dist-fresh-tui.log": "add0bda0cb5bbe6f",
+    "dist-fresh.log": "a623c4cbae4e19b9",
+    "gates-round2.log": "54f067d67ce74a99"
+  }
+}

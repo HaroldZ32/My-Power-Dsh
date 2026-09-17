@@ -89,6 +89,18 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+        id: "mpd-delta repair-source-open-edge",
+        beforeContext: [
+            "        dependencies.push(input.reviewedTaskId);",
+            "    }",
+        ],
+        afterContext: [
+            "    for (const dependency of dependencies) {",
+        ],
+        block: "    //#region mpd-delta repair-source-open-edge (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n    // T-81 (wave 2, lane A) — the repair auto-wire DEADLOCKED on an OPEN source.\n    //\n    // MEASURED (wave 1, `t21`): a repair created on a task whose own `verify` was blocked by the\n    // very defect the repair existed to fix acquired the implicit edge `repair -> source`, so the\n    // repair waited for a source that could only complete AFTER the repair; the captain had to\n    // take the task over to break the cycle. The edge's stated purpose — \"a repair must wait for\n    // its source implementation before it can touch the same paths\" (the comment above) — holds\n    // only for a source that has ALREADY finished: for an OPEN source the source is not a\n    // deliverable to wait for, and waiting can park the pair forever.\n    //\n    // The edge is therefore kept for every NON-open source: `completed` keeps the protection, and\n    // `failed`/`cancelled` KEEP the edge so the refusal loop below still fires (`repair must not\n    // depend on failed task …`) — that guard is a regression control of this change, not a\n    // casualty of it. `sourceTaskId` stays on the record either way: provenance is not a\n    // dependency.\n    const repairSource = kind === 'repair' && input.sourceTaskId !== undefined\n        ? team.tasks.find((item) => item.id === input.sourceTaskId)\n        : undefined;\n    if (kind === 'repair' && input.sourceTaskId !== undefined && !dependencies.includes(input.sourceTaskId)\n        && (repairSource === undefined || !OPEN_STATUSES.includes(repairSource.status))) {\n        dependencies.push(input.sourceTaskId);\n    }\n    //#endregion mpd-delta repair-source-open-edge",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
         id: "mpd-delta scope-overlap-refusal",
         beforeContext: [
             "            if (overlap.length > 0) {",
@@ -133,6 +145,17 @@ export const MPD_DELTAS = [
             "import { randomUUID } from 'node:crypto';",
         ],
         block: "//#region mpd-delta artifact-channel-imports (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n// T-09/T-10 (wave 1, t19): the artifact channel is the FIRST file-writing code in this\n// adopted module, and the guard needs path arithmetic + lstat. Two import statements from\n// the same specifier keep the upstream line above byte-untouched (purely ADDITIVE region).\nimport { dirname, isAbsolute, relative, resolve, sep } from 'node:path';\nimport { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';\n//#endregion mpd-delta artifact-channel-imports",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta strict-tool-arguments",
+        beforeContext: [
+            "import { resolveTeamProfile } from \"./profiles.js\";",
+        ],
+        afterContext: [
+            "/** The caller agent, or a loud failure for non-agent callers. */",
+        ],
+        block: "//#region mpd-delta strict-tool-arguments (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n// T-61 (wave 2, lane A) — an UNKNOWN argument name must be LOUD, never a successful no-op.\n//\n// MEASURED (wave 1, `t35`'s post-completion note): the snake-case payload\n// `output_append` (and earlier `acceptance_results` / `commands_run`) was reported as APPLIED\n// while NOTHING was stored — the call returned success, the task record was byte-identical, and\n// the one channel meant to repair an unrecoverable terminal record was silently unavailable.\n// Root cause, read from the adopted code: `defineTool` compiles the flat parameter map with NO\n// `additionalProperties:false` (`_deps/dsh-tools/lib/index.js`, `parameterSchemaSpecToJsonSchema`),\n// so unknown keys pass validation and are simply never read by `execute`.\n//\n// The check is deliberately FIRST in `execute` (before any read, lock or write): a refused call\n// must leave the workspace byte-identical. `UPDATE_TASK_ARGUMENT_NAMES` is the literal list of\n// the tool's declared parameters — the drill arm\n// (`self-fix-tests/strict-task-arguments.test.mjs`) pins it against the registered definition's\n// compiled schema key set, so adding a parameter without extending this list reddens the arm\n// instead of silently disabling the guard for that key.\nexport const UPDATE_TASK_ARGUMENT_NAMES = [\n    'task_id',\n    'status',\n    'output',\n    'output_append',\n    'artifact',\n    'replace_output',\n    'attempt_id',\n    'verdict',\n    'findings',\n    'changedPaths',\n    'acceptanceResults',\n    'commandsRun',\n    'amend',\n];\n/**\n * Refuse an argument object carrying any key the tool does not declare.\n * @param toolName - the tool's registered name, used in the message.\n * @param declaredNames - every argument name the tool declares.\n * @param args - the raw arguments payload, however malformed.\n * @returns nothing when every key is declared.\n */\nexport function assertKnownToolArguments(toolName, declaredNames, args) {\n    const declared = new Set(declaredNames);\n    const supplied = args === undefined || args === null ? [] : Object.keys(args);\n    const unknown = supplied.filter((key) => !declared.has(key));\n    if (unknown.length === 0) {\n        return;\n    }\n    const named = unknown.map((key) => `\"${key}\"`).join(', ');\n    throw new Error(\n        `${toolName}: unknown argument name(s) ${named} — the call was REFUSED and NOTHING was stored.`\n        + ` Declared arguments: ${declaredNames.join(', ')}.`\n        + ' A snake_case payload (e.g. \"acceptance_results\" for \"acceptanceResults\") used to be'\n        + ' accepted as a successful no-op; rename the key(s) and repeat the call.',\n    );\n}\n//#endregion mpd-delta strict-tool-arguments",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
@@ -315,6 +338,24 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta strict-tool-arguments-apply",
+        beforeContext: [
+            "                    text: `Task ${value.task_id} attempt ${value.attempt} → ${value.status}${value.output !== undefined ? `\\nOutput: ${value.output}` : ''}`,",
+            "                }],",
+            "        },",
+            "        async execute(args, exec) {",
+        ],
+        afterContext: [
+            "            const caller = requireCaptain(exec);",
+            "            const workspace = workspaceOf(caller);",
+            "            const stateRoot = stateRootOf(workspace, config);",
+            "            const team = await requireParticipantTeam(workspace, config, caller);",
+            "            const updated = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {",
+        ],
+        block: "            //#region mpd-delta strict-tool-arguments-apply (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n            // T-61: the FIRST statement of the call path — an unknown argument name is refused\n            // before the caller is resolved, before the team lock and before any write, so a\n            // typo'd payload can never be reported as APPLIED while storing nothing.\n            assertKnownToolArguments('agent_teams_update_task', UPDATE_TASK_ARGUMENT_NAMES, args);\n            //#endregion mpd-delta strict-tool-arguments-apply",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
         id: "mpd-delta update-task-amend-owned-task",
         beforeContext: [
             "            const updated = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {",
@@ -398,6 +439,17 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta terminal-stale-attempt-refusal",
+        beforeContext: [
+            "                if (TERMINAL_TASK_STATUSES.includes(task.status)) {",
+        ],
+        afterContext: [
+            "                    const sameStatus = args.status === undefined || args.status === task.status;",
+        ],
+        block: "                    //#region mpd-delta terminal-stale-attempt-refusal (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                    // T-79 STATE HALF (wave 2, lane A) — a STALE capability on terminal work.\n                    //\n                    // The three blocks above admit the sanctioned terminal mutations (artifact /\n                    // output_append / amend) and the immutable-field guard refuses a real CHANGE.\n                    // What was left was the idempotent path: a caller presenting a capability that\n                    // no longer exists was answered SUCCESS with the stored record, so a replayed\n                    // ticket (wave 2: `t1` re-sent to its completed seat) got a green answer for an\n                    // attempt that had already ended. A capability that does not match the stored\n                    // one cannot be current on a finished task, so the refusal names the terminal\n                    // status and the stored capability and points at the ONE sanctioned revive.\n                    if (args.attempt_id !== undefined && args.attempt_id !== '' && args.attempt_id !== task.attemptId) {\n                        throw new Error(`task ${task.id} is ${task.status}: the supplied attempt_id \"${args.attempt_id}\" does not match the stored capability (${task.attemptId ?? 'none'}) — terminal work is never re-armed, so a stale capability cannot update it. Read the record with agent_teams_task_contract, or retry failed/cancelled work with agent_teams_reassign_task (a FRESH attempt id).`);\n                    }\n                    //#endregion mpd-delta terminal-stale-attempt-refusal",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
         id: "mpd-delta update-task-amend-running",
         beforeContext: [
             "                const commandsRun = parseCommandResults(args.commandsRun);",
@@ -470,6 +522,17 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta pause-surface-apply",
+        beforeContext: [
+            "            const loop = describeQualityLoop(team);",
+        ],
+        afterContext: [
+            "            const result = {",
+        ],
+        block: "            //#region mpd-delta pause-surface-apply (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n            // T-19 surface 2 (t21): the ONE pause mechanism is computed ONCE, here, and carried by the\n            // payload, so the rendered line and any structured reader agree by construction. Display\n            // only — see `mpd-delta pause-surface-helper` for the fail-open read and the ruling.\n            const pause = pauseSurfaceOf(ctx, team, workspace, loop.halted === true);\n            //#endregion mpd-delta pause-surface-apply",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
         id: "mpd-delta wave-status",
         beforeContext: [
             "                phase: team.phase ?? 'running',",
@@ -527,6 +590,17 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta pause-surface-helper",
+        beforeContext: [
+            "/** Render the status snapshot as compact text for the model. */",
+        ],
+        afterContext: [
+            "function renderStatus(value) {",
+        ],
+        block: "//#region mpd-delta pause-surface-helper (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n// T-19 surface 2 (wave 2, t21) — ONE pause mechanism on the status surface.\n//\n// THE RULING (user, frozen by t3): \"`agent_teams_halt` becomes the SOLE external mechanism; the\n// watchdog's PRESERVING hold is demoted to its internal implementation. Surface, tools and docs\n// expose one mechanism.\" The wave-1 line here did the opposite: it named the hold as a PEER and\n// deferred to another status surface, so an operator reading it while a hold was set saw\n// `agent-teams halt not active` — a true sentence that reads as \"the team is running\".\n//\n// The hold is read for DISPLAY ONLY, through the watchdog's own service, using the same cordis\n// inject-free lookup (`ctx.get(name, false)`) the scheduler's own hold reader uses — the reader\n// REGION itself stays out of this file (its id is deliberately not spelled here: `lib/scheduler.js`\n// owns it, and a self-fix pin asserts this file carries no copy). This read gates NOTHING: the tool-boundary guards stay deleted (D25-D26) and\n// the dispatch gate stays in the scheduler, because a hold must stop new dispatch only and must\n// never refuse a member's own claim/update/kick. It is FAIL-OPEN and non-throwing: an absent or\n// throwing reader reports `not-readable`, never a guessed hold.\n//\n// LIVE-VS-DURABLE: the service covers this process's holds and falls back to the durable\n// `watchdog/hold/<teamId>.json` record another process wrote (its own view reports which it used).\nconst PAUSE_MECHANISM = 'agent_teams_halt';\nconst PRESERVING_HOLD_SERVICE = 'mpdWatchdog';\n/** The one pause mechanism, its state, and the internal hold view behind it. */\nfunction pauseSurfaceOf(ctx, team, workspace, halted) {\n    const internal = (() => {\n        try {\n            const watchdog = typeof ctx?.get === 'function' ? ctx.get(PRESERVING_HOLD_SERVICE, false) : undefined;\n            const view = typeof watchdog?.isHeld === 'function' ? watchdog.isHeld(team.id, workspace) : undefined;\n            if (view === undefined || view === null)\n                return { state: 'not-readable' };\n            if (view.held !== true)\n                return { state: 'not-held' };\n            return {\n                state: 'held',\n                hold_id: String(view.holdId ?? ''),\n                at: typeof view.at === 'number' ? view.at : 0,\n                reason: String(view.reason ?? ''),\n                source: view.source === undefined ? null : String(view.source),\n            };\n        }\n        catch {\n            return { state: 'not-readable' };\n        }\n    })();\n    return {\n        mechanism: PAUSE_MECHANISM,\n        active: halted === true || internal.state === 'held',\n        halt: halted === true,\n        internal_implementation: {\n            kind: 'team-watchdog-preserving-hold',\n            ...internal,\n            released_by: 'session-watchdog-resume',\n        },\n    };\n}\n/** The internal-implementation clause of the ONE pause line (diagnostics survive the collapse). */\nfunction describePause(pause) {\n    const internal = pause?.internal_implementation;\n    if (pause === undefined)\n        return 'pause state not carried by this payload';\n    if (internal?.state === 'held') {\n        const since = internal.at > 0 ? new Date(internal.at).toISOString() : 'an unrecorded time';\n        const reason = internal.reason === '' ? '(no reason recorded)' : internal.reason;\n        return `hold ${internal.hold_id === '' ? '(no id)' : internal.hold_id} set since ${since} — ${reason} (released only by its own session-watchdog-resume)`;\n    }\n    if (internal?.state === 'not-held')\n        return 'no hold is set';\n    return 'hold state not readable on this host (the watchdog service is not loaded)';\n}\n//#endregion mpd-delta pause-surface-helper",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
         id: "mpd-delta wave-render",
         beforeContext: [
             "        `Team \"${team.team_name}\"${team.description ? ` — ${team.description}` : ''}${flags.length > 0 ? ` [${flags.join(', ')}]` : ''}`,",
@@ -545,7 +619,7 @@ export const MPD_DELTAS = [
         afterContext: [
             "        ...team.profile === undefined ? [] : [`Profile: ${team.profile.name}${team.profile.task_planning ? ` [${team.profile.task_planning}]` : ''}${team.profile.protocol ? ` — ${team.profile.protocol}` : ''}`],",
         ],
-        block: "//#region mpd-delta status-pause-mechanisms (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n        // T-19 (wave 1, adopted side): TWO pause mechanisms can stop this team and only ONE\n        // of them is an agent-teams record. `halted` is ours and is rendered above (and in\n        // the payload). The team watchdog's PRESERVING hold lives in the watchdog's own\n        // store, and this surface no longer reads it: the reader region that used to sit in\n        // this file went with the two tool-boundary guards, because a hold must stop NEW\n        // DISPATCH only and must never refuse a member's own claim/update/kick. So this line\n        // NAMES both mechanisms and DEFERS the hold to its owner instead of guessing at it —\n        // and it adds no resume verb: releasing a hold stays the watchdog's own\n        // `session-watchdog-resume`, a captain action.\n        `Pause: agent-teams halt ${team.halted ? 'ACTIVE' : 'not active'} · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)`,\n//#endregion mpd-delta status-pause-mechanisms",
+        block: "//#region mpd-delta status-pause-mechanisms (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n        // T-19 surface 2 (wave 2, t21) — ONE mechanism, collapsed from the two-peer wording the\n        // wave-1 line carried. `agent_teams_halt` IS the pause mechanism; the team watchdog's\n        // PRESERVING hold is its INTERNAL implementation, and the operator still gets the hold's id\n        // and reason (the diagnostics) instead of being sent to a second status surface.\n        `Pause: agent-teams halt ${team.pause?.active === true ? 'ACTIVE' : 'not active'} (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: ${describePause(team.pause)})`,\n//#endregion mpd-delta status-pause-mechanisms",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/session-start.js",
@@ -581,6 +655,30 @@ export const MPD_DELTAS = [
             " * The allowed task status transitions, keyed by current status.",
         ],
         block: "//#region mpd-delta dependency-failed-unblock (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n/**\n * Whether `dependencies` still BLOCK a dependent task, and which of them failed.\n *\n * Three-state evaluation (user decision OPT-1, 2026-09-13): a dependency is\n * `satisfied` (completed), `failed-dependency` (failed) or unsatisfied\n * (pending/claimed/in_progress/cancelled/unknown). A FAILED dependency no longer\n * pins its dependents forever — the dependent stays `pending` and dispatchable,\n * while `failedDependencyIds` carries the failure so the view can say so. A\n * cancelled dependency was already non-blocking (deadlock rule) and its pending\n * dependents are released by `resolveCancelledDependencyDeadlocks`.\n * @param tasks - the team's tasks.\n * @param dependencies - task ids the candidate depends on.\n * @returns the blocking ids plus the failed ids (never both for one id).\n */\nexport function dependencyStates(tasks, dependencies) {\n    const byId = new Map(tasks.map((task) => [task.id, task]));\n    const blocking = [];\n    const failed = [];\n    for (const id of dependencies) {\n        const status = byId.get(id)?.status;\n        if (status === 'completed' || status === 'cancelled')\n            continue;\n        if (status === 'failed')\n            failed.push(id);\n        else\n            blocking.push(id);\n    }\n    return { blocking, failed };\n}\n/**\n * Whether `dependencies` are all satisfied (every named task exists and is\n * completed) for the given task list. OPT-1: a FAILED dependency does not block.\n * @param tasks - the team's tasks.\n * @param dependencies - task ids the candidate depends on.\n * @returns the ids that still block, empty when claimable.\n */\nexport function unsatisfiedDependencies(tasks, dependencies) {\n    return dependencyStates(tasks, dependencies).blocking;\n}\n//#endregion mpd-delta dependency-failed-unblock",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/state.js",
+        id: "mpd-delta terminal-task-rearm-refusal",
+        beforeContext: [
+            "    return undefined;",
+            "}",
+        ],
+        afterContext: [
+            "/** Activate the task's current generation for one owner and return its capability id. */",
+        ],
+        block: "//#region mpd-delta terminal-task-rearm-refusal (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n// T-79 STATE HALF (wave 2, lane A) — a terminal task must never be RE-ARMED.\n//\n// MEASURED (wave 1 and again in wave 2, `.mpd/plans/friction-p2-wave-captain-log.md` A-1): the\n// scheduler re-dispatched the already-`completed` `t1` carrying the SAME stored attempt id\n// (`35503430-…`); the member correctly refused with `task status cannot move from \"completed\" to\n// \"claimed\"`. The primitive underneath every dispatch is HERE: `activateTaskAttempt` used to set\n// `status='claimed'`, mint a FRESH attemptId, drop `handoffId`/`reassigning` and CLEAR `output`\n// unconditionally, so a ticket composed over a terminal task rotated the capability, wiped the\n// earned summary and left a claim the member could not honour — the terminal record was rewritten\n// by the dispatch itself.\n//\n// The refusal is raised BEFORE the first mutation (in `beginTaskAttempt` before its `attempt`\n// increment, and again in `activateTaskAttempt` for direct callers), so a refused rotation leaves\n// the record byte-identical. The sanctioned revive path is unaffected: `agent_teams_reassign_task`\n// routes a `failed`/`cancelled` task through `invalidateTaskAttempt` (status -> `pending`) BEFORE\n// any attempt is minted, so its fresh-attempt semantics still hold; `claim_task` reaches\n// `transitionError` first. A `completed` task has no revive path by design (immutable).\nexport function assertTaskRearmable(task) {\n    if (TERMINAL_TASK_STATUSES.includes(task.status)) {\n        throw new Error(`task ${task.id} is ${task.status}: the attempt rotation is REFUSED for terminal work — a terminal task is never re-armed (the record was left untouched). Retry failed/cancelled work with agent_teams_reassign_task, which re-opens it with a fresh attempt id.`);\n    }\n}\n//#endregion mpd-delta terminal-task-rearm-refusal",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/state.js",
+        id: "mpd-delta composed-ticket-output-preserved",
+        beforeContext: [
+            "export function activateTaskAttempt(task, assignee) {",
+            "    assertTaskRearmable(task);",
+        ],
+        afterContext: [
+            "    const attemptId = randomUUID();",
+        ],
+        block: "    //#region mpd-delta composed-ticket-output-preserved (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n    // T-73 (wave 2, t24) — a COMPOSED TICKET must not silently DELETE a stored deliverable.\n    //\n    // MEASURED (wave 1, `t36`'s author; re-measured by this lane at HEAD `c826f16`,\n    // `evidence/agent-teams/composed-ticket-output/20260917T075659Z/driver.mjs`): ONE `kickMember`\n    // over an `in_progress` task holding a stored deliverable left the record at `output: null`,\n    // `status: claimed`, `attempt: 1 -> 2` — DETERMINISTIC, not a race, because the compose rotates\n    // the attempt on EVERY dispatched ticket. The dispatch-boundary re-check (`mpd-delta\n    // terminal-dispatch-recheck`, `lib/scheduler.js`) runs AFTER this function, so it can prevent the\n    // WAKE and never the WIPE. The phantom-claim family's mechanical cause is therefore a silent\n    // DELETE, not a spurious wake.\n    //\n    // SHAPE (i) of the two the wave-1 record names (`terminal-dispatch/20260917T023700Z/result.json`,\n    // `second_data_loss_vector.where_the_fix_belongs`) — chosen because it is the shape this lane can\n    // EXERCISE in-process: `output` SURVIVES a rotation that stays inside the SAME generation, i.e. the\n    // task is still OPEN (`claimed`/`in_progress`, so nothing invalidated it) and the incoming assignee\n    // IS its current owner (the `recoverOwned` re-dispatch of the same seat). Every other rotation keeps\n    // clearing `output` exactly as before: a first dispatch of a `pending` task, any generation\n    // invalidated by an amend, and a handover — the reassign path clears it EXPLICITLY through\n    // `invalidateTaskAttempt` before the new owner is armed. Clearing thus becomes an explicit invalidate\n    // action instead of a side effect of every compose.\n    //\n    // Shape (ii) (snapshot before the compose + restore in the refusal path) is NOT shipped: the wave-1\n    // record judges it in-process-untestable on a path no harness can steer, and this lane does not ship\n    // a repair it cannot exercise.\n    //\n    // BOUND (stated, not hidden): a later COMPLETE on the same generation that supplies a DIFFERENT\n    // summary longer than 240 chars meets T-46's existing loud replacement guard\n    // (`replace_output: true` / `output_append`) instead of silently discarding the preserved bytes —\n    // a refusal WITH a remedy, never a loss.\n    const sameGenerationRedispatch = (task.status === 'claimed' || task.status === 'in_progress')\n        && task.assignee === assignee;\n    //#endregion mpd-delta composed-ticket-output-preserved",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/state.js",

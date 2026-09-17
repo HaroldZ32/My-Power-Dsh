@@ -1,0 +1,54 @@
+{
+  "item": "T-62",
+  "register_row": "[trap] A FALSE-GREEN test — `adapter-identity.test.ts` passes on STALE dist bytes. P1.",
+  "register_source": ".mpd/TODO.md §8.6 line 519 (read from the file)",
+  "lane": "A / t8 (agent-teams-engineer), wave friction-p2-wave",
+  "surface": {
+    "files": [
+      "packages/mpd-roles-plugin/test/adapter-identity.test.ts",
+      "packages/mpd-ext-plugin/test/adapter-identity.test.ts"
+    ],
+    "arm_names": [
+      "F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62)",
+      "F1 shipped artifact > the committed dists are the byte-identical products of a canonical build (T-62)"
+    ],
+    "delegation": "node scripts/verify-dist-fresh.mjs --only <pkg> --quiet, spawned with cwd = the repo root; the gate rebuilds every entry of the package twice into a temp dir in the canonical repo-root form and compares byte-for-byte",
+    "entry_coverage": {
+      "mpd-roles-plugin": "src/index.ts -> dist/index.js (1 target; arm asserts 'ok: 1/1 targets fresh')",
+      "mpd-ext-plugin": "src/index.ts -> dist/index.js and src/sdk.ts -> dist/sdk.js (2 targets; arm asserts 'ok: 2/2 targets fresh')"
+    }
+  },
+  "red_leg_false_green_reproduced": {
+    "seed": "printf '\\n// staleness seed\\n' >> each of the three committed dists",
+    "before_seed_sha256": {
+      "packages/mpd-roles-plugin/dist/index.js": "38d4a459f64d1dbd650a58f29011a4a69cf55a9268abbdf8eb426a7c7ebf338f",
+      "packages/mpd-ext-plugin/dist/index.js": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a",
+      "packages/mpd-ext-plugin/dist/sdk.js": "4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195"
+    },
+    "seeded_sha256": {
+      "packages/mpd-roles-plugin/dist/index.js": "7b9fa6a899c79b3be123f62d206af0ef63e58a5b1b8980478700caf10b557278",
+      "packages/mpd-ext-plugin/dist/index.js": "840137a6407640c886d80d4366545be32b7ff094696e7e77ef1f74213ccef026",
+      "packages/mpd-ext-plugin/dist/sdk.js": "0b49fecf5e0159ea4442f74e9af70e94200783fdd0ded362535ec881434df916"
+    },
+    "reading_as_committed": "bun test <both test files> -> 15 pass / 0 fail, exit 0 (the false green: every marker grep survives)",
+    "canonical_gate_on_the_same_tree": "verify-dist-fresh --only -> FAIL 1 of 1 (roles, STALE 7b9fa6a8…) and FAIL 2 of 2 (ext, STALE 840137a6…, 0b49fecf…), both exit 1"
+  },
+  "green_leg": {
+    "arm_on_the_seeded_tree": "bun test <both test files> -> exit 1; both (fail) lines name the package, the artifact path and the rebuild command",
+    "restore": "the three canonical repo-root rebuilds; each rebuilt dist sha256 equals the pre-seed value (38d4a459…, f6097fd3…, 4117a1d5…) — canonicalness proven by hash equality, not asserted",
+    "after": "bun test <both test files> -> 17 pass / 0 fail, exit 0; verify-dist-fresh --only roles -> ok: 1/1, exit 0; --only ext -> ok: 2/2, exit 0"
+  },
+  "evidence_logs": [
+    "evidence/agent-teams/stale-dist-arm/20260917T071547Z/pre-seed-hashes.txt",
+    "evidence/agent-teams/stale-dist-arm/20260917T071547Z/red-leg-seed-and-run.log",
+    "evidence/agent-teams/stale-dist-arm/20260917T071547Z/red-leg-canonical-gate.log",
+    "evidence/agent-teams/stale-dist-arm/20260917T071547Z/red-leg-with-arm.stdout",
+    "evidence/agent-teams/stale-dist-arm/20260917T071547Z/green-leg-rebuild.log",
+    "evidence/agent-teams/stale-dist-arm/20260917T071547Z/green-leg.log"
+  ],
+  "honest_bounds": [
+    "The marker-presence assertions stay (they name WHAT the artifact must carry); they are no longer the freshness proof.",
+    "The arm spawns `node scripts/verify-dist-fresh.mjs` — the canonical gate — instead of hand-rolling a build+diff, so the reading cannot drift from the gate's definition of fresh. The gate's --only filter matching no target is a zero-subject FAILURE, so a red here cannot be a silent skip.",
+    "The two dists are rebuilt on demand by lane B's T-67 script half; a later manifest edit requires a re-check of both dists (already sequenced in the lane-A plan)."
+  ]
+}

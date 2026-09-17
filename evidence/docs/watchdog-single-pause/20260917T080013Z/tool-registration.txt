@@ -1,0 +1,32 @@
+# tool registration (acceptance 4: both tools remain REGISTERED, no tool-schema change)
+## src/actions.ts registerTool constants
+26:export const HOLD_TOOL = "session-watchdog-hold"
+27:export const RESUME_TOOL = "session-watchdog-resume"
+28:export const STATUS_TOOL = "session-watchdog-status"
+157:  dsh.registerTool({
+199:  dsh.registerTool({
+224:  dsh.registerTool({
+
+## shipped dist/index.js carries all three tool names
+      1 session-watchdog-hold
+      1 session-watchdog-resume
+      1 session-watchdog-status
+
+## README tool table rows (unchanged, both tools listed)
+390:| `session-watchdog-hold` | persist the preserving hold for one team; returns `applied:false` (never a throw) when it could not be written, so no caller can report a pause that did not land |
+391:| `session-watchdog-resume` | clear it; a team that is not held is a **no-op** (`reason:'not-held'`), never an error |
+392:| `session-watchdog-status` | read-only: the hold, heartbeat tails, incidents and watermarks for this workspace |
+394:The tick routes its own ESCALATE hold through `session-watchdog-hold` via the adapter's
+
+## git: only the two READMEs changed (no code path touched)
+ M packages/mpd-team-watchdog-plugin/README.md
+ M packages/mpd-team-watchdog-plugin/README.zh-CN.md
+ M packages/mpd-team-watchdog-plugin/dist/index.js
+ M packages/mpd-team-watchdog-plugin/package.json
+ M packages/mpd-team-watchdog-plugin/src/actions.ts
+ M packages/mpd-team-watchdog-plugin/src/config-file.ts
+ M packages/mpd-team-watchdog-plugin/src/engine.ts
+ M packages/mpd-team-watchdog-plugin/src/index.ts
+ M packages/mpd-team-watchdog-plugin/src/machine.ts
+ M packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts
+?? packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts

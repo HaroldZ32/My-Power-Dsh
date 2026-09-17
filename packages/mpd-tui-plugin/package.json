@@ -18,7 +18,7 @@
     "README.zh-CN.md"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --target node --format esm --outfile dist/index.js",
+    "build": "cd \"$(git rev-parse --show-toplevel)\" && bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js",
     "test": "bun test"
   },
   "license": "SEE LICENSE IN ../../LICENSE.md"

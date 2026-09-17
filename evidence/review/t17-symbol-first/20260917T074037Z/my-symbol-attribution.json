@@ -1,0 +1,195 @@
+{
+  "counted_symbol_first": [
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 12,
+      "cited": "packages/mpd-ext-plugin/src/sdk.ts",
+      "claim": "MPD_EXT_CONTRACT",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 13,
+      "cited": "packages/mpd-ext-plugin/src/registry.ts",
+      "claim": "validateDescriptor",
+      "own_clause_at_site": false
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 17,
+      "cited": "packages/mpd-ext-plugin/src/mcp-client.ts",
+      "claim": "childEnv",
+      "own_clause_at_site": false
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 23,
+      "cited": "packages/mpd-ext-plugin/src/index.ts",
+      "claim": "safeRegisterTool",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 23,
+      "cited": "packages/mpd-ext-plugin/src/index.ts",
+      "claim": "safeRegisterTool",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 24,
+      "cited": "packages/mpd-ext-plugin/src/index.ts",
+      "claim": "safeRegisterTool",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 25,
+      "cited": "packages/mpd-ext-plugin/src/index.ts",
+      "claim": "safeRegisterTool",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 25,
+      "cited": "packages/mpd-ext-plugin/src/index.ts",
+      "claim": "safeRegisterTool",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 26,
+      "cited": "packages/mpd-ext-plugin/src/index.ts",
+      "claim": "safeRegisterTool",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 27,
+      "cited": "packages/mpd-ext-plugin/src/index.ts",
+      "claim": "safeRegisterTool",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 36,
+      "cited": "packages/mpd-ext-plugin/src/mcp-client.ts",
+      "claim": "childEnv",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 36,
+      "cited": "packages/mpd-ext-plugin/src/mcp-client.ts",
+      "claim": "childEnv",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 42,
+      "cited": "packages/mpd-ext-plugin/src/registry.ts",
+      "claim": "validateDescriptor",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 116,
+      "cited": "packages/mpd-ext-plugin/src/sdk.ts",
+      "claim": "MPD_EXT_CONTRACT",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 117,
+      "cited": "packages/mpd-ext-plugin/src/registry.ts",
+      "claim": "validateDescriptor",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 141,
+      "cited": "packages/mpd-ext-plugin/src/mcp.ts",
+      "claim": "McpServerState",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 233,
+      "cited": "docs/extensions.md",
+      "claim": "\"No reload\"",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "docs/extension-adaptation-report.md",
+      "docLine": 405,
+      "cited": "scripts/pack-mpd.mjs",
+      "claim": "cpDist",
+      "own_clause_at_site": true
+    },
+    {
+      "subject": "docs/extension-adaptation-report.zh-CN.md",
+      "docLine": 207,
+      "cited": "scripts/pack-mpd.mjs",
+      "claim": "cpDist",
+      "own_clause_at_site": true
+    }
+  ],
+  "counted_without_own_clause": [
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 13,
+      "cited": "packages/mpd-ext-plugin/src/registry.ts",
+      "claim": "validateDescriptor",
+      "own_clause_at_site": false
+    },
+    {
+      "subject": "EXTENSIONS-FOR-AGENTS.md",
+      "docLine": 17,
+      "cited": "packages/mpd-ext-plugin/src/mcp-client.ts",
+      "claim": "childEnv",
+      "own_clause_at_site": false
+    }
+  ],
+  "per_subject": {
+    "docs/extension-authoring-guide.md": {
+      "citations": 44,
+      "line_free": 31,
+      "counted": 0,
+      "counted_own_clause": 0,
+      "counted_prose_mention": 0
+    },
+    "docs/extension-authoring-guide.zh-CN.md": {
+      "citations": 44,
+      "line_free": 31,
+      "counted": 0,
+      "counted_own_clause": 0,
+      "counted_prose_mention": 0
+    },
+    "EXTENSIONS-FOR-AGENTS.md": {
+      "citations": 42,
+      "line_free": 38,
+      "counted": 17,
+      "counted_own_clause": 15,
+      "counted_prose_mention": 2
+    },
+    "docs/extension-adaptation-report.md": {
+      "citations": 30,
+      "line_free": 24,
+      "counted": 1,
+      "counted_own_clause": 1,
+      "counted_prose_mention": 0
+    },
+    "docs/extension-adaptation-report.zh-CN.md": {
+      "citations": 30,
+      "line_free": 24,
+      "counted": 1,
+      "counted_own_clause": 1,
+      "counted_prose_mention": 0
+    }
+  },
+  "total_counted": 19,
+  "checker_reported_symbol_only": 19,
+  "total_matches_checker": true,
+  "counted_own_clause_total": 17,
+  "counted_prose_mention_total": 2
+}

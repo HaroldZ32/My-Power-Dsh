@@ -154,7 +154,12 @@ test("T-07 THE RACE: a task that becomes terminal before the wake is never carri
     const box = workspace()
     try {
         writeTeamRecord(box.dir, [task("t1", "in_progress", { attempt: 1, attemptId: "attempt-t1-1" })])
-        const { ctx, captain, deliveries } = makeRuntime(box.dir)
+        // Wave 2 (lane A / t8): `warnings` was MISSING from this destructuring while the
+        // no-wake branch below asserts on it, so that branch raised `ReferenceError: warnings is
+        // not defined` instead of asserting — a latent, timing-dependent failure at HEAD (the
+        // branch is only reached when the delivery re-check catches the completed task). The
+        // collector already existed; this one binding is what makes the assertion run.
+        const { ctx, captain, deliveries, warnings } = makeRuntime(box.dir)
         const scheduler = installTeamScheduler(ctx, { stateDir: STATE_DIR })
         const pending = scheduler.kickMember(box.dir, TEAM_ID, "Architect", captain)
         await settle(() => readTeamRecord(box.dir).members[0].status === "working", "the compose to park the member as working")

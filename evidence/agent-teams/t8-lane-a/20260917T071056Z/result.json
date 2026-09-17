@@ -1,0 +1,98 @@
+{
+  "task": "t8 — A — lane A: T-61/T-62/T-75/T-79/T-81 with per-item arms",
+  "lane": "A (agent-teams plugin + task-contract tooling)",
+  "owner": "agent-teams-engineer",
+  "wave": "friction-p2-wave (wave 2a)",
+  "claim": "attempt 1, attempt_id 755c1351-755d-4cda-b89f-47c79566f11f, contract revision 1",
+  "scope_decision": {
+    "contract_authority": "t8's stored contract (revision 1) + the requirements acceptance t1 + the captain's A-1 addendum in .mpd/plans/friction-p2-wave-captain-log.md (t8 was claimed before the three questions were answered, so A-1 fixes the REPORTING channel: the owner quotes §A-1 in its output and the verifier t12 judges that paragraph against that file)",
+    "coupled_decision": ".mpd/plans/friction-p2-wave.md D-1: T-79 splits by half — t8 owns the STATE half (this task) and t10 owns the DELIVERY half (lib/scheduler.js, untouched here)"
+  },
+  "items": {
+    "T-61": "CLOSED — unknown argument names are LOUD on agent_teams_update_task. See evidence/agent-teams/unknown-args/20260917T071840Z/result.json",
+    "T-62": "CLOSED — both adapter-identity tests FAIL on stale dist bytes and pass after a canonical rebuild. See evidence/agent-teams/stale-dist-arm/20260917T071547Z/result.json",
+    "T-75": "NOT APPLICABLE TO THIS LANE (captain A-1 Ruling 2) — the measured instance is a FILE-level stale-snapshot revert (AGENTS.md §6 pointer) and the carrier is t19 (in_progress, docs-parity-engineer). No plugin-side surface was fabricated and nothing was softened. See evidence/agent-teams/stale-snapshot-revert/20260917T072936Z/NOT-APPLICABLE.md",
+    "T-79": "STATE HALF CLOSED — a terminal task cannot be re-armed by the compose's rotation primitive, and a stale capability on terminal work is refused; the sanctioned revive keeps its fresh attempt id. A restart leg (fresh child process) is included, with the T-21 bound recorded. See evidence/agent-teams/terminal-redispatch/20260917T072501Z/result.json",
+    "T-81": "CLOSED — a repair on an OPEN source keeps provenance and acquires no deadlock edge; completed sources keep the edge and failed/cancelled sources keep the refusal. See evidence/agent-teams/repair-source-deadlock/20260917T072501Z/result.json"
+  },
+  "registry": {
+    "regions_before": 73,
+    "regions_after": 78,
+    "added": [
+      "mpd-delta strict-tool-arguments (lib/tools.js)",
+      "mpd-delta strict-tool-arguments-apply (lib/tools.js)",
+      "mpd-delta terminal-task-rearm-refusal (lib/state.js)",
+      "mpd-delta terminal-stale-attempt-refusal (lib/tools.js, the FOURTH sibling at the shared const-sameStatus seam)",
+      "mpd-delta repair-source-open-edge (lib/quality-gates.js)"
+    ],
+    "regeneration": "node scripts/patch-agent-teams-fixes.mjs --write-registry -> 'registry regenerated: lib/mpd-deltas.js (78 regions)'; --check afterwards: 'already applied: 78 mpd delta region(s) across 9 adopted file(s)', exit 0",
+    "measured_red_before_regeneration": "the heal suite (self-fix-tests/registry-context-heal.test.mjs) went 3 FAIL / 18 pass while the five regions were unregistered — i.e. --check alone (which reported 'already applied: 73') cannot see an unregistered region; the heal suite is the instrument that catches it",
+    "table": "agent-references/agent-teams-deltas.md gained D39–D42 (five regions) and the count line was rewritten from 73 to the MEASURED 78 with the provenance chain",
+    "logs": [
+      "evidence/agent-teams/registry-rows/20260917T0730Z/heal-red-unregistered.stdout",
+      "evidence/agent-teams/registry-rows/20260917T0730Z/heal-green-after-registry.stdout"
+    ]
+  },
+  "verify_readings": {
+    "log": "evidence/agent-teams/t8-lane-a/20260917T071056Z/verify-1-after-flake-fix.log + verify-final.log",
+    "bun test packages/mpd-agent-teams-plugin/self-fix-tests/": "101 pass / 0 fail, exit 0 (three consecutive runs; baseline before this lane: 86 pass / 0 fail)",
+    "bun test packages/mpd-roles-plugin/test/adapter-identity.test.ts packages/mpd-ext-plugin/test/adapter-identity.test.ts": "17 pass / 0 fail, exit 0 (baseline 15)",
+    "bun test packages/mpd-agent-teams-plugin (whole plugin suite)": "256 pass / 0 fail, exit 0",
+    "node scripts/patch-agent-teams-fixes.mjs --check": "78 regions across 9 files, exit 0",
+    "self-fix-tests/registry-context-heal.test.mjs": "21 pass / 0 fail, exit 0",
+    "bun run typecheck": "NOT this lane's (removed from verify by the r4 amendment): red only on lane C's in-flight packages/mpd-team-watchdog-plugin/src/engine.ts — the aggregate belongs to t18 per §AC2; the reading and its attribution are in cross_lane_finding"
+  },
+  "cross_lane_finding": {
+    "command": "bun run typecheck",
+    "reading_at_07_29Z_and_07_33Z": "exit 1 — packages/mpd-team-watchdog-plugin/src/engine.ts(156,45): error TS2304: Cannot find name 'KnobIssue' (a second error at engine.ts(1006,5) was visible at 07:29Z and gone at 07:33Z)",
+    "attribution": "engine.ts is modified in the working tree by lane C (t10, watchdog-engineer, in_progress): +116 insertions vs HEAD c826f16 at the first read, +165 across 3 watchdog src files at the next. Its line 156 ('function namespaceReadIssue(error: string): KnobIssue {') does not exist at HEAD; KnobIssue is exported by machine.ts:132 but absent from engine.ts's type-import list. This lane's own changed files are .js/.mjs plus two .test.ts files — no TS source of this lane is involved.",
+    "class": "T-84's class, third instance (the captain log already recorded the same shape for t9's verify): a lane's verify list must name only what the lane can keep GREEN; the aggregate sweep belongs to t18",
+    "reported_to": "captain (message 07:33Z, with the cheapest remedy options) and watchdog-engineer (same reading, one-line fix)",
+    "bound": "a reading taken while a writer is active is a reading of a DIFFERENT tree (wave-1's lesson); this is recorded as measured, not smoothed, and never marked passed"
+  },
+  "changed_paths": [
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/lib/state.js",
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/strict-task-arguments.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/terminal-rearm-refusal.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/repair-source-deadlock.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/quality-loop.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs",
+    "packages/mpd-roles-plugin/test/adapter-identity.test.ts",
+    "packages/mpd-ext-plugin/test/adapter-identity.test.ts",
+    "agent-references/agent-teams-deltas.md"
+  ],
+  "not_changed_deliberately": [
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js (lane C's; T-79's delivery half is t10)",
+    "packages/mpd-agent-teams-plugin/test/** (owned by no task; all new arms live under self-fix-tests/**)",
+    "scripts/verify-dist-fresh.mjs (lane B's; invoked, never edited)",
+    "packages/mpd-roles-plugin/dist/** and packages/mpd-ext-plugin/dist/** (touched only as the T-62 seed/restore legs; both restored byte-identically to their pre-seed hashes)"
+  ],
+  "contract_revision": {
+    "claimed_under": 1,
+    "amended_by_the_captain_mid_flight_to": 4,
+    "verify_list_now": [
+      "bun test packages/mpd-agent-teams-plugin/self-fix-tests/",
+      "bun test packages/mpd-roles-plugin/test/adapter-identity.test.ts packages/mpd-ext-plugin/test/adapter-identity.test.ts"
+    ],
+    "why": "the amendment removed the cross-lane aggregate `bun run typecheck` from this lane's verify (the remedy requested in the 07:33Z finding — lane C's in-flight engine.ts is the only red), and added three requirements: T-61 must carry BOTH append-channel readings, T-79 must name its instance-count predicate, T-75 must be reported NOT APPLICABLE citing A-1"
+  },
+  "instruments_repaired_beside_the_five_fixes": [
+    {
+      "path": "packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs",
+      "change": "explicit 30 s timeout on 't2: a region heals to its canonical position under partial insertion histories' + a comment naming why",
+      "reading_before": "3.3 s alone / 5.66 s under a full-suite parallel run against bun's 5 s default -> '(fail) … this test timed out after 5000ms'",
+      "no_assertion_relaxed": "every byte comparison and the non-vacuity check are unchanged"
+    },
+    {
+      "path": "packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs",
+      "change": "added the missing `warnings` binding to the race case's destructuring (the branch already asserted on it)",
+      "pre_existing_at_HEAD": "PROVEN: `git show HEAD:…terminal-dispatch.test.mjs` line 157 destructures {ctx, captain, deliveries} while line 190 references `warnings` — the file is byte-identical to HEAD, so the latent failure is not this lane's; the failing branch is only reached when the delivery re-check catches the completed task (a timing race), which is why earlier runs took the other branch",
+      "observed": "(fail) T-07 THE RACE … ReferenceError: warnings is not defined (self-fix-tests/terminal-dispatch.test.mjs:190)",
+      "after": "the assertion now RUNS and passes (the warning text 'became completed before its assignment' is produced by the scheduler's decline path) — three consecutive full-suite runs: 101 pass / 0 fail"
+    }
+  ]
+}

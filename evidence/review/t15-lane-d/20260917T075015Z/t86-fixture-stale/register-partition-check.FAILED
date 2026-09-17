@@ -1,0 +1,5 @@
+{
+  "failedAt": "2026-09-17T07:53:26.969120+00:00",
+  "reason": "--out already holds artifacts (register-partition-check.json, register-partition-check.log); pass --allow-existing to supersede them",
+  "outDir": "/root/dshProj/my-power-dsh/evidence/review/t15-lane-d/20260917T075015Z/t86-fixture-stale"
+}

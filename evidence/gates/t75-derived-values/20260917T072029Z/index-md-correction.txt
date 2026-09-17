@@ -1,0 +1,44 @@
+=== BEFORE (index.md) ===
+# agent-references — on-demand reference material
+
+Agent-facing, English-only reference files for the repository manual `AGENTS.md`. They live outside
+the instruction-file discovery path (no `AGENT.md`/`AGENTS.md`/`CLAUDE.md` here), so they are never
+auto-injected: an agent opens them when `AGENTS.md`'s "Reference Index (on-demand)" section, or a
+pointer inside `AGENTS.md`, sends it here.
+
+This tree is agent-facing, not human-facing: the bilingual rule does not apply, no `*.zh-CN.md`
+twin is required, and `bun run verify:docs` does not discover these files.
+
+| File | Holds |
+|---|---|
+| `troubleshooting.md` | the full symptom → cause/fix table (former `AGENTS.md` §12 body) |
+| `agent-teams-deltas.md` | the adopted agent-teams delta registry — the A1–D26 table, registry mechanics, live region count, wave-2 driver-script warning (former `AGENTS.md` §6 body) |
+48da5daa779d6c9393d47ee4af4acd23bfa0bacf6f5c7a9059a8c723fe42a331  agent-references/index.md
+DERIVED (never retyped): A1–D38 from 41 table ids, first A1, last D38
+index.md pointer: A1–D26 -> A1–D38; bytes 880 -> 880
+=== AFTER (index.md) ===
+# agent-references — on-demand reference material
+
+Agent-facing, English-only reference files for the repository manual `AGENTS.md`. They live outside
+the instruction-file discovery path (no `AGENT.md`/`AGENTS.md`/`CLAUDE.md` here), so they are never
+auto-injected: an agent opens them when `AGENTS.md`'s "Reference Index (on-demand)" section, or a
+pointer inside `AGENTS.md`, sends it here.
+
+This tree is agent-facing, not human-facing: the bilingual rule does not apply, no `*.zh-CN.md`
+twin is required, and `bun run verify:docs` does not discover these files.
+
+In a packed artifact (`dist/mpd-package/`) there is no `AGENTS.md` and no Reference Index: the
+pointers above do not resolve there, so each file in this tree stands alone — the two moved bodies
+keep their `§N` provenance lines as historical citations of the repository manual, not links.
+
+| File | Holds |
+|---|---|
+| `troubleshooting.md` | the full symptom → cause/fix table (former `AGENTS.md` §12 body) |
+| `agent-teams-deltas.md` | the adopted agent-teams delta registry — the A1–D38 table, registry mechanics, live region count, wave-2 driver-script warning (former `AGENTS.md` §6 body) |
+67696cfe3bb2fa444506a19f0a1bec81f01a0aa27dc9c26d657eedb3cdacef7e  agent-references/index.md
+DERIVED (never retyped): A1–D42 from 45 table ids, first A1, last D42
+index.md pointer: A1–D38 -> A1–D42; bytes 1172 -> 1172
+
+=== AGENTS.md correction (contract rev 5 hop) 2026-09-17T07:34:01Z ===
+DERIVED (never retyped): A1–D42 from 45 table ids, first A1, last D42
+AGENTS.md: 2 sites A1–D38 -> A1–D42; bytes 48641 -> 48641

@@ -1,0 +1,5 @@
+[lane-c-live] legs: in-process mount → on-disk .mpd/mpd.jsonc write → same-instance readback on the next tick
+[lane-c-live] mounted=90000 file=900000 sameInstance=900000 fileApplied=true liveLayer=file restartRequired=false
+[lane-c-live] liveWithoutRestart: true — the same instance reported the on-disk value with no restart
+[lane-c-live] result: PASS
+[lane-c-live] wrote /root/dshProj/my-power-dsh/evidence/review/t14-lane-c/20260917T081714Z/live/live-result.json

@@ -1,0 +1,26 @@
+changed lines: 21
+non-comment changed lines: 0
+verdict: COMMENT-ONLY
+
+--- every changed line (each must start with //) ---
+'-// dsh restart), and the restart leg is a CHILD PROCESS that imports the current tree — the honest'
+'-// bound being that the pre-restart inertness of a long-lived process (T-21) is the measured defect,'
+'-// not a regression of this fix.'
+'+// dsh restart), and the restart leg is a CHILD PROCESS that imports the current tree. The wave-2 live'
+"+// replays are ATTRIBUTED to a host process that predates the fix (T-21's no-hot-reload class) — an"
+'+// inference, NOT a measurement: the named probe is `node scripts/mpd-bg.mjs reload-check <module-path>`,'
+"+// and its own semantics are the bound (it compares a module mtime against the NEWEST SESSION's"
+'+// directory mtime, so FRESH never means "the running host loaded this revision"). The state is'
+'+// therefore UNRESOLVED, with a NAMED PROBE whose verdict does not support the stale-host reading —'
+'+// never "inert in-process", and never "consistent with a stale host". What this file DOES measure: the'
+"+// guard's effect in a fresh process, and the pre-fix behaviour on a scratch copy."
+'-        // The fresh process (a restart of the module graph) is where the guard MUST be effective:'
+"-        // the in-process inertness of a long-lived session is T-21's measured defect, not this"
+"-        // fix's, and it is bounded here rather than claimed."
+'+        // The fresh process (a restart of the module graph) is where the guard MUST be effective, and'
+'+        // this reading is what proves it IN-PROCESS. Why the wave-2 live replays happened stays'
+'+        // UNRESOLVED, with a NAMED PROBE whose verdict does not support the stale-host reading — the'
+'+        // host start time is not readable from a pid-namespaced sandbox, so it is bounded here rather'
+'+        // than claimed. (The measured half: in a fresh process the delivery re-check refuses'
+'+        // DETERMINISTICALLY — green on the real tree, exactly ONE terminal delivery on a'
+'+        // region-stripped copy; the refuted framing is not repeated above.)'

@@ -1,0 +1,19 @@
+=== VERIFY 1 (amended r4) after the latent-flake repair — 2026-09-17T07:43:13Z
+--- run 1
+ 101 pass
+ 0 fail
+ 1404 expect() calls
+Ran 101 tests across 28 files. [9.96s]
+EXIT=0
+--- run 2
+ 101 pass
+ 0 fail
+ 1404 expect() calls
+Ran 101 tests across 28 files. [10.11s]
+EXIT=0
+--- run 3
+ 101 pass
+ 0 fail
+ 1404 expect() calls
+Ran 101 tests across 28 files. [9.02s]
+EXIT=0

@@ -1,12 +1,13 @@
 // The watchdog's OWN actions, registered through the adapter's tool seam.
 //
-// They are the ONLY sanctioned way to hold/resume a team on the watchdog's
-// behalf: `agent_teams_halt` is NOT used (it cancels every non-terminal task —
-// `tools.js:238-243` — destroying exactly the work a pause must preserve), and
-// the hold is deliberately NOT a captain declaration, so no identity gate is
-// assumed for it (design §4.2).
+// T-19 (wave 2, user ruling): `agent_teams_halt` is the SOLE EXTERNAL pause mechanism; the
+// watchdog's PRESERVING hold is DEMOTED to its INTERNAL implementation — the durable record of
+// the dispatch-side stop the watchdog raises for itself. The hold is not a second pause a caller
+// chooses between: `session-watchdog-hold` / `-resume` stay REGISTERED as the implementation's
+// own bookkeeping surface (removing a registered tool would be a tool-schema change), and every
+// public surface names ONE mechanism and the hold only as its implementation.
 //
-//   session-watchdog-hold    persist the preserving hold for ONE team
+//   session-watchdog-hold    persist the internal preserving hold for ONE team (implementation)
 //   session-watchdog-resume  clear it (a no-op for a team that is not held)
 //   session-watchdog-status  READ-ONLY diagnostics over the whole watchdog store
 //
@@ -122,6 +123,8 @@ export type PredicateSourceProvider = () => { source: "channel" | "heartbeat"; r
 /**
  * §7.2: the per-knob live-vs-file reading the status view prints, plus where it came from.
  * `file` is the `.mpd/mpd.jsonc` the reading was taken from and `fileFound` whether it existed.
+ * T-18 (wave 2): `fileApplied`/`liveLayer` say which layer supplied the running values, so the
+ * status view can show a file edit that took effect LIVE instead of implying a restart.
  */
 export interface KnobDivergenceView {
   readings: Array<{ knob: string; live: number | boolean | string; file?: number | boolean | string; differs: boolean; restartRequired: boolean }>
@@ -129,6 +132,10 @@ export interface KnobDivergenceView {
   restartRequired: boolean
   file: string | null
   fileFound: boolean
+  /** T-18: whether the running values came from the workspace file layer (live, no restart). */
+  fileApplied: boolean
+  /** T-18: the layer that last moved and supplied the running values. */
+  liveLayer: "namespace" | "file"
 }
 
 /** The live providers `apply` hands the status surface. Each is read at CALL time. */
@@ -150,7 +157,7 @@ export function registerWatchdogActions(
   dsh.registerTool({
     name: HOLD_TOOL,
     description:
-      "Persist the team watchdog's PRESERVING hold for one team. It stops NEW dispatch into that team without cancelling anything: every non-terminal task keeps its status, assignee and attemptId. Returns applied:false (never a throw) when the hold could not be written, so a caller must not report a pause that did not land. This is the watchdog's own hold, NOT agent_teams_halt.",
+      "Persist the team watchdog's PRESERVING hold for one team. This is the INTERNAL implementation of a team pause, not a second pause mechanism: the external pause a user operates is `agent_teams_halt` (the web Stop-team route), cleared by `agent_teams_resume`. The hold stops NEW dispatch into that team without cancelling anything: every non-terminal task keeps its status, assignee and attemptId. Returns applied:false (never a throw) when the hold could not be written, so a caller must not report a pause that did not land.",
     parameters: {
       type: "object",
       properties: {
@@ -192,10 +199,10 @@ export function registerWatchdogActions(
   dsh.registerTool({
     name: RESUME_TOOL,
     description:
-      "Clear the team watchdog's hold for one team. A team that is not held is a no-op (resumed:false, reason:'not-held'), never an error; a second resume is likewise a no-op. Clearing the hold is the watchdog-side release only — the adopted dispatch gates that honour it are wired by w7.",
+      "Clear the team watchdog's internal hold for one team (the implementation record only — the team pause itself is operated through `agent_teams_halt` / `agent_teams_resume`). A team that is not held is a no-op (resumed:false, reason:'not-held'), never an error; a second resume is likewise a no-op. Clearing the hold is the watchdog-side release only — the adopted dispatch gates that honour it are wired by w7.",
     parameters: {
       type: "object",
-      properties: { team_id: { type: "string", description: "The team to release." } },
+      properties: { team_id: { type: "string", description: "The team whose internal watchdog hold to clear." } },
       required: ["team_id"],
       additionalProperties: false,
     },
@@ -217,7 +224,7 @@ export function registerWatchdogActions(
   dsh.registerTool({
     name: STATUS_TOOL,
     description:
-      "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag, and (T-19) which PAUSE mechanism is active per team: `halted` (`agent_teams_halt`) or `held` (a watchdog hold). Use it to inspect what a lane or a restarting process would read from disk.",
+      "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and (T-19) the ONE pause state per team: the external mechanism is `agent_teams_halt` and the watchdog's preserving hold is reported only as its INTERNAL implementation. Use it to inspect what a lane or a restarting process would read from disk.",
     parameters: {
       type: "object",
       properties: { team_id: { type: "string", description: "Limit to one team." } },
@@ -236,7 +243,7 @@ export function registerWatchdogActions(
       },
       render: (_args: unknown, raw: unknown) => {
         const value = (raw ?? {}) as {
-          teams: Array<{ teamId: string; held: boolean; halt: { halted: boolean; haltedAt: number | null }; pause: { active: string | null; mechanism: string | null } }>
+          teams: Array<{ teamId: string; held: boolean; halt: { halted: boolean; haltedAt: number | null }; pause: { paused: boolean; mechanism: string; implementation: string } }>
           predicate?: { source: string; reason: string }
           knobs?: KnobDivergenceView
         }
@@ -259,15 +266,18 @@ export function registerWatchdogActions(
                     : reading.knob + "=" + String(reading.live) + " (file " + String(reading.file) + ", restartRequired)",
                 )
                 .join(" | ") +
+              (knobs.fileApplied ? "  ✔ the file layer is applied LIVE (T-18)" : "") +
               (knobs.restartRequired ? "  ⟵ a .mpd/mpd.jsonc edit is waiting for the next dsh boot" : ""),
           )
         }
-        // T-19: the UNION of the two pause mechanisms, naming the one that is active.
+        // T-19 (wave 2, user ruling): ONE pause state and ONE external mechanism. The watchdog's
+        // preserving hold is named ONLY as that pause's internal implementation — never as a
+        // second mechanism a caller picks between.
         for (const team of value.teams) {
-          const active = team.pause?.active ?? null
-          if (active === "halted") lines.push(team.teamId + ": PAUSED — halted (agent_teams_halt)")
-          else if (active === "held") lines.push(team.teamId + ": PAUSED — held (watchdog hold)")
-          else lines.push(team.teamId + ": not paused")
+          const pause = team.pause
+          if (pause?.paused === true) {
+            lines.push(team.teamId + ": PAUSED — mechanism: " + pause.mechanism + " (external) · watchdog preserving hold: internal implementation " + (pause.implementation === "watchdog-hold" ? "active" : "none"))
+          } else lines.push(team.teamId + ": not paused")
           if (team.halt?.halted === true) lines.push("  halted since " + String(team.halt.haltedAt ?? "(unknown)"))
         }
         return [{ type: "text", text: lines.join("\n") }]
@@ -281,7 +291,7 @@ export function registerWatchdogActions(
         // §4: the status view NAMES the active predicate source.
         predicate: predicateSource?.() ?? { source: "unknown", reason: "the engine did not publish a predicate source", enrichment: false, events: 0, sessions: 0, states: {}, announced: false },
         // §7.2: per knob, the LIVE value and the FILE value when it differs.
-        knobs: surfaces.knobs?.() ?? { readings: [], divergent: [], restartRequired: false, file: null, fileFound: false },
+        knobs: surfaces.knobs?.() ?? { readings: [], divergent: [], restartRequired: false, file: null, fileFound: false, fileApplied: false, liveLayer: "namespace" },
         paths: {
           heartbeat: heartbeatDir(workspace, stateDir),
           hold: join(workspace, stateDir, "watchdog", "hold"),
@@ -291,18 +301,19 @@ export function registerWatchdogActions(
         teams: ids.map((teamId) => {
           const hold = readHold(workspace, stateDir, teamId)
           const team = readTeam(workspace, stateDir, teamId)
-          // T-19: ONE pause surface naming BOTH mechanisms. `halted` comes from the adopted
-          // record (`agent_teams_halt`), `held` from this plugin's own hold sidecar; a team can
-          // carry both, so the union is reported and the ACTIVE one is named.
+          // T-19 (wave 2, user ruling): ONE pause state, ONE external mechanism. `halted` comes
+          // from the adopted record (`agent_teams_halt`), `held` from this plugin's own hold
+          // sidecar, and the hold is reported ONLY as the pause's internal implementation — the
+          // two booleans stay as diagnostics, never as two selectable mechanisms.
           const halted = team?.halted === true
-          const pause =
-            halted && hold !== undefined
-              ? { active: "halted", mechanism: "both (agent_teams_halt + watchdog hold)", halted, held: true }
-              : halted
-                ? { active: "halted", mechanism: "agent_teams_halt", halted, held: false }
-                : hold !== undefined
-                  ? { active: "held", mechanism: "watchdog hold", halted, held: true }
-                  : { active: null, mechanism: null, halted, held: false }
+          const held = hold !== undefined
+          const pause = {
+            paused: halted || held,
+            mechanism: "agent_teams_halt",
+            implementation: held ? "watchdog-hold" : "none",
+            halted,
+            held,
+          }
           return {
             teamId,
             held: hold !== undefined,

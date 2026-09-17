@@ -1,0 +1,14 @@
+[watchdog-redesign] [2026-09-17T08:29:41.583Z] contract §9 rows g — RED /root/dshProj/my-power-dsh/.mpd/red-baseline vs GREEN /root/dshProj/my-power-dsh
+[watchdog-redesign] generations: red=legacy green=fold
+[watchdog-redesign] knobs: red {"warnSilenceMs":90000,"streak":3,"action":"pause"} | green {"warnSilenceMs":600000,"streak":6,"action":"warn-only"}
+[watchdog-redesign] 
+[watchdog-redesign] row (g) the KICK arm (T-48, frozen D-2): a HOLD stops NEW DELIVERY only
+[watchdog-redesign]   required     : while held: the kick is ANSWERED with a NAMED decline, ZERO deliveries, the team bytes untouched, and claim/update still SUCCEED; after the release the SAME kick delivers exactly ONCE
+[watchdog-redesign]   RED   verdict: RED — instrument=packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts exit=0 readings=pass kickControl=pass claimUpdateControl=pass
+[watchdog-redesign]   GREEN verdict: GREEN — instrument=packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts exit=0 readings=pass kickControl=pass claimUpdateControl=pass
+[watchdog-redesign]   row verdict  : red=red green=green
+[watchdog-redesign] 
+[watchdog-redesign] RED pin (contract §0/A2): machine=fc10fc41 engine=f529ca2c tools=49025f4d channel=(absent) → redPinned=true
+[watchdog-redesign] settled=not requested (--settle-ms 0) | green fingerprint: {"machine":"47511b5d4154","engine":"a82913cc7566","channel":"b9d7acaf6350","tools":"5fe18cdf62af"}
+[watchdog-redesign] PASS — 9 checks, 0 failed (evidence: /root/dshProj/my-power-dsh/evidence/review/t14-lane-c/20260917T081714Z/row-g-bun/result.json)
+[watchdog-redesign] NOT CLAIMED: a --row subset run verdicts only the requested rows (g); it is NOT the contract's full §9 verdict

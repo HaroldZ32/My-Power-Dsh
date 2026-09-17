@@ -1,0 +1,4 @@
+  BUILD_FAILED: packages/mpd-ext-plugin/dist/index.js — exit 1 —              ^ | error: Could not resolve: "../../mpd-dsh-adapter-plugin/src/index" |     at /root/dshProj/my-power-dsh/evidence/review/t12-lane-a/20260917T080041Z/revert/T62-gate-mirror/packages/mpd-ext-plugin/src/index.ts:105:8
+  STALE: packages/mpd-ext-plugin/dist/sdk.js — committed packages/mpd-ext-plugin/dist/sdk.js (1750 B, d04439486383ed43…) != fresh build of packages/mpd-ext-plugin/src/sdk.ts (1708 B, 4117a1d5d11dbbda…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-ext-plugin/src/sdk.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/sdk.js
+[verify-dist-fresh] NOT COVERED (0): every committed packages/*/dist file maps to a covered target
+[verify-dist-fresh] FAIL - 2 of 2 targets not fresh (BUILD_FAILED: 1, STALE: 1) — 30ms

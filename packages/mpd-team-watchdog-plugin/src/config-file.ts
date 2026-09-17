@@ -1,10 +1,12 @@
-// §7.2/§7.3 — the FILE layer of the `mpd` settings namespace, read for DIVERGENCE only.
+// §7.2/§7.3 — the FILE layer of the `mpd` settings namespace.
 //
-// T-18's measured fact: a `.mpd/mpd.jsonc` edit reaches a process only at the NEXT boot (the
-// namespace's file-derived base is fixed for the process lifetime), so the honest fix is not to
-// re-register anything but to SAY SO — per knob, what the process is running with, what the file
-// says, and whether a restart is required. The running value comes from the settings namespace
-// (through the adapter); the FILE value comes from here.
+// T-18's measured fact: a `.mpd/mpd.jsonc` edit reaches a process's `mpd` NAMESPACE only at the
+// NEXT boot (the namespace's file-derived base is fixed for the process lifetime). Wave 2's user
+// ruling is that the knobs are DATA and must therefore be live in-process, so this file is no
+// longer read for DIVERGENCE only: the engine calls `readWatchdogSection` on every knob refresh,
+// and when the file is the layer that MOVED, its stated leaves are overlaid onto the namespace
+// value the knobs are resolved from (see `overlayWatchdogSection` in `machine.ts`). The
+// divergence reading stays as the honest residue — a value the running process is NOT using.
 //
 // This module reads the workspace's own config file (never `DSH_HOME`, never a session log) and
 // is defensive by construction: a missing file, a comment, a trailing comma or a malformed value

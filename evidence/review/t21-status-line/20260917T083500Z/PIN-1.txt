@@ -1,0 +1,6 @@
+== PIN-1 2026-09-17T08:42:28Z ==
+6021bf6dfce594ed packages/mpd-agent-teams-plugin/lib/tools.js
+afb3233519db7fac packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs
+133f3c6342961c64 packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts
+6dce6f1f3598c77b packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+8716eaf51b0e32b8 agent-references/agent-teams-deltas.md

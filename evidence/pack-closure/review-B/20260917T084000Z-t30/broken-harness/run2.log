@@ -1,0 +1,116 @@
+{
+  "ok": false,
+  "output_dir": "/root/dshProj/my-power-dsh/evidence/pack-closure/review-B/20260917T084000Z-t30/broken-harness/out",
+  "regenerated": {
+    "artifacts": 15,
+    "result_json_digest": "6c07c57d5fca9afd",
+    "result_json_note": "digest taken after the write; result.json excludes itself from its own map"
+  },
+  "steps": [
+    [
+      "closure",
+      0,
+      0,
+      "167ms"
+    ],
+    [
+      "closure-selftest",
+      0,
+      0,
+      "4010ms"
+    ],
+    [
+      "dist-fresh",
+      0,
+      "reported",
+      "535ms"
+    ],
+    [
+      "dist-fresh-ext-plugin",
+      0,
+      0,
+      "123ms"
+    ],
+    [
+      "dist-fresh-tui-plugin",
+      0,
+      0,
+      "122ms"
+    ],
+    [
+      "dist-fresh-selftest",
+      0,
+      0,
+      "994ms"
+    ],
+    [
+      "verify-gates",
+      1,
+      "reported",
+      "1135ms"
+    ],
+    [
+      "t67-build-form-diff",
+      0,
+      0,
+      "41ms"
+    ],
+    [
+      "t63-t76-seeded-mutation",
+      0,
+      0,
+      "761ms"
+    ],
+    [
+      "t63-out-flag-equivalence",
+      0,
+      0,
+      "1080ms"
+    ],
+    [
+      "t67-round-trip",
+      0,
+      0,
+      "300ms"
+    ]
+  ],
+  "aggregate_reported": {
+    "exitCode": 1,
+    "failingSubGate": [
+      "[verify-vendor] FAIL - asset skills treeSha mismatch"
+    ]
+  },
+  "harnesses_parsed": {
+    "t67-build-form-diff": "PARSE-FAILED: no JSON object found in the harness output",
+    "t63-t76-seeded-mutation": "ok",
+    "t63-out-flag-equivalence": "ok",
+    "t67-round-trip": "ok"
+  },
+  "readings": {
+    "closureVerdict": [
+      "ok"
+    ],
+    "contentBytes": [
+      "1181",
+      "1156",
+      "0",
+      "25"
+    ],
+    "completeness": [
+      "406",
+      "405",
+      "1",
+      "0"
+    ],
+    "closureArms": [
+      "34/34"
+    ],
+    "distArms": [
+      "12/12"
+    ],
+    "stampIdentical": true,
+    "expectedDriftCount": 25
+  },
+  "failedExpectations": [],
+  "digests_skipped": {}
+}

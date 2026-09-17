@@ -35,7 +35,7 @@ code, scripts and docs still resolves.
 | File | Holds | Open it when |
 |---|---|---|
 | `agent-references/troubleshooting.md` | the full symptom → cause/fix table (the former body of §12, moved verbatim 2026-09-17 by the T-22 instruction-budget split) | a boot, gate, tool or team behaviour is wrong — look the symptom up before inventing a fix |
-| `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the A1–D38 adaptation table, the registry mechanics (context-pair addressing, `--write-registry`), the live region count and the two unpatched wave-2 driver scripts | you touch `packages/mpd-agent-teams-plugin/**`, `scripts/patch-agent-teams-fixes.mjs`, `scripts/vendor-agent-teams.mjs`, or an `mpd-delta` region |
+| `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the A1–D42 adaptation table, the registry mechanics (context-pair addressing, `--write-registry`), the live region count and the two unpatched wave-2 driver scripts | you touch `packages/mpd-agent-teams-plugin/**`, `scripts/patch-agent-teams-fixes.mjs`, `scripts/vendor-agent-teams.mjs`, or an `mpd-delta` region |
 
 ---
 
@@ -292,7 +292,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   residual: on a hand re-materialize of `tools.js` a line-keyed anchor can still land a
   region one statement late — see the carry-forward list in the wave-2 report).
   **The adopted-plugin delta registry lives in `agent-references/agent-teams-deltas.md`**
-  (open it on demand — it is not auto-injected): that file carries the authoritative A1–D38
+  (open it on demand — it is not auto-injected): that file carries the authoritative A1–D42
   adaptation table (`evidence/wave2/adopted-tooling/result.json`, `adaptation_list`), the registry
   mechanics, the live region count and the wave-2 driver-script warning. Two rules from it stay
   binding here: (a) the registry is **derived** — regenerate it with `--write-registry`, never

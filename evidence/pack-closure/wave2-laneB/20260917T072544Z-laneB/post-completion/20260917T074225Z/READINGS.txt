@@ -1,0 +1,6 @@
+post-completion re-measurement 20260917T074225Z (HEAD c826f16)
+closure                exit=0 :: 
+closure --self-test    exit=0 :: 
+dist-fresh (repo-wide) exit=0 :: 
+verify-gates           exit=1 :: 
+watchdog dist mtime: 2026-09-17 15:40:20.988310130 +0800

@@ -1,0 +1,9 @@
+# FINAL hashes (2026-09-17T07:34:12Z) HEAD c826f16
+e18fdf06a878cf4dd25e56aafd16fe5770be37a44d86d1a289e3fe1ba7d0b9cb  scripts/verify-docs-parity.mjs
+8d0dd92980c353ada87ef0e7360ec4c185d47eb09295a8d06f40f109c3833fa8  AGENTS.md
+adec21da1ac178a5e61859ddd70b1d8d6fa83999645382e698e3ad068b1b6478  agent-references/index.md
+2fd0099a47fa9a27c5ae0e36cf80e2b642b839e4e86f57936d56611b115b85b9  agent-references/agent-teams-deltas.md
+3db729cd999376595a5b8c7ff8ceb4821b572d36d0e2701bc9f50a586cebf2ba  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+
+# count sentence (lane A landed it; derived value 78/9 — no edit needed from t19)
+The live registry is **78** regions across **9** adopted files — the count MEASURED at this edit (2026-09-17, `node sc

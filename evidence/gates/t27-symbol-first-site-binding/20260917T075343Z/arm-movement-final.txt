@@ -1,0 +1,1 @@
+before(9 arms x 2 rev) → final: movements = 1 ["symbol-first-right-then-wrong [durable] 0 -> 1"]

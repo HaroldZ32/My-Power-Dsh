@@ -1,0 +1,190 @@
+{
+  "task": "t16 — B2 — lane B2: symbol-first anchors so a citation can stop rotting",
+  "issue": "T-72",
+  "kind": "implementation",
+  "agent": "citation-checker-engineer",
+  "attemptId": "c490788d-44e6-4460-8614-95b41c5e61c4",
+  "date": "2026-09-17",
+  "registerRow": "§8.6 line 530 (verbatim): **T-72 [trap] The citation checker's anchor grammar makes every citation rot** (the line number is mandatory). P1.",
+  "headline": "The checker moved to its durable home `scripts/check-citations.mjs` and now ENFORCES symbol-first anchors: the anchor form the frozen revision silently ACCEPTED — a line-number-only anchor shadowed by a sibling claim for the same path:line — is FLAGGED as rot and fails the run, and the run records its own revision plus the one it supersedes so the change is diffable. It caught T-72's rot LIVE during this task (a concurrent lane moved `cpDist` out of the cited range `scripts/pack-mpd.mjs:120-132`, reddening two bilingual doc anchors); both were repaired symbol-first. Final repo-wide run: green, 249 citations, 19 symbol-first, 30 line-dependent, 0 rot-flagged.",
+  "measuredResidual": "r-E's premise (a mandatory line number) is REFUTED by measurement: a line-less anchor was already accepted. The residual is enforcement — (1) claim matching was per (path,line) over the whole document, so a bare `path:line` was accepted whenever ANY other anchor in the same document carried a claim for that same path:line; (2) the remedy the checker taught was the line-bearing form; (3) rot was neither classified nor counted. Probe arms before/after: {\"before\":{\"symbol-first\":\"accepted (exit 0)\",\"symbol-first+line\":\"accepted (exit 0)\",\"line-only\":\"flagged (exit 1)\",\"line-only-shadowed\":\"accepted (exit 0)\",\"symbol-first+line-SHIFT\":\"flagged (exit 1)\",\"symbol-first-SHIFT\":\"accepted (exit 0)\"},\"after\":{\"symbol-first\":\"accepted (exit 0)\",\"symbol-first+line\":\"accepted (exit 0)\",\"line-only\":\"flagged (exit 1)\",\"line-only-shadowed\":\"flagged (exit 1)\",\"symbol-first+line-SHIFT\":\"flagged (exit 1)\",\"symbol-first-SHIFT\":\"accepted (exit 0)\"}}; exactly these arms flipped: [\"line-only-shadowed\"]",
+  "revisions": {
+    "before": {
+      "path": "evidence/extensions/docs-claims/check-citations.mjs",
+      "sha256": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c",
+      "bytes": 30345,
+      "state": "FROZEN — never edited by this task (hash re-checked after the change)"
+    },
+    "after": {
+      "path": "scripts/check-citations.mjs",
+      "sha256": "d64dfeb52d3b6c9d18acee5c7e9d8685c82b847e44a4f6f4ef94f21eb1f45c13",
+      "bytes": 38946,
+      "built_by": "evidence/extensions/docs-claims/t72-symbol-first-20260917T072356Z/t72-patch.mjs (19 asserted line-range splices from the frozen revision)"
+    },
+    "diff": "evidence/extensions/docs-claims/t72-symbol-first-20260917T072356Z/checker.diff",
+    "nested_correction": "evidence/extensions/docs-claims/SUPERSEDED-check-citations.md"
+  },
+  "ruleChanges": [
+    {
+      "symbol": "claimForSite(citation, claims)",
+      "change": "NEW — a claim belongs to an anchor only at that anchor's OWN SITE (same path/line/endLine within ROT_SITE_WINDOW = 1 line), replacing the document-wide (path,line) `find` inside the old `contentClaimProblem`"
+    },
+    {
+      "symbol": "lineNumberOnlyProblem(citation)",
+      "change": "NEW — the ROT verdict: the anchor's only locator is a line number; reported per anchor with the file, the line and the fix, and pushed into `failures` so the run can redden"
+    },
+    {
+      "symbol": "claimContentProblem(citation, claim)",
+      "change": "RENAMED from `contentClaimProblem` and now SITE-BOUND (takes the paired claim instead of searching the document)"
+    },
+    {
+      "symbol": "ROT_SITE_WINDOW",
+      "change": "NEW — 1; chosen from the measured distance histogram of the recorded subjects (31 claims at distance 0, 1 at distance 1, none farther)"
+    },
+    {
+      "symbol": "content:rot",
+      "change": "NEW record — the rot class is a named check; `rot_line_number_only_anchors` + the `rot` list are new result.json counters"
+    },
+    {
+      "symbol": "line_dependent_anchors_verified",
+      "change": "NEW counter — the accepted line-bearing form, counted apart from the line-free form and kept green on purpose (no mass re-anchoring)"
+    },
+    {
+      "symbol": "checker{path,sha256,supersedes}",
+      "change": "NEW — every run records its own revision and the revision it supersedes, so intermediate revisions are diffable, not merely hash-comparable"
+    },
+    {
+      "symbol": "fileHash(absolute)",
+      "change": "NEW — sha256 of a revision file, null when absent"
+    }
+  ],
+  "before": {
+    "command": "node evidence/extensions/docs-claims/check-citations.mjs --self-test (frozen revision)",
+    "exitCode": 0,
+    "plain": {
+      "citations_checked": 249,
+      "anchored_citations_content_verified": 49,
+      "symbol_only_anchors_verified": 17,
+      "line_dependent_anchors_verified": null,
+      "rot_line_number_only_anchors": null,
+      "anchored_citations_without_a_claim": 0,
+      "checks_passed": "12/12",
+      "failed": []
+    },
+    "selfTest": {
+      "citations_checked": 249,
+      "anchored_citations_content_verified": 49,
+      "symbol_only_anchors_verified": 17,
+      "line_dependent_anchors_verified": null,
+      "rot_line_number_only_anchors": null,
+      "anchored_citations_without_a_claim": 0,
+      "checks_passed": "16/16",
+      "failed": []
+    },
+    "negativeControlArms": [
+      "green",
+      "red",
+      "symbolOnlyPresent",
+      "symbolOnlyAbsent"
+    ]
+  },
+  "after": {
+    "command": "node scripts/check-citations.mjs --self-test (durable revision)",
+    "exitCode": 0,
+    "plain": {
+      "citations_checked": 249,
+      "anchored_citations_content_verified": 49,
+      "symbol_only_anchors_verified": 17,
+      "line_dependent_anchors_verified": 32,
+      "rot_line_number_only_anchors": 0,
+      "anchored_citations_without_a_claim": null,
+      "checks_passed": "13/13",
+      "failed": []
+    },
+    "selfTest": {
+      "citations_checked": 249,
+      "anchored_citations_content_verified": 49,
+      "symbol_only_anchors_verified": 17,
+      "line_dependent_anchors_verified": 32,
+      "rot_line_number_only_anchors": 0,
+      "anchored_citations_without_a_claim": null,
+      "checks_passed": "21/21",
+      "failed": []
+    },
+    "negativeControlArms": [
+      "green",
+      "red",
+      "symbolOnlyPresent",
+      "symbolOnlyAbsent",
+      "rotLineOnly",
+      "rotLineOnlyShadowed",
+      "rotLineOnlyDrifted",
+      "symbolFirstSurvivesShift"
+    ],
+    "rotCheckLine": "no line-number-only anchors"
+  },
+  "lineDependency": {
+    "note": "Acceptance: how many anchors STOP being line-dependent. Measured: 2 — the two `cpDist` anchors, which had actually ROTTED when a concurrent lane moved `cpDist` out of the cited range, and were repaired to the symbol-first form (see liveRot). No other document was re-anchored (acceptance (c)). What the change permanently makes visible is the split of the 49 verified citations: 19 line-free (symbol-first) and 30 line-dependent (line = hint, rot risk).",
+    "anchors_before_line_free": 17,
+    "anchors_after_line_free_at_0729Z": 17,
+    "anchors_final_line_free": 19,
+    "anchors_after_line_dependent_at_0729Z": 32,
+    "anchors_final_line_dependent": 30,
+    "anchors_final_rot_flagged": 0,
+    "final_source": "final-verify-3.log / final3-plain.stdout"
+  },
+  "claimProximity": [
+    "[claim-proximity] 32 line-bearing path citation(s) in the real subjects",
+    "[claim-proximity] |claim.docLine - citation.docLine| histogram: 0 line(s): 31 · 1 line(s): 1",
+    "[claim-proximity] citations with no same-path:line claim anywhere in their document: 0",
+    "[claim-proximity] citations whose nearest claim is MORE than 1 line away: 0"
+  ],
+  "consumers": [
+    {
+      "path": "EXTENSIONS-FOR-AGENTS.md:48-49",
+      "state": "still names the frozen path; it resolves, but it is the superseded revision — OUTSIDE lane B2's inScope, reported to the captain as a carry-forward"
+    },
+    {
+      "path": "skills/dsh-qa/scripts/lib/immutable-output.mjs:14",
+      "state": "comment naming the frozen path; `skills/**` is lane D's single-writer lane; the sentence stays true, no change made"
+    }
+  ],
+  "liveRot": {
+    "summary": "T-72's rot happened in the real repo DURING this task: a concurrent lane moved `cpDist` out of `scripts/pack-mpd.mjs:120-132` (it now sits at line 176), and the two bilingual docs that cited that range went RED at the 07:35:11Z pass — a correct document turned failing because the CITED FILE moved.",
+    "measured": "final-verify-2.log: 'the cited line/range does not carry the claim `cpDist` (scripts/pack-mpd.mjs:120-132)' in docs/extension-adaptation-report.md:405 and docs/extension-adaptation-report.zh-CN.md:207",
+    "repair": "both twins rewritten to the SYMBOL-FIRST form (`` `cpDist`, `scripts/pack-mpd.mjs` ``), which resolves against the whole file and cannot rot again; `scripts/pack-mpd.mjs` itself was NOT touched (the wave's packaging lane owns it)",
+    "detail": "LIVE-ROT-cpDist.md",
+    "counters_moved": "symbol-first 17 → 19, line-dependent 32 → 30 (the two rotted anchors are the ones that stopped being line-dependent)"
+  },
+  "verification": [
+    {
+      "command": "node scripts/check-citations.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "[docs-claims] 21/21 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged (final-verify-3.log)"
+    },
+    {
+      "command": "node scripts/check-citations.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "[docs-claims] 13/13 checks passed, 0 failed, 249 citation(s) resolved, 19 symbol-first, 30 line-dependent, 0 rot-flagged (final-verify-3.log)"
+    },
+    {
+      "command": "bun run verify:docs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 derived=3 — PASS (final-verify-3.log)"
+    }
+  ],
+  "verifyDocsAttribution": {
+    "note": "The first post-change verify:docs pass was RED (07:30) for a reason outside this task: `AGENTS.md:38/295` and `agent-references/index.md:18` carried the delta-range pointer A1–D38 while the artifact `agent-references/agent-teams-deltas.md` (rewritten by a concurrent lane) derived A1–D42. Proved independent of this change by re-running the SAME gate over a scratch root with NO `scripts/` and NO `evidence/` at all: identical failure, pairs=37 (t72-.../verify-docs-attribution.log). The concurrent lane landed its pointer fix and the 07:34:53Z and 07:36:29Z passes are green.",
+    "raw": "verify-docs-attribution.log"
+  },
+  "changedPaths": [
+    "scripts/check-citations.mjs",
+    "docs/extension-adaptation-report.md",
+    "docs/extension-adaptation-report.zh-CN.md",
+    "evidence/extensions/docs-claims/SUPERSEDED-check-citations.md",
+    "evidence/extensions/docs-claims/t72-symbol-first-20260917T072356Z/"
+  ]
+}

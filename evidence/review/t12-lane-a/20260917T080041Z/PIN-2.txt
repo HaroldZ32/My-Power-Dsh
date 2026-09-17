@@ -1,0 +1,9 @@
+5fe18cdf62af6801 packages/mpd-agent-teams-plugin/lib/tools.js
+6092febdb28e66c8 packages/mpd-agent-teams-plugin/lib/state.js
+1b0eb60e61765f5e packages/mpd-agent-teams-plugin/lib/quality-gates.js
+21226fb694ff7f26 packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+1a901602f7975d7d packages/mpd-agent-teams-plugin/self-fix-tests/strict-task-arguments.test.mjs
+4c77cf321e32b927 packages/mpd-agent-teams-plugin/self-fix-tests/terminal-rearm-refusal.test.mjs
+92bcb5db9bc76f85 packages/mpd-agent-teams-plugin/self-fix-tests/repair-source-deadlock.test.mjs
+63949b6706572de2 packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs
+82f578cfd4857f46 packages/mpd-agent-teams-plugin/self-fix-tests/composed-ticket-output-preserved.test.mjs

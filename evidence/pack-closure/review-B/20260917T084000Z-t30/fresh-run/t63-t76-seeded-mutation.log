@@ -1,0 +1,85 @@
+{
+  "schema": "laneB/t63-t76-seeded-mutation/1",
+  "captured_at": "2026-09-17T08:35:10.016Z",
+  "canonical_artifact": "/root/dshProj/my-power-dsh/dist/mpd-package",
+  "readings": [
+    {
+      "arm": "byte-copy of the real artifact, untouched",
+      "exitCode": 0,
+      "expected": 0,
+      "tail": [
+        "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/mpd-laneB-mutation-wBLIMj/artifact-copy (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js"
+      ]
+    },
+    {
+      "arm": "one byte changed in a PRE-pack-mtime file",
+      "path": "docs/architecture.md",
+      "mutation": {
+        "first_byte_before": 35,
+        "first_byte_after": 32,
+        "bytes": {
+          "before": 32163,
+          "after": 32163
+        }
+      },
+      "exitCode": 1,
+      "expected": 1,
+      "hard_content_drift_names_the_file": true,
+      "presence_assertions_still_green": true,
+      "tail": [
+        "  CONTENT-DRIFT - docs/architecture.md differs byte-wise from /root/dshProj/my-power-dsh/docs/architecture.md (source fc43bda8f9bd… / 32163 B, artifact 4ed1ecc1b3a4… / 32163 B) and the source was NOT written after the artifact stamp 2026-09-17T05:19:48.265Z (source mtime 2026-09-15T15:46:49.958Z) - the artifact ships bytes no reading was taken on (T-63)"
+      ]
+    },
+    {
+      "arm": "one byte changed in a POST-pack-mtime file",
+      "path": "agent-references/troubleshooting.md",
+      "mutation": {
+        "first_byte_before": 35,
+        "first_byte_after": 32,
+        "bytes": {
+          "before": 35548,
+          "after": 35548
+        }
+      },
+      "exitCode": 0,
+      "expected": 0,
+      "reported_as_expected_not_silent": true,
+      "tail": [
+        "[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/troubleshooting.md: source mtime 2026-09-17T08:03:05.204Z is AFTER the artifact stamp 2026-09-17T05:19:48.265Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation"
+      ]
+    },
+    {
+      "arm": "same post-pack mutation, stamp pinned at that writer's own mtime",
+      "path": "agent-references/troubleshooting.md",
+      "exitCode": 1,
+      "expected": 1,
+      "hard_content_drift_names_the_file": true,
+      "tail": [
+        "  CONTENT-DRIFT - agent-references/troubleshooting.md differs byte-wise from /root/dshProj/my-power-dsh/agent-references/troubleshooting.md (source c8568855302a… / 39763 B, artifact 509d7f0e5aeb… / 35548 B) and the source was NOT written after the artifact stamp 2026-09-17T08:03:05.205Z (source mtime 2026-09-17T08:03:05.204Z) - the artifact ships bytes no reading was taken on (T-63)"
+      ]
+    }
+  ],
+  "ok": true,
+  "artifact_stamp": {
+    "ms": 1789622388265.9717,
+    "iso": "2026-09-17T05:19:48.265Z",
+    "anchor": "inferred: the newest mtime among the artifact's own files"
+  },
+  "candidate_counts": {
+    "pre_pack_class": 335,
+    "post_pack_class": 70
+  },
+  "targets": {
+    "pre_pack": {
+      "path": "docs/architecture.md",
+      "source_mtime": "2026-09-15T15:46:49.958Z",
+      "why": "source mtime PREDATES the artifact stamp -> a mutation here must be a hard CONTENT-DRIFT"
+    },
+    "post_pack": {
+      "path": "agent-references/troubleshooting.md",
+      "source_mtime": "2026-09-17T08:03:05.204Z",
+      "why": "source mtime is AFTER the artifact stamp (a post-pack writer) -> the same mutation is the provenance-named EXPECTED class"
+    }
+  },
+  "verdict": "ALL READINGS BEHAVED AS SPECIFIED"
+}

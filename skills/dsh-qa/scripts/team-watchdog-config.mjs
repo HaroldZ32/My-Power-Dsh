@@ -22,7 +22,13 @@
 //   bun skills/dsh-qa/scripts/team-watchdog-config.mjs --self-test
 //   bun skills/dsh-qa/scripts/team-watchdog-config.mjs [--out <dir>]
 // Evidence -> evidence/team-watchdog/lanes/<timestamp>-config/{result.json,output.log,raw/}
-import { PATHS, captureStdout, evidenceDir, finish, read, sandboxWorkspace, say, selfTest, writeEvidence } from "./lib/watchdog-lane.mjs"
+import { createHash } from "node:crypto"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join, resolve } from "node:path"
+import { pathToFileURL } from "node:url"
+import { PATHS, REPO, captureStdout, evidenceDir, finish, read, sandboxWorkspace, say, selfTest, writeEvidence } from "./lib/watchdog-lane.mjs"
+import { exitOnRefusal, refuseOverwrite } from "./lib/immutable-output.mjs"
 
 const SLUG = "team-watchdog-config"
 const KNOBS = ["watchdog.enabled", "watchdog.warnSilenceMs", "watchdog.tickIntervalMs", "watchdog.warnStreakToEscalate", "watchdog.actionOnEscalate"]
@@ -60,6 +66,13 @@ export function evaluate(observed) {
 
 async function run(argv) {
   const dir = evidenceDir(argv, "config")
+  // T-83: the evidence target is IMMUTABLE BY DEFAULT — a caller-supplied --out that already exists
+  // is refused instead of being rewritten (the T-63/T-76 class: a re-run must never overwrite a record).
+  try {
+    refuseOverwrite(dir, { label: "evidence directory", remedy: "pass a new --out <dir>, or omit --out for a fresh timestamped directory (T-53)" })
+  } catch (error) {
+    exitOnRefusal(error, "[" + SLUG + "]")
+  }
   const ws = sandboxWorkspace(dir, "config")
   const declaration = read(PATHS.settingsSchema)
   const tuiBytes = read(PATHS.tuiDist)
@@ -116,10 +129,163 @@ async function run(argv) {
   return result
 }
 
+// ── T-18 `--live`: the command-shaped regression pin (lane C's t10 handoff, landed by lane D) ──
+// User ruling, verbatim: "the knobs must be TRULY live in-process (knobs are DATA, so T-21's
+// module-cache limit does not apply), plus a `--live` assertion as a regression pin."
+// WHAT IT ASSERTS, and nothing else: with the watchdog row's engine mounted in ONE process, a knob
+// value written to the workspace's `.mpd/mpd.jsonc` ON DISK is reported by the SAME running engine
+// on its next tick — no restart, no re-import, no new process. `liveWithoutRestart: true` only when
+// that reading is real; the `restart-needed` mutant (seeded revert) reddens it by construction.
+const LIVE_FILE_KNOB = 900_000
+const LIVE_ROW_KNOB = 90_000
+const WATCHDOG_ENGINE_SRC = join(REPO, "packages", "mpd-team-watchdog-plugin", "src")
+const WATCHDOG_SUPPORT = join(REPO, "packages", "mpd-team-watchdog-plugin", "test", "support.ts")
+
+const shellArgOf = (list, name, fallback) => {
+  const at = list.indexOf(name)
+  return at >= 0 && list[at + 1] !== undefined ? list[at + 1] : fallback
+}
+const shaOfFile = (path) => createHash("sha256").update(readFileSync(path)).digest("hex")
+
+/** The verdict the assertion itself uses — pure, so --self-test exercises it both ways. */
+export function liveVerdict(reading) {
+  return reading.liveWithoutRestart === true
+    ? { verdict: "pass", exitCode: 0, detail: "the same instance reported the on-disk value with no restart" }
+    : { verdict: "fail", exitCode: 1, detail: "liveness LOST: mounted=" + reading.mountedValue + " file=" + reading.fileValue + " observed=" + reading.sameInstanceValue + " fileApplied=" + reading.fileApplied + " restartRequired=" + reading.restartRequired }
+}
+
+/** One live scenario: mount once, write the file once, tick twice, read the SAME instance twice. */
+async function liveReading(engineModule, support, label) {
+  const box = mkdtempSync(join(tmpdir(), "t18-live-"))
+  try {
+    const stub = support.stubAdapter({ workspace: box })
+    const engine = new engineModule.WatchdogEngine(
+      stub.adapter,
+      { on: () => () => {}, logger: { warn: () => {}, info: () => {} } },
+      support.testConfig({ stateDir: join(".mpd", "team") }),
+    )
+    const disposers = engine.install()
+    try {
+      const identity = { label, ticks: engine.getStats().ticks }
+      await engine.tickOnce(1_000)
+      const before = engine.getKnobs().warnSilenceMs
+      mkdirSync(join(box, ".mpd"), { recursive: true })
+      writeFileSync(join(box, ".mpd", "mpd.jsonc"), '{"watchdog":{"warnSilenceMs":' + LIVE_FILE_KNOB + '}}\n')
+      await engine.tickOnce(2_000)
+      const after = engine.getKnobs().warnSilenceMs
+      const view = engine.knobDivergence()
+      const sameInstance = engine.getStats().ticks === identity.ticks + 2 && engine.getKnobs().warnSilenceMs === after
+      return {
+        label, mountedValue: before, fileValue: LIVE_FILE_KNOB, sameInstanceValue: after, sameInstance,
+        fileApplied: view.fileApplied, liveLayer: view.liveLayer, restartRequired: view.restartRequired,
+        liveWithoutRestart: before === LIVE_ROW_KNOB && after === LIVE_FILE_KNOB && view.fileApplied === true && view.restartRequired === false && sameInstance,
+      }
+    } finally {
+      for (const off of disposers) off()
+      engine.stop()
+    }
+  } finally {
+    rmSync(box, { recursive: true, force: true })
+  }
+}
+
+/** A scratch copy of the plugin's src with the live overlay seeded back out (the pre-wave-2 rule). */
+function seededLiveRevert() {
+  const root = mkdtempSync(join(tmpdir(), "t18-live-mutant-"))
+  const dir = join(root, "packages", "mpd-team-watchdog-plugin", "src")
+  mkdirSync(dir, { recursive: true })
+  cpSync(WATCHDOG_ENGINE_SRC, dir, { recursive: true })
+  const enginePath = join(dir, "engine.ts")
+  const source = readFileSync(enginePath, "utf8")
+  const from = 'const base = this.liveLayer === "file" && fileDigest !== null ? overlayWatchdogSection(namespaceValue, file.section) : namespaceValue'
+  const count = source.split(from).length - 1
+  if (count !== 1) throw new Error("seeded revert: expected exactly 1 overlay anchor, found " + count)
+  writeFileSync(enginePath, source.replace(from, "const base = namespaceValue"))
+  return { root, enginePath }
+}
+
+function writeLiveEvidence(dir, payload) {
+  mkdirSync(dir, { recursive: true })
+  const target = join(dir, "live-result.json")
+  try {
+    refuseOverwrite(target, { label: "live-result.json", remedy: "pass a fresh --out <dir> (the stamped default is fresh every run)" })
+  } catch (error) {
+    exitOnRefusal(error, "[" + SLUG + "]")
+  }
+  writeFileSync(target, JSON.stringify(payload, null, 2) + "\n")
+  return target
+}
+
+/** `--live` | `--mutant restart-needed` [--out <dir>] — the command-shaped T-18 pin. */
+async function runLiveCli(list) {
+  const mutant = list.includes("--mutant")
+  const out = resolve(shellArgOf(list, "--out", evidenceDir(list, "config-live")))
+  const support = await import(pathToFileURL(WATCHDOG_SUPPORT).href)
+  let enginePath = join(WATCHDOG_ENGINE_SRC, "engine.ts")
+  let scratch = null
+  if (mutant) {
+    const wanted = shellArgOf(list, "--mutant", "restart-needed")
+    if (wanted !== "restart-needed") {
+      console.error("[" + SLUG + "] unknown mutant: " + wanted)
+      return 2
+    }
+    scratch = seededLiveRevert()
+    enginePath = scratch.enginePath
+  }
+  let reading
+  try {
+    const engineModule = await import(pathToFileURL(enginePath).href + (mutant ? "?mutant=" + Date.now() : ""))
+    reading = await liveReading(engineModule, support, mutant ? "seeded-revert" : "shipped")
+  } finally {
+    if (scratch !== null) rmSync(scratch.root, { recursive: true, force: true })
+  }
+  const verdict = liveVerdict(reading)
+  const payload = {
+    assertion: "--live (T-18)",
+    ruling: "the knobs must be TRULY live in-process (knobs are DATA, so T-21's module-cache limit does not apply), plus a `--live` assertion as a regression pin.",
+    legs: ["in-process mount", "on-disk .mpd/mpd.jsonc write", "same-instance readback on the next tick"],
+    tree: mutant ? "seeded revert (the live overlay neutered)" : "shipped",
+    reading, verdict,
+    sourceHash: shaOfFile(join(WATCHDOG_ENGINE_SRC, "engine.ts")),
+    finishedAt: new Date().toISOString(),
+  }
+  say(SLUG, "--live" + (mutant ? " (mutant restart-needed)" : "") + " mounted=" + reading.mountedValue + " file=" + reading.fileValue + " sameInstance=" + reading.sameInstanceValue + " fileApplied=" + reading.fileApplied + " restartRequired=" + reading.restartRequired)
+  say(SLUG, "liveWithoutRestart: " + reading.liveWithoutRestart + " — " + verdict.detail)
+  const wrote = writeLiveEvidence(out, payload)
+  if (mutant) {
+    const detected = verdict.exitCode !== 0
+    say(SLUG, "mutant restart-needed: " + (detected ? "DETECTED (the assertion reddened)" : "NOT DETECTED") + " — " + wrote)
+    return detected ? 0 : 1
+  }
+  say(SLUG, "result: " + verdict.verdict.toUpperCase() + " — " + wrote)
+  return verdict.exitCode
+}
+
 const CAPTURE = captureStdout()
 const argv = process.argv.slice(2)
+if (argv.includes("--live") || argv.includes("--mutant")) {
+  CAPTURE.restore()
+  process.exit(await runLiveCli(argv))
+}
 if (argv.includes("--self-test")) {
   CAPTURE.restore()
+  // T-18 `--live` verdict arms (offline): the pin's own logic, exercised in both directions.
+  const liveArms = [
+    ["live", { mountedValue: LIVE_ROW_KNOB, fileValue: LIVE_FILE_KNOB, sameInstanceValue: LIVE_FILE_KNOB, sameInstance: true, fileApplied: true, restartRequired: false, liveWithoutRestart: true }, "pass", 0],
+    ["restart-needed", { mountedValue: LIVE_ROW_KNOB, fileValue: LIVE_FILE_KNOB, sameInstanceValue: LIVE_ROW_KNOB, sameInstance: true, fileApplied: false, restartRequired: true, liveWithoutRestart: false }, "fail", 1],
+    ["not-same-instance", { mountedValue: LIVE_ROW_KNOB, fileValue: LIVE_FILE_KNOB, sameInstanceValue: LIVE_FILE_KNOB, sameInstance: false, fileApplied: true, restartRequired: false, liveWithoutRestart: false }, "fail", 1],
+  ]
+  let liveFailures = 0
+  for (const [name, reading, wantVerdict, wantExit] of liveArms) {
+    const got = liveVerdict(reading)
+    const ok = got.verdict === wantVerdict && got.exitCode === wantExit
+    if (!ok) liveFailures += 1
+    console.log("[self-test] " + (ok ? "ok  " : "FAIL") + " live-" + name + ": " + got.verdict + "/" + got.exitCode)
+  }
+  if (liveFailures > 0) {
+    console.error("[self-test] FAIL — the --live verdict arms did not hold")
+    process.exit(1)
+  }
   const healthy = {
     declaration: KNOB_KEYS.join(" "), declarationIsOne: true,
     tuiBytes: KNOB_KEYS.join(" "), webBytes: KNOB_KEYS.join(" "), sameSetAcrossDoors: true,

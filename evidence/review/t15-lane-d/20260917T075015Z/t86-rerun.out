@@ -1,0 +1,1 @@
+[reconcile-register] --out already holds artifacts (register-partition-check.json, register-partition-check.log); pass --allow-existing to supersede them

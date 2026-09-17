@@ -1,0 +1,348 @@
+== CLEAN-FORM RE-TAKE (PATH form) 2026-09-17T08:25:43Z ==
+-- B1: ./packages/mpd-team-watchdog-plugin
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-team-watchdog-plugin/test/dispatch-precondition.test.ts:
+(pass) a staged plan is never a dispatch problem > 12 pending assigned tasks, no attempt and no stamp: NO record, NO console line, NO hold [6.91ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): team mpd-default carries no session id for task owner Planner — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t1 member=Planner attempt=att-t1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t2 member=Planner attempt=att-t2 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t3 member=Planner attempt=att-t3 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t4 member=Planner attempt=att-t4 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t5 member=Planner attempt=att-t5 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t6 member=Planner attempt=att-t6 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t7 member=Planner attempt=att-t7 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t8 member=Planner attempt=att-t8 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t9 member=Planner attempt=att-t9 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t10 member=Planner attempt=att-t10 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t11 member=Planner attempt=att-t11 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t12 member=Planner attempt=att-t12 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-1aj3fa/.mpd/team/watchdog/incidents.jsonl
+(pass) a staged plan is never a dispatch problem > CONTROL: the same record WITH dispatch attempts still reports every never-started task [2.95ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): team mpd-default carries no session id for task owner Planner — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED mpd-default task=t1 member=Planner attempt=(none) — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-RdyihV/.mpd/team/watchdog/incidents.jsonl
+(pass) a staged plan is never a dispatch problem > a REVOKED generation (attempt cleared, one old stamp) stays observable — and only that task does [2.00ms]
+(pass) candidateFor applies the precondition > an un-dispatched task is not a candidate; a dispatched one is [0.16ms]
+(pass) candidateFor applies the precondition > a stamp for the task keeps it observable even without a live attempt [0.15ms]
+(pass) candidateFor applies the precondition > an EARLIER generation's stamp still proves the task was worked on; another TEAM's does not [0.22ms]
+
+packages/mpd-team-watchdog-plugin/test/channel-fold.test.ts:
+(pass) §1 — the four states, folded from the record stream > an open step with no committed answer is OUTSTANDING, and it carries the clock [0.70ms]
+(pass) §1 — the four states, folded from the record stream > NEGATIVE CONTROL: the same list WITH its step/end is no longer OUTSTANDING [0.10ms]
+(pass) §1 — the four states, folded from the record stream > an answered step with an unmatched tool/call is IN-FLIGHT [0.31ms]
+(pass) §1 — the four states, folded from the record stream > NEGATIVE CONTROL: dropping the answer makes it OUTSTANDING; adding the result makes it ALIVE [0.29ms]
+(pass) §1 — the four states, folded from the record stream > a turn that has not closed is ALIVE, and a CLOSED turn is PARKED [0.11ms]
+(pass) §1 — the four states, folded from the record stream > a completed step stays ALIVE forever: 24 h of age changes nothing [0.14ms]
+(pass) §1 — the four states, folded from the record stream > the assistant-stream START frame is the §2 enrichment: OUTSTANDING flips to ALIVE [0.18ms]
+(pass) §1 — the four states, folded from the record stream > NO CHANNEL EVIDENCE is not PARKED: it is null (the §4 degradation seam) [0.21ms]
+(pass) §1 — the four states, folded from the record stream > an unknown (extension) event type changes no verdict [0.08ms]
+(pass) §1 — the four states, folded from the record stream > the answer may be an `assistant/attempt` (a plugin-merged extension type) [0.09ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > PARKED and ALIVE never warn, however long the watchdog looks [0.32ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > OUTSTANDING warns only after warnSilenceMs SINCE THE REQUEST BECAME OUTSTANDING [0.19ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > the frozen ladder: six consecutive OUTSTANDING observations after the first warn [0.33ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > an OUTSTANDING request that becomes ALIVE resets the streak (no stale escalation) [0.14ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > IN-FLIGHT past toolInFlightMaxMs is reported ONCE and never held [0.20ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > §4: with NO channel evidence the heartbeat rule WARNs exactly once and never escalates [0.39ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > §1 rule 5: a candidate that never stamped is never-started, never a warn [0.43ms]
+(pass) §3 — the ladder and the §4 degradation, per channel verdict > the frozen §3 defaults are exactly the contract's table [0.11ms]
+
+packages/mpd-team-watchdog-plugin/test/pre-step-waterfall.test.ts:
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > the pre-step listener DELEGATES: the decision reaches the harness unchanged [6.99ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > the listener delegates DOWNSTREAM: a later listener still runs and its decision wins [2.17ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > NEGATIVE CONTROL: the retired shape really does clobber the decision [1.20ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > no listener we install returns a value on a non-waterfall dispatch (emit/serial) [1.57ms]
+(pass) agent/pre-step is a waterfall (the decision must survive a heartbeat) > a THROWING stamp still delegates: a heartbeat failure never vetoes the step [3.46ms]
+
+packages/mpd-team-watchdog-plugin/test/heartbeat.test.ts:
+(pass) heartbeat store > a model step stamps the member AND the task the member owns [3.56ms]
+(pass) heartbeat store > the captain is stamped under its own key by the same code path [0.60ms]
+(pass) heartbeat store > an agent outside every team still stamps, under a per-session key [0.67ms]
+(pass) heartbeat store > the tool pair: the PRE hook opens the call (tool-start), the POST hook closes it (tool) [1.02ms]
+(pass) heartbeat store > turn boundaries are stamped and an old generation is rotated away [2.20ms]
+(pass) heartbeat store > timestamps advance across a turn (>= 3 distinct lastSeen values) [18.03ms]
+(pass) heartbeat store > r2: rotation is PER TEAM, so one team's turnover cannot evict the other team's evidence [0.96ms]
+(pass) heartbeat store > a torn last line does not hide the stamps before it [0.39ms]
+
+packages/mpd-team-watchdog-plugin/test/predicate.test.ts:
+(pass) §9 row (a) — a long streaming answer is ALIVE, never a wedge > 12 simulated minutes of an uncommitted streaming answer: NO warn, NO hold, NO write [4.59ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-TTdflW/.mpd/team/watchdog/scene/team-a/20260917T083543Z-warn.json
+(pass) §9 row (a) — a long streaming answer is ALIVE, never a wedge > the same 12 minutes WITHOUT the enrichment stays OUTSTANDING (§1 rule 3's stated asymmetry) [6.33ms]
+(pass) §9 row (b) — a member between turns is PARKED, not silent > a closed turn with a STALE previous-generation stamp: NO warn, NO hold, and PARKED is named [1.08ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-TZv6zQ/.mpd/team/watchdog/scene/team-a/20260917T083543Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-TZv6zQ/.mpd/team/watchdog/scene/team-a/20260917T083543Z-warn-2.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600003ms streak=3 hold=not-requested scene=/tmp/watchdog-test-TZv6zQ/.mpd/team/watchdog/scene/team-a/20260917T083543Z-warn-3.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600004ms streak=4 hold=not-requested scene=/tmp/watchdog-test-TZv6zQ/.mpd/team/watchdog/scene/team-a/20260917T083543Z-warn-4.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600005ms streak=5 hold=not-requested scene=/tmp/watchdog-test-TZv6zQ/.mpd/team/watchdog/scene/team-a/20260917T083543Z-warn-5.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600006ms streak=6 hold=applied scene=/tmp/watchdog-test-TZv6zQ/.mpd/team/watchdog/scene/team-a/20260917T083543Z-escalate.json
+(pass) §9 row (d) — an OUTSTANDING request: the frozen ladder, end to end > first WARN only after 600 s, then ESCALATE on the sixth observation, and the hold lands [6.30ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-heartbeat state=heartbeat silence=600001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-W5omsU/.mpd/team/watchdog/scene/team-a/20260917T083543Z-warn.json
+(pass) §4 degradation — the heartbeat fallback reports once and never pauses > no channel evidence at all: ONE warn (cause silence-heartbeat), no hold, source named [3.81ms]
+
+packages/mpd-team-watchdog-plugin/test/holds.test.ts:
+(pass) the mpdWatchdog reader (A2-1 option (b)) > an unknown team is not held, and a recorded hold makes it held [0.75ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the file fallback answers for a hold ANOTHER process wrote (the cross-process caveat) [0.62ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=1 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the mpdWatchdog reader (A2-1 option (b)) > hydrate at apply loads the holds that already exist on disk [1.76ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the mpdWatchdog reader (A2-1 option (b)) > the documented gate call shape returns exactly what a decline gate branches on [0.95ms]
+[mpd-team-watchdog] ctx.provide is unavailable — the hold reader is not published and the w7 gates stay fail-open
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=none hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the mpdWatchdog reader (A2-1 option (b)) > FAIL-OPEN: a context without ctx.provide publishes no service, and the gate expression is simply false [0.33ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > never throws on a hostile path: the gates call it on every dispatch [0.27ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a mutation through the plugin's own actions keeps the reader in step, both ways [0.95ms]
+(pass) the mpdWatchdog reader (A2-1 option (b)) > a direct applyResume with no registry argument still works (the registry is optional) [0.33ms]
+[mpd-team-watchdog] knob watchdog.tickIntervalMs: must be < watchdog.warnSilenceMs (90000); clamped — using 30000
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=30000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-d3lMub/.mpd/team/watchdog/scene/team-a/20260917T082713Z-warn.json
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-d3lMub/.mpd/team/watchdog/scene/team-a/20260917T082713Z-warn-2.json
+[mpd-team-watchdog] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-d3lMub/.mpd/team/watchdog/scene/team-a/20260917T082713Z-escalate.json
+(pass) the engine keeps the reader in step with its own hold > an ESCALATE hold lands in the registry through the plugin's own tool action [3.58ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-watchdog] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=30001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-Y7fMHe/.mpd/team/watchdog/scene/team-a/20260917T082613Z-warn.json
+(pass) the engine keeps the reader in step with its own hold > a namespace that registers AFTER apply still tunes the tick (per-tick knob re-read) [2.80ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > heldTeams lists the live hold index from disk, sorted, and answers [] with no store [0.46ms]
+(pass) the mpdWatchdog service's front-door reads (w6b) > view / unread / acknowledge drive the durable watermark (byte-level) and never throw [1.46ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the mpdWatchdog service's front-door reads (w6b) > the published service carries every front-door member, and holdService is still mpdWatchdog [0.60ms]
+
+packages/mpd-team-watchdog-plugin/test/failsafe.test.ts:
+(pass) AC-15 fail-safe > a throwing tick body is caught and counted, and the tick still returns [3.63ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=120000 tickIntervalMs=60000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) AC-15 fail-safe > exactly ONE interval owns the cadence, and a live cadence change replaces it [0.48ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+(pass) AC-15 fail-safe > a tick with no state change writes nothing (no write loop) [2.55ms]
+(pass) AC-15 fail-safe > an unwritable heartbeat location degrades to a counted failure [0.64ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-heartbeat state=heartbeat silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-V1eO4q/.mpd/team/watchdog/scene/team-a/20260917T082713Z-warn.json
+(pass) AC-15 fail-safe > a tick that starts while the previous one runs is skipped, never queued [1.34ms]
+(pass) AC-15 fail-safe > the env kill switch makes the tick observe nothing at all [0.73ms]
+[mpd-team-watchdog] disabled by configuration — no heartbeat tick will run
+[mpd-team-watchdog] applied: enabled=false warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) AC-15 fail-safe > a row config kill switch also disables the engine [0.48ms]
+
+packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts:
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > RED-first: a stamp PREDATING the record's createdAt is not this generation's work [0.23ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > the same candidate is reported `never-started`, and never escalates [0.24ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > a stamp AT OR AFTER createdAt IS this generation: silence still warns and escalates [0.26ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > an ABSENT createdAt stays permissive (§0/A3 — the r7 convention, pinned) [0.08ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > approvedAt counts too: the floor is the NEWER of the two [1.45ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-GTRCx5/.mpd/team/watchdog/incidents.jsonl
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > ENGINE: the measured leak shape (a day-old stamp, record created now) holds nothing [2.11ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-ccXV0l/.mpd/team/watchdog/scene/team-a/20260917T082713Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-ccXV0l/.mpd/team/watchdog/scene/team-a/20260917T082713Z-warn-2.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-ccXV0l/.mpd/team/watchdog/scene/team-a/20260917T082713Z-escalate.json
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > the resolved knob's TTL travels with a hold the ENGINE persists [2.75ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-e8gAL7/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] HOLD AUTO-RELEASED team=team-a cause=ttl age=1000ms ttl=1000ms since=1789633543923 — the internal hold lifted itself; every team byte is untouched (PRESERVING) record=/tmp/watchdog-test-e8gAL7/.mpd/team/watchdog/incidents.jsonl
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > TTL path: the hold releases itself, writes the incident, and touches no team byte [1.90ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] HOLD AUTO-RELEASED team=team-a cause=activity age=200ms ttl=none since=1789633543925 — the internal hold lifted itself; every team byte is untouched (PRESERVING) record=/tmp/watchdog-test-N47iWG/.mpd/team/watchdog/incidents.jsonl
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > ACTIVITY path: a stamp earned AFTER the hold disproves the wedge [1.86ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-F3FlJm/.mpd/team/watchdog/incidents.jsonl
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > another team's stamp cannot release this team's hold [1.03ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=4242 predicate=channel enrichment=on
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > the HOLD tool carries ttl_ms and inherits the resolved knob when omitted [0.69ms]
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > a legacy hold with no ttlMs reads as 0 (no bound is ever invented) [0.27ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) T-19 (§8) — ONE pause state, ONE external mechanism, the hold as its implementation > halted and held render as ONE pause mechanism with the hold as its implementation (T-19 ruling) [2.37ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) T-19 (§8) — ONE pause state, ONE external mechanism, the hold as its implementation > a team with no pause renders as not paused, and NO new resume verb was added [0.53ms]
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > the derivation reads the record alone [0.24ms]
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > ENGINE: OUTSTANDING + blocked dependency is PARKED — no warn, no hold, no scene [1.90ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=1 hold=not-requested scene=/tmp/watchdog-test-4NLKON/.mpd/team/watchdog/scene/team-a/20260917T082713Z-warn.json
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > ENGINE: the suppression is DERIVED, not sticky — finishing the dependency warns again [2.06ms]
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > knobReadings is pure: difference ⇒ restartRequired, equality ⇒ silence [0.22ms]
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-qPZS9H/.mpd/mpd.jsonc states 2 value(s) the running process is NOT using (warnSilenceMs: live=90000 file=900000, holdTtlMs: live=900000 file=60000) — a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-qPZS9H/.mpd/team/watchdog/incidents.jsonl
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > ENGINE: one warning per process, naming the file value and the live value [2.11ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-watchdog] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-aRnuIU/.mpd/mpd.jsonc states 1 value(s) the running process is NOT using (warnSilenceMs: live=7200000 file=900000) — a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > the status view prints the per-knob table with restartRequired [1.54ms]
+
+packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > held: the kick is ANSWERED with a NAMED decline, zero deliveries, team bytes untouched; claim+update still SUCCEED [175.80ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (kick): neutering the hold read site delivers while held — the KICK arm REDDENS [77.33ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (claim/update): re-injecting the pre-redesign tool guard REFUSES the same calls [56.00ms]
+(pass) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > the first claim PROCEEDS while held (no hold guard), the hold is untouched, and the kick is still answered with the named reason [6.56ms]
+(pass) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > CONTRAST (row f): a zero-attempt task is never holdable — no candidate and no escalate decision [0.27ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > blocked: ZERO deliveries; claimable: exactly ONE delivery; terminal: ZERO and the finished bytes untouched [21.25ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > CONTROL (predicate): with the dependency test removed the blocked member IS delivered — the arm REDDENS [62.35ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > T-79 THE RACE: the delivery-boundary re-check refuses a task that became terminal before the wake; without the region the member IS woken [90.87ms]
+[mpd-team-watchdog-test] knobs re-read (enabled=true, warnSilenceMs=700000, tickIntervalMs=15000, warnStreakToEscalate=3, actionOnEscalate=pause)
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-pKaVWn/.mpd/mpd.jsonc states 2 value(s) the running process is NOT using (warnSilenceMs: live=700000 file=900000, holdTtlMs: live=900000 file=60000) — a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise
+(pass) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > OBSERVED (`--live`): the same instance reports the file's value on the next tick, and the settings front door still wins when IT moved [2.30ms]
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-oubmDl/.mpd/mpd.jsonc states 1 value(s) the running process is NOT using (warnSilenceMs: live=90000 file=900000) — the file layer was applied live for its other values; these could not be applied and wait for the next dsh boot
+(pass) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > RED (seeded revert): the pre-wave-2 divergence-only resolution leaves the OLD value — the `--live` claim is falsifiable [32.68ms]
+(pass) T-19 — the surface names ONE mechanism, and the three tools stay registered > the registered descriptions name the hold as the INTERNAL implementation, never as a second mechanism [0.73ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) T-19 — the surface names ONE mechanism, and the three tools stay registered > apply() keeps exactly the three tools registered and publishes the hold service [4.05ms]
+
+packages/mpd-team-watchdog-plugin/test/sidecars.test.ts:
+(pass) the hold sidecar > lives beside team.json and never changes a byte of it [0.69ms]
+(pass) the hold sidecar > is idempotent by id: a second identical write changes no bytes [0.38ms]
+(pass) the hold sidecar > re-applying a hold keeps the original id and since (the hold is not restarted) [0.37ms]
+(pass) the hold sidecar > a resume of a non-held team is a no-op, and a second resume is a no-op [0.43ms]
+(pass) the hold sidecar > a hold without a team_id is refused with a reason, never thrown [0.18ms]
+(pass) incidents and the read watermark > a record per incident plus a watermark per reader [0.84ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the plugin's own actions > apply() registers exactly the three actions on the adapter [0.89ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) the plugin's own actions > the hold and resume actions are reachable through the adapter's internal tool seam [1.29ms]
+
+packages/mpd-team-watchdog-plugin/test/machine.test.ts:
+(pass) knobs > an absent namespace resolves to the frozen defaults [0.11ms]
+(pass) knobs > the watchdog section is read from the mpd namespace by its exact paths [0.12ms]
+(pass) knobs > a cadence at or beyond the silence threshold is clamped loudly, not thrown [0.09ms]
+(pass) knobs > a bad knob type falls back with a recorded issue [0.10ms]
+(pass) knobs > the env kill switch forces the watchdog off [0.04ms]
+(pass) the machine > exactly one WARN per silent tick, and the third WARN escalates once [0.31ms]
+(pass) the machine > a new attemptId starts a clean streak [0.44ms]
+(pass) the machine > any recent stamp resets the streak [0.10ms]
+(pass) the machine > a claimed task whose owner never stamped is never-started, and never escalates [0.12ms]
+(pass) the machine > a COMPLETED turn is not a wedge: a turn-end newest stamp never warns or escalates [0.13ms]
+(pass) the machine > a stale streak is RESET by the boundary (the completed turn cannot spend it later) [0.19ms]
+(pass) the machine > W11-1 REGRESSION (the Reviewer's exact probe shape): two teams, both tasks t1, BOTH with an empty attemptId, each observed once per tick [0.33ms]
+(pass) the machine > W11-2: a stamp from ANOTHER attempt does not satisfy the precondition (it is never-started, not silent) [0.09ms]
+(pass) the machine > a disabled watchdog observes nothing [0.05ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-xb3yzb/.mpd/team/watchdog/scene/team-a/20260917T082714Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-xb3yzb/.mpd/team/watchdog/scene/team-a/20260917T082714Z-warn-2.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-xb3yzb/.mpd/team/watchdog/scene/team-a/20260917T082714Z-escalate.json
+(pass) the machine over a real team record > WARN then ESCALATE land on disk with the hold applied through the tool seam [8.36ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] knobs re-read (enabled=true, warnSilenceMs=20000, tickIntervalMs=15000, warnStreakToEscalate=3, actionOnEscalate=pause)
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-heartbeat state=heartbeat silence=30001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-aI6BYA/.mpd/team/watchdog/scene/team-a/20260917T082614Z-warn.json
+(pass) the machine over a real team record > a live knob change is picked up without a restart [2.20ms]
+
+packages/mpd-team-watchdog-plugin/test/tool-inflight.test.ts:
+(pass) r6 — the in-flight derivation (pure) > a start with no completion is in flight; its completion closes it [0.27ms]
+(pass) r6 — the in-flight derivation (pure) > callId pairing: a completed sibling cannot clear a still-running call [0.11ms]
+(pass) r6 — the in-flight derivation (pure) > a harness build without callIds falls back to the newest-stamp rule [0.09ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > 3x the threshold inside ONE call produces NO warn, NO escalate and NO hold [0.46ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > FALSIFIER: toolInFlightMaxMs 0 restores the pre-r6 escalation for the SAME input [0.76ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > past the bound the entry STOPS suppressing: one tool-expired report, never an escalate [0.17ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > the WEDGE case is untouched: no in-flight entry still warns then escalates once [0.10ms]
+(pass) r6 — the predicate: explained activity, the bound, and the falsifier > a finished tool call is NOT in flight: the call that COMPLETED does not suppress [0.06ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-heartbeat state=heartbeat silence=301ms streak=1 hold=not-requested scene=/tmp/watchdog-test-k9RzFY/.mpd/team/watchdog/scene/team-a/20260917T082546Z-warn.json
+(pass) r6 — the real engine, a real long command, and the durable store > a member 4x the threshold inside ONE real command gets NO warn, NO escalate and NO hold — and is watched again when it completes [1636.18ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-heartbeat state=heartbeat silence=301ms streak=1 hold=not-requested scene=/tmp/watchdog-test-vX8QVb/.mpd/team/watchdog/scene/team-a/20260917T082546Z-warn.json
+(pass) r6 — the real engine, a real long command, and the durable store > a tool that THROWS is closed by its POST (the harness routes tool failures through post-execute) [358.00ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] TOOL-EXPIRED team-a task=t1 member=Architect tool=bash inFlight=700ms (since 1789633546522, bound=600ms) — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone record=/tmp/watchdog-test-z9xJEr/.mpd/team/watchdog/incidents.jsonl
+(pass) r6 — the real engine, a real long command, and the durable store > a PRE with NO POST (a killed call) is bounded: one tool-expired record, no scene, no hold, no repeat [4.42ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=301ms streak=1 hold=not-requested scene=/tmp/watchdog-test-uou01m/.mpd/team/watchdog/scene/team-a/20260917T082546Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=302ms streak=2 hold=not-requested scene=/tmp/watchdog-test-uou01m/.mpd/team/watchdog/scene/team-a/20260917T082546Z-warn-2.json
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=303ms streak=3 hold=applied scene=/tmp/watchdog-test-uou01m/.mpd/team/watchdog/scene/team-a/20260917T082546Z-escalate.json
+(pass) r6 — the real engine, a real long command, and the durable store > a DENIED call is never marked in flight (nothing to explain, nothing leaked) [5.72ms]
+[mpd-team-watchdog-test] the adapter exposes no pre-tool hook — a long tool call stays indistinguishable from silence (r6 unavailable)
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=301ms streak=1 hold=not-requested scene=/tmp/watchdog-test-cieCqU/.mpd/team/watchdog/scene/team-a/20260917T082546Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=302ms streak=2 hold=not-requested scene=/tmp/watchdog-test-cieCqU/.mpd/team/watchdog/scene/team-a/20260917T082546Z-warn-2.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=303ms streak=3 hold=applied scene=/tmp/watchdog-test-cieCqU/.mpd/team/watchdog/scene/team-a/20260917T082546Z-escalate.json
+(pass) r6 — the real engine, a real long command, and the durable store > the SEAM is soft-probed: an adapter without the pre hook warns and keeps the pre-r6 behaviour [3.10ms]
+
+packages/mpd-team-watchdog-plugin/test/scene.test.ts:
+(pass) the scene document > carries exactly the AC-5 field set [0.89ms]
+(pass) the scene document > a halted team's adopted flags are carried verbatim beside the watchdog's own hold [0.41ms]
+(pass) the scene document > write -> read round-trips byte-identically and a second identical write changes no bytes [0.73ms]
+(pass) the scene document > a scene file name is unique per incident even inside one millisecond [0.44ms]
+(pass) the scene document > isoBasic is a file-safe timestamp [0.07ms]
+(pass) the scene document > mailboxUnread mirrors the adopted predicate (tombstones and read records are not unread) [0.42ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90001ms streak=1 hold=not-requested scene=none
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=2 hold=not-requested scene=none
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90003ms streak=3 hold=applied scene=none
+(pass) an unwritable scene location > degrades LOUDLY, still attempts the hold and still records the incident [3.31ms]
+(pass) an unwritable scene location > writeScene returns ok:false instead of throwing [0.36ms]
+
+ 139 pass
+ 0 fail
+ 684 expect() calls
+Ran 139 tests across 13 files. [2.82s]
+B1_EXIT=0
+-- B2: ./packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > held: the kick is ANSWERED with a NAMED decline, zero deliveries, team bytes untouched; claim+update still SUCCEED [132.35ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (kick): neutering the hold read site delivers while held — the KICK arm REDDENS [45.58ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (claim/update): re-injecting the pre-redesign tool guard REFUSES the same calls [43.74ms]
+(pass) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > the first claim PROCEEDS while held (no hold guard), the hold is untouched, and the kick is still answered with the named reason [5.54ms]
+(pass) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > CONTRAST (row f): a zero-attempt task is never holdable — no candidate and no escalate decision [0.69ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > blocked: ZERO deliveries; claimable: exactly ONE delivery; terminal: ZERO and the finished bytes untouched [7.08ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > CONTROL (predicate): with the dependency test removed the blocked member IS delivered — the arm REDDENS [44.90ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > T-79 THE RACE: the delivery-boundary re-check refuses a task that became terminal before the wake; without the region the member IS woken [79.89ms]
+[mpd-team-watchdog-test] knobs re-read (enabled=true, warnSilenceMs=700000, tickIntervalMs=15000, warnStreakToEscalate=3, actionOnEscalate=pause)
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-HJzmrc/.mpd/mpd.jsonc states 2 value(s) the running process is NOT using (warnSilenceMs: live=700000 file=900000, holdTtlMs: live=900000 file=60000) — a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise
+(pass) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > OBSERVED (`--live`): the same instance reports the file's value on the next tick, and the settings front door still wins when IT moved [5.23ms]
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-Zdczor/.mpd/mpd.jsonc states 1 value(s) the running process is NOT using (warnSilenceMs: live=90000 file=900000) — the file layer was applied live for its other values; these could not be applied and wait for the next dsh boot
+(pass) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > RED (seeded revert): the pre-wave-2 divergence-only resolution leaves the OLD value — the `--live` claim is falsifiable [11.73ms]
+(pass) T-19 — the surface names ONE mechanism, and the three tools stay registered > the registered descriptions name the hold as the INTERNAL implementation, never as a second mechanism [0.82ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) T-19 — the surface names ONE mechanism, and the three tools stay registered > apply() keeps exactly the three tools registered and publishes the hold service [1.97ms]
+
+ 12 pass
+ 0 fail
+ 72 expect() calls
+Ran 12 tests across 1 file. [436.00ms]
+B2_EXIT=0
+-- B3: ./packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts:
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > RED-first: a stamp PREDATING the record's createdAt is not this generation's work [0.79ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > the same candidate is reported `never-started`, and never escalates [0.41ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > a stamp AT OR AFTER createdAt IS this generation: silence still warns and escalates [0.48ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > an ABSENT createdAt stays permissive (§0/A3 — the r7 convention, pinned) [0.07ms]
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > approvedAt counts too: the floor is the NEWER of the two [0.08ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Q66qHU/.mpd/team/watchdog/incidents.jsonl
+(pass) T-16 (§6) — generation scoping: a previous generation can never be SILENT > ENGINE: the measured leak shape (a day-old stamp, record created now) holds nothing [7.93ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90001ms streak=1 hold=not-requested scene=/tmp/watchdog-test-Wmclgd/.mpd/team/watchdog/scene/team-a/20260917T082717Z-warn.json
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=2 hold=not-requested scene=/tmp/watchdog-test-Wmclgd/.mpd/team/watchdog/scene/team-a/20260917T082717Z-warn-2.json
+[mpd-team-watchdog-test] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[mpd-team-watchdog-test] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90003ms streak=3 hold=applied scene=/tmp/watchdog-test-Wmclgd/.mpd/team/watchdog/scene/team-a/20260917T082717Z-escalate.json
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > the resolved knob's TTL travels with a hold the ENGINE persists [7.05ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-5l74Kx/.mpd/team/watchdog/incidents.jsonl
+[mpd-team-watchdog-test] HOLD AUTO-RELEASED team=team-a cause=ttl age=1000ms ttl=1000ms since=1789633547067 — the internal hold lifted itself; every team byte is untouched (PRESERVING) record=/tmp/watchdog-test-5l74Kx/.mpd/team/watchdog/incidents.jsonl
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > TTL path: the hold releases itself, writes the incident, and touches no team byte [2.33ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] HOLD AUTO-RELEASED team=team-a cause=activity age=200ms ttl=none since=1789633547069 — the internal hold lifted itself; every team byte is untouched (PRESERVING) record=/tmp/watchdog-test-Csi9Na/.mpd/team/watchdog/incidents.jsonl
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > ACTIVITY path: a stamp earned AFTER the hold disproves the wedge [1.76ms]
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-Au5rLr/.mpd/team/watchdog/incidents.jsonl
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > another team's stamp cannot release this team's hold [1.00ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=4242 predicate=channel enrichment=on
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > the HOLD tool carries ttl_ms and inherits the resolved knob when omitted [2.72ms]
+(pass) T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING > a legacy hold with no ttlMs reads as 0 (no bound is ever invented) [0.27ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) T-19 (§8) — ONE pause state, ONE external mechanism, the hold as its implementation > halted and held render as ONE pause mechanism with the hold as its implementation (T-19 ruling) [2.27ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) T-19 (§8) — ONE pause state, ONE external mechanism, the hold as its implementation > a team with no pause renders as not paused, and NO new resume verb was added [0.40ms]
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > the derivation reads the record alone [0.23ms]
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > ENGINE: OUTSTANDING + blocked dependency is PARKED — no warn, no hold, no scene [1.75ms]
+[mpd-team-watchdog-test] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=90002ms streak=1 hold=not-requested scene=/tmp/watchdog-test-sYCNst/.mpd/team/watchdog/scene/team-a/20260917T082717Z-warn.json
+(pass) T-20 (§8) — a blocked member is PARKED, never silent > ENGINE: the suppression is DERIVED, not sticky — finishing the dependency warns again [2.04ms]
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > knobReadings is pure: difference ⇒ restartRequired, equality ⇒ silence [0.29ms]
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-0uqBW5/.mpd/mpd.jsonc states 2 value(s) the running process is NOT using (warnSilenceMs: live=90000 file=900000, holdTtlMs: live=900000 file=60000) — a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise
+[mpd-team-watchdog-test] PREDICATE FALLBACK (§4): no session/event fold data for member Architect (session a1) — the engine now runs the heartbeat rule in REPORT-ONLY mode: it may WARN (cause `silence-heartbeat`) and it can NEVER hold or escalate a team while this lasts. The `session/event` fold is the intended authority.
+[mpd-team-watchdog-test] NEVER-STARTED team-a task=t1 member=Architect attempt=att-1 — the owner never stamped this task: a dispatch problem, not a wedge; recorded for replay, NO hold, NO escalation record=/tmp/watchdog-test-0uqBW5/.mpd/team/watchdog/incidents.jsonl
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > ENGINE: one warning per process, naming the file value and the live value [1.82ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-team-watchdog] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-bsiGNe/.mpd/mpd.jsonc states 1 value(s) the running process is NOT using (warnSilenceMs: live=7200000 file=900000) — a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > the status view prints the per-knob table with restartRequired [1.65ms]
+
+ 20 pass
+ 0 fail
+ 101 expect() calls
+Ran 20 tests across 1 file. [81.00ms]
+B3_EXIT=0

@@ -386,6 +386,69 @@ function checkTarget(root, tmpRoot, target) {
 const FINDING_STATUSES = new Set(["STALE", "MISSING", "NONDETERMINISTIC", "BUILD_FAILED", "TIMEOUT", "UNREADABLE"])
 
 /**
+ * T-67: the FORM of a package's own `scripts.build` declarations. `bun build` writes EVERY bundled
+ * module's path RELATIVE TO CWD into the artifact's path comments, so the package-directory form and
+ * the repo-root form of the SAME source produce different bytes (measured on mpd-ext-plugin: 13 path
+ * comments over 11 distinct modules, and ALL 13 differ — AGENTS.md §6). This gate rebuilds from the
+ * repository root, so the form the packages DECLARE has to be that same form: otherwise a developer
+ * who follows a package's own script lands on a dist this gate then flags STALE, which is the
+ * disagreement T-67 names. The canonical string in the finding is DERIVED from the offending segment
+ * (never a hard-coded entry name), so the message stays true when a package adds an entry.
+ */
+export function buildFormFindings(root) {
+  const findings = []
+  // The sanctioned cwd anchor. The canonical command's paths are repository-root-relative, so a
+  // PACKAGE-DIRECTORY invocation (`cd packages/<pkg> && bun run build` — the round trip T-67 names as
+  // decisive) only works when the script re-anchors itself first. Measured: without the anchor that
+  // invocation dies `FileNotFound opening root directory "packages/<pkg>/src"`, and a script that
+  // silently built from the wrong cwd would produce the OTHER path comments — the very bytes this gate
+  // flags STALE.
+  const ANCHOR = 'cd "$(git rev-parse --show-toplevel)"'
+  for (const pkg of listDirs(join(root, "packages"))) {
+    const pkgRel = `packages/${pkg}`
+    const manifestPath = join(root, pkgRel, "package.json")
+    if (!existsSync(manifestPath)) continue
+    let build
+    try {
+      build = JSON.parse(readFileSync(manifestPath, "utf8"))?.scripts?.build
+    } catch {
+      continue
+    }
+    if (typeof build !== "string" || build.trim() === "") continue
+    const segments = build.split("&&").map((s) => s.trim()).filter((s) => s !== "")
+    let anchor = null
+    if (segments.length > 0 && /^cd(\s|$)/.test(segments[0]) && !/bun\s+build/.test(segments[0])) anchor = segments.shift()
+    const offenders = []
+    if (anchor !== ANCHOR) offenders.push({ segment: anchor ?? "(no cwd anchor)", canonical: ANCHOR })
+    for (const segment of segments) {
+      const entry = segment.match(/bun\s+build\s+(\S+)/)
+      const outfile = segment.match(/--outfile\s+(\S+)/)
+      const canonicalise = (p) => (p.startsWith(pkgRel + "/") ? p : pkgRel + "/" + p.replace(/^\.\//, ""))
+      const ok =
+        entry !== null &&
+        outfile !== null &&
+        /--target\s+node/.test(segment) &&
+        /--format\s+esm/.test(segment) &&
+        entry[1].startsWith(pkgRel + "/") &&
+        outfile[1].startsWith(pkgRel + "/")
+      if (!ok) {
+        offenders.push({
+          segment,
+          canonical: `bun build ${canonicalise(entry === null ? "src/<entry>.ts" : entry[1])} --target node --format esm --outfile ${canonicalise(outfile === null ? "dist/<entry>.js" : outfile[1])}`,
+        })
+      }
+    }
+    if (offenders.length === 0) continue
+    findings.push({
+      kind: "BUILD_FORM",
+      pkg,
+      detail: `${pkgRel}/package.json scripts.build is not the runnable canonical form: ${offenders.map((o) => JSON.stringify(o.segment)).join(", ")}. Required: the cwd anchor ${JSON.stringify(ANCHOR)} (so the same script works from the repository root AND from the package directory) followed by path-qualified bun builds — a package-directory build writes different path comments into the artifact (13 comments / 11 distinct modules in the mpd-ext-plugin build, ALL 13 different) and this gate would flag the result STALE. Run from the repository root: ${ANCHOR} && ${offenders.map((o) => o.canonical).join(" && ")} (T-67)`,
+    })
+  }
+  return findings
+}
+
+/**
  * Rebuild-and-diff every covered target under `root`.
  * @param {string} root tree to verify
  * @param {{only?: string|null, keepTmp?: boolean, quiet?: boolean, log?: (line: string) => void}} options
@@ -395,6 +458,7 @@ export function verifyDistFresh(root, options = {}) {
   const started = Date.now()
   const discovery = discoverTargets(root)
   const findings = []
+  for (const finding of buildFormFindings(root)) findings.push(finding)
 
   let targets = discovery.targets
   if (only !== null) {
@@ -438,7 +502,9 @@ export function verifyDistFresh(root, options = {}) {
   for (const result of results) {
     if (FINDING_STATUSES.has(result.status)) byStatus[result.status] = (byStatus[result.status] ?? 0) + 1
   }
-  const breakdown = Object.entries(byStatus).map(([kind, count]) => `${kind}: ${count}`).join(", ")
+  // Per-target statuses first; when EVERY finding is a non-target rule (BUILD_FORM, NO_TARGETS), name
+  // those kinds instead of printing an empty pair of parentheses over a red gate.
+  const breakdown = Object.entries(byStatus).map(([kind, count]) => `${kind}: ${count}`).join(", ") || [...new Set(findings.map((f) => f.kind))].join(", ")
   const summary = ok
     ? `[verify-dist-fresh] ok: ${fresh}/${results.length} targets fresh (each rebuilt twice, byte-identical) — ${discovery.notCovered.length} NOT COVERED files listed — ${durationMs}ms`
     : findings.some((f) => f.kind === "NO_TARGETS")
@@ -469,7 +535,7 @@ const FIXTURE_SOURCES = {
   "packages/alpha/package.json": '{\n  "name": "alpha"\n}\n',
   "packages/delta/src/index.ts": 'export const deltaValue: string = "delta"\n',
   "packages/delta/src/sdk.ts": 'export const deltaSdk: number = 1\n',
-  "packages/delta/package.json": '{\n  "name": "delta",\n  "scripts": {\n    "build": "bun build src/index.ts --target node --format esm --outfile dist/index.js && bun build src/sdk.ts --target node --format esm --outfile dist/sdk.js"\n  }\n}\n',
+  "packages/delta/package.json": '{\n  "name": "delta",\n  "scripts": {\n    "build": "cd \\\"$(git rev-parse --show-toplevel)\\\" && bun build packages/delta/src/index.ts --target node --format esm --outfile packages/delta/dist/index.js && bun build packages/delta/src/sdk.ts --target node --format esm --outfile packages/delta/dist/sdk.js"\n  }\n}\n',
   "packages/gamma/dist/thing.js": 'export const orphan = true\n',
 }
 const FIXTURE_DISTS = ["packages/alpha/dist/index.js", "packages/delta/dist/index.js", "packages/delta/dist/sdk.js"]
@@ -563,6 +629,30 @@ function selfTest(scriptPath) {
     // (f) a bad flag is a usage error, never a silent green
     const bad = runCli(["--definitely-not-a-flag"], scriptPath)
     record("(f) bad flag -> exit 1 + usage on stderr", bad.status === 1 && /usage/i.test(bad.stderr) && bad.stdout === "", `exit=${bad.status} stderr=${JSON.stringify(bad.stderr.split("\n")[0] ?? "")}`)
+
+    // (g) T-67: the FORM a package DECLARES. A `scripts.build` in the package-directory form must be
+    // flagged, and the canonical command must be DERIVED into the message (never a hard-coded entry);
+    // switching the same manifest to the canonical form must clear the finding, so the arm proves the
+    // check discriminates instead of always complaining.
+    const ghostPkg = (build) => JSON.stringify({ name: "ghost", scripts: { build } }, null, 2)
+    const anchor = 'cd "$(git rev-parse --show-toplevel)"'
+
+    writeFixtureFile(sandbox, "packages/ghost/package.json", ghostPkg("bun build src/index.ts --target node --format esm --outfile dist/index.js"))
+    const ghostForm = runCli(["--root", sandbox, "--json"], scriptPath)
+    const formHit =
+      ghostForm.json !== null &&
+      ghostForm.json.findings.some(
+        (f) => f.kind === "BUILD_FORM" && f.pkg === "ghost" && f.detail.includes(anchor + " && bun build packages/ghost/src/index.ts --target node --format esm --outfile packages/ghost/dist/index.js"),
+      )
+    record("(g) package-directory scripts.build -> BUILD_FORM + derived canonical command", ghostForm.status === 1 && formHit, `exit=${ghostForm.status} kinds=${ghostForm.json === null ? "unparsable" : ghostForm.json.findings.map((f) => f.kind).join(",")}`)
+    writeFixtureFile(sandbox, "packages/ghost/package.json", ghostPkg(anchor + " && bun build packages/ghost/src/index.ts --target node --format esm --outfile packages/ghost/dist/index.js"))
+    const ghostCanonical = runCli(["--root", sandbox, "--json"], scriptPath)
+    const formClear = (ghostCanonical.json?.findings ?? []).every((f) => f.kind !== "BUILD_FORM")
+    // A green exit is impossible here by construction: arm (c) left `beta` as src-without-dist, so the
+    // only finding this arm tolerates is that known one. Naming it keeps the assertion from going
+    // tautological the day another rule starts firing in this sandbox.
+    const knownBeta = (ghostCanonical.json?.findings ?? []).some((f) => f.kind === "MISSING" && f.pkg === "beta")
+    record("(g2) canonical repo-root scripts.build -> no BUILD_FORM finding", formClear && knownBeta, `exit=${ghostCanonical.status} kinds=${ghostCanonical.json === null ? "unparsable" : ghostCanonical.json.findings.map((f) => f.kind).join(",")}`)
   } catch (error) {
     record("self-test harness", false, error.stack ?? String(error))
   } finally {

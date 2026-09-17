@@ -1,0 +1,13 @@
+1c1
+< docs-claims checker (t21: existence + range + CONTENT claims + negative control)
+---
+> docs-claims checker (t72: existence + range + SITE-PAIRED content claims + symbol-first enforcement + negative control)
+11c11,12
+<   ok   content:anchors — 47 anchored citation(s) verified against their claimed symbol/phrase on the cited line; 0 anchor(s) without a content claim
+---
+>   ok   content:anchors — 47 citation(s) verified against their claim: 17 symbol-first (line-free, whole file), 30 line-dependent (the line is a hint — rot risk); 0 line-number-only anchor(s) FLAGGED as rot
+>   ok   content:rot — no line-number-only anchors
+13c14
+< [docs-claims] 6/8 checks passed, 2 failed, 249 citation(s) resolved, 0 pending, 12 illustrative
+---
+> [docs-claims] 7/9 checks passed, 2 failed, 249 citation(s) resolved, 17 symbol-first, 30 line-dependent, 0 rot-flagged, 0 pending, 12 illustrative

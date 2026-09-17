@@ -1,0 +1,6 @@
+[t27-claim-distance] 160 LINE-FREE path citation(s) in the real subjects
+[t27-claim-distance] |claim.docLine - citation.docLine| histogram: 0 line(s): 16 · 1 line(s): 1 · 19 line(s): 1 · 28 line(s): 1
+[t27-claim-distance] citations with NO line-free claim for their path at all (opt-in freedom): 141
+[t27-claim-distance] citations whose nearest line-free claim is MORE than 1 line away (would be un-verified by site binding): 2
+  ! EXTENSIONS-FOR-AGENTS.md:13 packages/mpd-ext-plugin/src/registry.ts — nearest claim 28 line(s) away (claim doc lines 41,117)
+  ! EXTENSIONS-FOR-AGENTS.md:17 packages/mpd-ext-plugin/src/mcp-client.ts — nearest claim 19 line(s) away (claim doc lines 36,36)

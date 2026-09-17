@@ -1,0 +1,1 @@
+[run-qa-lanes] immutability required=7: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, watchdog-redesign exempt=38

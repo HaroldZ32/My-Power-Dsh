@@ -1,0 +1,104 @@
+bun test v1.3.14 (0d9b296a)
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > held: the kick is ANSWERED with a NAMED decline, zero deliveries, team bytes untouched; claim+update still SUCCEED [380.81ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (kick): neutering the hold read site delivers while held — the KICK arm REDDENS [84.94ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (claim/update): re-injecting the pre-redesign tool guard REFUSES the same calls [69.09ms]
+(pass) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > the first claim PROCEEDS while held (no hold guard), the hold is untouched, and the kick is still answered with the named reason [52.44ms]
+(pass) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > CONTRAST (row f): a zero-attempt task is never holdable — no candidate and no escalate decision [1.04ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > blocked: ZERO deliveries; claimable: exactly ONE delivery; terminal: ZERO and the finished bytes untouched [70.74ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > CONTROL (predicate): with the dependency test removed the blocked member IS delivered — the arm REDDENS [128.25ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > T-79 THE RACE: the delivery-boundary re-check refuses a task that became terminal before the wake; without the region the member IS woken [156.77ms]
+[mpd-team-watchdog-test] knobs re-read (enabled=true, warnSilenceMs=700000, tickIntervalMs=15000, warnStreakToEscalate=3, actionOnEscalate=pause)
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-K5iIDN/.mpd/mpd.jsonc states 2 value(s) the running process is NOT using (warnSilenceMs: live=700000 file=900000, holdTtlMs: live=900000 file=60000) — a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise
+(pass) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > OBSERVED (`--live`): the same instance reports the file's value on the next tick, and the settings front door still wins when IT moved [6.91ms]
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-wfQ2FB/.mpd/mpd.jsonc states 1 value(s) the running process is NOT using (warnSilenceMs: live=90000 file=900000) — the file layer was applied live for its other values; these could not be applied and wait for the next dsh boot
+(pass) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > RED (seeded revert): the pre-wave-2 divergence-only resolution leaves the OLD value — the `--live` claim is falsifiable [34.10ms]
+(pass) T-19 — the surface names ONE mechanism, and the three tools stay registered > the registered descriptions name the hold as the INTERNAL implementation, never as a second mechanism [1.02ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) T-19 — the surface names ONE mechanism, and the three tools stay registered > apply() keeps exactly the three tools registered and publishes the hold service [7.18ms]
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+ 12 pass
+ 0 fail
+ 72 expect() calls
+Ran 12 tests across 41 files. [12.93s]

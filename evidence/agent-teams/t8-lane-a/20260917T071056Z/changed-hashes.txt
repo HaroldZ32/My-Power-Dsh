@@ -1,0 +1,5 @@
+5fe18cdf62af6801e7fe52512920c023ac591adc2c0449a09ecd78f157bc68dd  packages/mpd-agent-teams-plugin/lib/tools.js
+1cba27fe8c8cda1a18f8757d696d6625738fdc329488bc85575eb9fdd9dccca2  packages/mpd-agent-teams-plugin/lib/state.js
+1b0eb60e61765f5eb55dfab94bdeed5fff916a4b8d2fb9081fde5ec9ed4f4ad6  packages/mpd-agent-teams-plugin/lib/quality-gates.js
+3db729cd999376595a5b8c7ff8ceb4821b572d36d0e2701bc9f50a586cebf2ba  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+2fd0099a47fa9a27c5ae0e36cf80e2b642b839e4e86f57936d56611b115b85b9  agent-references/agent-teams-deltas.md

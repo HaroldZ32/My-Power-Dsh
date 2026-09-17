@@ -33,7 +33,10 @@ test("Fix1: review auto-wires reviewedTaskId into dependencies (premature dispat
     expect(gate3.task.dependencies.filter((id) => id === "t10")).toHaveLength(1)
 })
 
-test("Fix1: repair auto-wires sourceTaskId into dependencies", () => {
+test("Fix1: repair auto-wires sourceTaskId into dependencies (REQUALIFIED by T-81: terminal sources only)", () => {
+    // T-81 (wave 2, lane A) requalified this pin: the auto-wire used to be UNCONDITIONAL, so the
+    // same fixture with an OPEN source also acquired the edge and could never dispatch. The edge
+    // stays exactly where its purpose holds — a source that has already finished.
     const team = { phase: "running", halted: false, tasks: [task("t10", "implementation", "completed")] }
     const gate = validateCreateTask(team, {
         kind: "repair", subject: "repair", objective: "Fix", acceptance: ["done"], inScope: ["x"], verify: ["true"],
@@ -41,6 +44,29 @@ test("Fix1: repair auto-wires sourceTaskId into dependencies", () => {
     })
     expect(gate.ok).toBe(true)
     expect(gate.task.dependencies).toContain("t10")
+
+    // An OPEN source keeps its PROVENANCE and loses the deadlock edge (see the T-81 arm below).
+    for (const status of ["pending", "claimed", "in_progress"]) {
+        const openTeam = { phase: "running", halted: false, tasks: [task("t10", "implementation", status)] }
+        const openGate = validateCreateTask(openTeam, {
+            kind: "repair", subject: "repair", objective: "Fix", acceptance: ["done"], inScope: ["x"], verify: ["true"],
+            sourceTaskId: "t10", sourceFindingIds: ["F1"], dependencies: [],
+        })
+        expect(openGate.ok, `a repair on an OPEN (${status}) source was refused`).toBe(true)
+        expect(openGate.task.sourceTaskId).toBe("t10")
+        expect(openGate.task.dependencies).not.toContain("t10")
+    }
+
+    // ...while the failed/cancelled refusal (regression control) still fires THROUGH the edge.
+    for (const status of ["failed", "cancelled"]) {
+        const deadTeam = { phase: "running", halted: false, tasks: [task("t10", "implementation", status)] }
+        const deadGate = validateCreateTask(deadTeam, {
+            kind: "repair", subject: "repair", objective: "Fix", acceptance: ["done"], inScope: ["x"], verify: ["true"],
+            sourceTaskId: "t10", sourceFindingIds: ["F1"], dependencies: [],
+        })
+        expect(deadGate.ok).toBe(false)
+        expect(deadGate.error).toContain(`must not depend on ${status} task`)
+    }
 })
 
 test("Fix2 + OPT-1: cancelled and FAILED deps are non-blocking; pending still blocks", () => {

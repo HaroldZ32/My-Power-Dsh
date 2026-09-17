@@ -1,0 +1,80 @@
+{
+  "schema": "review-B/t13-falsification/2",
+  "captured_at": "2026-09-17T08:14:55.526Z",
+  "method_note": "differential + PINNED STAMP: every leg runs with --pack-stamp set to the canonical artifact's own inferred moment, so the only difference between the clean control and a mutated copy is the mutation. Two superseded methods are recorded: (v0) pinning the stamp to NOW reddened the clean control for a valid reason (all real post-pack writers became hard drifts); (v1) letting the copy infer its own stamp meant the mutation itself moved the stamp forward and reclassified the honest drifts — falsification.v1.json keeps that pass.",
+  "pinned_stamp": "2026-09-17T05:19:48.265Z",
+  "question": "was any moved rule made green by weakening it?",
+  "repo_head": "c826f16",
+  "gate_script_sha256": "c0814334013c0da50317e8e64a4b6a341ae31cb6402cdc9dbf937dfd1b745e7d",
+  "artifact_read_only": {
+    "before": {
+      "digest": "ff5f96da7c43a056",
+      "files": 1190,
+      "method": "sha256 over the UNSORTED `find dist/mpd-package -type f -printf '%P\\t%s\\t%T@\\n'` listing (+ file count)"
+    },
+    "after": {
+      "digest": "ff5f96da7c43a056",
+      "files": 1190,
+      "method": "sha256 over the UNSORTED `find dist/mpd-package -type f -printf '%P\\t%s\\t%T@\\n'` listing (+ file count)"
+    },
+    "identical": true
+  },
+  "control": {
+    "candidates_unchanged_since_pack": [
+      {
+        "rel": "templates/mpd-extension/server.mjs",
+        "sourceMtime": "2026-09-16T08:24:20.513Z"
+      },
+      {
+        "rel": "templates/mpd-extension/personas/mpd-extension-template-reviewer.md",
+        "sourceMtime": "2026-09-16T08:24:20.513Z"
+      },
+      {
+        "rel": "templates/mpd-extension/README.zh-CN.md",
+        "sourceMtime": "2026-09-16T08:24:20.513Z"
+      }
+    ],
+    "artifact_newest_mtime": "2026-09-17T05:19:48.265Z",
+    "control_exit": 0,
+    "control_content_bytes": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/t13-falsify-B9Vcug/clean (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js",
+    "control_completeness": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/t13-falsify-B9Vcug/clean (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js"
+  },
+  "legs": {
+    "mutation_bytes": {
+      "target": "templates/mpd-extension/server.mjs",
+      "exitCode": 1,
+      "hard_findings_naming_target": 1,
+      "expected_findings_naming_target": 0,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] FAIL - 1 closure violation(s)",
+        "  CONTENT-DRIFT - templates/mpd-extension/server.mjs differs byte-wise from /root/dshProj/my-power-dsh/templates/mpd-extension/server.mjs (source 8e97014e099d… / 4243 B, artifact 347917014a93… / 4308 B) and the source was NOT written after the artifact stamp 2026-09-17T05:19:48.265Z (source mtime 2026-09-16T08:24:20.513Z) - the artifact ships bytes no reading was taken on (T-63)",
+        "  packed tree: /tmp/t13-falsify-B9Vcug/mutated-bytes (379 asset files); content bytes: 1181 file(s) compared, 1155 identical, 1 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp))"
+      ]
+    },
+    "mutation_deleted": {
+      "target": "templates/mpd-extension/server.mjs",
+      "exitCode": 1,
+      "hard_findings_naming_target": 0,
+      "expected_findings_naming_target": 0,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] FAIL - 2 closure violation(s)",
+        "  packed tree: /tmp/t13-falsify-B9Vcug/deleted-file (378 asset files); content bytes: 1180 file(s) compared, 1155 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 404 present, 1 declared exemption(s), 1 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp))"
+      ]
+    },
+    "mutation_root_file": {
+      "target": "EXTENSIONS-FOR-AGENTS.md",
+      "exitCode": 0,
+      "hard_findings_naming_target": 0,
+      "expected_findings_naming_target": 1,
+      "new_findings_vs_control": [
+        "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/t13-falsify-B9Vcug/mutated-root (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (command line (--pack-stamp)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js"
+      ]
+    }
+  },
+  "verdict": {
+    "clean_control_green": true,
+    "packed_byte_mutation_reddens_and_is_NAMED": true,
+    "packed_file_deletion_detected": true,
+    "root_file_packed_mutation_class": "GREEN (not reported)"
+  }
+}

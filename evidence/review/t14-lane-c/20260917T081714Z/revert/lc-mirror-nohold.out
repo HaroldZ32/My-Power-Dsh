@@ -1,0 +1,143 @@
+bun test v1.3.14 (0d9b296a)
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+195 |       // arm re-measures them in-process only as the same-run contrast for this leg.
+196 |       const kickReturn = await fix.scheduler.kickMember(fix.box.workspace, TEAM_ID, "Architect", fix.captain)
+197 |       expect(kickReturn).toBeUndefined() // measured: the name is NOT carried by the return value
+198 |       expect(fix.deliveries).toHaveLength(0)
+199 |       const declines = declineLines(fix, "the team is held by the team watchdog (hold ")
+200 |       expect(declines).toHaveLength(1)
+                             ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:200:24)
+(fail) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > held: the kick is ANSWERED with a NAMED decline, zero deliveries, team bytes untouched; claim+update still SUCCEED [102.26ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (kick): neutering the hold read site delivers while held — the KICK arm REDDENS [50.88ms]
+(pass) T-48 — the KICK reading (frozen D-2): no delivery while held, claim/update succeed, a NAMED decline, delivery after release > CONTROL (claim/update): re-injecting the pre-redesign tool guard REFUSES the same calls [48.77ms]
+306 |       const holdBefore = readFileSync(holdFile(fix), "utf8")
+307 | 
+308 |       // The delivery half of the same state: a NAMED decline, never a silent no-op.
+309 |       await fix.scheduler.kickMember(fix.box.workspace, TEAM_ID, "Architect", fix.captain)
+310 |       expect(fix.deliveries).toHaveLength(0)
+311 |       expect(declineLines(fix, "the team is held by the team watchdog (hold ")).toHaveLength(1)
+                                                                                      ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:311:81)
+(fail) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > the first claim PROCEEDS while held (no hold guard), the hold is untouched, and the kick is still answered with the named reason [4.66ms]
+(pass) T-16 — a hold latched while the task has ZERO attempts: the first claim is ANSWERED, the hold record is unchanged, the contrast stays green > CONTRAST (row f): a zero-attempt task is never holdable — no candidate and no escalate decision [0.58ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > blocked: ZERO deliveries; claimable: exactly ONE delivery; terminal: ZERO and the finished bytes untouched [9.22ms]
+(pass) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > CONTROL (predicate): with the dependency test removed the blocked member IS delivered — the arm REDDENS [37.93ms]
+426 |     const scratch = scratchTree()
+427 |     const shipped = await anchorHook(scratch.libDir, "race-green", false)
+428 |     try {
+429 |       await shipped.scheduler.kickMember(shipped.box.workspace, TEAM_ID, "Architect", shipped.captain)
+430 |       expect(shipped.deliveries).toHaveLength(0)
+431 |       expect(shipped.warnings.some((line) => line.includes("became completed before its assignment could be delivered"))).toBe(true)
+                                                                                                                                ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/root/dshProj/my-power-dsh/evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:431:123)
+(fail) T-05 / T-79 (delivery half) — a blocked or terminal task is never delivered, a claimable one is > T-79 THE RACE: the delivery-boundary re-check refuses a task that became terminal before the wake; without the region the member IS woken [39.15ms]
+[mpd-team-watchdog-test] knobs re-read (enabled=true, warnSilenceMs=700000, tickIntervalMs=15000, warnStreakToEscalate=3, actionOnEscalate=pause)
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-WDrMOc/.mpd/mpd.jsonc states 2 value(s) the running process is NOT using (warnSilenceMs: live=700000 file=900000, holdTtlMs: live=900000 file=60000) — a .mpd/mpd.jsonc edit applies live once this process has observed the file, and at the NEXT dsh boot otherwise
+(pass) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > OBSERVED (`--live`): the same instance reports the file's value on the next tick, and the settings front door still wins when IT moved [5.39ms]
+[mpd-team-watchdog-test] KNOBS DIVERGE (§7.3): /tmp/watchdog-test-oijPxS/.mpd/mpd.jsonc states 1 value(s) the running process is NOT using (warnSilenceMs: live=90000 file=900000) — the file layer was applied live for its other values; these could not be applied and wait for the next dsh boot
+(pass) T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running engine, no restart > RED (seeded revert): the pre-wave-2 divergence-only resolution leaves the OLD value — the `--live` claim is falsifiable [12.96ms]
+(pass) T-19 — the surface names ONE mechanism, and the three tools stay registered > the registered descriptions name the hold as the INTERNAL implementation, never as a second mechanism [0.77ms]
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=7200000 tickIntervalMs=3600000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+(pass) T-19 — the surface names ONE mechanism, and the three tools stay registered > apply() keeps exactly the three tools registered and publishes the hold service [1.86ms]
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+evidence/review/t14-lane-c/20260917T081714Z/revert/lc-mirror/packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts:
+
+ 9 pass
+ 3 fail
+ 48 expect() calls
+Ran 12 tests across 41 files. [5.58s]

@@ -1,0 +1,530 @@
+{
+  "schema": "laneB/wave2-laneB-evidence/2",
+  "captured_at": "2026-09-17T08:36:32.201Z",
+  "driver": {
+    "file": "run-laneB-evidence.mjs",
+    "resolved_harnesses_from": "/root/dshProj/my-power-dsh/evidence/pack-closure/review-B/20260917T084000Z-t30/broken-harness",
+    "output_dir": "/root/dshProj/my-power-dsh/evidence/pack-closure/review-B/20260917T084000Z-t30/broken-harness/out"
+  },
+  "task": "t9 - lane B: T-63/T-65/T-67/T-76 (+ t26 ROUTE-FILE repair, t29 driver repair)",
+  "repo_head": "c826f16",
+  "steps": [
+    {
+      "name": "closure",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node scripts/verify-pack-closure.mjs",
+      "exitCode": 0,
+      "ms": 167,
+      "log": "closure.log",
+      "expected": 0
+    },
+    {
+      "name": "closure-selftest",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node scripts/verify-pack-closure.mjs --self-test",
+      "exitCode": 0,
+      "ms": 4010,
+      "log": "closure-selftest.log",
+      "expected": 0
+    },
+    {
+      "name": "dist-fresh",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node scripts/verify-dist-fresh.mjs",
+      "exitCode": 0,
+      "ms": 535,
+      "log": "dist-fresh.log",
+      "expected": "reported"
+    },
+    {
+      "name": "dist-fresh-ext-plugin",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node scripts/verify-dist-fresh.mjs --only mpd-ext-plugin",
+      "exitCode": 0,
+      "ms": 123,
+      "log": "dist-fresh-ext-plugin.log",
+      "expected": 0
+    },
+    {
+      "name": "dist-fresh-tui-plugin",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node scripts/verify-dist-fresh.mjs --only mpd-tui-plugin",
+      "exitCode": 0,
+      "ms": 122,
+      "log": "dist-fresh-tui-plugin.log",
+      "expected": 0
+    },
+    {
+      "name": "dist-fresh-selftest",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node scripts/verify-dist-fresh.mjs --self-test",
+      "exitCode": 0,
+      "ms": 994,
+      "log": "dist-fresh-selftest.log",
+      "expected": 0
+    },
+    {
+      "name": "verify-gates",
+      "command": "bun run verify:gates",
+      "exitCode": 1,
+      "ms": 1135,
+      "log": "verify-gates.log",
+      "expected": "reported"
+    },
+    {
+      "name": "t67-build-form-diff",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node /root/dshProj/my-power-dsh/evidence/pack-closure/review-B/20260917T084000Z-t30/broken-harness/t67-build-form-diff.mjs",
+      "exitCode": 0,
+      "ms": 41,
+      "log": "t67-build-form-diff.log",
+      "expected": 0
+    },
+    {
+      "name": "t63-t76-seeded-mutation",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node /root/dshProj/my-power-dsh/evidence/pack-closure/review-B/20260917T084000Z-t30/broken-harness/t63-t76-seeded-mutation.mjs",
+      "exitCode": 0,
+      "ms": 761,
+      "log": "t63-t76-seeded-mutation.log",
+      "expected": 0
+    },
+    {
+      "name": "t63-out-flag-equivalence",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node /root/dshProj/my-power-dsh/evidence/pack-closure/review-B/20260917T084000Z-t30/broken-harness/t63-out-flag-equivalence.mjs",
+      "exitCode": 0,
+      "ms": 1080,
+      "log": "t63-out-flag-equivalence.log",
+      "expected": 0
+    },
+    {
+      "name": "t67-round-trip",
+      "command": "/root/.nvm/versions/node/v24.16.0/bin/node /root/dshProj/my-power-dsh/evidence/pack-closure/review-B/20260917T084000Z-t30/broken-harness/t67-round-trip.mjs",
+      "exitCode": 0,
+      "ms": 300,
+      "log": "t67-round-trip.log",
+      "expected": 0
+    }
+  ],
+  "harness_parse_errors": {
+    "t67-build-form-diff": "no JSON object found in the harness output"
+  },
+  "readings": {
+    "closure": {
+      "verdict": [
+        "ok"
+      ],
+      "contentBytes": [
+        "1181",
+        "1156",
+        "0",
+        "25"
+      ],
+      "completeness": [
+        "406",
+        "405",
+        "1",
+        "0"
+      ],
+      "stamp": [
+        "2026-09-17T05:19:48.265Z",
+        "inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time"
+      ],
+      "exemption": [
+        "packages/mpd-qa-roles-probe/dist/index.js"
+      ],
+      "expectedDrift": [
+        {
+          "path": "skills/dsh-qa/cases.json",
+          "sourceMtime": "2026-09-17T07:35:55.372Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "skills/dsh-qa/scripts/extension-lifecycle.mjs",
+          "sourceMtime": "2026-09-17T07:39:21.293Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "skills/dsh-qa/scripts/lib/immutable-output.mjs",
+          "sourceMtime": "2026-09-17T07:51:28.379Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "skills/dsh-qa/scripts/team-watchdog-boot.mjs",
+          "sourceMtime": "2026-09-17T07:22:07.621Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "skills/dsh-qa/scripts/team-watchdog-config.mjs",
+          "sourceMtime": "2026-09-17T08:06:11.698Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "skills/dsh-qa/scripts/team-watchdog-fault.mjs",
+          "sourceMtime": "2026-09-17T07:28:11.309Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs",
+          "sourceMtime": "2026-09-17T07:22:07.214Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "skills/dsh-qa/scripts/team-watchdog-notify.mjs",
+          "sourceMtime": "2026-09-17T07:22:07.303Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "skills/dsh-qa/scripts/team-watchdog-scene.mjs",
+          "sourceMtime": "2026-09-17T07:22:07.511Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "skills/dsh-qa/scripts/tui-settings-bridge.mjs",
+          "sourceMtime": "2026-09-17T07:36:13.124Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "skills/dsh-qa/scripts/watchdog-redesign.mjs",
+          "sourceMtime": "2026-09-17T08:08:34.979Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "skills/dsh-qa/scripts/web-settings-bridge.mjs",
+          "sourceMtime": "2026-09-17T07:35:48.586Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "docs/extension-adaptation-report.md",
+          "sourceMtime": "2026-09-17T07:36:15.474Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "docs/extension-adaptation-report.zh-CN.md",
+          "sourceMtime": "2026-09-17T07:36:22.792Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "agent-references/agent-teams-deltas.md",
+          "sourceMtime": "2026-09-17T08:06:18.020Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "agent-references/index.md",
+          "sourceMtime": "2026-09-17T07:31:52.235Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "agent-references/troubleshooting.md",
+          "sourceMtime": "2026-09-17T08:03:05.204Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+          "sourceMtime": "2026-09-17T08:04:15.433Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+          "sourceMtime": "2026-09-17T07:20:18.132Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "packages/mpd-agent-teams-plugin/lib/state.js",
+          "sourceMtime": "2026-09-17T07:57:51.746Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "packages/mpd-agent-teams-plugin/lib/tools.js",
+          "sourceMtime": "2026-09-17T08:34:31.558Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "packages/mpd-team-watchdog-plugin/README.md",
+          "sourceMtime": "2026-09-17T07:59:27.321Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "packages/mpd-team-watchdog-plugin/README.zh-CN.md",
+          "sourceMtime": "2026-09-17T07:59:47.041Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "packages/mpd-team-watchdog-plugin/dist/index.js",
+          "sourceMtime": "2026-09-17T07:40:20.988Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        },
+        {
+          "path": "EXTENSIONS-FOR-AGENTS.md",
+          "sourceMtime": "2026-09-17T07:43:40.983Z",
+          "stamp": "2026-09-17T05:19:48.265Z"
+        }
+      ]
+    },
+    "closureSelftest": {
+      "arms": [
+        "34/34"
+      ],
+      "armFailures": 0,
+      "expectedFailLines": 16
+    },
+    "distFresh": {
+      "verdict": [
+        "ok"
+      ],
+      "targets": [
+        "20/20"
+      ],
+      "notCovered": [
+        "7"
+      ],
+      "buildForm": 0
+    },
+    "distFreshSelftest": {
+      "arms": [
+        "12/12"
+      ]
+    },
+    "verifyGates": {
+      "exitCode": 1,
+      "failingSubGate": [
+        "[verify-vendor] FAIL - asset skills treeSha mismatch"
+      ],
+      "note": "cross-lane aggregate: REPORTED with its cause, never gating this lane's exit code (a failed command cannot coexist with a completed task)"
+    },
+    "t67": null,
+    "t67RoundTrip": {
+      "schema": "laneB/t67-round-trip/1",
+      "captured_at": "2026-09-17T08:36:31.945Z",
+      "readings": [
+        {
+          "arm": "(cd packages/mpd-ext-plugin && bun run build) then verify-dist-fresh --only packages/mpd-ext-plugin --quiet",
+          "build_exit": 0,
+          "build_tail": "  sdk.js  1.71 KB  (entry point)",
+          "dist_before": "f6097fd3383f2fa7",
+          "dist_after": "f6097fd3383f2fa7",
+          "dist_byte_identical": true,
+          "dist_mtime_before": "2026-09-17T08:35:11.876Z",
+          "dist_mtime_after": "2026-09-17T08:36:31.967Z",
+          "verify_exit": 0,
+          "verify_tail": "[verify-dist-fresh] ok: 2/2 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 58ms"
+        },
+        {
+          "arm": "(cd packages/mpd-tui-plugin && bun run build) then verify-dist-fresh --only packages/mpd-tui-plugin --quiet",
+          "build_exit": 0,
+          "build_tail": "  index.js  149.13 KB  (entry point)",
+          "dist_before": "d75ddd8917d434a8",
+          "dist_after": "d75ddd8917d434a8",
+          "dist_byte_identical": true,
+          "dist_mtime_before": "2026-09-17T08:35:12.028Z",
+          "dist_mtime_after": "2026-09-17T08:36:32.101Z",
+          "verify_exit": 0,
+          "verify_tail": "[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 41ms"
+        }
+      ],
+      "not_run": [
+        {
+          "pkg": "mpd-team-watchdog-plugin",
+          "reason": "t10 (lane C) has in-flight src edits (src/engine.ts, src/machine.ts, src/actions.ts) — a build here would bake a half-edited source into the committed dist; that dist is lane C's to rebuild",
+          "src_mtimes": [
+            {
+              "path": "packages/mpd-team-watchdog-plugin/src/index.ts",
+              "mtime": "2026-09-17T07:31:26.505Z"
+            },
+            {
+              "path": "packages/mpd-team-watchdog-plugin/src/engine.ts",
+              "mtime": "2026-09-17T07:40:09.359Z"
+            },
+            {
+              "path": "packages/mpd-team-watchdog-plugin/src/machine.ts",
+              "mtime": "2026-09-17T07:26:52.967Z"
+            },
+            {
+              "path": "packages/mpd-team-watchdog-plugin/src/actions.ts",
+              "mtime": "2026-09-17T07:30:22.257Z"
+            }
+          ],
+          "dist_mtime": "2026-09-17T07:40:20.988Z"
+        }
+      ],
+      "ok": true,
+      "verdict": "BOTH ROUND TRIPS PASS AND REPRODUCE THE COMMITTED BYTES"
+    },
+    "mutation": {
+      "schema": "laneB/t63-t76-seeded-mutation/1",
+      "captured_at": "2026-09-17T08:36:30.105Z",
+      "canonical_artifact": "/root/dshProj/my-power-dsh/dist/mpd-package",
+      "readings": [
+        {
+          "arm": "byte-copy of the real artifact, untouched",
+          "exitCode": 0,
+          "expected": 0,
+          "tail": [
+            "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/mpd-laneB-mutation-BmJqnJ/artifact-copy (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1181 file(s) compared, 1156 identical, 0 drift, 25 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-17T05:19:48.265Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js"
+          ]
+        },
+        {
+          "arm": "one byte changed in a PRE-pack-mtime file",
+          "path": "docs/architecture.md",
+          "mutation": {
+            "first_byte_before": 35,
+            "first_byte_after": 32,
+            "bytes": {
+              "before": 32163,
+              "after": 32163
+            }
+          },
+          "exitCode": 1,
+          "expected": 1,
+          "hard_content_drift_names_the_file": true,
+          "presence_assertions_still_green": true,
+          "tail": [
+            "  CONTENT-DRIFT - docs/architecture.md differs byte-wise from /root/dshProj/my-power-dsh/docs/architecture.md (source fc43bda8f9bd… / 32163 B, artifact 4ed1ecc1b3a4… / 32163 B) and the source was NOT written after the artifact stamp 2026-09-17T05:19:48.265Z (source mtime 2026-09-15T15:46:49.958Z) - the artifact ships bytes no reading was taken on (T-63)"
+          ]
+        },
+        {
+          "arm": "one byte changed in a POST-pack-mtime file",
+          "path": "agent-references/troubleshooting.md",
+          "mutation": {
+            "first_byte_before": 35,
+            "first_byte_after": 32,
+            "bytes": {
+              "before": 35548,
+              "after": 35548
+            }
+          },
+          "exitCode": 0,
+          "expected": 0,
+          "reported_as_expected_not_silent": true,
+          "tail": [
+            "[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - agent-references/troubleshooting.md: source mtime 2026-09-17T08:03:05.204Z is AFTER the artifact stamp 2026-09-17T05:19:48.265Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation"
+          ]
+        },
+        {
+          "arm": "same post-pack mutation, stamp pinned at that writer's own mtime",
+          "path": "agent-references/troubleshooting.md",
+          "exitCode": 1,
+          "expected": 1,
+          "hard_content_drift_names_the_file": true,
+          "tail": [
+            "  CONTENT-DRIFT - agent-references/troubleshooting.md differs byte-wise from /root/dshProj/my-power-dsh/agent-references/troubleshooting.md (source c8568855302a… / 39763 B, artifact 509d7f0e5aeb… / 35548 B) and the source was NOT written after the artifact stamp 2026-09-17T08:03:05.205Z (source mtime 2026-09-17T08:03:05.204Z) - the artifact ships bytes no reading was taken on (T-63)"
+          ]
+        }
+      ],
+      "ok": true,
+      "artifact_stamp": {
+        "ms": 1789622388265.9717,
+        "iso": "2026-09-17T05:19:48.265Z",
+        "anchor": "inferred: the newest mtime among the artifact's own files"
+      },
+      "candidate_counts": {
+        "pre_pack_class": 335,
+        "post_pack_class": 70
+      },
+      "targets": {
+        "pre_pack": {
+          "path": "docs/architecture.md",
+          "source_mtime": "2026-09-15T15:46:49.958Z",
+          "why": "source mtime PREDATES the artifact stamp -> a mutation here must be a hard CONTENT-DRIFT"
+        },
+        "post_pack": {
+          "path": "agent-references/troubleshooting.md",
+          "source_mtime": "2026-09-17T08:03:05.204Z",
+          "why": "source mtime is AFTER the artifact stamp (a post-pack writer) -> the same mutation is the provenance-named EXPECTED class"
+        }
+      },
+      "verdict": "ALL READINGS BEHAVED AS SPECIFIED"
+    },
+    "outFlagEquivalence": {
+      "schema": "laneB/t63-out-flag-equivalence/1",
+      "captured_at": "2026-09-17T08:36:30.864Z",
+      "readings": [
+        {
+          "arm": "default invocation (no flags) vs --out",
+          "default_run": {
+            "exitCode": 0,
+            "staged": "/root/dshProj/my-power-dsh/.mpd/laneB-outflag/repo-copy/dist/mpd-package",
+            "banner": "[pack-mpd] staged package -> /root/dshProj/my-power-dsh/.mpd/laneB-outflag/repo-copy/dist/mpd-package  (out-dir source: default (<repo>/dist/mpd-package))"
+          },
+          "out_flag_run": {
+            "exitCode": 0,
+            "staged": "/root/dshProj/my-power-dsh/.mpd/laneB-outflag/pack-out-flag",
+            "banner": "[pack-mpd] staged package -> /root/dshProj/my-power-dsh/.mpd/laneB-outflag/pack-out-flag  (out-dir source: command line (--out /root/dshProj/my-power-dsh/.mpd/laneB-outflag/pack-out-flag))"
+          }
+        },
+        {
+          "arm": "the canonical artifact is never written",
+          "before": {
+            "files": 1190,
+            "newestMs": 1789622388265.9717,
+            "iso": "2026-09-17T05:19:48.265Z"
+          },
+          "after": {
+            "files": 1190,
+            "newestMs": 1789622388265.9717,
+            "iso": "2026-09-17T05:19:48.265Z"
+          },
+          "identical": true
+        },
+        {
+          "arm": "default-path pack vs --out pack (same sources)",
+          "files": 1190,
+          "set_equal": true,
+          "differing_files": [],
+          "differing_count": 0
+        },
+        {
+          "arm": "fresh pack vs the canonical artifact",
+          "changed_count": 25,
+          "changed_sample": [
+            "EXTENSIONS-FOR-AGENTS.md",
+            "agent-references/agent-teams-deltas.md",
+            "agent-references/index.md",
+            "agent-references/troubleshooting.md",
+            "docs/extension-adaptation-report.md",
+            "docs/extension-adaptation-report.zh-CN.md",
+            "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+            "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+            "packages/mpd-agent-teams-plugin/lib/state.js",
+            "packages/mpd-agent-teams-plugin/lib/tools.js",
+            "packages/mpd-team-watchdog-plugin/README.md",
+            "packages/mpd-team-watchdog-plugin/README.zh-CN.md",
+            "packages/mpd-team-watchdog-plugin/dist/index.js",
+            "skills/dsh-qa/cases.json"
+          ],
+          "only_in_canonical": [],
+          "only_in_fresh": [],
+          "unexplained_by_a_post_pack_writer": []
+        },
+        {
+          "arm": "flag guards",
+          "missing_value": {
+            "exitCode": 2,
+            "refused": true
+          },
+          "repo_root_value": {
+            "exitCode": 2,
+            "refused": true
+          }
+        }
+      ],
+      "ok": true,
+      "verdict": "ALL READINGS BEHAVED AS SPECIFIED"
+    }
+  },
+  "artifact_read_only_proof": {
+    "method": "canonical stamp = sha256(unsorted `find dist/mpd-package -type f -printf '%P\t%s\t%T@\n'`) truncated to 16 hex, + file count",
+    "before_steps": {
+      "digest": "ff5f96da7c43a056",
+      "files": 1190
+    },
+    "after_steps": {
+      "digest": "ff5f96da7c43a056",
+      "files": 1190
+    },
+    "identical": true
+  },
+  "changed_paths": [
+    "scripts/verify-pack-closure.mjs",
+    "scripts/verify-dist-fresh.mjs",
+    "scripts/pack-mpd.mjs",
+    "packages/mpd-ext-plugin/package.json",
+    "packages/mpd-team-watchdog-plugin/package.json",
+    "packages/mpd-tui-plugin/package.json"
+  ],
+  "digests": {},
+  "digests_skipped": {},
+  "result_digest_note": "result.json cannot carry its own digest; digest it externally (every run prints the file's own digest in `regenerated`)."
+}

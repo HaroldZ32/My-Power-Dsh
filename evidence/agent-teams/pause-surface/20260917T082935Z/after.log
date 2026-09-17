@@ -1,0 +1,78 @@
+{
+  "driver": "pause-surface (T-19 surface 2 / t21)",
+  "tool": "agent_teams_status (registered by registerAgentTeamsTools, lib/tools.js)",
+  "states": [
+    {
+      "label": "1 running (halt: no, hold: none)",
+      "pause_line": [
+        "Pause: agent-teams halt not active (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: no hold is set)"
+      ],
+      "payload_halted": false,
+      "payload_pause": {
+        "mechanism": "agent_teams_halt",
+        "active": false,
+        "halt": false,
+        "internal_implementation": {
+          "kind": "team-watchdog-preserving-hold",
+          "state": "not-held",
+          "released_by": "session-watchdog-resume"
+        }
+      }
+    },
+    {
+      "label": "2 halted (halt: yes, hold: none)",
+      "pause_line": [
+        "Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: no hold is set)"
+      ],
+      "payload_halted": true,
+      "payload_pause": {
+        "mechanism": "agent_teams_halt",
+        "active": true,
+        "halt": true,
+        "internal_implementation": {
+          "kind": "team-watchdog-preserving-hold",
+          "state": "not-held",
+          "released_by": "session-watchdog-resume"
+        }
+      }
+    },
+    {
+      "label": "3 held internally (hold id + reason set)",
+      "pause_line": [
+        "Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold hold-7f3a set since 2026-09-17T07:26:40.000Z — the wave's writers must quiesce before the re-pack (released only by its own session-watchdog-resume))"
+      ],
+      "payload_halted": false,
+      "payload_pause": {
+        "mechanism": "agent_teams_halt",
+        "active": true,
+        "halt": false,
+        "internal_implementation": {
+          "kind": "team-watchdog-preserving-hold",
+          "state": "held",
+          "hold_id": "hold-7f3a",
+          "at": 1789630000000,
+          "reason": "the wave's writers must quiesce before the re-pack",
+          "source": "record",
+          "released_by": "session-watchdog-resume"
+        }
+      }
+    },
+    {
+      "label": "4 watchdog service absent (fail-open read)",
+      "pause_line": [
+        "Pause: agent-teams halt not active (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold state not readable on this host (the watchdog service is not loaded))"
+      ],
+      "payload_halted": false,
+      "payload_pause": {
+        "mechanism": "agent_teams_halt",
+        "active": false,
+        "halt": false,
+        "internal_implementation": {
+          "kind": "team-watchdog-preserving-hold",
+          "state": "not-readable",
+          "released_by": "session-watchdog-resume"
+        }
+      }
+    }
+  ]
+}

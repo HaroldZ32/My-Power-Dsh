@@ -1,0 +1,2 @@
+[run-qa-lanes] immutability guard: required driver skills/dsh-qa/scripts/team-watchdog-fault.mjs (team-watchdog-fault) does not import ./lib/immutable-output.mjs
+[run-qa-lanes] immutability required=9: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, web-settings-bridge exempt=36

@@ -1,0 +1,31 @@
+{
+  "subject": "A — lane A: T-61/T-62/T-75/T-79/T-81 with per-item arms",
+  "objective": "Close lane A's five P1 items in the adopted plugin's tool/contract layer, each with its own arm and negative control: unknown arguments become LOUD (T-61), the adapter-identity test stops passing on stale dist bytes (T-62), a stale snapshot cannot silently revert a delivered fix (T-75), a stale-attempt terminal re-dispatch is refused and wave 1's fix works in-process (T-79), and the repair→sourceTaskId implicit dependency can no longer deadlock (T-81).",
+  "inScope": [
+    "packages/mpd-agent-teams-plugin/lib/tools.js",
+    "packages/mpd-agent-teams-plugin/lib/state.js",
+    "packages/mpd-agent-teams-plugin/lib/quality-gates.js",
+    "packages/mpd-agent-teams-plugin/lib/snapshot.js",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/**",
+    "packages/mpd-roles-plugin/test/adapter-identity.test.ts",
+    "packages/mpd-ext-plugin/test/adapter-identity.test.ts",
+    "packages/mpd-roles-plugin/dist/**",
+    "packages/mpd-ext-plugin/dist/**",
+    "agent-references/agent-teams-deltas.md",
+    "scripts/patch-agent-teams-fixes.mjs"
+  ],
+  "acceptance": [
+    "T-61: an unknown argument name produces a LOUD failure (named argument in the message) instead of a successful no-op — the test that swallows it today must redden",
+    "T-62: the adapter-identity test FAILS when `dist` is stale (reproduce the stale-dist state, show red) and passes after a rebuild; the arm is named with its exact path",
+    "T-75: a stale snapshot from a later writer cannot silently revert a delivered fix — demonstrated with a seeded revert and a negative control",
+    "T-79: a terminal task re-dispatched with its old attempt id is REFUSED, and wave 1's fix is effective in-process (not only after a restart)",
+    "T-81: `kind=repair` + `sourceTaskId` no longer creates an implicit dependency that can deadlock — shown with a two-task fixture that would have deadlocked",
+    "Every fix ships its own arm with a negative control that reddens on revert; evidence under `evidence/agent-teams/<slug>/<stamp>/`; `bun run typecheck` exit 0"
+  ],
+  "verify": [
+    "bun test packages/mpd-agent-teams-plugin/self-fix-tests/",
+    "bun test packages/mpd-roles-plugin/test/adapter-identity.test.ts packages/mpd-ext-plugin/test/adapter-identity.test.ts",
+    "bun run typecheck"
+  ]
+}

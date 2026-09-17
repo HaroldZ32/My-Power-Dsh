@@ -1,0 +1,6 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=ca50d08dc332 lanes=1 evidence=evidence/dsh-qa/lane-d-t83-t85-t86/20260917T072811Z/runner-run-proof
+[mpd-qa:(only)] immutability required=7: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, watchdog-redesign exempt=38
+[mpd-qa:(only)] PASS case=qa-runner-self-test log=evidence/dsh-qa/lane-d-t83-t85-t86/20260917T072811Z/runner-run-proof/lanes/qa-runner-self-test.log ms=1548
+[mpd-qa:(only)] summary selected=1 pass=1 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/lane-d-t83-t85-t86/20260917T072811Z/runner-run-proof
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
