@@ -1,0 +1,16 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs:
+(pass) D2: the two tool-boundary guards and tools.js's reader copy are gone; scheduler keeps its own [3.93ms]
+(pass) D2: with a LIVE hold present, claim_task and update_task SUCCEED (the hold no longer blocks a write) [24.55ms]
+(pass) D2 NEGATIVE CONTROL: the deleted guard re-injected into a scratch copy makes the same call FAIL [34.71ms]
+(pass) T-49: the contract tool is a MEMBER tool in BOTH deny computations [2.46ms]
+(pass) T-19: the status surface names ONE pause mechanism and reports the hold as its INTERNAL implementation [11.54ms]
+(pass) T-19: with NO watchdog service the status says the hold is NOT READABLE — never a guessed hold [4.82ms]
+(pass) t41: the contract tool refuses a NON-PARTICIPANT and an UNKNOWN id NAMING the known ids — both FALSIFIABLE [45.42ms]
+(pass) T-19 SEEDED NEGATIVE CONTROL: the pin's matchers go RED on the restored wave-1 wording [48.57ms]
+
+ 8 pass
+ 0 fail
+ 79 expect() calls
+Ran 8 tests across 1 file. [286.00ms]

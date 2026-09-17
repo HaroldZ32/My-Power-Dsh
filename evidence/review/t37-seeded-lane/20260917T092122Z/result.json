@@ -1,0 +1,53 @@
+{
+  "task": "t40 — review — independent verdict on the ADDITIVE TAIL of the T-19 pin (the seeded negative-control lane, t37)",
+  "reviewedTask": "t37",
+  "kind": "review",
+  "attemptId": "5364e48a-c550-469b-aa10-aa9614106334",
+  "reviewer": "code-reviewer",
+  "date": "2026-09-17",
+  "verdict": "pass",
+  "pinnedRevisions": {
+    "pinUtc": "2026-09-17T09:21:22Z",
+    "file": "packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs",
+    "sha256": "1145f15bcc52765c9bc51cd7dfbc28e52335b6943d3c055a2d3dc589bb157c52 (matches t37's report)",
+    "prefixBeforeTheLane": "afb3233519db7fac08822379bf21c198d6c311ca9b249269bbee4948f44baa49 — re-taken AFTER my own runs and IDENTICAL to the revision t32 reviewed (first 457 lines + \"\\n\")",
+    "lib": { "lib/tools.js": "6021bf6dfce594ed", "lib/mpd-deltas.js": "6dce6f1f3598c77b" }
+  },
+  "coverageBoundary": "'The file moved' is not 'the pinned claims were falsified': t32's verdict covers the PINNED PREFIX (byte-identical, re-proved by hash after my runs) and t40 covers the ADDITIVE TAIL (lines 458-541). Together the two verdicts cover the WHOLE file.",
+  "acceptanceResults": [
+    {
+      "criterion": "DRIVE THE SEEDED COPY: in ONE run, the seeded lane shows the three matchers FALSE on the restored wave-1 wording while its four predicates are TRUE on the shipped module — quote the run's own output lines, and state which of the two legs you reproduced yourself and which you cite",
+      "status": "passed",
+      "evidence": "BOTH LEGS REPRODUCED BY ME, in one driver run (`my-three-legs.json` / `my-three-legs.txt`), using the SAME four matcher literals the lane asserts. SEEDED leg (my own scratch: cpSync of lib/ + _deps symlink outside the workspace, wave-1 line restored after counting 1 occurrence): rendered line = `Pause: agent-teams halt not active · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)`; matchers `{prefixPresent: true, singleMechanismFraming: false, peerWordingAbsent: false, deferralAbsent: false}` — i.e. the shared prefix stays TRUE and the THREE matchers go FALSE, exactly as the lane requires; the line also reproduces the diagnostic falsehood (it reads `not active` WHILE a live hold is set). SHIPPED leg: `Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — … hold hold-probe-1 …)` with all four matchers TRUE. CITED (not reproduced): the author's lane itself — `bun test ./packages/…/tool-boundary-hold-and-contract-seat.test.mjs` captured in FULL (never a tail) → 8 pass / 0 fail, 79 expect() calls, including `(pass) T-19 SEEDED NEGATIVE CONTROL: the pin's matchers go RED on the restored wave-1 wording`; the lane prints no readings (no console.* in the file), so its internal numbers are ASSERTIONS, which is why I reproduced them rather than quoting them."
+    },
+    {
+      "criterion": "TRY TO MAKE IT PASS WITHOUT SEEDING: attempt to satisfy the lane without the scratch seed (its guard asserts exactly ONE occurrence of the shipped line before replacing it) — the attempt must FAIL, and both readings stay as the negative control",
+      "status": "passed",
+      "evidence": "THIRD LEG (my own construction, since the lane cannot be run unseeded without editing an out-of-scope file): an UNSEEDED copy byte-identical to shipped, driven through the same four matchers → `{prefixPresent: true, singleMechanismFraming: true, peerWordingAbsent: true, deferralAbsent: true}`. The lane's seeded expectations REQUIRE framing/peer/deferral to be FALSE; an unseeded run yields TRUE for all three, so those three expectations FAIL and the attempt cannot pass without the seed. Both readings kept (seeded FALSE-set and unseeded TRUE-set). GUARD PRECONDITION VERIFIED: the shipped pause line matches its regex exactly ONCE on the real module (1 occurrence), so the seed can only replace the intended line — and the seeded copy in my run shows `occurrencesOfShippedLine: 1` with `seedPresent: true`."
+    },
+    {
+      "criterion": "SCRATCH DISCIPLINE VERIFIED, not assumed: the copy lives outside the workspace ($TMPDIR, T-89) and is removed in a finally; after your runs, show that no copy remains and that the workspace's *.test.* census is unchanged",
+      "status": "passed",
+      "evidence": "Source (by label): the lane creates `mkdtempSync(join(tmpdir(), \"mpd-t19-seed-\"))`, `cpSync(libDir, …/lib)`, `symlinkSync(pluginRoot/_deps, …)`, and its `finally` removes BOTH the fixture workspace and the scratch. EMPIRICAL: in a single shell call I snapshotted /tmp before and after the pin run — the ONLY new entry was `mpd-t9-home-IjkQdN`, an EMPTY directory (0 bytes, 0 test-like files); NO `mpd-t19-seed-*` residue. My own driver's residue check is also empty. Workspace census after all my runs: `find evidence -name '*.test.*'` = 461 (unchanged), `evidence/review` = 0, and 0 hits for module-copy names under `evidence/`."
+    },
+    {
+      "criterion": "ADDITIVE-ONLY RE-CONFIRMED BY HASH after your own runs: the file's prefix before the new lane still hashes to the revision t32 reviewed, so the two verdicts together cover the WHOLE file, and the coverage boundary is stated explicitly",
+      "status": "passed",
+      "evidence": "Re-taken AFTER my runs: `sha256(first 457 lines + \"\\n\")` = `afb3233519db7fac08822379bf21c198d6c311ca9b249269bbee4948f44baa49` — IDENTICAL to t32's pinned revision — and the current file sha is `1145f15bcc52765c…`, matching t37's report. Coverage boundary stated: t32 = the pinned prefix (byte-identical), t40 = the additive tail (lines 458-541), together the whole file; 'the file moved' is not 'the pinned claims were falsified'."
+    },
+    {
+      "criterion": "Findings, if any, are structured and FAIL this task",
+      "status": "passed",
+      "evidence": "No blocking finding: every claim of the tail lane was reproduced and none was falsified. Two non-blocking observations below (one about the FILE's prefix, one about MY OWN driver's label)."
+    }
+  ],
+  "observations": [
+    { "id": "O1", "severity": "low", "file": "packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs", "problem": "The file leaks ONE EMPTY temp directory per run from its PREFIX (line 241: `process.env.HOME = mkdtempSync(join(tmpdir(), \"mpd-t9-home-\"))` — no cleanup): after a run /tmp gained `mpd-t9-home-IjkQdN`, size 0, 0 test-like files. Not the tail lane (which cleans up in `finally`), and no T-89 discoverability impact because it is empty.", "requiredFix": "none required for t37; if the file is touched again, remove that scratch in a finally and restore the previous HOME." },
+    { "id": "O2", "severity": "low", "file": "evidence/review/t37-seeded-lane/20260917T092122Z/my-three-leg-driver.mjs", "problem": "MY OWN driver's JSON field `laneWouldPassOn.unseeded` reads `true`, which is misleading: it evaluates the ALL-TRUE predicate (the unseeded leg's four matchers), not the lane's seeded expectations. The correct statement is in the acceptance evidence above: the unseeded leg yields TRUE for framing/peer/deferral where the lane requires FALSE, so an unseeded run FAILS.", "requiredFix": "none for the reviewed lane; recorded so no reader misreads that field (the reading that matters is the matcher sets, printed verbatim)." }
+  ],
+  "bounds": [
+    "The unseeded attempt (leg C) is my construction over the same matcher literals; I did not edit the out-of-scope test file to run it, so the 'cannot pass without seeding' result is an argument from measured matcher values plus the guard's precondition (1 occurrence), not a mutated-test run.",
+    "The lane prints no readings, so its internal numbers are assertions; the run output gives the pass line and the counts (8 tests / 79 expects), and my three-leg driver supplies the printed readings.",
+    "All scratch copies lived under $TMPDIR with distinct prefixes (mpd-t40-*), were removed by the driver itself, and the residue checks confirm it."
+  ]
+}

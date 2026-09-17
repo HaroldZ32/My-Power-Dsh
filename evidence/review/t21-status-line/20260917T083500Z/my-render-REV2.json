@@ -1,0 +1,211 @@
+{
+ "instrument": "t32 reviewer render driver (shipped lib/tools.js)",
+ "registeredToolNames": [
+  "agent_teams_add_member",
+  "agent_teams_approve",
+  "agent_teams_claim_task",
+  "agent_teams_create",
+  "agent_teams_create_task",
+  "agent_teams_delete",
+  "agent_teams_edit_plan",
+  "agent_teams_interject_decide",
+  "agent_teams_interject_request",
+  "agent_teams_mailbox_clear",
+  "agent_teams_move_path",
+  "agent_teams_path_owner",
+  "agent_teams_reassign_task",
+  "agent_teams_remove_member",
+  "agent_teams_resume",
+  "agent_teams_rollover",
+  "agent_teams_send_message",
+  "agent_teams_status",
+  "agent_teams_task_contract",
+  "agent_teams_update_task"
+ ],
+ "states": [
+  {
+   "state": "held",
+   "pauseLine": "Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold hold-review-1 set since 2023-11-14T22:13:20.000Z — review probe (released only by its own session-watchdog-resume))",
+   "payload": {
+    "mechanism": "agent_teams_halt",
+    "active": true,
+    "halt": false,
+    "internal_implementation": {
+     "kind": "team-watchdog-preserving-hold",
+     "state": "held",
+     "hold_id": "hold-review-1",
+     "at": 1700000000000,
+     "reason": "review probe",
+     "source": "service",
+     "released_by": "session-watchdog-resume"
+    }
+   },
+   "checks": [
+    {
+     "label": "one mechanism named",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "hold = INTERNAL implementation",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "old peer wording ABSENT",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "old deferral ABSENT",
+     "ok": true,
+     "detail": null
+    }
+   ]
+  },
+  {
+   "state": "not-held",
+   "pauseLine": "Pause: agent-teams halt not active (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: no hold is set)",
+   "payload": {
+    "mechanism": "agent_teams_halt",
+    "active": false,
+    "halt": false,
+    "internal_implementation": {
+     "kind": "team-watchdog-preserving-hold",
+     "state": "not-held",
+     "released_by": "session-watchdog-resume"
+    }
+   },
+   "checks": [
+    {
+     "label": "one mechanism named",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "hold = INTERNAL implementation",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "old peer wording ABSENT",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "old deferral ABSENT",
+     "ok": true,
+     "detail": null
+    }
+   ]
+  },
+  {
+   "state": "absent",
+   "pauseLine": "Pause: agent-teams halt not active (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold state not readable on this host (the watchdog service is not loaded))",
+   "payload": {
+    "mechanism": "agent_teams_halt",
+    "active": false,
+    "halt": false,
+    "internal_implementation": {
+     "kind": "team-watchdog-preserving-hold",
+     "state": "not-readable",
+     "released_by": "session-watchdog-resume"
+    }
+   },
+   "checks": [
+    {
+     "label": "one mechanism named",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "hold = INTERNAL implementation",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "old peer wording ABSENT",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "old deferral ABSENT",
+     "ok": true,
+     "detail": null
+    }
+   ]
+  },
+  {
+   "state": "throwing",
+   "pauseLine": "Pause: agent-teams halt not active (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold state not readable on this host (the watchdog service is not loaded))",
+   "payload": {
+    "mechanism": "agent_teams_halt",
+    "active": false,
+    "halt": false,
+    "internal_implementation": {
+     "kind": "team-watchdog-preserving-hold",
+     "state": "not-readable",
+     "released_by": "session-watchdog-resume"
+    }
+   },
+   "checks": [
+    {
+     "label": "one mechanism named",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "hold = INTERNAL implementation",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "old peer wording ABSENT",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "old deferral ABSENT",
+     "ok": true,
+     "detail": null
+    }
+   ]
+  },
+  {
+   "state": "halt-only",
+   "pauseLine": "Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold state not readable on this host (the watchdog service is not loaded))",
+   "payload": {
+    "mechanism": "agent_teams_halt",
+    "active": true,
+    "halt": true,
+    "internal_implementation": {
+     "kind": "team-watchdog-preserving-hold",
+     "state": "not-readable",
+     "released_by": "session-watchdog-resume"
+    }
+   },
+   "checks": [
+    {
+     "label": "one mechanism named",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "hold = INTERNAL implementation",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "old peer wording ABSENT",
+     "ok": true,
+     "detail": null
+    },
+    {
+     "label": "old deferral ABSENT",
+     "ok": true,
+     "detail": null
+    }
+   ]
+  }
+ ]
+}

@@ -15,11 +15,13 @@ seat that authored none of it.**
 uncovered half named. Six lanes ran: A (agent-teams tooling) · B (packaging + closure gates) · B2 (citation checker) ·
 B3 (docs parity) · C (watchdog arms) · D (QA instruments, the wave's **single `skills/**` writer**).
 
-**Ten new register rows were minted from field measurements** while the wave ran — **T-87** (a claim-time payload
-template vs an amended contract) · **T-88** (a cross-lane red whose only fix is outside the reddened lane's `inScope`) ·
-**T-89** (`bun test <dir>` is a SUBSTRING FILTER) · **T-90** (a citation to a mailbox record rots by clearing) · **T-91**
-(the manual's gate table omits the closure gate) · **T-92** (a negative-assertion pin makes an identifier unusable in
-prose). §8.6 now reads **32 rows (T-61…T-92)**; §8.1's mechanically-checked prose moved with each mint.
+**Eight register rows were added while the wave ran** — **six new ids minted from field measurements**: **T-87** (a
+claim-time payload template vs an amended contract) · **T-88** (a cross-lane red whose only fix is outside the reddened
+lane's `inScope`) · **T-89** (`bun test <dir>` is a SUBSTRING FILTER) · **T-90** (a citation to a mailbox record rots by
+clearing) · **T-91** (the manual's gate table omits the closure gate) · **T-92** (a negative-assertion pin makes an
+identifier unusable in prose) — **plus T-73 and T-74, registered from the wave-1 journal** (which declares its own
+numbering authoritative; that reading is captain log §A-6(1)). Predicate: **§8.6 grew 24 → 32 rows**, i.e. six new ids
+plus two rows whose ids already existed in wave 1's numbering. §8.1's mechanically-checked prose moved with each.
 
 ## 2. The gate sweep — every exit code, on the settled tree
 
@@ -34,7 +36,7 @@ Evidence dir: `evidence/wave2a-integration/20260917T085313Z-sweep-part1/` (full 
 | preset conformance | `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` | **exit 0 · 31 harness rows conform**, persona prefix=true |
 | extension CLI | `bun scripts/mpd-ext.mjs --self-test` | **exit 0 · 53 checks** (validator: source) |
 | QA self-tests | `bun run test:qa` | **exit 0 · all self-tests passed** |
-| package tests | `bun test ./packages` (**`./` path form**, T-89) | **exit 0 · 919 pass / 0 fail / 6514 expects across 87 files** |
+| package tests | `bun test ./packages` (**`./` path form**, T-89) | **exit 0 · 920 pass / 0 fail / 6526 expects across 87 files** (post-`t37`, `bun-test-packages.post-t37.full.log`; the pre-`t37` reading was 919/0/6514, `bun-test-packages.full.log` — a count carries its revision) |
 | pack closure (before) | `node scripts/verify-pack-closure.mjs` | exit 0 · `1181 compared, 1156 identical, 0 drift, 25 expected-after-pack` |
 | pack closure (after) | same, post-re-pack | **exit 0 · `1181 compared, 1181 identical, 0 drift, 0 expected-after-pack`**, **0 FAIL lines** |
 
@@ -85,6 +87,10 @@ the closure. The post-closure discriminator (no disagreement may name a row the 
    **mailbox record** rots by clearing (archive-first, so nothing is hard-deleted — the citation rots operationally).
    Class-based: a task `attemptId`/session id is **data**; only mailbox ids are pointers (a shape scan scores ~100%
    false-positive here: 7/7 UUIDs found were legitimate, reconciled by two independent scans).
+   **Owner record + moment:** the rot was measured in this wave's own inbox (a reviewer's filing cited by message id was
+   no longer retrievable within the hour) and the FACT was moved into **lane D's `t11` nested correction**, which is the
+   durable home; the class clause and the 7-occurrence calibration (two independent scans, reconciled) are **register row
+   T-90**, and the corpus the scans ran on is the team's own task records.
 2. **Cite a thing by its own declaration** (T-55 as extended): symbols not line numbers · **arms by LABEL + assertion**,
    never by position or adjacency · **full paths**, never abbreviations (measured: the abbreviations fail `-e` while the
    full paths resolve) · a null search result is *"no match under pattern `<the pattern>`"*, never "absent".
@@ -93,12 +99,15 @@ the closure. The post-closure discriminator (no disagreement may name a row the 
    the second-hand sentence, marked not-reviewed).
 4. **A derived value is RE-TAKEN, never INHERITED**: one derived count sentence was rewritten **four times in one
    afternoon** (78 → 79 → 81), each re-take recorded as *"a later revision, re-read"* rather than "still green".
-5. **A count must carry its predicate AND its counter's semantics** — the wave's **eight** citation/count slips were one
-   failure mode (arm by position · arm by adjacency · an 11-vs-12 double-count · relay-as-authorship · a tally inverting
-   its own instances · a line citation from recollection · an occurrence census over an unenumerated field set · a
-   population inferred from a generation counter). **Five of the eight had an independent catcher; the sixth was
-   author-caught only after a peer's challenge; and the failure mode reappeared inside the sentence that counted its own
-   instances** — which is the measured case for keeping requirement, work and review in separate seats.
+5. **A count must carry its predicate AND its counter's semantics** — the wave's **eight** citation/count slips are eight
+   SHAPES of one failure mode (arm by position · arm by adjacency · an 11-vs-12 double-count · relay-as-authorship · a
+   tally inverting its own instances · a line citation from recollection · an occurrence census over an unenumerated field
+   set · a population inferred from a generation counter). **The catcher provenance was measured on the SIX instances then
+   known: five were caught independently and the sixth by the author — but only after a peer's challenge on the same
+   construct** (captain log §A-32: "five of six … the 5+1 form is the report's text"); **the two later shapes carry their
+   own provenance** — the occurrence census (§A-42) and the population-from-generation-counter slip, which is the
+   requirements seat's own and is recorded at §A-38(4). **And the failure mode reappeared inside the sentence that counted
+   its own instances**, which is the measured case for keeping requirement, work and review in separate seats.
 6. **A recorded imperfection with a PRE-WRITTEN fix is nearly free; an unrecorded one costs a re-discovery** (earned twice
    in one session: a one-word imprecision in the two new table rows, filed with its pricing and its ready replacement, and
    the earlier `EXTENSIONS-FOR-AGENTS.md` path precision). Both were small enough that a task would have cost more than
@@ -122,16 +131,30 @@ the closure. The post-closure discriminator (no disagreement may name a row the 
 - **The closure gate no longer certifies artifact freshness or integrity by itself.** After the ROOT-FILE byte rule moved
   into the provenance-named class, the discriminator is **TIMESTAMP ORDER** — the class cannot attribute a cause but is
   loud by construction (file, source mtime, artifact stamp, anchor; printed in both branches; the hard direction stays
-  reachable, arm 20a green / 20c red). Freshness is the EXPECTED-set drop-out, integrity is timestamp order plus
+  reachable, **arm 20a green / 20c red**). Freshness is the EXPECTED-set drop-out, integrity is timestamp order plus
   `--pack-stamp`. **A reviewer who mutates an artifact copy must pin `--pack-stamp` or restore mtimes.** Both halves are
   invisible to a reader who sees only "closure: exit 0", which is why this report states them beside the exit code.
+  **Owner record + moment:** the red was measured by **lane B2 at 08:01:19Z**
+  (`evidence/gates/t72-durable-pointer/20260917T074353Z/CLOSURE-GATE-SUPERSEDED.md`, with `PACK-CLOSURE-DRIFT.md` left on
+  disk beside it as the then-true earlier reading), the class was read **at source** in `scripts/verify-pack-closure.mjs`
+  (the arm-20 comment block: "the discriminator is the TIMESTAMP ORDER, not content provenance"; the "20a green, 20c red"
+  pair is the comment's own naming), and captain log **§A-25(1)** ("exit 0 and 0 drift are TRUE BEFORE the re-pack too …
+  the post-re-pack acceptance is **membership**") plus **§A-26(2)** (the count corrected into a membership test) carry the
+  trade's architecture, with **§A-29** carrying its second half (integrity: timestamp order + `--pack-stamp`).
 - **The FAIL-line rule is PER COMMAND**: zero FAIL lines is the condition for a plain gate run; the gate's own
   `--self-test` log carries **16** FAIL-shaped lines BY DESIGN. A bare `grep FAIL` is a documented false red.
 - **Two never-reproduced transients** on `bun test ./packages/mpd-agent-teams-plugin/` (`100 pass / 1 fail` at 07:45:51Z;
-  `1 fail / 2202 expects` during a post-completion re-verification) against **ten-plus green runs** (4 sequential + 6
-  concurrent, full capture, `265/0/2207 expects` each). No foreign writer touched the package; the shape fits a
-  window-dependent arm (the T-07 race class). The integration run captured full output: **919 pass / 0 fail**. Unresolved,
-  named, and 2b-shaped.
+  `1 fail / 2202 expects` during a post-completion re-verification) against **TEN controlled GREEN runs, recorded** — four
+  sequential plus six concurrent under load, enumerated in
+  `evidence/agent-teams/t8-lane-a/20260917T071056Z/ADDENDUM-transient-red.md` (v1/v2/v3/verify-1-full + `load-run/load1..6`)
+  and counted the same way in `t8`'s own `acceptanceResults` ("Ten full-suite runs are green (four sequential + six
+  concurrent…)") — with **no foreign writer** touching the package and the shape fitting a window-dependent arm (the T-07
+  race class). **The bound on the RED side, stated precisely: the two red RUNS' captures were never preserved** — the
+  failing line was piped through a `tail` both times, so they stay **unnamed by observation, not for lack of trying**. The
+  integration run itself captured full output: **920 pass / 0 fail / 6526 expects** (post-`t37`,
+  `bun-test-packages.post-t37.full.log`). Unresolved, named, and 2b-shaped.
+  *(A further six runs were REPORTED in a message while this revision was being written; no durable record enumerates
+  them, so they are excluded from the count rather than cited — T-90's rule applied to our own tally.)*
 - **Declared reds, all expected and named:** the pre-re-pack `CONTENT-DRIFT-EXPECTED` lines (absorbed); the live
   reconciliation's 36 archive-boundary rows (a rule property, unchanged by the closure); and `verify-gates`' repo-wide red
   before the re-pin, recorded in lane B's driver as `expected: "reported"` so it can never gate a lane's exit code.
@@ -179,3 +202,88 @@ corrections beside sealed records · a task's write set **declared before it is 
 unblocked by amending the TARGET's contract rather than shrinking a completed donor's, and one potential collision was
 split into two exact files *before* the validator could refuse it) · and a report whose bounds a seat that authored none of
 it reviews independently (`t34`).
+
+## 9. DECLARED ADDENDUM — the repair of `t34`'s four findings (post-review, and the boundary is stated)
+
+**This section was added AFTER `t34` returned `needs_revision`** (review of record:
+`evidence/review/t34-report-bounds/t34-report-bounds-review.md`, verdict on the 181-line revision of this file). The review's
+verdict therefore judges the bytes it read; every change below is either the fix it asked for (F-1…F-4) or an item the
+captain had **already dispositioned as post-review** before the verdict. Nothing else in the file was rewritten quietly —
+§1, §2's package-test row and §5's rules 1 and 5 carry their corrections inline, and F-4's parts are carried here.
+
+**F-4(a) — THE WRITERS THE ONE RE-PACK ABSORBED, named (the gate's own 25-entry `expected-after-pack` set at
+`pre-pack-state.txt`, grouped by owner):**
+- **lane A** (`t8`/`t21`/`t24`/`t31`/`t37`): `packages/mpd-agent-teams-plugin/lib/{tools.js, quality-gates.js, state.js,
+  mpd-deltas.js}` + `agent-references/agent-teams-deltas.md` (the derived count sentence).
+- **lane B2** (`t25`): `EXTENSIONS-FOR-AGENTS.md` (the root-file re-point).
+- **lane B3** (`t19`/`t20`): `packages/mpd-team-watchdog-plugin/README.md` + `README.zh-CN.md`,
+  `docs/extension-adaptation-report.md` + `.zh-CN.md`, `agent-references/index.md`.
+- **lane C** (`t10`/`t35`): `packages/mpd-team-watchdog-plugin/dist/index.js` + `agent-references/troubleshooting.md`.
+- **lane D** (`t11`/`t28`), the wave's single `skills/**` writer: the 12 corpus files `skills/dsh-qa/cases.json`,
+  `scripts/extension-lifecycle.mjs`, `scripts/lib/immutable-output.mjs`, the eight migrated drivers, and
+  `watchdog-redesign.mjs`.
+- **Not in the byte set but packed anyway:** lane B's gate scripts under `scripts/` (`pack-mpd.mjs`,
+  `verify-dist-fresh.mjs`, `verify-docs-parity.mjs`, `verify-pack-closure.mjs`) and lane B2's durable checker
+  `scripts/check-citations.mjs` — the closure sweep compares `agent-references/**`, `docs/**`, `packages/**`, `skills/**`
+  and the required root files, not `scripts/`, so lane B's edits never produced an EXPECTED line. **The four late writers,
+  as §A-25's items read** — the log labels SECOND and THIRD explicitly and names a FOURTH in passing, with no FIRST
+  label, so each entry below names the item it comes from: **FIRST (in this enumeration, from §A-25(4))** = lane D's
+  self-caught evidence repair (a header whose file count was stale while the hash file beside it listed the right one);
+  **SECOND** = lane B3's README pair (`t20`); **THIRD** = lane C's digest row in
+  `agent-references/troubleshooting.md`; **FOURTH** = lane C's own honest addendum
+  correcting an unmeasured "55 rows". **The set this re-pack absorbed is the five OWNER groups above, not the same four** —
+  `agent-references/index.md` and the two `docs/` files are lane B3's as well (plan: "D-5 adopted into `t19`"), and lane B's
+  gate scripts are packed without ever entering the byte sweep.
+
+**F-4(b) — `t30`'s four declared bounds, QUOTED rather than paraphrased, each with the reading that grounds it** (record dir `evidence/pack-closure/review-B/20260917T084000Z-t30/`, supplied verbatim by the lane that filed them):
+1. *"the repaired driver requires the output dir to exist (loud throw, exit 1) rather than creating it"* — grounded by
+   `broken-harness/run.log`: `Error: output directory does not exist: …`, exit 1 (loud, never silent).
+2. *"`digests` mixes run-written and inherited-but-eligible files; the header documents the rule and exclusions carry
+   reasons, but there is no per-entry run-written flag"* — grounded by the two planted probes in `fresh-run/result.json`
+   (`planted-empty.tmp` → `digests_skipped` with its reason; `planted-old.txt`, mtime 07:00Z → digested by the rule).
+3. *"`verify-gates` exit 1 is lane D's corpus condition, recorded as `expected: \"reported\"` (t18 owns the aggregate)"* —
+   grounded by `result.json` → `steps`: `verify-gates` exitCode 1 with `expected: "reported"` while every lane-scoped step
+   is 0.
+4. *"no live dsh boot; no `skills/**` write; no git write; canonical artifact never written"* — grounded by
+   `falsification.json` → `artifact_read_only.identical: true` and `result.json` → `revision.artifact_untouched` (the
+   artifact stamp `ff5f96da7c43a056` / 1190 unchanged before and after every leg).
+None gates the wave; all four travel with it.
+
+**F-4(c)** is discharged inline, not here: §5.1 now names **lane D's `t11` nested correction + register row T-90** as the
+mailbox-rot rule's owner record, and §6's closure-gate bullet names **lane B2's 08:01:19Z measurement**
+(`evidence/gates/t72-durable-pointer/20260917T074353Z/CLOSURE-GATE-SUPERSEDED.md`) and the **arm-20 comment block** of
+`scripts/verify-pack-closure.mjs` as the source of the timestamp-order mechanism.
+
+**Items dispositioned BEFORE the verdict, added here rather than in a silent edit:**
+- **The shipping bound (§A-48):** every instrument this wave built is durable **in the repo, never in the shipped
+  artifact** — the watchdog package ships only `dist/ README.md README.zh-CN.md`; the agent-teams package ships whole
+  **minus `test|self-fix-tests`** (the packer's own filter); `evidence/**` does not ship at all; and lane C's arms cannot
+  run from a packed tree even in principle because they import `../src/…`. **Consequence for 2b:** packed-install
+  verification can assert the artifact's BEHAVIOUR and can run these arms from the repo, but can never cite them as
+  artifact-internal evidence — every such claim must be labelled *artifact-behaviour* or *repo-arm reading*. **And one
+  exception, measured on the packed tree (so nobody generalises the bound to "no test ships"): the SKILLS corpus ships its
+  own SEVEN `*.test.*` files — `skills/programming/…/check-no-excuse-rules.test.ts` plus six under
+  `skills/visual-qa/scripts/` — while `find dist/mpd-package/packages -name '*.test.*'` is 0.** Corpus assets are not
+  plugin instruments; the bound above is about the wave's instruments, and it holds for every one of them.
+- **The count discipline, in the review seat's own form:** *a count is only meaningful with its UNIT and its REVISION* —
+  the 15/39 file census is identical across the two `t37`-adjacent revisions, which is exactly why files alone cannot tell
+  a reader what they are looking at. This is why §2 now quotes the package-test reading with both revisions.
+- **The shipped half, confirmed post-pack (lane C's reading, `closure-after-repack.log`):** closure exit 0 with
+  `1181 compared, 1181 identical, 0 drift, 0 expected-after-pack` (0 FAIL) at stamp `2026-09-17T08:55:57.244Z`, and
+  `dist/mpd-package/agent-references/troubleshooting.md` **byte-identical to its source** (`5f0b4b3659bad486…`) carrying
+  both new rows — the number moved **by the pack, not by a rewrite**.
+
+**Two further UNIT-ladder instances, enumerated where they live rather than duplicated here:** lane A filed, in
+`evidence/agent-teams/wave2b-notes/20260917T091500Z/2b-refinements.md` §6, a table for two slips of the same family that
+had no durable record until then — **byte-vs-character** (a "+412" where the delta is **+416 BYTES**, an em dash costing
+three bytes for one character) and a **mis-added line census** (16 reported as 15) — each with the wrong value, the right
+value, the UNIT that separates them and the mechanism that produced the error. The report's family list stays at **eight
+SHAPES**; the instances are enumerated in that lane record, which is the pointer to use.
+
+**[post-`t42`] Two additions after the round-3 verdict, marked so the boundary stays explicit:** (i) §9(a)'s enumeration
+now reads *"as §A-25's items read"* — the exact form the reviewer recorded as a note (the log labels SECOND and THIRD
+explicitly and names a FOURTH in passing, with **no FIRST label**), with each entry naming the item it comes from;
+(ii) the shipping bound gained its measured **EXCEPTION** — the skills corpus ships its own **seven** `*.test.*` files
+(`find dist/mpd-package -name '*.test.*'` → 7; the same find under `packages/` → 0), so *"no test ships"* is false while
+*"no plugin ARM travels"* holds. **`t42`'s PASS judges the 275-line revision; these two additions are post-verdict and are
+the only changes since it.**

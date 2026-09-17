@@ -1,0 +1,48 @@
+{
+ "instrument": "t40 reviewer driver (same four matcher literals as the lane)",
+ "legs": {
+  "seeded": {
+   "scratch": "/tmp/mpd-t40-seed-RKoKt3",
+   "occurrencesOfShippedLine": 1,
+   "seedPresent": true,
+   "pauseLine": "Pause: agent-teams halt not active · team watchdog hold: not read on this surface — run session-watchdog-status (released only by its own session-watchdog-resume)",
+   "matchers": {
+    "prefixPresent": true,
+    "singleMechanismFraming": false,
+    "peerWordingAbsent": false,
+    "deferralAbsent": false
+   }
+  },
+  "shipped": {
+   "pauseLine": "Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold hold-probe-1 set since 2023-11-14T22:13:20.000Z — silence probe (released only by its own session-watchdog-resume))",
+   "matchers": {
+    "prefixPresent": true,
+    "singleMechanismFraming": true,
+    "peerWordingAbsent": true,
+    "deferralAbsent": true
+   }
+  },
+  "unseeded": {
+   "scratch": "/tmp/mpd-t40-unseeded-AcGLK6",
+   "pauseLine": "Pause: agent-teams halt ACTIVE (one mechanism: agent_teams_halt — the team watchdog's PRESERVING hold is its INTERNAL implementation: hold hold-probe-1 set since 2023-11-14T22:13:20.000Z — silence probe (released only by its own session-watchdog-resume))",
+   "matchers": {
+    "prefixPresent": true,
+    "singleMechanismFraming": true,
+    "peerWordingAbsent": true,
+    "deferralAbsent": true
+   }
+  }
+ },
+ "laneRequirements": {
+  "seeded_prefixPresent_MUST_BE": true,
+  "seeded_singleMechanismFraming_MUST_BE": false,
+  "seeded_peerWordingAbsent_MUST_BE": false,
+  "seeded_deferralAbsent_MUST_BE": false,
+  "shipped_allFour_MUST_BE": true
+ },
+ "laneWouldPassOn": {
+  "seeded": true,
+  "shipped": true,
+  "unseeded": true
+ }
+}

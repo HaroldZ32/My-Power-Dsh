@@ -411,3 +411,133 @@ READY WORDING, so a future editor spends nothing to fix it: replace
 with
   "the abbreviations `review-B/...` and `lane-c-2a/...` fail `-e` while the three full paths named in these
    two rows resolve".
+
+== ADDENDUM 17 (appended): lane A's clause sharpens MY wording in A12b — the census is a HINT, the './' form is the CONTROL ==
+
+MY A12b SAID: "the 'across N files' census number is the cheap tell". LANE A'S CLAUSE (accepted, theirs):
+the census is a cheap tell ONLY IF you know the tree's baseline — 162 files is meaningless without knowing
+the real set is 2 — so the './' form is the CONTROL and the census is only a HINT. That is sharper than my
+version and it is their clause applied to my sentence; the corrected rule as it should be quoted is:
+
+  THE BARE FORM'S DISCOVERY SURFACE INCLUDES EVERY NON-DOT COPY WHOSE PATH CONTAINS THE ARGUMENT.
+  READ THE './' FORM AS THE CONTROL; treat the "across N files" census only as a HINT, and only against a
+  known baseline. A revert copy kept in the tree belongs under a DOT path AND named in the evidence
+  (constructive half: what to DO, not what to fear). A non-dot copy fires (evidence/review/... : 331 ran /
+  164 failed / 324 errors); a dot-prefixed copy is skipped for execution (.mpd/red-baseline/: census
+  inflated, executed set unchanged — my measurement, their mechanism reading).
+
+THE THIRD CONFIRMATION (lane A re-took my load-bearing claim instead of accepting it, correctly):
+  verify-dist-fresh --only mpd-ext-plugin --quiet -> ok 2/2 fresh, exit 0;
+  verify-dist-fresh --only mpd-roles-plugin --quiet -> ok 1/1 fresh, exit 0;
+  copy census `find . -name 'adapter-identity.test.ts'` -> 2 under ./packages/... + 2 under ./.mpd/... (all
+  foreign copies dot-prefixed). So "nothing was written by my accidental run" now has two independent seats.
+
+== ADDENDUM 18 (appended): WAVE-LEVEL BOUND — the instruments are durable in the REPO, never in the shipped artifact ==
+
+Lane A raised this for their `t37` negative-control lane (which lives in the dev-only `self-fix-tests/**`).
+Measured for MY lane and for the wave, from the PACKED TREE and the PACKER (not from a report):
+  SHIPPED      packages/mpd-team-watchdog-plugin/dist/index.js        (the built code — my deliverable)
+  SHIPPED      agent-references/troubleshooting.md                     (my four+two rows)
+  NOT SHIPPED  packages/mpd-team-watchdog-plugin/test/lane-c-wave2.test.ts   (my 12 arms)
+  NOT SHIPPED  packages/mpd-agent-teams-plugin/self-fix-tests/terminal-rearm-refusal.test.mjs  (lane A's lane)
+  NOT SHIPPED  evidence/**                                             (every lane's harnesses + records)
+And the packaged form of the watchdog package is only `dist/ README.md README.zh-CN.md` — no `src/`, no
+`test/` — while the agent-teams package ships whole minus `test|self-fix-tests` (pack-mpd.mjs:214 filter).
+
+CONSEQUENCES, stated because they cut against the wave's own deliverables:
+  * every instrument this wave built is repo-durable and artifact-invisible BY DESIGN ("dev-only and must
+    not ship"): a future agent working from a packed install gets the CODE and the reference rows, never
+    the arms;
+  * my own arms could not run from a packed tree even in principle: they import `../src/...` (actions,
+    engine, machine, holds, sidecars, support), and `src/` is not shipped for this package — so the durable
+    reddening proof requires a checkout, always;
+  * therefore wave 2b verification of a PACKED install must run the arms from the repo (or a checkout) and
+    can only assert the shipped artifact's BEHAVIOUR; it cannot cite these arms as artifact-internal
+    evidence. The shipped proof of my lane is the behaviour of `dist/index.js` (rebuilt, 20/20 fresh).
+
+== ADDENDUM 19 (appended, POST-WAVE): the re-pack absorbed my rows, measured on the shipped artifact ==
+
+The wave landed (captain commit 3979366 -> merge 96010d8; re-pack at 08:55:56Z, stamp
+2026-09-17T08:55:57.244Z). My lane's shipped claim was bounded in ADDENDUM/NOTE form as "the EXPECTED line
+the re-pack absorbs" — here is that claim MEASURED after the pack:
+  * `node scripts/verify-pack-closure.mjs` -> exit 0; `content bytes: 1181 file(s) compared, 1181 identical,
+    0 drift, 0 expected-after-pack; completeness: 406 declared source file(s) compared, 405 present,
+    1 declared exemption(s), 0 absent`; EXPECTED lines 0, FAIL lines 0; `pack stamp 2026-09-17T08:55:57.244Z`.
+  * `dist/mpd-package/agent-references/troubleshooting.md` is BYTE-IDENTICAL to the source
+    (both sha256 5f0b4b3659bad486...), and BOTH new rows are present in the shipped copy
+    ("reading of the SEARCH" x1, "sentence that carries it" x1). So t35's deliverable traveled, exactly as
+    the pre-pack window predicted.
+  * t35's own pre-pack reading (25 expected-after-pack, this file named) is thereby superseded by
+    `expected-after-pack: 0` — the same number moved by the pack, not by a rewrite.
+
+PROCESS SELF-CORRECTION (mine, recorded): my FIRST post-repack probe was mis-constructed — a stray character
+broke the redirect and it wrote to the per-call tmpfs, so it reported `exit=2` with an empty log and I nearly
+read that as a gate failure. It is a COMMAND-BUILD artifact, not a reading; the valid reading is the one
+above, captured in this directory (`closure-after-repack.log`). Same family as A12c/A16: the instrument,
+not the tree.
+
+== ADDENDUM 20 (appended): F-3-class self-audit for lane C — every slip of this lane now has a durable record ==
+
+Triggered by t34's F-3 ("a slip with no durable record"): I audited THIS lane's slips by grepping my own
+evidence for each and asking whether it exists on disk or only in traffic.
+  RECORDED ON DISK (checked, not assumed):
+    * the two invalid falsification methods (pinned-stamp-to-now; copy-inferred stamps) -> falsification.v1.json
+      / v2.json plus the method_note in falsification.json;
+    * the pattern-artifact grep misses (twice: the wrapped dist literal; the negated class crossing '-' in a
+      filename) -> readings.log ADDENDUM 1 (t13 evidence) and ADDENDUM 12c/16 here;
+    * the accidental command execution from backticks -> ADDENDUM 12c, with the side effect bounded and the
+      "nothing was written" claim re-measured (A17);
+    * the unmeasured "55 rows" number -> ADDENDUM 8 / A8;
+    * the abbreviated example paths -> A14 in this file + the t55-t90 row that carries the `-e` measurement;
+    * the mis-constructed post-pack probe (exit=2 from a broken redirect) -> ADDENDUM 19.
+  MESSAGE-LEVEL ONLY, NOW RECORDED HERE: the closing line "the re-pack waits only on t32" appeared in a
+  message to lane A while the wave was already in its review/repair loop (t32 had COMPLETED pass, t34 had
+  FAILED needs_revision, t38 was claimed by the captain, t39 pending). It is a STALE-STATE CLAIM, not a
+  measurement: superseded within the same hour by my own post-pack verification (stamp 2026-09-17T08:55:57Z,
+  closure 1181/1181/0 drift/0 expected) and by the authority read-back in this addendum. No artifact or
+  reading changed because of it.
+  RESULT: lane C has no slip that lives only in traffic. That is stated as a claim about MY lane and about the
+  slips I can enumerate, not as a claim about anyone else's.
+
+== ADDENDUM 21 (correction of MY OWN A18 sentence, appended): the artifact is not instrument-free wholesale ==
+
+LANE A'S CORRECTION, RE-TAKEN BY ME ON THE PACKED TREE (their count, my re-measurement — identical):
+  `find dist/mpd-package -name '*.test.*' -type f` -> SEVEN files, all under the SKILLS corpus:
+    skills/programming/scripts/typescript/check-no-excuse-rules.test.ts
+    skills/visual-qa/scripts/{ansi,cli,east-asian-width,image-diff,png-decode,tui-grid}.test.ts
+  and `find dist/mpd-package/packages -name '*.test.*'` -> ZERO. The plugged packages ship
+  `dist README.md README.zh-CN.md` (watchdog) and `assets _deps lib …` (agent-teams), with no test trees.
+
+SO MY A18 SENTENCE "only BEHAVIOUR travels with the artifact" IS TOO BROAD as written. The precise form,
+which supersedes it:
+  * NO PLUGIN ARM TRAVELS: lane C's 12 arms, lane A's `self-fix-tests/**` lane and `evidence/**` in its
+    entirety are repo-only, and my arms cannot even resolve from a pack (`../src/...` is not shipped for the
+    watchdog package) — the bound stands where it matters;
+  * BUT the artifact is not instrument-free: the SKILLS CORPUS ships seven of its own script tests, which
+    are corpus assets (lane D's turf), NOT plugin instruments, and no reddening proof for a plugin delta.
+  A report sentence like "no test ships in the artifact" would be FALSE as measured; the safe sentence is
+  "no plugin ARM travels; the skills corpus ships its own seven script tests".
+  * The attribution split: the bound is lane C's (A18); the correction and its 7-file count are lane A's; my
+    re-measurement above is the second seat. Lane A also disclosed a mislabel in their own first `find`
+    ("(empty = no instrument travels)" while the output showed hits) — recorded as theirs, not smoothed.
+
+== ADDENDUM 22 (appended): a citation I AVOIDED, and the surviving homes for the ARTIFACT-BEHAVIOUR pair ==
+
+Lane A reports (and I re-measured nothing of theirs — this is their news, taken as theirs) that the captain
+ruled the shipping bound gets exactly TWO homes — captain log §A-48 and report §6 as a post-review addendum
+— and that their `wave2b-notes/2b-refinements.md` §7 (the section I had praised for naming
+ARTIFACT-BEHAVIOUR vs REPO-ARM READING) was therefore DELETED, so that 2b has no third home to reconcile.
+
+CHECKED ON MY SIDE, because I had cited §7 in a message: a grep of my evidence for `2b-refinements`,
+`wave2b-notes`, `§7` and `section 7` finds NO citation of it — the only hits are an unrelated
+"design §B.2/§7" inside an old lane log from a different plugin's test names. So nothing of mine needs
+withdrawing; what I must do is simply NOT cite §7 from here on, and I have not.
+
+SURVIVING HOMES FOR THE PAIR I LIKED: lane C's A18/A21 (this file) + §A-48 / report §6. That is now the
+ruling's shape, not a preference: two homes, one of them mine, and no third carrier — which is also why my
+offer to "leave the pair as it stands" turns out to have been the ruling rather than a courtesy.
+
+THE GUARD THAT TRAVELS WITH THE NUMBERS (lane A's, accepted): any sentence of the form "no test ships" is
+FALSE as measured — seven corpus script tests DO ship under `dist/mpd-package/skills/**` — so the report's
+wording must carry the corpus exception explicitly: "no plugin ARM travels; the skills corpus ships its own
+seven script tests."
