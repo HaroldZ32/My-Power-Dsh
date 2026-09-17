@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "dshHome": "/tmp/mpd-wm-dsh-sFFnHn",
+  "wmHome": "/tmp/mpd-wm-home-eXOgcb",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "flow": {
+      "ok": true,
+      "sample": "kend) can see it. We got the note card content. |  | Now compose the final answer: report each of the 5 results, then DONE, then the note card contents. |  | Note the extra investigation (paths) — I can mention briefly that the sandboxed bash couldn't see it but the read tool resolved it on the host. Keep it concise. |  | Let me report each result faithfully: |  | 1) mpd_workmate_init → workmate alice initialized (base Deep Worker, deepseek-official/deepseek-v4-flash); note: Verilog counter specialist | 2) mpd_workmate_list → workmates (1): alice [Deep Worker] uses=0 :: Verilog counter special"
+    },
+    "files": {
+      "ok": true,
+      "uses": 2,
+      "noteChars": 239,
+      "memoryChars": 582,
+      "note": "Deep Worker-based workmate \"alice\". Verilog counter specialist; this workspace (my-power-dsh) has only a 2-line stub README — real context lives in .mpd/ and so",
+      "wmRoot": "/tmp/mpd-wm-home-eXOgcb/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-eXOgcb",
+      "sandboxRoot": "/tmp/mpd-wm-home-eXOgcb/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

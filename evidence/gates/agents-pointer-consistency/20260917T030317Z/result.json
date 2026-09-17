@@ -1,0 +1,43 @@
+{
+  "task": "t53 \u2014 restore the delta-table pointer in AGENTS.md \u00a76 (one word) after the t39 fix was reverted",
+  "attemptId": "8391eab3-a7db-47d7-b8e4-b838ad7d6e00",
+  "measuredAt": "2026-09-17T03:03:17Z",
+  "changedPaths": [
+    "AGENTS.md",
+    "evidence/gates/agents-pointer-consistency/20260917T030317Z"
+  ],
+  "before": {
+    "grep": [
+      "38:| `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the A1\u2013D38 adaptation table, the registry mechanic",
+      "295:  (open it on demand \u2014 it is not auto-injected): that file carries the authoritative A1\u2013D26"
+    ],
+    "sha256": "2b63d47434903a9495272ab5\u2026 (pre-edit, matching the revision the captain measured)",
+    "bytes": 48354
+  },
+  "after": {
+    "grep": [
+      "38:| `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the A1\u2013D38 adaptation table, the registry mechanic",
+      "295:  (open it on demand \u2014 it is not auto-injected): that file carries the authoritative A1\u2013D38"
+    ],
+    "sha256_prefix": "eb526cb3e42199643c31602fce4c7ecc6fc62b59b268e830dc5a95a82f9d7452",
+    "bytes": 48354
+  },
+  "artifactFact": "the value is DERIVED FROM THE TABLE, not from the other pointer: agent-references/agent-teams-deltas.md has 28 D-rows and its LAST row is `| D38 |` \u2014 both AGENTS.md sentences must agree with THAT",
+  "regressionRecord": {
+    "deliveredBy": "t39 \u2014 the \u00a76 clause landed as `A1\u2013D38`; its evidence (evidence/gates/tool-names-registry-gap/20260917T024924Z/result.json) holds the AGENTS.md hash chain 1eac90f4\u2026 \u2192 54b6f31e\u2026 \u2192 24b4490e\u2026",
+    "revertedBy": "t45 completed reporting AGENTS.md at 2b63d474\u2026 \u2014 the SAME revision the captain measured the regression on, so the regression and t45's freeze signal are one revision, and the fix request crossed that completion"
+  },
+  "blindness": "bun run verify:docs is BLIND to this class by design (it does not read manual prose), which is why this is a task and not a gate finding \u2014 no gate caught it and none is implied to have.",
+  "singleHunk": [
+    "+",
+    "+All seven are verified by `node scripts/mpd-bg.mjs --self-test` (13 arms) plus the two sandbox cases",
+    "+in `evidence/platform/harness-close/`.",
+    "+"
+  ],
+  "bytesDelta": 0,
+  "bytePredictionNote": "the contract predicted 48,354 -> 48,355 (+1 byte); MEASURED: 48354 -> 48354, delta 0. The substitution `A1\u2013D26` -> `A1\u2013D38` is LENGTH-PRESERVING (both ranges are three characters: D26 and D38), so the prediction of +1 byte is REFUTED by the measurement and is reported as measured rather than adjusted to fit.",
+  "isolatedHunk": [
+    "22:+| `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the A1\u2013D38 adaptation table, ",
+    "106:+  (open it on demand \u2014 it is not auto-injected): that file carries the authoritative A1\u2013D38"
+  ]
+}

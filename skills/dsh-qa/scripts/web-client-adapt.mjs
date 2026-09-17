@@ -18,6 +18,7 @@ import { join, dirname } from "node:path"
 
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
+import { credentialEnv } from "./lib/credentials.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = dirname(dirname(dirname(__dirname)))
@@ -121,7 +122,7 @@ async function runReal() {
   cpSync(join(homedir(), ".dsh", ".credentials.yaml"), join(home, ".credentials.yaml"))
   cpSync(join(ROOT, "dist", "mpd-package"), join(profile, "node_modules", "@mpd-dsh", "mpd"), { recursive: true })
   writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-w", private: true, dependencies: {}, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@mpd-dsh/mpd"] } } }, null, 2))
-  const env = { ...process.env, DSH_HOME: home, HOME: wmHome }
+  const env = credentialEnv({ ...process.env, DSH_HOME: home, HOME: wmHome  })
   const log = join(outDir, "web.log")
   const fd = openSync(log, "w")
   const web = spawn("dsh", ["--profile", "w", "--port", String(PORT), "--no-open"], { env, cwd: ws, detached: false, stdio: ["ignore", fd, fd] })

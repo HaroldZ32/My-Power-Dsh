@@ -1,0 +1,6 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=2 evidence=evidence/dsh-qa/wave-review/20260917T051401Z/live-run
+[mpd-qa:(only)] PASS case=mcp-call evidence=evidence/dsh-qa/mcp-call/2026-09-17T05-20-36.961Z log=evidence/dsh-qa/wave-review/20260917T051401Z/live-run/lanes/mcp-call.log ms=34618
+[mpd-qa:(only)] PASS case=memory-smoke evidence=evidence/plan-c/c6-memory/2026-09-17T05-20-37.026Z log=evidence/dsh-qa/wave-review/20260917T051401Z/live-run/lanes/memory-smoke.log ms=12060
+[mpd-qa:(only)] summary selected=2 pass=2 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/wave-review/20260917T051401Z/live-run
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

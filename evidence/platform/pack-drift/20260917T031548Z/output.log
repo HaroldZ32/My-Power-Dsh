@@ -1,0 +1,14 @@
+# v6 final: self-test
+[self-test] identical=3 drift=skills/mutated.md missing=skills/added-late.md,added-root.md,packages/x/dist/added-late.js,packages/y/ byDesign=1 ok=false -> PASS
+exit=0
+
+# v6 live
+[packed-twin-scan v6] pack stamp (manifest mtime): 2026-09-17T02:56:59.067Z
+[packed-twin-scan v6] identical=1180 drift=5 missing=2 byDesign=2 noTwin=1 symlinks=0
+  MISSING skills/dsh-qa/scripts/watchdog-redesign.mjs: absent from the packed tree (checkout 58464B)
+  MISSING EXTENSIONS-FOR-AGENTS.md: absent from the packed tree (checkout 15684B)
+[packed-twin-scan v6] ok=false (drift==0 AND missing==0 over the shipped set is the only passing reading)
+
+# final instrument hash
+113e5654923e7d1306d6acd73c530cc88faa2931428fe9fb00902a0253b7ab3f
+  12521 B mtime 2026-09-17 12:18:36

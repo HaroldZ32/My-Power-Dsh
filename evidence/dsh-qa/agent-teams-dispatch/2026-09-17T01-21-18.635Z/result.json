@@ -1,0 +1,29 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-dispatch-6Q8OWf",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "captainRun": {
+      "ok": false,
+      "exit": 1,
+      "tail": "ow, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)\n[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh\n[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)\n\ndsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment\n"
+    },
+    "tasks": {
+      "total": 0
+    },
+    "memberAssignments": {
+      "count": 0,
+      "sessions": 1,
+      "labels": []
+    },
+    "secondBatchDispatched": {
+      "ok": false
+    },
+    "assignmentDelivery": {
+      "ok": false
+    }
+  }
+}

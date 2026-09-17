@@ -1,0 +1,129 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-c1-RWwetm",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        [
+          "captain.jsonl"
+        ]
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-cd6f4246-0192-46c1-9752-a1b27447be3a",
+          "createdAt": 1789610935794,
+          "members": [
+            {
+              "id": "08766d97-7475-4586-af52-2451e7037255",
+              "name": "oracle",
+              "role": "reviewer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789610937824,
+              "status": "removed"
+            },
+            {
+              "id": "2746ef42-a29f-46f7-bfef-4250f7bdd1a3",
+              "name": "librarian",
+              "role": "researcher",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789610937904,
+              "status": "removed"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "In one single line, summarize the goal of the c1qa team: verifying the AgentTeams adoption path end-to-end (create team, add members, run a dependent task chain, inspect status, archive). Deliver exactly one line of text plus the team id.",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1789610941022,
+              "updatedAt": 1789610951918,
+              "kind": "work",
+              "attemptId": "5d435336-4827-46a2-abf2-53f3536bfe69",
+              "reassigning": false,
+              "output": "c1qa's goal is to verify the AgentTeams adoption path end-to-end — creating the team, adding members, running a dependent task chain, inspecting status, and archiving the team. Team id: c1qa"
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Read t1's stored output (the one-line summary of the QA goal). Judge whether it is a single line and accurately describes the c1qa goal of end-to-end AgentTeams adoption verification. Complete with an explicit verdict of APPROVE or REJECT and one sentence of justification; if REJECT, state the concrete defect.",
+              "status": "completed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1789610942936,
+              "updatedAt": 1789610967889,
+              "kind": "work",
+              "attemptId": "c0f4523f-8593-4f01-82d6-c9a2c919173b",
+              "reassigning": false,
+              "output": "Verdict: APPROVE — t1's stored output is exactly one line (verified byte-level: 1 line, no embedded newline) and accurately covers the c1qa end-to-end AgentTeams adoption verification: team creation, member addition, a dependent task chain (t1 -> t2), status inspection, and team archiving, with the correct team id (c1qa). Justification (one sentence): the summary is a single line naming every adoption step this team actually exercises, so it is both well-formed and faithful to the goal. No defect found; no revision required."
+            }
+          ],
+          "taskSeq": 2
+        }
+      ]
+    },
+    "archive": {
+      "ok": true,
+      "archiveIds": [
+        "c1qa"
+      ]
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "arm": "fence-refusal",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T02-08-44.592Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

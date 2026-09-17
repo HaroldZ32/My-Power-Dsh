@@ -1,0 +1,24 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/mpd-dsh-qa-4zDaAL/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/dist/mpd-package/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+dsh: reasoning:
+The user wants me to call mcp__ast_grep__search on tests/mcp-fixtures/sample.c with pattern "return 0", then report the returned content verbatim. No bash tool.
+
+I need to pass params: pattern, language (c), paths. paths should be the file path. Let me use paths: ["tests/mcp-fixtures/sample.c"] with workdir as the workspace, or absolute path.
+
+Let me just call it.
+dsh: reasoning:
+The user asked to report the tool's returned content verbatim. Let me report it exactly.
+The `mcp__ast_grep__search` tool returned the following content, verbatim:
+
+```json
+{"schemaVersion":1,"ok":true,"kind":"search","workdir":"/tmp/mpd-dsh-qa-4zDaAL/ws","matches":[{"path":"tests/mcp-fixtures/sample.c","language":"c","text":"return 0;","range":{"start":{"line":1,"column":17,"byteOffset":17},"end":{"line":1,"column":26,"byteOffset":26}},"metavariables":{"single":{},"multi":{}}}],"counts":{"returnedMatches":1,"returnedFiles":1,"totalMatches":1,"totalFiles":1,"atLeastMatches":1},"truncation":{"truncated":false,"reason":null,"maxMatches":50,"maxPayloadBytes":4194304,"salvagedRecords":0},"warnings":[],"durationMs":73}
+```
+
+Parameters used: `pattern="return 0"`, `language="c"`, `paths=["tests/mcp-fixtures/sample.c"]`, `workdir="/tmp/mpd-dsh-qa-4zDaAL/ws"`. The scan found 1 match — `return 0;` at line 1, columns 17–26 — with no truncation and no warnings. No bash tool was used.

@@ -1,0 +1,62 @@
+### POST-COMPLETION ADDENDUM 2026-09-17T02:15:08Z — t18's dist-freshness gate is now ON DISK (scripts/verify-dist-fresh.mjs, mtime 02:14:25Z), so t40 acceptance 4's literal check can finally run
+
+### gate --self-test (seeds a mismatch)
+PASS (a) matching fixture -> 0 findings, ok=true — ok=true findings=0 targets=3
+PASS (a2) the spawned gate exits 0 on the clean fixture — exit=0 json.ok=true
+PASS (b) a mutated fixture dist -> STALE finding + exit 1 — exit=1 kinds=STALE
+PASS (b2) the restored fixture is green again and the bytes are identical — sha ff933aef75dd… -> ff933aef75dd… exit=0
+PASS (c) src without dist -> MISSING finding — exit=1 kinds=MISSING
+PASS (d) dist with no source -> NOT COVERED with a reason — reason="package has no src/ directory (dist is the only committed artifact)"
+PASS (d2) every mapped dist is covered, incl. the declared sdk entry — targets=packages/alpha/dist/index.js, packages/delta/dist/index.js, packages/delta/dist/sdk.js
+PASS (e) --only filters to the matching target only — exit=0 targets=["packages/alpha/dist/index.js"]
+PASS (e2) a filter matching nothing is a zero-subject failure — exit=1
+PASS (f) bad flag -> exit 1 + usage on stderr — exit=1 stderr="[verify-dist-fresh] unknown flag: --definitely-not-a-flag"
+
+[verify-dist-fresh self-test] 10/10 arms passed — PASS
+self-test exit=0
+
+### gate, real run over the tree
+  STALE   packages/mpd-bootstrap-plugin/dist/index.js  <- packages/mpd-bootstrap-plugin/src/index.ts
+  STALE   packages/mpd-boulder-plugin/dist/index.js  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 16ms  <- packages/mpd-bundle-plugin/src/index.ts
+  STALE   packages/mpd-codegraph-plugin/dist/index.js  <- packages/mpd-codegraph-plugin/src/index.ts
+  STALE   packages/mpd-comment-checker-plugin/dist/index.js  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha 11ab1c6da2d3… 29ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha a030858014af… 17ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha f6097fd3383f… 30ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 15ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  STALE   packages/mpd-hashline-plugin/dist/index.js  <- packages/mpd-hashline-plugin/src/index.ts
+  STALE   packages/mpd-memory-plugin/dist/index.js  <- packages/mpd-memory-plugin/src/index.ts
+  STALE   packages/mpd-modelchain-plugin/dist/index.js  <- packages/mpd-modelchain-plugin/src/index.ts
+  STALE   packages/mpd-qa-roles-probe/dist/index.js  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 38d4a459f64d… 22ms  <- packages/mpd-roles-plugin/src/index.ts
+  STALE   packages/mpd-team-compact-plugin/dist/index.js  <- packages/mpd-team-compact-plugin/src/index.ts
+  STALE   packages/mpd-team-watchdog-plugin/dist/index.js  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  STALE   packages/mpd-tools-plugin/dist/index.js  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha d75ddd8917d4… 33ms  <- packages/mpd-tui-plugin/src/index.ts
+  STALE   packages/mpd-ulw-plugin/dist/index.js  <- packages/mpd-ulw-plugin/src/index.ts
+  STALE   packages/mpd-workmate-plugin/dist/index.js  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+  STALE: packages/mpd-bootstrap-plugin/dist/index.js — committed packages/mpd-bootstrap-plugin/dist/index.js (25707 B, abcc1cf14d668490…) != fresh build of packages/mpd-bootstrap-plugin/src/index.ts (30352 B, 30006247814f9f01…) — rebuild: bun build packages/mpd-bootstrap-plugin/src/index.ts --target node --format esm --outfile packages/mpd-bootstrap-plugin/dist/index.js
+  STALE: packages/mpd-boulder-plugin/dist/index.js — committed packages/mpd-boulder-plugin/dist/index.js (43670 B, d1dcb9139a283cb1…) != fresh build of packages/mpd-boulder-plugin/src/index.ts (48315 B, 8903b8e384343723…) — rebuild: bun build packages/mpd-boulder-plugin/src/index.ts --target node --format esm --outfile packages/mpd-boulder-plugin/dist/index.js
+  STALE: packages/mpd-codegraph-plugin/dist/index.js — committed packages/mpd-codegraph-plugin/dist/index.js (17269 B, 209a9c9c46a80b8d…) != fresh build of packages/mpd-codegraph-plugin/src/index.ts (21914 B, 0c5b75fb453bf733…) — rebuild: bun build packages/mpd-codegraph-plugin/src/index.ts --target node --format esm --outfile packages/mpd-codegraph-plugin/dist/index.js
+  STALE: packages/mpd-comment-checker-plugin/dist/index.js — committed packages/mpd-comment-checker-plugin/dist/index.js (19232 B, 6dec6aed942ab7a3…) != fresh build of packages/mpd-comment-checker-plugin/src/index.ts (23877 B, 1fed18d454e161e5…) — rebuild: bun build packages/mpd-comment-checker-plugin/src/index.ts --target node --format esm --outfile packages/mpd-comment-checker-plugin/dist/index.js
+  STALE: packages/mpd-hashline-plugin/dist/index.js — committed packages/mpd-hashline-plugin/dist/index.js (50558 B, b648b5901e368b93…) != fresh build of packages/mpd-hashline-plugin/src/index.ts (55203 B, 193ce68dbded38a7…) — rebuild: bun build packages/mpd-hashline-plugin/src/index.ts --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js
+  STALE: packages/mpd-memory-plugin/dist/index.js — committed packages/mpd-memory-plugin/dist/index.js (26131 B, b145e9a76d974e56…) != fresh build of packages/mpd-memory-plugin/src/index.ts (30776 B, f95fec2d48ff9dca…) — rebuild: bun build packages/mpd-memory-plugin/src/index.ts --target node --format esm --outfile packages/mpd-memory-plugin/dist/index.js
+  STALE: packages/mpd-modelchain-plugin/dist/index.js — committed packages/mpd-modelchain-plugin/dist/index.js (18838 B, 2103df8ee5f4c35d…) != fresh build of packages/mpd-modelchain-plugin/src/index.ts (23483 B, 8eb77dedfe2fa7bf…) — rebuild: bun build packages/mpd-modelchain-plugin/src/index.ts --target node --format esm --outfile packages/mpd-modelchain-plugin/dist/index.js
+  STALE: packages/mpd-qa-roles-probe/dist/index.js — committed packages/mpd-qa-roles-probe/dist/index.js (19059 B, a49573f146241c6a…) != fresh build of packages/mpd-qa-roles-probe/src/index.ts (23704 B, a835d71afff07adb…) — rebuild: bun build packages/mpd-qa-roles-probe/src/index.ts --target node --format esm --outfile packages/mpd-qa-roles-probe/dist/index.js
+  STALE: packages/mpd-team-compact-plugin/dist/index.js — committed packages/mpd-team-compact-plugin/dist/index.js (33540 B, bb7f78fb424807a8…) != fresh build of packages/mpd-team-compact-plugin/src/index.ts (33610 B, 23bfa6190584d9c2…) — rebuild: bun build packages/mpd-team-compact-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-compact-plugin/dist/index.js
+  STALE: packages/mpd-team-watchdog-plugin/dist/index.js — committed packages/mpd-team-watchdog-plugin/dist/index.js (152791 B, ddb30834942b3b4f…) != fresh build of packages/mpd-team-watchdog-plugin/src/index.ts (153319 B, 7b821135d24a9bdd…) — rebuild: bun build packages/mpd-team-watchdog-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-watchdog-plugin/dist/index.js
+  STALE: packages/mpd-tools-plugin/dist/index.js — committed packages/mpd-tools-plugin/dist/index.js (14889 B, f26afae17afaeb4e…) != fresh build of packages/mpd-tools-plugin/src/index.ts (19534 B, fa8f64b8d3130cb7…) — rebuild: bun build packages/mpd-tools-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tools-plugin/dist/index.js
+  STALE: packages/mpd-ulw-plugin/dist/index.js — committed packages/mpd-ulw-plugin/dist/index.js (32399 B, b2ad0fb030c9edd0…) != fresh build of packages/mpd-ulw-plugin/src/index.ts (37044 B, 24122dae82a78f8f…) — rebuild: bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
+  STALE: packages/mpd-workmate-plugin/dist/index.js — committed packages/mpd-workmate-plugin/dist/index.js (50059 B, e3310eb84f2cb192…) != fresh build of packages/mpd-workmate-plugin/src/index.ts (54704 B, 401573a0173b03db…) — rebuild: bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] FAIL - 13 of 20 targets not fresh (STALE: 13) — 479ms
+gate exit=1

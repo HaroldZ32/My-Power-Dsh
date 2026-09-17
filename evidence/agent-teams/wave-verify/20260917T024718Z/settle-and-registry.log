@@ -1,0 +1,20 @@
+### t25 settle anchor 2026-09-17T02:47:18Z
+0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f  packages/mpd-agent-teams-plugin/lib/tools.js
+4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68  packages/mpd-agent-teams-plugin/lib/scheduler.js
+04dc08ca13609722994953c78062ab56f305d0ad03e7c3f79057c68459cdf45a  packages/mpd-agent-teams-plugin/lib/quality-gates.js
+b1b1ac53cc41f2265fcf5b4e0e4892ee24c617f0ae004ccdd4d8f28ce5289681  packages/mpd-agent-teams-plugin/lib/members.js
+ec0baf212619872c521fe15b4dd1a0d50ef6d1834415ddc971074958688b5f5c  packages/mpd-agent-teams-plugin/lib/capabilities.js
+391e85b4053bb7a8631d26bd5024ba40ab22f66309f4c5f38d22a07044768929  packages/mpd-agent-teams-plugin/lib/state.js
+5388c56fe4e9d061dacb5973df411ed7a10a1f1559454b65169148a2f6109e2d  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+
+### registry --check
+[patch-agent-teams-fixes] already applied: 73 mpd delta region(s) across 9 adopted file(s)
+check exit=0
+### settle re-read 2026-09-17T02:53:39Z (anchor was 02:47:18Z)
+0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f  packages/mpd-agent-teams-plugin/lib/tools.js
+4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68  packages/mpd-agent-teams-plugin/lib/scheduler.js
+04dc08ca13609722994953c78062ab56f305d0ad03e7c3f79057c68459cdf45a  packages/mpd-agent-teams-plugin/lib/quality-gates.js
+b1b1ac53cc41f2265fcf5b4e0e4892ee24c617f0ae004ccdd4d8f28ce5289681  packages/mpd-agent-teams-plugin/lib/members.js
+ec0baf212619872c521fe15b4dd1a0d50ef6d1834415ddc971074958688b5f5c  packages/mpd-agent-teams-plugin/lib/capabilities.js
+391e85b4053bb7a8631d26bd5024ba40ab22f66309f4c5f38d22a07044768929  packages/mpd-agent-teams-plugin/lib/state.js
+5388c56fe4e9d061dacb5973df411ed7a10a1f1559454b65169148a2f6109e2d  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js

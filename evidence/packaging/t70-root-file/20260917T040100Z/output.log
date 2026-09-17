@@ -1,0 +1,126 @@
+t70 attempt 7 (amended: finding 1 + finding 2) — consolidated output, generated 2026-09-17T04:10:19Z UTC (host +0800)
+changed: scripts/pack-mpd.mjs sha256 79563bc5fdd6518e (unchanged from attempt 4) · scripts/verify-pack-closure.mjs sha256 b82941ec2d4cd744 (finding 2 added)
+
+===== scratch-pack-f2.log =====
+[scratch-pack] repo      = /root/dshProj/my-power-dsh
+[scratch-pack] outDir    = /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact
+[scratch-pack] packer    = /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs  sha256=79563bc5fdd6518e
+[scratch-pack] patched   = /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/pack-mpd.scratch.mjs  sha256=6fa8aeaf704fb273
+[scratch-pack] patched lines: repoRoot, outDir (2 of 517 lines rewritten; every other line byte-identical)
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] modes normalized: 1190 files (644: 1178, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact
+[scratch-pack] packer exit = 0
+
+===== closure-scratch-f2.log =====
+[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact
+
+===== closure-control-f2.log =====
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  PACKED-MISSING [mpd-team-compact-plugin] - packages/mpd-team-compact-plugin is declared by the packer (PLUGIN_PKGS/MCP_PKGS or the adopted main-code row) but <packed>/packages/mpd-team-compact-plugin is absent - a wholly absent package is the omission shape no per-file rule can see
+  offending packages: mpd-team-compact-plugin
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/control-copy (379 asset files)
+
+===== gate-real-tree-f2.log =====
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  ROOT-FILE - the packed tree does not carry EXTENSIONS-FOR-AGENTS.md - the artifact's own README/docs link to it by relative path, so those links break for an author who holds only the artifact (T-70)
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/dist/mpd-package (378 asset files)
+
+===== links-source-clean.log =====
+  broken: .mpd-dsh/upstream/.opencode/AGENTS.md -> ../packages/omo-opencode/src/features/opencode-skill-loader/
+  broken: .mpd-dsh/upstream/.opencode/AGENTS.md -> ../packages/omo-opencode/src/features/opencode-skill-loader/
+  broken: .mpd-dsh/upstream/.opencode/skills/github-triage/SKILL.md -> permalink
+  broken: .mpd-dsh/upstream/AGENTS.md -> packages/omo-codex/src/install/
+  broken: .mpd-dsh/upstream/AGENTS.md -> docs/guide
+  broken: .mpd-dsh/upstream/AGENTS.md -> docs/reference
+  broken: .mpd-dsh/upstream/CLAUDE.md -> packages/omo-codex/src/install/
+  broken: .mpd-dsh/upstream/CLAUDE.md -> docs/guide
+  broken: .mpd-dsh/upstream/CLAUDE.md -> docs/reference
+  broken: .mpd-dsh/upstream/README.ja.md -> ./.github/assets/sisyphuslabs.png?v=4
+
+===== links-scratch-f2.log =====
+  broken: docs/extension-authoring-guide.md -> ../templates/mpd-extension
+  broken: docs/extension-authoring-guide.zh-CN.md -> ../templates/mpd-extension
+  broken: docs/index.md -> ../AGENTS.md
+  broken: docs/index.md -> ../extensions/mpd-ext-example
+  broken: docs/index.zh-CN.md -> ../AGENTS.md
+  broken: docs/index.zh-CN.md -> ../extensions/mpd-ext-example
+  broken: extensions/README.md -> ./mpd-ext-example
+  broken: extensions/README.zh-CN.md -> ./mpd-ext-example
+  broken: packages/mpd-agent-teams-plugin/README.md -> ./docs/quality-gates.md
+  broken: packages/mpd-agent-teams-plugin/README.md -> ./docs/usage.md
+
+===== links-canonical-f2.log =====
+  broken: README.md -> ./AGENTS.md
+  broken: README.zh-CN.md -> ./EXTENSIONS-FOR-AGENTS.md
+  broken: README.zh-CN.md -> ./EXTENSIONS-FOR-AGENTS.md
+  broken: README.zh-CN.md -> ./AGENTS.md
+  broken: docs/extension-authoring-guide.md -> ../EXTENSIONS-FOR-AGENTS.md
+  broken: docs/extension-authoring-guide.md -> ../templates/mpd-extension
+  broken: docs/extension-authoring-guide.md -> ../EXTENSIONS-FOR-AGENTS.md
+  broken: docs/extension-authoring-guide.zh-CN.md -> ../EXTENSIONS-FOR-AGENTS.md
+  broken: docs/extension-authoring-guide.zh-CN.md -> ../templates/mpd-extension
+  broken: docs/extension-authoring-guide.zh-CN.md -> ../EXTENSIONS-FOR-AGENTS.md
+
+===== selftest-f2.log =====
+[verify-pack-closure] self-test PASS - negative-control (packed root file differs from its source, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (root file absent from the source tree, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (packer ROOT_FILES drops the file, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 2 closure violation(s)
+[verify-pack-closure] self-test PASS - negative-control (declared package dir absent from the artifact, exit 1) (exit 1) :: [verify-pack-closure] FAIL - 1 closure violation(s)
+[verify-pack-closure] self-test FAIL: 21/22 arms
+
+===== verify-docs-f2.log =====
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept verbatim as provenance
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+
+===== twin-scratch-f2.json (counts + target rows) =====
+{"identical":1187,"drift":0,"missing":0,"byDesign":2,"noTwin":1,"ok":true}
+
+===== ATTEMPT 8 (contract reopened, verify list pinned to option A) — 2026-09-17T04:16:34Z UTC =====
+fingerprints: packer 79563bc5fdd6518e · gate b82941ec2d4cd744 · checker 509ba82c623a184f · harness 8f69e0be6c2961be
+
+--- v1-verify-docs.log (tail) ---
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept verbatim as provenance
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+
+--- v2-scratch-pack.log (tail) ---
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] modes normalized: 1190 files (644: 1178, 755: 12)
+[pack-mpd] staged package -> /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact
+[scratch-pack] packer exit = 0
+
+--- v3-closure.log (tail) ---
+[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact (379 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact
+
+--- v4-links.log (tail) ---
+  broken: extensions/README.md -> ./mpd-ext-example
+  broken: extensions/README.zh-CN.md -> ./mpd-ext-example
+  broken: packages/mpd-agent-teams-plugin/README.md -> ./docs/quality-gates.md
+  broken: packages/mpd-agent-teams-plugin/README.md -> ./docs/usage.md
+
+--- v5-control.log (tail) ---
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/scratch-control (379 asset files)
+
+--- twin-attempt8.json ---
+{"identical":1187,"drift":0,"missing":[],"byDesign":2,"noTwin":1,"ok":true}

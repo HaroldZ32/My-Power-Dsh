@@ -1,0 +1,462 @@
+{
+  "scan": "packed-vs-checkout twin scan (whole artifact) \u2014 instrument for the t35 re-pack handshake",
+  "filed_by": "platform-engineer",
+  "filed_at": "2026-09-17T03:16:15.592Z",
+  "instrument": {
+    "path": "evidence/platform/pack-drift/20260917T031548Z/packed-twin-scan.mjs",
+    "self_test": "PASS (negative control: a byte-mutated twin reads as drift, the by-design entry is excluded, ok=false)",
+    "exit_code_semantics": "exit 0 iff drift==0 over the whole artifact",
+    "usage": "node <path>/packed-twin-scan.mjs [--pack dist/mpd-package] [--repo .] [--json] | --self-test"
+  },
+  "pack_stamp_manifest_mtime": "2026-09-17T02:56:59.067Z",
+  "counts": {
+    "identical": 1183,
+    "drift": 2,
+    "by_design": 2,
+    "no_checkout_twin": 1,
+    "symlinks": 0,
+    "ok": false
+  },
+  "drift": [
+    {
+      "rel": "agent-references/troubleshooting.md",
+      "packedBytes": 35534,
+      "packedSha256": "b4032f41a33ffea2",
+      "packedMtime": "2026-09-17T02:56:58.890Z",
+      "checkoutBytes": 35548,
+      "checkoutSha256": "f6b4d1bec8745da6",
+      "checkoutMtime": "2026-09-17T03:11:38.043Z"
+    },
+    {
+      "rel": "skills/dsh-qa/scripts/workmate-library.mjs",
+      "packedBytes": 14322,
+      "packedSha256": "ba9053b24a3d84f9",
+      "packedMtime": "2026-09-17T02:56:58.878Z",
+      "checkoutBytes": 15835,
+      "checkoutSha256": "2e9bf6fe566dc5cb",
+      "checkoutMtime": "2026-09-17T03:13:57.795Z"
+    }
+  ],
+  "by_design": [
+    {
+      "rel": "package.json",
+      "why": "packer-generated packed-form manifest (scripts/pack-mpd.mjs:372)"
+    },
+    {
+      "rel": "packages/mpd-ext-plugin/dist/validator.js",
+      "why": "packer-generated CLI validator entry (scripts/pack-mpd.mjs:125)"
+    }
+  ],
+  "the_split_that_matters": "the DIST layer is current (every packed packages/*/dist/*.js byte-identical to the checkout \u2014 24/24 on packaging-engineer's wider count, 23/23 on mine) but the WHOLE artifact is NOT: two non-dist files drifted after the 02:56:58-59Z pack. Only a post-pack reading with drift==0 over the whole artifact supports a t35 claim.",
+  "pack_stamp_rule": "the pack record is the PACKED MANIFEST stamp (dist/mpd-package/package.json), never the dist/mpd-package directory mtime \u2014 a later top-level entry change moved that directory to 03:01:30Z without a manifest rewrite.",
+  "bound": "both drifted sources were still being written when this ran (troubleshooting.md 03:11:38Z, workmate-library.mjs 03:13:57Z), so this is a snapshot of an ACTIVE writing window, not a settled set; re-run before and after the re-pack.",
+  "method": "node packed-twin-scan.mjs (this dir); raw capture output.log",
+  "v2_bidirectional": {
+    "added_at": "2026-09-17T03:28:02.092Z",
+    "why": "A forward-only scan reports drift==0 for a file that was ADDED to the checkout after the packer ran \u2014 the pack simply has no entry, so there is nothing to compare. That would have made the post-pack rule 'drift==0' a FALSE GREEN for exactly the class this leg exists to catch (a new doc/skill that never shipped).",
+    "change": "the scan now also walks the CHECKOUT side of every root the packer declares in scripts/pack-mpd.mjs ROOT_ASSET_DIRS (parsed from the packer, not hardcoded), plus packages/*/dist, and requires each file to have a packed twin; a byte difference stays the forward pass's finding so nothing is double-reported.",
+    "semantics": "ok = (drift == 0 AND missing == 0) over the shipped set; exit 0 iff ok.",
+    "new_negative_control": "self-test now seeds BOTH failure shapes: a byte-mutated file must read as drift, and a checkout file absent from the pack must read as missing -> `identical=1 drift=skills/mutated.md missing=skills/added-late.md byDesign=1 ok=false -> PASS`.",
+    "reading_at_upgrade": {
+      "at": "2026-09-17T03:27:53Z",
+      "pack_stamp": "2026-09-17T02:56:59.067Z",
+      "identical": 1183,
+      "drift": 2,
+      "missing": 0,
+      "byDesign": 2,
+      "noTwin": 1,
+      "ok": false,
+      "interpretation": "nothing the packer is contracted to ship is ABSENT from the artifact; exactly two shipped files drifted (troubleshooting.md, skills/dsh-qa/scripts/workmate-library.mjs, the latter already at 16,464 B f0ec4a32\u2026 by 03:18:29Z)."
+    },
+    "pre_pack_requirement": "packaging-engineer's leg (i) must read ok=true \u2014 i.e. drift==0 AND missing==0 \u2014 before the artifact is frozen."
+  },
+  "v3_reverse_coverage": {
+    "added_at": "2026-09-17T03:46:51.824Z",
+    "why": "v2's reverse pass covered only the six ROOT_ASSET_DIRS plus packages/*/dist, so `missing=0` did NOT support 'nothing the packer is contracted to ship is absent' \u2014 the packer also copies root files, two specific scripts, and (for shipped packages) personas/, themes/, skills/, client.js, READMEs and launcher closures. A completeness claim must not outrun its check.",
+    "coverage_now": [
+      "the packer's declared ROOT_ASSET_DIRS (parsed from scripts/pack-mpd.mjs)",
+      "root files: LICENSE.md, LICENSE-NOTICES.md, README.md, README.zh-CN.md",
+      "scripts/install-mcp.mjs, scripts/mpd-ext.mjs",
+      "every non-excluded checkout file under each package directory present in the pack \u2014 which covers dist/, personas/, themes/, skills/, client.js, the bilingual READMEs and the launcher closures without enumerating each cpSync"
+    ],
+    "documented_exclusions": "src/** and overlay/** (build inputs \u2014 the packer never copies them and nothing in the packed tree references overlay/, verified: the packed mpd-mcp-lsp holds only READMEs + dist/), test/**, self-fix-tests/**, node_modules/**, *.test.*, and packages/<p>/package.json (not copied for our packages). Generated entries (packed manifest, packed patch, packer validator entry) are reported separately and never as drift.",
+    "negative_controls": "the self-test now seeds THREE shapes and requires all three: a byte-mutated twin (drift), a file added after the pack under an asset root (missing), and a file added after the pack under a shipped PACKAGE dir (missing) -> `identical=2 drift=skills/mutated.md missing=skills/added-late.md,packages/x/dist/added-late.js byDesign=1 ok=false -> PASS`",
+    "readings": {
+      "at": "2026-09-17T03:46:39Z",
+      "identical": 1182,
+      "drift": 3,
+      "missing": 0,
+      "byDesign": 2,
+      "noTwin": 1,
+      "ok": false,
+      "pack_stamp": "2026-09-17T02:56:59.067Z"
+    },
+    "finding_during_upgrade": "the first v3 run reported two ABSENT files \u2014 packages/mpd-mcp-lsp/overlay/lsp/{language-mappings,server-definitions}.ts. They are build inputs, not shipped artifacts (no cpSync of overlay/ anywhere in the packer; the packed mpd-mcp-lsp contains only README.md, README.zh-CN.md, dist/BUILD.lock, dist/cli.js). Recorded as a documented exclusion with that evidence rather than silently dropped.",
+    "standing_rule": "post-pack acceptance is ok=true from THIS instrument (drift==0 AND missing==0 under the coverage above), evaluated after the writers go quiet, on the revision whose manifest stamp + anchor are quoted."
+  },
+  "headline_correction": {
+    "corrected_at": "2026-09-17T03:51:02.186Z",
+    "raised_by": "packaging-engineer (their paired-hash reading flagged the stale headline)",
+    "what_was_stale": "the top-level `counts` block still carried the ORIGINAL filing's reading (identical=1183, drift=2) \u2014 the pre-t62 revision. The current reading lived only in v2/v3 sub-objects, so the file's own headline disagreed with its body.",
+    "superseded_headline": {
+      "identical": 1183,
+      "drift": 2,
+      "by_design": 2,
+      "no_checkout_twin": 1,
+      "symlinks": 0,
+      "ok": false,
+      "revision": "pre-t62 (before packages/mpd-workmate-plugin/dist/index.js was rebuilt)"
+    },
+    "current_reading": {
+      "at": "2026-09-17T03:46:39Z (re-read unchanged at 03:47Z after the instrument hash check)",
+      "identical": 1182,
+      "drift": 3,
+      "missing": 0,
+      "byDesign": 2,
+      "noTwin": 1,
+      "ok": false,
+      "pack_stamp": "2026-09-17T02:56:59.067Z",
+      "drift_set": [
+        {
+          "rel": "agent-references/troubleshooting.md",
+          "packed": "b4032f41a33f / 35,534 B",
+          "checkout": "f6b4d1bec874 / 35,548 B",
+          "checkout_mtime": "2026-09-17T03:11:38.043Z"
+        },
+        {
+          "rel": "packages/mpd-workmate-plugin/dist/index.js",
+          "packed": "6b1715d0f8be / 55,875 B",
+          "checkout": "5a1863b2755c / 56,585 B",
+          "checkout_mtime": "2026-09-17T03:37:33.924Z"
+        },
+        {
+          "rel": "skills/dsh-qa/scripts/workmate-library.mjs",
+          "packed": "ba9053b24a3d / 14,322 B",
+          "checkout": "f0ec4a325af9 / 16,464 B",
+          "checkout_mtime": "2026-09-17T03:18:29.577Z"
+        }
+      ]
+    },
+    "instrument_pin": {
+      "path": "evidence/platform/pack-drift/20260917T031548Z/packed-twin-scan.mjs",
+      "sha256": "fa2a256ac575f9bb8c0774f1e583dce527266928cfe5ecbfc4f3c179d3d2a43f",
+      "rule": "a reading is only evidence about the instrument revision that produced it \u2014 pin hash + reading together, before AND after the run (packaging-engineer's rule, adopted here); this instrument is now FROZEN at this hash, and any edit re-pins it."
+    },
+    "attribution_correction": "this file and my messages said 't62 completed at 03:37:33Z'. That timestamp is the WRITE to packages/mpd-workmate-plugin/dist/index.js (mtime 03:37:33.924Z); the task RECORD is the authority for completion and reads 2026-09-17T03:39:49.391Z. Same rule as a pack stamp: a file mtime proves a write to that path, never a task transition."
+  },
+  "v5_absent_entry_fix": {
+    "added_at": "2026-09-17T03:55:22.089Z",
+    "found_by": "packaging-engineer's SEEDED CONTROL (evidence/pack-closure/absent-package-blindspot/20260917T035300Z/) \u2014 the mirror hole it exposes in this instrument",
+    "the_hole": "the reverse pass enumerated PACKAGE directories from the PACK (`readdirSync(<pack>/packages)`) while enumerating asset roots from the SOURCE. A package directory wholly absent from the pack therefore has no entries to walk: measured, deleting `packages/mpd-workmate-plugin/` from a hardlinked copy of the artifact produced v3 `identical=1180 drift=2 missing=1` where the single missing entry was an UNRELATED skills file \u2014 the removed package appeared only as a lower `identical` count, never as a missing entry.",
+    "the_fix": "declaredPackages(repo) parses the packer's own `PLUGIN_PKGS \u222a MCP_PKGS` and the scan now requires a packed directory for each declared package, plus a packed directory for each declared ROOT_ASSET_DIR \u2014 enumeration from the DECLARATION, never from the pack.",
+    "control_now_caught": "on the same mutilated copy, v5 reports `MISSING packages/mpd-workmate-plugin/: declared package directory absent from the packed tree` (ok=false, exit 1).",
+    "self_test": "four seeded shapes now, all required: byte-mutated twin (drift), file added after pack under an asset root (missing), file added after the pack under a shipped package (missing), and a DECLARED package directory absent from the pack (missing) -> `identical=2 drift=skills/mutated.md missing=skills/added-late.md,packages/x/dist/added-late.js,packages/y/ byDesign=1 ok=false -> PASS`.",
+    "live_reading_v5": {
+      "at": "2026-09-17T03:55:22.090Z",
+      "pack_stamp": "2026-09-17T02:56:59.067Z",
+      "identical": 1182,
+      "drift": 3,
+      "missing": 1,
+      "byDesign": 2,
+      "noTwin": 1,
+      "ok": false,
+      "missing_entry": "skills/dsh-qa/scripts/watchdog-redesign.mjs (57,017 B) \u2014 the file the last skills/** writer added AFTER the pack; expected, closed by the re-pack, not a regression (packaging-engineer's heads-up confirmed here)"
+    },
+    "instrument_pin": {
+      "path": "evidence/platform/pack-drift/20260917T031548Z/packed-twin-scan.mjs",
+      "sha256": "3f26f36c9aff34c90f77a95755a5b704d8bc736df67c5df376e861419f152006",
+      "supersedes": "fa2a256ac575f9bb (v3/v4) \u2014 re-pinned because the reverse pass changed, per the rule that a reading is evidence only about the revision that produced it"
+    },
+    "bound": "the declared-package check proves each DECLARED package dir exists; it does not prove a package's internal completeness beyond the walk it already performs, and it rests on the packer's PLUGIN_PKGS/MCP_PKGS being the complete declaration (a package shipped by some other code path would not be required \u2014 the closure gate's own list is the cross-check)."
+  },
+  "v6_declared_root_files": {
+    "added_at": "2026-09-17T04:18:50.492160+00:00",
+    "found_by": "packaging-engineer (shape) + docs-gate-engineer (line-by-line confirmation), routed as a verified false green",
+    "the_hole": "the ROOT-FILE reverse check iterated a HARDCODED literal list while shippedRoots and declaredPackages parsed the packer. The packer's own ROOT_FILES (scripts/pack-mpd.mjs:112) gained EXTENSIONS-FOR-AGENTS.md in t70, and the artifact lacks exactly that file \u2014 yet the scan reported only the unrelated skills `missing` entry. Same false-green shape as the declared-package hole, one level down: a hardcoded declaration drifts behind the packer's.",
+    "measured_red": "before the fix: `identical=1180 drift=5 missing=1` with EXTENSIONS-FOR-AGENTS.md absent from dist/mpd-package and NOT reported; `ls dist/mpd-package/EXTENSIONS-FOR-AGENTS.md` -> No such file. The closure gate caught it (ROOT-FILE finding) while this instrument stayed silent.",
+    "the_fix": "declaredRootFiles(repo) parses `const ROOT_FILES = [...]` from the packer (fallback to the four licence/README names), and the two scripts the packer copies by name are kept as an explicit labelled extra.",
+    "self_test": "five seeded shapes now, all required: drift, asset-root missing, package-FILE missing, declared package DIR absent, and DECLARED ROOT FILE absent -> `identical=3 drift=skills/mutated.md missing=skills/added-late.md,added-root.md,packages/x/dist/added-late.js,packages/y/ byDesign=1 ok=false -> PASS`.",
+    "live_reading_v6": {
+      "at": "2026-09-17T04:18:50.492174+00:00",
+      "pack_stamp": "2026-09-17T02:56:59.067Z",
+      "identical": 1180,
+      "drift": 5,
+      "missing": 2,
+      "ok": false,
+      "missing_entries": [
+        "skills/dsh-qa/scripts/watchdog-redesign.mjs (the last skills writer's file, 58,464 B)",
+        "EXTENSIONS-FOR-AGENTS.md (the t70 root file, 15,684 B \u2014 newly visible)"
+      ],
+      "fifth_drift": "skills/dsh-qa/scripts/team-watchdog-fault.mjs packed a5d91a75d0e8ca28/11,839 B vs checkout 797b426f5e330eaa/36,432 B @ 2026-09-17T04:12:36.035Z \u2014 a live writer ticked after my previous read; derive the freeze list, never inherit it."
+    },
+    "instrument_pin": {
+      "path": "evidence/platform/pack-drift/20260917T031548Z/packed-twin-scan.mjs",
+      "sha256": "113e5654923e7d1306d6acd73c530cc88faa2931428fe9fb00902a0253b7ab3f",
+      "bytes": 12521,
+      "supersedes": "3f26f36c9aff34c9 (v5)",
+      "rule": "any edit re-pins; a reading is evidence only about the revision that produced it."
+    }
+  },
+  "v6_t71_contract": {
+    "added_at": "2026-09-17T04:22:08.500393+00:00",
+    "task": "t71 (captain-cut carrier for the instrument fix), attempt 26d03b70",
+    "A1_enumerate_from_packer": "declaredRootFiles() parses the packer's `const ROOT_FILES = [...]` (scripts/pack-mpd.mjs:112) \u2014 the same list its copy loop reads; the legacy literal survives only as a fallback that A3 makes loud.",
+    "A2_seeded_control": {
+      "reading_1_scratch_copy_WITH_the_file": {
+        "identical": 1181,
+        "drift": 5,
+        "missing": 1,
+        "exit": 1,
+        "named_in_missing": 0,
+        "note": "the single missing entry is the skills writer's file; EXTENSIONS-FOR-AGENTS.md is NOT named \u2014 the copy carries other pre-existing violations, so the exit code cannot isolate this class"
+      },
+      "reading_2_same_copy_file_REMOVED": {
+        "identical": 1180,
+        "drift": 5,
+        "missing": 2,
+        "exit": 1,
+        "named_in_missing": 1,
+        "note": "the added entry is exactly `MISSING EXTENSIONS-FOR-AGENTS.md (checkout 15,684 B)`"
+      },
+      "strongest_form_synthetic_clean_artifact": {
+        "construction": "cp -al dist/mpd-package + sync the 5 drifted files and the 2 missing files from the checkout \u2014 the closest available stand-in for a post-re-pack tree (the packer writes only to dist/mpd-package, out of scope; the real re-pack is t35's action)",
+        "reading_A_clean": {
+          "ok": true,
+          "exit": 0,
+          "note": "POSITIVE control: `ok=true` is reachable, so the predicate is not permanently red"
+        },
+        "reading_B_file_removed": {
+          "identical": 1186,
+          "drift": 0,
+          "missing": 1,
+          "exit": 1,
+          "note": "exactly ONE finding, naming EXTENSIONS-FOR-AGENTS.md \u2014 the class is isolated with DISCRIMINATING exit codes 0 \u2192 1"
+        }
+      }
+    },
+    "A3_fixture_guard": {
+      "fixture": "the stub packer now emits ROOT_FILES alongside ROOT_ASSET_DIRS/PLUGIN_PKGS/MCP_PKGS, and the fixture seeds one identical root file plus one absent (`added-root.md`)",
+      "guard": "the self-test calls declaredRootFilesSource() and REFUSES (exit 1) when the fixture's list does not parse \u2014 proven by running a copy with the fixture's ROOT_FILES renamed away: `[self-test] FAIL \u2014 the fixture's ROOT_FILES did not parse (source=fallback); refusing the silent legacy fallback (t71 A3)`, exit 1",
+      "shapes": "five seeded shapes now (drift, asset-root missing, package-FILE missing, declared package DIR absent, declared ROOT FILE absent) -> `identical=3 drift=skills/mutated.md missing=skills/added-late.md,added-root.md,packages/x/dist/added-late.js,packages/y/ byDesign=1 ok=false -> PASS`",
+      "reading_surface": "the scan now also reports `rootFilesSource` (packer|fallback|parse-failed) and warns on stderr when it is not 'packer'"
+    },
+    "A4_repin": {
+      "sha256": "82ab8fe96a3a9df5c814f1161a1e29c5feb804c70bed9344a2f48eb873d7ae01",
+      "bytes": 13897,
+      "supersedes": [
+        "3f26f36c9aff34c9 (v5, the ROOT-FILE hole)",
+        "113e5654923e7d13 (v6 first pass, before the A3 guard)"
+      ],
+      "rule": "no earlier `missing` reading may be extended past its own revision: 3f26f36c readings cannot see a missing declared root file at all; 113e5654 readings can, but without the A3 guard; only this revision reports rootFilesSource and refuses a non-parsing fixture."
+    },
+    "A5_untouched": {
+      "scripts/pack-mpd.mjs": "79563bc5fdd6518ec25dcffebde152ef before AND after",
+      "packages aggregate sha256": "0ba0a4b28c5ad75d30baa8223842743d before AND after",
+      "dist/mpd-package": "1188 files / manifest 13b0f32599c2795e before AND after",
+      "note": "the canonical artifact was never written to; all controls used hardlinked scratch copies inside .mpd/ and every copy was removed"
+    }
+  },
+  "INCIDENT_artifact_written_through_hardlinks": {
+    "at": "2026-09-17T04:21:54Z (files' mtimes 12:21:54 +0800)",
+    "by": "platform-engineer, while constructing the t71 A2 'synthetic clean artifact' control",
+    "mechanism": "`cp -al dist/mpd-package .mpd/t71-clean` creates HARDLINKS, and the subsequent `cp <checkout-file> .mpd/t71-clean/<path>` opens the destination with O_TRUNC \u2014 which writes through the shared inode and therefore modified the CANONICAL artifact, not only the copy. The intent (and my prior controls) was a private copy; the mechanism silently made it a mutation.",
+    "five_paths_now_at_the_CHECKOUT_revision": [
+      {
+        "path": "agent-references/troubleshooting.md",
+        "was_packed": "b4032f41a33ffea2 / 35,534 B",
+        "now": "f6b4d1bec8745da6 / 35,548 B"
+      },
+      {
+        "path": "packages/mpd-workmate-plugin/dist/index.js",
+        "was_packed": "6b1715d0f8bebda0 / 55,875 B",
+        "now": "5a1863b2755c6c9f / 56,585 B"
+      },
+      {
+        "path": "skills/dsh-qa/cases.json",
+        "was_packed": "919656a8cac131c6 / 14,164 B",
+        "now": "54585caba9a57132 / 14,542 B"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/team-watchdog-fault.mjs",
+        "was_packed": "a5d91a75d0e8ca28 / 11,839 B",
+        "now": "797b426f5e330eaa / 36,432 B"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/workmate-library.mjs",
+        "was_packed": "ba9053b24a3d84f9 / 14,322 B",
+        "now": "f0ec4a325af9844e / 16,464 B"
+      }
+    ],
+    "not_affected": "the packed manifest (package.json, sha 13b0f32599c2795e, unchanged), the file count (1188, unchanged), every other packed path, and the two declared-but-absent files (EXTENSIONS-FOR-AGENTS.md and skills/dsh-qa/scripts/watchdog-redesign.mjs) which remain absent",
+    "consequence": "the artifact is now a HYBRID \u2014 those five paths carry the checkout revision while the rest carry the 02:56:58 pack revision. The twin scan reads drift=0 (a false clean for those paths, because I wrote the checkout bytes in), and any post-pack verification that reads this artifact before it is regenerated would inherit that false clean. The artifact no longer represents the pass-2 pack.",
+    "remedy": "the wave's re-pack (t35) regenerates dist/mpd-package wholesale from the current checkout, which replaces the hybrid and legitimately makes those five paths equal to the checkout; it also adds the two absent declared files. No content is lost that the re-pack would not have overwritten. Meanwhile: the artifact must be treated as DIRTY \u2014 do not run the pre-pack gate against it as if it were the pass-2 pack, and do not quote a twin-scan drift reading from it as evidence.",
+    "my_t71_A5_is_therefore_FALSE": "A5 required 'the canonical artifact untouched'. It was touched, by me. The instrument fix itself (A1\u2013A4) is complete and verified; A5 is violated and the task is reported as failed for that reason rather than papered over.",
+    "method_fix_for_future_controls": "never modify a hardlinked copy in place: after `cp -al`, either break the link first (`rm` the target then copy, or `cp --remove-destination`), or use `cp -a` for the paths the control will change. Better still: build controls in a scratch tree the instrument is pointed at, and never let a control write path overlap the artifact being measured."
+  },
+  "v6_A6_written_after_pack_guard": {
+    "added_at": "2026-09-17T04:28:30.438759+00:00",
+    "requirement": "t71 A6 (added by the captain on reopen): a packed file whose mtime is NEWER than the packed manifest's stamp is its OWN finding kind, with a seeded control proving BOTH directions plus its own self-test shape.",
+    "implementation": "AFTER_PACK_ALLOWED names the small set the packer writes at pack time (package.json, cordis.patch.yml, the packer-generated validator entry); every other packed file with mtime > the manifest's stamp is reported as WRITTEN-AFTER-PACK with both mtimes, and `ok` now requires afterPack==0 as well as drift==0 and missing==0.",
+    "direction_FIRES": "a scratch artifact + a HARDLINKED clone of it, then a write through the clone's hardlink (the exact mechanism of my 04:21:54Z incident, reproduced on inodes that belong to neither dist/mpd-package nor any real tree) -> `afterPack=1`, naming the file with `mtime 04:28:16.240Z > manifest 02:00:00.000Z`, exit 1.",
+    "direction_QUIET": "the same tree with the manifest touched newest -> `afterPack=0`, exit 1 for unrelated missing rows only (the scratch tree is not a full artifact).",
+    "self_test_shape": "the fixture now seeds a packed file written after the pack (mtime +60 s) and requires it: `identical=3 drift=skills/mutated.md missing=skills/added-late.md,added-root.md,packages/x/dist/added-late.js,packages/y/ afterPack=written-after-pack.md byDesign=1 ok=false -> PASS`, exit 0 \u2014 six shapes, all required.",
+    "LIVE_DEMONSTRATION": "the canonical artifact now reports `afterPack=5` naming exactly the five paths my incident wrote (troubleshooting.md, the workmate dist, cases.json, team-watchdog-fault.mjs, workmate-library.mjs) with `mtime 04:21:54Z > manifest 02:56:59.067Z` \u2014 the instrument detects the very mutation that created it, so the shape can never again pass as a clean pack.",
+    "instrument_pin": {
+      "sha256": "6b4104e6104e12cbd6d75ea8abbb85cc1023e63105db3a1f7c75a5df9c42104a",
+      "bytes": 15480,
+      "supersedes": [
+        "3f26f36c9aff34c9 (v5)",
+        "113e5654923e7d13 (v6 first pass)",
+        "82ab8fe96a3a9df5c814f1161a1e29c5feb804c70bed9344a2f48eb873d7ae01 (v6 + A3 guard; superseded by the A6 guard)"
+      ]
+    }
+  },
+  "v6_A7_parser_truncation": {
+    "added_at": "2026-09-17T04:36:26.300412+00:00",
+    "found_by": "packaging-engineer (measured, with the trap pinpointed and the exact lost entries named)",
+    "the_hole": "declaredPackages() parsed `const PLUGIN_PKGS = \\[([\\s\\S]*?)\\]` \u2014 non-greedy, so it stopped at the FIRST `]`, which sits inside a COMMENT at scripts/pack-mpd.mjs:58 (`` `[pack-mpd] FAIL: \u2026` ``). PLUGIN_PKGS really spans lines 22-65, so the parse lost the LAST TWO entries: `mpd-team-watchdog-plugin` and `mpd-bundle-plugin`. Those two declared packages were therefore never required to exist in the pack \u2014 the same false-green class one level down, inside the parser. My earlier 'declared \u222a adopted = 21' figure was wrong for the same reason.",
+    "the_fix": "parseDeclaredArray(src, name): a lexer that walks the array with BRACKET DEPTH while skipping line comments, block comments and quoted strings/quasi-quotes as units; used for all four declarations (ROOT_ASSET_DIRS, PLUGIN_PKGS, MCP_PKGS, ROOT_FILES). The declared PACKAGE set is now declaredPackageSet() = that union + the patch's class-B adopted row (`mpd-agent-teams-plugin`, copied wholesale by the packer and counted by the closure gate): 18 + 4 + 1 = 23.",
+    "count_parity": "mine now reports declaredCounts {rootAssetDirs:6, rootFiles:5, packages:23} \u2014 23 is exactly the number the closure gate prints (`declared packages 23/23 present in the artifact`).",
+    "seeded_control_for_the_parse_itself": "the fixture's stub packer now carries a trap comment (`// trap: a comment carrying a ] and a quoted \"decoy\"`) between its two entries, and the self-test computes BOTH the lexed count and the naive-regex count and REFUSES when the naive parse is not strictly smaller \u2014 `lexed=2 naive=1` required; it failed loudly (`the declaration parser control did not discriminate`) until the trap was actually installed, which is how the control proved itself.",
+    "drop_proof_required_now": "a minimal scratch pack seeded with all 23 declared dirs reads 0 declared-dir findings; dropping `mpd-team-watchdog-plugin` \u2192 exactly one finding naming it; dropping `mpd-bundle-plugin` \u2192 one finding; dropping the adopted `mpd-agent-teams-plugin` \u2192 one finding. The two recovered entries were SILENT before this fix.",
+    "self_test": "seven seeded shapes/controls now, all required: drift, asset-root missing, package-FILE missing, declared package DIR absent, declared ROOT FILE absent, a packed file WRITTEN AFTER the pack, and the declaration-parse trap control.",
+    "instrument_pin": {
+      "sha256": "858cd130b6caacad018683ae6e498d72d30a3bf7d2ab59b4834deeba00f0e678",
+      "bytes": 18056,
+      "supersedes": [
+        "3f26f36c9aff34c9 (v5)",
+        "113e5654923e7d13 (v6 first)",
+        "82ab8fe96a3a9df5c814f1161a1e29c5feb804c70bed9344a2f48eb873d7ae01 (v6 + A3)",
+        "6b4104e6104e12cbd6d75ea8abbb85cc1023e63105db3a1f7c75a5df9c42104a (v6 + A6)"
+      ]
+    },
+    "status": "landed without a task because the freeze is imminent; a carrier can be cut retroactively as t71 was, or this can ride the same instrument's record."
+  },
+  "cross_seat_anchor_tie_post_repack": {
+    "recorded_at": "2026-09-17T04:53:09.506730+00:00",
+    "tree": "dist/mpd-package AFTER the 04:37:59Z re-pack (1190 files, manifest stamp 2026-09-17T04:37:59.994Z, afterPack=[])",
+    "seat_A_anchor": {
+      "by": "platform-engineer",
+      "full": "eaa0919702bf5b334332d5b701b6a2a85ab5aa0a84cc4ccd9b4faa6636ebf61c",
+      "display_prefix_16": "eaa0919702bf5b33",
+      "note": "the ladder's revision anchor; carried at FULL length after qa-lane-engineer pointed out that my earlier record held only the 16-hex prefix \u2014 a truncated hash is the same defect class as a pin without its moment"
+    },
+    "seat_B_anchor": {
+      "by": "qa-lane-engineer",
+      "value": "4131137d51d65b4255a6251c0f5af6294c1b447c2b8114156fe808e21cb5fb0f",
+      "fold": "sha256 over sorted lines `relpath + \"\\0\" + sha256(file)`, LF-joined WITH a trailing LF, under BYTE collation (LC_ALL=C / code-unit order)",
+      "fold_precision_found_by_reproduction": "the trailing LF is load-bearing: LF-joined without it gives 570177010ac1f15983654edebd4e2dde7b4b26237be3707c051f542b909624b7, and NUL-joining gives 0e8d236c8c57e89e13bb288b8ed2f6fbf8889348a8b019c60beed36597657756 \u2014 only the trailing-LF variant reproduces the peer's digest",
+      "fold_collation_matters": "the packing seat first computed the fold with a locale-aware `sort` and got d30f7d19\u2026 (288 positions differ from byte order); under byte/LC_ALL=C collation it reproduces 4131137d\u2026 \u2014 so the spec needs THREE parts: algorithm (per-file sha256 over sorted rel+NUL+hash records), encoding (LF-joined, trailing LF included), and COLLATION (byte order, not locale order). My own reproduction used JS Array.sort() (code-unit order) and matched the byte-collation value, which is the independent confirmation of that clause.",
+      "fold_shell_twin": "R=dist/mpd-package; ( cd \"$R\" && find . -type f -print0 | LC_ALL=C sort -z | while IFS= read -r -d '' f; do printf '%s\\0%s\\n' \"${f#./}\" \"$(sha256sum \"$f\" | cut -d' ' -f1)\"; done ) | sha256sum",
+      "reproducibility_elements": {
+        "rule": "a digest is reproducible only when FIVE elements are stated together",
+        "elements": [
+          "file set",
+          "record encoding (`path` + NUL + hex digest + LF)",
+          "sort KEY (records, not the bare path list)",
+          "collation (LC_ALL=C / byte order)",
+          "the shell's NUL handling (`-print0` / `sort -z` / `read -d ''`)"
+        ],
+        "demonstration": "identical everything, only the locale differing, changes the digest: LC_ALL=C sort -z + `path\\0digest` records -> 4131137d\u2026 (the anchor); locale sort -z + the same records -> d30f7d19831d2fd6a3835c207e\u2026 (the packing seat's first value, now reproduced by qa-lane-engineer); sha256sum's own digest-first lines -> ea80a4130266497e141ffd0e96\u2026 (neither).",
+        "closed_pair": "the packing seat's d30f7d19\u2026 is now reproduced, so no stable-looking number in this thread is left unexplained; the missing element there was the sort KEY (records vs path list) on top of the collation.",
+        "js_immunity": "a JS reader using Array.prototype.sort() is code-unit ordered and therefore immune to the locale trap, which is why my reproduction matched the byte-collation value on the first try."
+      }
+    },
+    "reproduction": "I recomputed the fold over all 1190 files in a fresh process with my own code and matched the peer's digest exactly, so the two anchors are one tree, measured by instruments that share no code.",
+    "bound_from_the_peer": "the peer's inode evidence (links=1 on both sides, 0 of the then-1188/1190 files sharing an inode with the checkout) was taken AFTER the write-through, so it documents that nothing is live-coupled NOW; it does not reconstruct whether the link existed at the moment of the write \u2014 that part is my account plus the 12:21:54.25x mtimes. Peer-measured for the state, author-accounted for the act.",
+    "why_it_is_in_this_file": "so the endgame/report can cite two anchors of one revision without re-deriving the fold",
+    "anchor_length_lesson": "both anchors must be quoted at full 64 hex: a truncated hash, a fold without its algorithm, and an algorithm without its record encoding are three variants of one failure \u2014 a value that cannot be re-derived by a second reader.",
+    "fold_values": {
+      "pre_registered_fold": "4131137d51d65b4255a6251c0f5af6294c1b447c2b8114156fe808e21cb5fb0f",
+      "variants": {
+        "lf_joined_no_trailing_lf": "570177010ac1f15983654edebd4e2dde7b4b26237be3707c051f542b909624b7",
+        "nul_joined": "0e8d236c8c57e89e13bb288b8ed2f6fbf8889348a8b019c60beed36597657756"
+      },
+      "cross_verified": "qa-lane-engineer reproduced the pre-registered fold AND both variants with their own code; I reproduced the pre-registered fold and both variants with mine"
+    },
+    "updated_at": "2026-09-17T05:17:51.856795+00:00",
+    "pack_signature_subsecond": {
+      "added_at": "2026-09-17T05:01:37.550185+00:00",
+      "source": "packaging-engineer, measured 04:56:36Z",
+      "reading": "at second granularity the regenerated tree is ONE bucket (12:37:59 for 1190/1190 files); at SUB-second granularity there are 92 distinct mtimes all inside that second (top buckets 22/22/22/21 files at .844742/.843742/.840741/.842742)",
+      "why_stronger": "a sequential full copy produces exactly this sub-second spread; the incident produced five isolated paths instead \u2014 and there are now 0 files carrying the 04:21:54Z stamp, i.e. the pack overwrote the incident's marks rather than adding to them"
+    },
+    "determinism_test": {
+      "by": "packaging-engineer, scratch out-dir, canonical untouched",
+      "result": "manifest anchor reproduced exactly (eaa0919702bf5b33\u2026); the two trees byte-identical (1190 == 1190 files, per-file sha256sum diff EMPTY); the 1190-file fold reproduces under byte collation",
+      "consequence": "accepting the existing pack loses nothing \u2014 a re-pack would be a byte-identical no-op with a new filesystem stamp, which is what made the captain's option (a) measurable rather than preferential"
+    },
+    "two_specs_are_one_stream": {
+      "added_at": "2026-09-17T05:15:35.812891+00:00",
+      "proof": "A === B + \"\\n\": qa-lane-engineer's spec (`relpath + NUL + hex + LF` per record) and mine (LF-join plus a trailing LF) are byte-identical streams, so the 'which definition' question is closed at the byte level rather than by agreement.",
+      "two_independent_axes": {
+        "axis_1_terminator": "held byte order, varied the terminator: A 4131137d\u2026 (per-record LF / LF-join + trailing LF), B 57017701\u2026 (LF-join, no trailing LF), C 0e8d236c\u2026 (NUL-joined) \u2014 my three values",
+        "axis_2_collation": "held the terminator (A), varied the collation: d30f7d19\u2026 under glibc en_US.UTF-8, 98469d05\u2026 under ICU localeCompare('en-US') \u2014 the packing seat's values",
+        "synthesis": "four counterexamples, two independent discriminators, all reproduced on the same 1,190 files \u2014 which is why the rule needs both clauses"
+      },
+      "pinned_definition": "file set (all 1,190 under dist/mpd-package) \u00b7 record `relpath\\0sha256hex(contents)` \u00b7 byte/code-unit ordering \u00b7 records LF-joined WITH a trailing LF \u00b7 one streaming sha256 -> 4131137d51d65b4255a6251c0f5af6294c1b447c2b8114156fe808e21cb5fb0f",
+      "extended_clause": "an anchor is reproducible only when its fold is stated to the byte \u2014 file set, record encoding, sort key, ordering implementation, and the trailing terminator \u2014 exactly as a pin is reproducible only with its moment.",
+      "re_derivation_scripts": "durable order files and both fold scripts are committed in the t70 evidence dir (per packaging-engineer), so any of the four values can be re-derived without re-deriving the method",
+      "definition_free_backup": "canonical vs ordered re-pack: 1,190 == 1,190 files, per-file sha256sum diff EMPTY, sha-list fold 1f745dece2620161\u2026 on both trees \u2014 the strongest artefact, needing no fold definition at all"
+    },
+    "reproducibility_ladder": {
+      "added_at": "2026-09-17T05:16:46.283391+00:00",
+      "premise": "each rung is a value a second reader cannot re-derive; each is witnessed by a MEASURED PAIR in this thread rather than stated as a caution",
+      "rungs": [
+        {
+          "n": 1,
+          "missing": "a truncated (differently encoded) hash",
+          "witness": "a 16-hex prefix vs the full 64-hex digest \u2014 both of my own records carried the prefix until a peer pointed it out"
+        },
+        {
+          "n": 2,
+          "missing": "a fold without its algorithm",
+          "witness": "digest-first records give ea80a413\u2026 while path-first records give the anchor \u2014 same file set, same join, different record layout"
+        },
+        {
+          "n": 3,
+          "missing": "an algorithm without its encoding/terminator",
+          "witness": "57017701\u2026 (LF-join, no trailing LF) and 0e8d236c\u2026 (NUL-joined) vs the anchor 4131137d\u2026"
+        },
+        {
+          "n": 4,
+          "missing": "an encoding without its collation",
+          "witness": "byte order vs locale order: 288 positions differ between the byte-collation fold and the glibc-locale fold"
+        },
+        {
+          "n": 5,
+          "missing": "a collation without its IMPLEMENTATION",
+          "witness": "glibc strcoll under en_US.UTF-8 gives d30f7d19\u2026 while ICU localeCompare('en-US') gives 98469d05\u2026 from ONE file set, first diverging at index 25 (docs/plan-team-watchdog-report.md vs docs/plan-team-watchdog.md) \u2014 the same locale STRING, two orders"
+        }
+      ],
+      "completeness_clause": "a reproducible digest needs five parts stated together: file set \u00b7 record encoding \u00b7 algorithm \u00b7 collation name \u00b7 collation implementation",
+      "note_for_the_record": "two of the three values this entry records are the locale ones, so the pair d30f7d19\u2026/98469d05\u2026 cannot be explained without rung 5; the byte-collation anchor 4131137d\u2026 needs only rungs 1-4"
+    },
+    "model_correction_sort_key": {
+      "at": "2026-09-17T05:17:51.856778+00:00",
+      "raised_by": "qa-lane-engineer (with the packing seat's mechanics agreeing), refuting two lines I had recorded",
+      "what_i_had_wrong": "I recorded the sort KEY as 'records, not the bare path list' and called the missing element 'the sort key on top of the collation'. Both are refuted.",
+      "the_measurement": "order the 1,190 PATHS ONLY (newline-delimited, no digest, no NUL) under two collations, attach `path\\0digest` records in that order, hash the LF-terminated stream: LC_ALL=C -> 4131137d51d65b4255a6251c0f5af6294c1b447c2b8114156fe808e21cb5fb0f (the anchor); LC_ALL=en_US.UTF-8 -> d30f7d19831d2fd6a3835c207ef508529ca574b4d9577bdc539b6970e0f13318. I reproduced BOTH values independently at 05:0x Z before rewriting this entry.",
+      "conclusion": "the SORT KEY is the path list and is CONSTANT in every form measured; the digest never participates in the ordering, and `-z`/`-print0` changes only the DELIMITER, not the key.",
+      "corrected_model": "fold = file set + record encoding (field order and trailing terminator) + ordering IMPLEMENTATION over the constant path key + digest",
+      "axes_actually_varied_in_this_thread": [
+        "ordering implementation: byte/C vs glibc strcoll (en_US.UTF-8) vs ICU localeCompare('en-US') -> 4131137d\u2026 / d30f7d19\u2026 / 98469d05\u2026",
+        "terminator/encoding: 4131137d\u2026 (per-record LF, trailing LF) vs 57017701\u2026 (no trailing LF) vs 0e8d236c\u2026 (NUL-joined)",
+        "record field order: path-first (4131137d\u2026) vs sha256sum's digest-first lines (ea80a413\u2026)"
+      ],
+      "retracted_element": "the 'shell NUL handling' element I had listed is RETRACTED (qa-lane-engineer retracted it too): it was an inference from the differing values, not an exercised variable \u2014 `-z` only changes the delimiter.",
+      "peer_document": "evidence/dsh-qa/final-skills-freeze/artifact-anchor-and-fold-conventions.md (the peer's filed conventions)"
+    },
+    "reproducibility_elements": {
+      "rule": "a digest is reproducible only when these parts are stated together",
+      "parts": [
+        "file set",
+        "record encoding: field order (`path` + NUL + hex digest) and the trailing terminator",
+        "ordering implementation over the sort key (the path list)",
+        "digest function"
+      ],
+      "constant": "the sort key itself \u2014 the path list \u2014 is the same in every measured form",
+      "lesson": "state the parts, not the intentions: four counterexamples in this thread (digest-first records, no trailing LF, NUL-joined, locale/ICU ordering) each moved the digest while every other part was held"
+    }
+  }
+}

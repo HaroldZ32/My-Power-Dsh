@@ -1,0 +1,94 @@
+{
+  "task": "t21 — lane C3: remaining red lanes, immutable-by-default evidence writes, one product formula (T-60, T-53, T-56)",
+  "attempt": 1,
+  "attemptId": "f1e94654-ecf0-40bf-8619-56875b8d2b36",
+  "agent": "qa-lane-engineer",
+  "status": "ALL FOUR VERIFY COMMANDS GREEN — completed on the frozen artifact",
+  "recordedAt": "2026-09-17T02:40:00Z",
+  "acceptanceResults": [
+    {
+      "criterion": "`workmate-library` is green, or its red is proven to be the lane's own isolation defect and fixed: the lane must not read or write the REAL `/root/.mpd/workmate` — it must sandbox `HOME` and assert against the sandbox.",
+      "status": "passed",
+      "evidence": "The defective step (`ok: !existsSync(realWm)`) is replaced by the MEASURED before/after shape: the real library listing is snapshotted before the live run and required EQUAL after it, and the exercised root must be inside the sandbox HOME (`wmRoot.startsWith(wmHome + sep) && env.HOME === wmHome && env.HOME !== homedir()`) — the predicate the product itself uses (`workmate src/index.ts homeDir(): $HOME || homedir()`) and the one lane F landed as `403 real-home-refused`. Measured: `bun skills/dsh-qa/scripts/workmate-library.mjs --no-skip` exit 0 PASS, isolation {realWm: /root/.mpd/workmate, before: '.archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer', after: identical, sandboxRoot: /tmp/mpd-wm-home-…} with live/flow/files all ok; `--self-test` exit 0 with 19 checks, including a new regression pin that forbids the absence-assertion from returning."
+    },
+    {
+      "criterion": "`session-start-team` is green or carries a documented, reproducible verdict: the `twoSided` arm's recorded `complexTeams [1,0,1]` reading is explained against the gate predicate the lane actually exercises (`lib/session-start.js`), with the measurement recorded rather than the claim repeated.",
+      "status": "passed",
+      "evidence": "GREEN + measured. New `evidence/dsh-qa/red-lanes/20260917T023000Z-t21/prompt-predicate-measurement.mjs` imports `packages/mpd-agent-teams-plugin/lib/session-start.js` and evaluates the lane's OWN frozen prompts (read out of its source, not re-typed): complex #0 = 1 satisfied C, complex #1 (`team: fix the flaky test`) = explicit flag CONSUMED + 1 C, complex #2 = 1 C, all three simple = 0 signals ⇒ expectedTeams [1,1,1] / [0,0,0]. The lane's newest own evidence (`evidence/dsh-qa/session-start-team/2026-09-17T01-39-23.411Z/result.json`) reads exactly `complexTeams [1,1,1]`, `simpleTeams [0,0,0]`, `complexNotices [true,true,true]`, `negativeControl {ok:true, teams:0, disarmed:true}` — the boot AGREES with the predicate. The `[1,0,1]` reading is STALE: under `trigger = anyExplicitFlag || matchedSignals >= 1` the `team:` prompt cannot yield 0 unless the flag was not consumed, i.e. it predates this wave's gate work; superseded by this measurement."
+    },
+    {
+      "criterion": "T-53: evidence drivers REFUSE to overwrite an existing output path (immutable-by-default) and accept an explicit output target; the two named drivers stop rewriting their own canonical artifacts on a plain run.",
+      "status": "passed",
+      "evidence": "New shared helper `skills/dsh-qa/scripts/lib/immutable-output.mjs` (refuse an existing target → exit 3 with the remedy; explicit target honored; a plain run lands in a fresh `<base>/runs/<slug>-<ts>`; ships its own `--self-test`). `check-citations.mjs` gained `--out <dir>` and now writes `<HERE>/runs/run-<ts>/{result.json,output.log}` (with `--gates` raw under the same run root) — measured: the canonical `result.json`/`output.log` were byte-identical before/after while a fresh run dir appeared. `verify-debranding-full.mjs` defaults to `probe-report-<ts>.json` and refuses an existing `--json-out` — measured exit 3 with `refusing to overwrite the existing probe report … evidence is immutable by default (T-53); pass a NEW --json-out <path>`; check-citations refuses an existing `--out` the same way (exit 3). Both self-tests stay green (debranding 5/5 arms)."
+    },
+    {
+      "criterion": "T-56: `skills/dsh-qa/scripts/extension-template.mjs` no longer re-implements the public tool-name formula — it imports or asserts against the product's exported `publicToolName`, and the case's `--self-test` stays green.",
+      "status": "passed",
+      "evidence": "The case's local copy (which even carried a placeholder hash branch `…_0123456789ab`) is DELETED; it now lazily imports `packages/mpd-ext-plugin/src/mcp-client.ts#publicToolName` (lazy so a `.ts` import cannot crash before the prerequisite gate) and asserts its expected name equals the product's output, plus two regression pins (no local `function publicToolName(`, must reference `src/mcp-client.ts`). Verified under BOTH runtimes: `bun skills/dsh-qa/scripts/extension-template.mjs --self-test` exit 0 and `node … --self-test` exit 0 (node 24 type stripping). The product export was exercised directly: `publicToolName('srv','raw')` = `mcp__srv__raw`."
+    },
+    {
+      "criterion": "All skills edits of this wave are inside this task or lane C's other tasks; announce to the captain when skills edits are FINAL so the single `VENDOR_LOCK.json` re-pin can ride the same commit.",
+      "status": "passed",
+      "evidence": "Every `skills/**` path I touched is inside t15 (`skills/dsh-qa/cases.json`, `scripts/run-qa-lanes.mjs`), t17 (`scripts/lib/credentials.mjs` + 25 lane wirings) or t21 (`workmate-library.mjs`, `extension-template.mjs`, `scripts/lib/immutable-output.mjs`). FINAL announcement sent to the captain (message 21c9cd36-82ad-4e9d-99df-4cdddaadd1cd) with the current corpus reading: **322 files / dac07fdbd8277ba325dddd3ea48f1fb728cbc0bdaf3d91422153d38fa2db4a25** (LF-normalized, the `repin-vendor.mjs` algorithm). No further `skills/**` edits from me after that reading."
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "bun skills/dsh-qa/scripts/workmate-library.mjs --no-skip",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "final/verify1-workmate-library-real.log — exit 0, [workmate-library] ok=true / PASS; flow proven from the harness session log, isolation before==after on the real library, files under the sandbox HOME"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/extension-template.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "final/verify2-extension-template-selftest.log — exit 0 (also exit 0 under node)"
+    },
+    {
+      "command": "bun skills/dsh-qa/scripts/workmate-library.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "final/verify3-workmate-library-selftest.log — exit 0, 19 checks"
+    },
+    {
+      "command": "node evidence/extensions/docs-claims/check-citations.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "final/verify4-check-citations.log — exit 0, 12/12 passed, 0 failed, 249 resolved; checker sha256 at that run dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c (see CHECKER-CHANGELOG.md and out-033846Z/checker-sha256.txt)"
+    }
+  ],
+  "changedPaths": [
+    "skills/dsh-qa/scripts/workmate-library.mjs",
+    "skills/dsh-qa/scripts/extension-template.mjs",
+    "skills/dsh-qa/scripts/lib/immutable-output.mjs",
+    "evidence/extensions/docs-claims/check-citations.mjs",
+    "evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs",
+    "evidence/dsh-qa/red-lanes/20260917T023000Z-t21/prompt-predicate-measurement.mjs",
+    "evidence/dsh-qa/red-lanes/20260917T023000Z-t21/output.log",
+    "evidence/dsh-qa/red-lanes/20260917T023000Z-t21/result.json"
+  ],
+  "unexplainedEdits": "none — every file above is authored by me in this task; no teammate edited t21's inScope paths during this attempt.",
+  "secondLaneDefect": {
+    "found": "in the FIRST raw reproduction of the four verify commands (02:47Z, exit 1)",
+    "what": "the files step asserted the model-regenerated note text (note.includes(\"Verilog\") || note.includes(\"counter\")); mpd_workmate_reflect REGENERATES note.md via autoNote(), so the assertion measured the model wording, not the product",
+    "measuredPair": "02:31Z ok=true (the regenerated note kept the phrase) vs 02:47Z ok=false (it did not) with the same lane code",
+    "fix": "assert the durable bookkeeping: four files exist + the regenerated note is non-empty + memory.md non-empty (reflect appended) + meta.uses >= 1 (measured uses: 2)",
+    "proof": "verify1-runA.log exit 0 and verify1-runB.log exit 0 (same command, both green); the failing reproduction stays on disk as verify1-workmate-library-real.log"
+  },
+  "f1Observation": {
+    "registeredAs": "T-69 (wave 2, owner the QA-lane writer)",
+    "observation": "8 lanes spawn dsh --dump-config DIRECTLY via their own helpers (agent-teams-adopt, bundle-lifecycle, mount-assert, relocate-smoke, session-start-team, team-route-rewire, workmate-library, workmate-team-member) and NO skills/ file references scripts/dump-config.mjs, so none prints the composition-only banner; mount-assert own header says the rows are mounted while it only composes them",
+    "action": "none taken — boundary ruling: do not extend t21 scope"
+  },
+  "skillsEditAnnouncement": "UPDATED FINAL reading after the workmate-library assertion fix: 322 files / 4e679a5e7e0d952a2572d673828b10ab24cf25166684c2afc2ebc9dbc4bc5028 (LF-normalized)",
+  "verify4Progress": "6/12 -> 11/12 while docs-gate-engineer refreshes; the remaining failure is citations:EXTENSIONS-FOR-AGENTS.md (3 unresolved: line 24 EXPECTED_TOOLS @ src/index.ts:548, line 224 dist/validator.js, plus one)",
+  "finalVerification": {
+    "at": "2026-09-17T03:41Z",
+    "tool": "final-verify.mjs -> final/final-verify.json + one raw log per command",
+    "result": "allGreen:true",
+    "guardPredicateFixed": true,
+    "t55SymbolFirstFormDurable": true
+  },
+  "blockerResolved": "the workmate real-home guard predicate was fixed by its owner (packages/mpd-workmate-plugin src+dist rebuilt 11:37:33 local); re-measured FIXED, then verify 1 passed (final/verify1-workmate-library-real.log exit 0; evidence/plan-f/workmate-library/2026-09-17T03-40-51.394Z ok=true)"
+}

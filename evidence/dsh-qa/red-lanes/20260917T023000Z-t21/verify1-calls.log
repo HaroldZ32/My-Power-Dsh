@@ -1,0 +1,7 @@
+[workmate-library] ok=false -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-17T03-18-40.091Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0}
+  live: {"ok":true,"exit":0,"attempts":2,"retryNotes":["attempt 1 did not complete the flow (unproven tools: mpd_workmate_init,mpd_workmate_spawn,mpd_workmate_reflect; files present: false) — retrying once"]}
+  flow: {"ok":false,"calls":{"mpd_workmate_init":{"called":true,"succeeded":false},"mpd_workmate_list":{"called":true,"succeeded":true},"mpd_workmate_spawn":{"called":true,"succeeded":false},"mpd_workmate_reflect":{"called":true,"succeeded":false},"mpd_workmate_match"
+  files: {"ok":false,"uses":null,"noteChars":0,"memoryChars":0,"note":"","wmRoot":"/tmp/mpd-wm-home-fpD4eh/.mpd/workmate"}
+  isolation: {"ok":true,"realWm":"/root/.mpd/workmate","before":".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer","after":".archive,agent-teams-engineer,code-reviewer,docs-gat

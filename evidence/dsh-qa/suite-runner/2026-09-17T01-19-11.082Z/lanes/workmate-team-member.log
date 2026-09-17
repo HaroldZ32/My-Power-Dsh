@@ -1,0 +1,8 @@
+[workmate-team-member] ok=false -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-team-member/2026-09-17T01-43-38.502Z
+  install: {"ok":true,"exit":0}
+  dump: {"ok":true,"exit":0}
+  live: {"ok":false,"exit":1}
+  injection: {"ok":false,"sample":"[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-wtm-home-tNE1ud/ws | [mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free) | [mpd-bootstrap] skill corpus served from /root/dshProj/my-p
+  reflect: {"ok":false,"tokenCount":0,"uses":0}
+  files: {"ok":false,"memory":""}
+  isolation: {"ok":true,"realWm":"/root/.mpd/workmate","before":".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer","after":".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer

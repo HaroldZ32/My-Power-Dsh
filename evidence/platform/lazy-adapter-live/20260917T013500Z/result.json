@@ -1,0 +1,100 @@
+{
+  "task": "t40 — Impl — rebuild the two loaded dists and prove T-50's lazy resolution is live in a mounted boot",
+  "attempt_id": "0b65c92f-958b-4578-8849-44f036550792",
+  "why": "t12 landed T-50 in src only (its inScope missed the dists, and a member cannot amend a task); the bundle rows load dist/index.js, so the fix was NOT live at runtime until this task.",
+  "rebuilt_artifacts": {
+    "packages/mpd-dsh-adapter-plugin/dist/index.js": {"before_sha256": "f8b5613121f5af40a748e2333684d73d307eecf25610f1bfcb78b8727f265b84", "after_sha256": "a030858014af569753c6886ede270b0c70b3357dbff26bba2d463173b7268206", "note": "acceptance 5: rebuilt because t12 changed this package's src; the package was inside t12's inScope"},
+    "packages/mpd-ext-plugin/dist/index.js": {"before_sha256": "0ebad6573abac96a5e0599208ba1d948c5e6ff315b5f47671ebfe82939acba55", "after_sha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a"},
+    "packages/mpd-roles-plugin/dist/index.js": {"before_sha256": "22595b921903286873855185bbf05a5a06aba8d80201eadcb036d174d4778deb", "after_sha256": "38d4a459f64d1dbd650a58f29011a4a69cf55a9268abbdf8eb426a7c7ebf338f"},
+    "build_commands": [
+      "bun build packages/mpd-dsh-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-dsh-adapter-plugin/dist/index.js",
+      "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js",
+      "bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js"
+    ]
+  },
+  "mounted_boot_proof": {
+    "driver": "mount-lazy-live.mjs (this dir) — real `dsh --profile w` boots, each in its own isolated DSH_HOME + sandboxed HOME + sandboxed workspace (sandboxWorkspace from skills/dsh-qa/scripts/lib/workspace-isolation.mjs); stdio to FILES; NO `--dump-config` anywhere (assertions are read off the boot log)",
+    "result_file": "mount-result.json",
+    "raw_boot_logs": ["raw/A-standard.boot.log", "raw/B-red-old-dist.boot.log", "raw/C-green-new-dist.boot.log"],
+    "A_standard_composition": {
+      "composition": "dsh-base + dsh-web-app + the @mpd-dsh/mpd bundle, i.e. the shipped row order (adapter above the consumers)",
+      "ext_adapterIdentity": "mounted:mpdDsh",
+      "roles_adapterIdentity": "mounted:mpdDsh",
+      "adapter_row_provided": true,
+      "fallback_lines": 0,
+      "not_yet_active_lines": 0,
+      "apply_crash_signatures": [],
+      "verdict": "healthy path unchanged: the rebuilt dists mount and resolve to the ONE mounted adapter with zero warnings"
+    },
+    "B_RED_pre_t12_dist": {
+      "composition": "base-only bundles + an `insert:` patch with the PRE-t12 dist bytes extracted from git HEAD + a deliberately SLOW provider row (provides mpdDsh, then keeps its own fiber non-ACTIVE for 6000 ms)",
+      "ext_adapterIdentity": "fallback:createDshAdapter",
+      "roles_adapterIdentity": "fallback:createDshAdapter",
+      "fallback_lines": 2,
+      "row_order_hint": true,
+      "not_yet_active_lines": 0,
+      "verdict": "the old code pins a private adapter and blames the ROW ORDER — the wrong diagnosis T-50 names"
+    },
+    "C_GREEN_rebuilt_dist": {
+      "composition": "IDENTICAL to B, only the dist bytes differ (the rebuilt ones)",
+      "ext_adapterIdentity": "pending:provider-not-active",
+      "roles_adapterIdentity": "pending:provider-not-active",
+      "not_yet_active_lines": 2,
+      "fallback_lines": 0,
+      "row_order_hint": false,
+      "verdict": "the rebuilt dists diagnose the registered-but-not-ACTIVE provider honestly and never claim a row-order fix"
+    },
+    "the_observable_that_decides_it": "the two consumer rows' boot lines print `adapterIdentity=` produced by `dshAdapterIdentity(ctx)` at the moment of FIRST USE (the facade's first property access inside apply), not by an eager apply-time resolution; under the constructed window the same lines read pending/fallback purely according to which dist bytes ran."
+  },
+  "shipped_bytes_recovery_probe": {
+    "driver": "dist-live-probe.mjs",
+    "log": "dist-live-probe.log",
+    "imports": "the DIST files (not src) + the vendored cordis",
+    "pending_window": {"provider_fiber_state_during_consumer_apply": "not-ACTIVE (state 1)", "served_by": "temporary adapter", "identity_during_apply": "pending:provider-not-active", "warning_is_honest": true, "warning_blames_row_order": false},
+    "recovery_after_activation": {"provider_fiber_state": 2, "same_facade_marker": "mounted", "identity_after_activation": "mounted:mpdDsh"},
+    "absent_provider": {"identity": "fallback:createDshAdapter", "warning_blames_row_order": true, "warning_claims_not_yet_active": false},
+    "shipped_byte_scan": {
+      "adapter_dist": {"createLazyDshAdapter": 2, "dshAdapterIdentity": 2, "pending_literal": true, "eager_inline_idiom": 0},
+      "ext_dist": {"createLazyDshAdapter": 2, "dshAdapterIdentity": 3, "pending_literal": true, "eager_inline_idiom": 0},
+      "roles_dist": {"createLazyDshAdapter": 2, "dshAdapterIdentity": 3, "pending_literal": true, "eager_inline_idiom": 0}
+    },
+    "verdict": "the SHIPPED bytes carry the lazy behaviour end to end: honest warning in the window, recovery to the mounted adapter afterwards, row-order hint only for a provably absent provider"
+  },
+  "freshness_acceptance_4": {
+    "t18_gate_status": "LANDED AND RUN — `scripts/verify-dist-fresh.mjs` appeared on disk at 02:14:25Z (16 KB; T-18/T-37's gate), so t40's acceptance 4 is now satisfied LITERALLY, post-completion.",
+    "gate_self_test": "10/10 arms PASS (matching fixture, spawned-gate exit 0, mutated fixture -> STALE+exit 1, restored fixture green with identical bytes, src-without-dist -> MISSING, dist-without-src -> NOT COVERED with a reason, coverage incl. the declared sdk entry, --only filter, zero-subject failure, bad-flag usage) — log: dist-fresh.log",
+    "gate_real_run": "exit 1 overall: 13 of 20 targets STALE. MY THREE TARGETS ARE FRESH, with exactly the hashes recorded above: packages/mpd-dsh-adapter-plugin/dist/index.js (a030858014af…), packages/mpd-ext-plugin/dist/index.js (f6097fd3383f…) + dist/sdk.js (4117a1d5d11d…), packages/mpd-roles-plugin/dist/index.js (38d4a459f64d…). t40 acceptance 4 therefore passes on the literal gate, not only on the byte-reproduction proxy.",
+    "direct_equivalent_run": "each dist rebuilt with its package's canonical command into a scratch file and byte-compared with the committed dist: all three IDENTICAL",
+    "freshness_acceptance_4_verdict": "PASS — the gate is on disk, its self-test is green, and it reports FRESH for every artifact this task rebuilt",
+    "log": "freshness.log + dist-fresh.log"
+  },
+  "wave_finding_from_the_gates_first_run": {
+    "what": "the new dist-freshness gate's FIRST real run flags 13 of 20 targets STALE: mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-hashline, mpd-memory, mpd-modelchain, mpd-qa-roles-probe, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-ulw, mpd-workmate (all `dist/index.js`).",
+    "classification_MEASURED_not_assumed": "GENUINE staleness, not toolchain drift: a fresh build of a STALE package contains code its committed dist lacks — e.g. mpd-bootstrap-plugin/dist is missing the whole `onPreToolExecute` implementation and the `toolsPreExecute` capability flag (committed 25707 B vs fresh 30352 B, 723 vs 856 lines), and mpd-team-compact-plugin/dist lacks the `...input.agent` spread in executeTool (33540 vs 33610 B).",
+    "mechanism": "every consumer plugin dist INLINES `packages/mpd-dsh-adapter-plugin/src/index.ts` at build time, so the committed copies lag the adapter's own evolution (the r6 pre-tool hook and t12's lazy-resolver additions). The FRESH set is exactly the packages rebuilt today (bundle-plugin, config, adapter, ext, roles, tui).",
+    "consequence": "§4 makes dist freshness a binding gate and §11 puts it in the release sweep, so the wave cannot release until those 13 dists are rebuilt; the rebuild is mechanical (one canonical `bun build` per package) but touches 13 packages that no current task owns.",
+    "recommendation": "route ONE bulk-rebuild task (13 dists + a fresh gate run as its evidence); do not fold it into a src change, and do not treat the gate as noisy — its first run caught a real class the pre-existing checks were blind to."
+  },
+  "rebuild_proof_is_not_the_dist_marker_test": {
+    "trap": "packages/mpd-ext-plugin/test/adapter-identity.test.ts > 'the built dist carries the adapter-identity fix' greps for 'ADAPTER FALLBACK' / 'mounted:mpdDsh' / 'fallback:createDshAdapter' / 'adapterIdentity' — strings present in BOTH the pre-t12 and the rebuilt bytes, so it PASSES on stale dists and is NOT rebuild evidence (captain's warning, register candidate for wave 2; its file is outside t40's inScope).",
+    "actual_rebuild_proof_used_here": [
+      "before/after sha256 per artifact (rebuilt_artifacts above)",
+      "symbol greps on the BUILT files: createLazyDshAdapter / dshAdapterIdentity / pending:provider-not-active present, eager `?? createDshAdapter(ctx)` absent (shipped_byte_scan in shipped_bytes_recovery_probe)",
+      "the liveness RED/GREEN under a constructed window: the same composition yields fallback:createDshAdapter with the PRE-t12 bytes and pending:provider-not-active with the rebuilt bytes"
+    ],
+    "verify_command_note": "`bun test packages/mpd-ext-plugin` is reported because it is on the contract's verify list; its dist-marker case is NOT cited as proof that the rebuild happened."
+  },
+  "verify_results": {
+    "bun run typecheck": {"exit": 0},
+    "bun test packages/mpd-ext-plugin": {"exit": 0, "result": "74 pass / 0 fail (6 files) — includes 'the built dist carries the adapter-identity fix', now read against the REBUILT bytes"},
+    "bun test packages/mpd-roles-plugin": {"exit": 0, "result": "31 pass / 0 fail (4 files)"}
+  },
+  "honest_bound": {
+    "no_observed_defect_claim": "the transient window is CONSTRUCTED in B/C by a deliberately slow provider row. The register's bound stands: six consecutive clean boots never opened it, so this task does not claim a production failure was fixed.",
+    "what_is_claimed": "the new code path is LIVE in the loaded artifacts, the healthy composition is unchanged, and the warning now separates 'provider not yet active' from 'row missing' — proven in a real mounted boot and on the shipped bytes."
+  },
+  "unverified": [
+    "t18's dist-freshness gate execution (the gate is not on disk yet; the equivalent byte-reproduction check is recorded above)",
+    "the post-activation recovery inside a full dsh boot (the service fields are captured when the service object is built, so recovery is proven on the shipped bytes by dist-live-probe.mjs, not by a boot log)"
+  ]
+}

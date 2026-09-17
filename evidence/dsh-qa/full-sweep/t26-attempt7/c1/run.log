@@ -1,0 +1,130 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=4 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c1
+[mpd-qa:(only)] PASS case=extension-lifecycle evidence=evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c1/lanes/extension-lifecycle.log ms=42092
+[mpd-qa:(only)] PASS case=extension-mcp-bridge evidence=evidence/extensions/extension-mcp-bridge/2026-09-17T04-38-00.271Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c1/lanes/extension-mcp-bridge.log ms=8163
+[mpd-qa:(only)] PASS case=extension-template evidence=evidence/extensions/extension-template/2026-09-17T04-38-08.476Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c1/lanes/extension-template.log ms=10863
+[mpd-qa:(only)] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T04-38-19.639Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c1/lanes/mount-assert.log ms=587
+[mpd-qa:(only)] summary selected=4 pass=4 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c1
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 4,
+  "startedAt": "2026-09-17T04:37:17.930Z",
+  "finishedAt": "2026-09-17T04:38:19.649Z",
+  "durationMs": 61719,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "extension-lifecycle",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 42092,
+      "command": "bun skills/dsh-qa/scripts/extension-lifecycle.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/extension-lifecycle.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [
+        "absent-dsh-binary",
+        "absent-runtime"
+      ],
+      "evidencePath": "evidence/extensions/extension-lifecycle/2026-09-17T04-37-18.085Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c1/lanes/extension-lifecycle.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "extension-mcp-bridge",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 8163,
+      "command": "bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/extension-mcp-bridge.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [
+        "absent-dsh-binary",
+        "absent-runtime",
+        "absent-fixture"
+      ],
+      "evidencePath": "evidence/extensions/extension-mcp-bridge/2026-09-17T04-38-00.271Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c1/lanes/extension-mcp-bridge.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "extension-template",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 10863,
+      "command": "bun skills/dsh-qa/scripts/extension-template.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/extension-template.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [
+        "absent-dsh-binary",
+        "absent-runtime",
+        "absent-fixture"
+      ],
+      "evidencePath": "evidence/extensions/extension-template/2026-09-17T04-38-08.476Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c1/lanes/extension-template.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "mount-assert",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 587,
+      "command": "bun skills/dsh-qa/scripts/mount-assert.mjs --no-skip --expect=name: '@deepseek-ai/dsh-llm'",
+      "script": "skills/dsh-qa/scripts/mount-assert.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/mount-assert/2026-09-17T04-38-19.639Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c1/lanes/mount-assert.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 4,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}
+[c1 exit=0] 2026-09-17T04:38:19Z

@@ -1,0 +1,122 @@
+{
+  "task": "t16 — lane D1: AGENTS.md fits the instruction budget with an on-demand reference index (T-22)",
+  "attempt_id": "ee966529-5414-4900-a4ec-044409ded809",
+  "generated_at": "2026-09-17T01:30:00Z",
+  "verdict": "PASS",
+  "measured": {
+    "agents_md_before": { "bytes": 78283, "lines": 610, "sha256_source": "git show HEAD:AGENTS.md (working tree was clean for AGENTS.md before the edit)" },
+    "agents_md_after": { "bytes": 42954 },
+    "saved_bytes": 35329,
+    "headroom_bytes": 22582,
+    "budget_bytes": 65536,
+    "harness_renderer": "installed @deepseek-ai/dsh-agent-instructions/lib/index.js (the module that emitted the live 'truncated AGENTS.md from 78283 to 65143 bytes' notice)",
+    "negative_control": {
+      "pre_split_snapshot": { "source_bytes": 78283, "rendered_bytes": 65536, "truncated": [{ "displayPath": "AGENTS.md", "originalBytes": 78283, "includedBytes": 65143 }] },
+      "synthetic_oversized": { "source_bytes": 67704, "rendered_bytes": 65536, "truncated": [{ "displayPath": "AGENTS.md", "originalBytes": 67704, "includedBytes": 65143 }] },
+      "post_split": { "source_bytes": 42954, "rendered_bytes": 43258, "truncated": [], "omitted": [] }
+    },
+    "moved": {
+      "block_a_agents_md_lines_269_322": { "bytes": 9072, "lines": 54, "sha256_raw": "82af1cef642d2f046f6578088048e562b8ab2fcaa8bf7b2f81a0cdce1c6bd9af", "sha256_dedented": "ee2c58608380508eb19b878a04025a03c59d65d7b8544b5e26d95cadb6c6995f", "destination": "agent-references/agent-teams-deltas.md", "transform": "removed the 2-space list-continuation indent (52 of 54 lines; 2 blank)" },
+      "block_b_agents_md_lines_519_570": { "bytes": 29408, "lines": 52, "sha256": "4df2656bce16aa50daad429a66496d1a1b5cd92c132daa429d9db3666b2fa47f", "destination": "agent-references/troubleshooting.md", "transform": "none (verbatim; dedent is a no-op for a table)" },
+      "total_extracted_bytes": 38480,
+      "audit_segment_byte_sum": 38478
+    },
+    "reference_files": {
+      "agent-references/troubleshooting.md": 30124,
+      "agent-references/agent-teams-deltas.md": 9666,
+      "agent-references/index.md": 880
+    },
+    "core_sections_after": 13,
+    "core_new_unnumbered_heading": "## Reference Index (on-demand)",
+    "git_diff_numstat_AGENTS_md": "34 insertions, 106 deletions",
+    "gates": {
+      "wc -c AGENTS.md": "42954 AGENTS.md (exit 0)",
+      "bun run verify:docs": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS (exit 0)",
+      "node scripts/verify-rows-parity.mjs": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (exit 0)",
+      "bun budget-check.mjs": "before=RED(truncated 78283->65143) current=GREEN(43258 rendered, truncated=[]) oversized_control=RED(truncated 67704->65143) (exit 0)",
+      "bun move-audit.mjs": "coverageOk=true findings=[] segments=8 verdict=PASS (exit 0)"
+    },
+    "settled_hashes": {
+      "window": "2026-09-17T01:21:03Z -> 2026-09-17T01:21:53Z (50 s settle, per AGENTS.md §7 'verify on settled hashes'); all four hashes byte-identical across the window",
+      "AGENTS.md": "14714ccfba7f2cd8a05de2b86a86e7ff750bb15b00cea0f06b6dd6110ea3fd2d",
+      "agent-references/troubleshooting.md": "5671bf5d2641dd79ff28ad40a050e7cf92089ec4ebb0e4128f3d699d6691efa2",
+      "agent-references/agent-teams-deltas.md": "04589f94a2ed2130ed8accbadadba639283a4ce6baeac8e9618d2b5588c4faca",
+      "agent-references/index.md": "48da5daa779d6c9393d47ee4af4acd23bfa0bacf6f5c7a9059a8c723fe42a331",
+      "budget_recheck_on_settled_content": "GREEN — sourceBytes 42954, renderedBytes 43258, truncated [] (settle-check.log)"
+    },
+    "crossref": {
+      "audit_file": "crossref-audit.json (grep inventory; excluded node_modules/, .git/, evidence/, .qa-reloc/, .mpd/, dist/, .toolchain/, .codegraph/ — 0 leaks)",
+      "correction": "CORRECTED 2026-09-17 after the auditor's closing snapshot: the counts below were 948/272 as first written (an intermediate write taken while the AGENTS.md split itself and other members' edits were still landing); the settled snapshot is 963 outside / 16 inside. The t16 task payload (immutable, already terminal) cites the intermediate 948 — this file is the authoritative record.",
+      "citations_outside_AGENTS_md": 963,
+      "citations_inside_AGENTS_md": 16,
+      "named_agents_md_citations_outside": 271,
+      "named_citations_note": "284 mention-kind lines minus the 13 that are only EXTENSIONS-FOR-AGENTS.md (a different file whose name contains the substring) = 271 genuine manual mentions; the auditor's stricter 'line names AGENTS.md AND carries §N' set is 152 lines.",
+      "distinct_sections_cited_alongside_AGENTS_md": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "all_named_section_citations_resolve": true,
+      "section_13_citation": "docs/plan-f.md:68 cites (§13 roster glossary) — resolves",
+      "out_of_range_numbers_cited_from_outside": "only §0, and none of those lines cite AGENTS.md (they are design/plan-internal: docs/plan-team-watchdog.md:415, docs/plan-tui-edition.md:30, packages/mpd-team-watchdog-plugin/src/{store.ts:137,engine.ts:807,machine.ts:26})",
+      "anchor_links_to_AGENTS_md": 0,
+      "unresolved_named_citations": 0,
+      "bare_section_cites_in_other_files": 679,
+      "note": "Bare §N citations elsewhere may point at those documents' own sections (mostly vendored skill-internal); AGENTS.md keeps all 13 numbered sections in the same order, so no citation that meant an AGENTS.md section regressed. *-AGENTS.md names (e.g. EXTENSIONS-FOR-AGENTS.md) are a different file and were excluded by a boundary-aware match."
+    }
+  },
+  "acceptance": [
+    {
+      "criterion": "The always-injected core is measurably under the 65,536-byte budget and the harness truncation notice is GONE.",
+      "status": "passed",
+      "evidence": "wc -c AGENTS.md = 42954 (was 78283). The installed harness renderer run with maxBytes=65536 on the pre-split snapshot reproduces the live notice byte-for-byte (originalBytes=78283, includedBytes=65143, rendered=65536 = RED) while the post-split file renders 43,258 bytes with truncated=[] and omitted=[] (GREEN). A synthetic 67,704-byte control truncates again, so the check is still falsifiable. Live confirmation: the post-edit instruction re-injection carried the whole manual including §13 Glossary, which the pre-edit injection had dropped."
+    },
+    {
+      "criterion": "The split preserves every BINDING rule: the core keeps the gates table, the git model (including the single-git-writer rule and the captain's standing rules), the plugin-authoring seams and the delta-registry pointer; the reference material moves to a path the agent can open on demand, and the core names each moved section and its file.",
+      "status": "passed",
+      "evidence": "move-audit.mjs checks 9 required markers in the core: all present (| Gate | Command | When |, 'ONE git writer per working tree — binding.', '**The captain's standing rules (user-set, 2026-09-16)**', '**Harness seams go through `mpd-dsh-adapter` — binding.**', the §6 pointer naming agent-references/agent-teams-deltas.md with its two binding rules, the §12 pointer naming agent-references/troubleshooting.md, the §3 layout entry, and the Reference Index heading). All 13 numbered sections remain in order; the new §Reference Index (on-demand) lists each file, what it holds and when to open it."
+    },
+    {
+      "criterion": "A diff-based audit lists every moved section and where it now lives — no rule may be silently dropped, and the manual's own cross-references (§ numbers cited from code comments and docs) are updated or shown to still resolve.",
+      "status": "passed",
+      "evidence": "move-audit.mjs partitions the pre-split file into 8 contiguous segments covering all 610 lines with no gap or overlap (coverageOk=true, findings=[]) and locates every segment byte-identically: segments 269-322 (9,072 B) and 519-570 (29,408 B) are found in their reference files (the §6 block under the recorded -2-space normalization), everything else is found in the core. duplicatesInCore = false for both moved bodies. crossref-resolution.json: 271 citations naming AGENTS.md (boundary-aware; 152 of them name AGENTS.md and carry a §N), distinct sections 1-12 cited, all resolve against the 13 headings, plus docs/plan-f.md:68 citing §13 (resolves); 0 AGENTS.md# anchors; 0 unresolved. Full inventory in crossref-audit.json (settled snapshot: 963 outside citations / 16 inside, 0 excluded-path leaks; the file's `correction` field records that this task's payload quotes the intermediate 948 taken mid-flight)."
+    },
+    {
+      "criterion": "The moved material is English-only agent-facing content (no zh-CN twin required) and does not drag the bilingual gate: bun run verify:docs stays green.",
+      "status": "passed",
+      "evidence": "bun run verify:docs exit 0: 'pairs=37 failed=0 violations=0 exempt=17 — PASS' (identical census to the pre-change baseline). scripts/verify-docs-parity.mjs discovers only the root README pair, docs/** at any depth, extensions/**/README.md and packages/*/README.md (script comments :10-16, discoverPairs :117-130), so agent-references/** is outside its scan; both new files state the English-only agent-facing rule in their headers and agent-references/index.md records why no twin exists."
+    },
+    {
+      "criterion": "The measured before/after byte counts are recorded in the evidence, and any number the manual states about itself is corrected if the split changes it.",
+      "status": "passed",
+      "evidence": "result.json + output.log record 78,283 -> 42,954 bytes (saved 35,329; headroom 22,582) plus the extracted block sizes 9,072 and 29,408. grep for 78283/78,283/65536/65,536/instruction budget in AGENTS.md finds no self-declared byte count to correct (the only budget mention is the new 'moved bytes are hash-verified' sentence). The remaining 78,283 occurrences are outside the manual — .mpd/TODO.md:172, .mpd/plans/friction-p1-wave.md:21 and the .mpd/team task prose (process state owned by the register/integration lane) — reported as a residual, not silently edited."
+    }
+  ],
+  "commands": [
+    { "command": "wc -c AGENTS.md", "exit": 0, "decisive_output": "42954 AGENTS.md" },
+    { "command": "bun run verify:docs", "exit": 0, "decisive_output": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS" },
+    { "command": "node scripts/verify-rows-parity.mjs", "exit": 0, "decisive_output": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, ... mpd-workmate)" },
+    { "command": "bun evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs before=<snapshot> current=AGENTS.md oversized_control=<synthetic>", "exit": 0, "decisive_output": "before RED truncated 78283->65143 | current GREEN rendered=43258 truncated=[] | oversized_control RED truncated 67704->65143" },
+    { "command": "bun evidence/gates/agents-budget/20260917T011651Z/move-audit.mjs <snapshot> AGENTS.md .", "exit": 0, "decisive_output": "coverageOk=true findings=[] movedBytes=38478 numberedSections=13 verdict=PASS" }
+  ],
+  "residual_risks": [
+    "The budget gate is the harness's renderer with maxBytes=65536 as measured from this session's notice; a deployment that configures a different instruction budget is bounded by that value, not by a repo constant. 42,954 B leaves 22,582 B (34%) of headroom under 65,536, so any plausible smaller budget is the only way to re-trigger truncation.",
+    "scripts/pack-mpd.mjs copies an explicit source list and references neither AGENTS.md nor agent-references/**, and verify-pack-closure.mjs has no rule about either — so the packed artifact is unaffected, but whether the on-demand reference should ship with a packed install (or the manual itself) is a packaging-lane decision (t11), measured read-only here.",
+    "The wave's own process records still quote the pre-split number (.mpd/TODO.md:172, .mpd/plans/friction-p1-wave.md:21, .mpd/team task prose); those are the register/integration lane's to update, not this task's in-scope paths.",
+    "663 bare §N citations in other files were inventoried but not adjudicated: they may reference those documents' own sections. Since AGENTS.md keeps all 13 numbered sections and their order, no AGENTS.md-targeted citation can have regressed."
+  ],
+  "artifacts": [
+    "AGENTS.md",
+    "agent-references/index.md",
+    "agent-references/troubleshooting.md",
+    "agent-references/agent-teams-deltas.md",
+    "evidence/gates/agents-budget/20260917T011651Z/result.json",
+    "evidence/gates/agents-budget/20260917T011651Z/output.log",
+    "evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs",
+    "evidence/gates/agents-budget/20260917T011651Z/budget-check.json",
+    "evidence/gates/agents-budget/20260917T011651Z/move-audit.mjs",
+    "evidence/gates/agents-budget/20260917T011651Z/move-audit.json",
+    "evidence/gates/agents-budget/20260917T011651Z/crossref-audit.json",
+    "evidence/gates/agents-budget/20260917T011651Z/crossref-resolution.json",
+    "evidence/gates/agents-budget/20260917T011651Z/AGENTS.md.before",
+    "evidence/gates/agents-budget/20260917T011651Z/AGENTS.md.new",
+    "evidence/gates/agents-budget/20260917T011651Z/oversized-control.md",
+    "evidence/gates/agents-budget/20260917T011651Z/settle-check.log"
+  ]
+}

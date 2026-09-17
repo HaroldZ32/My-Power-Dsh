@@ -11,7 +11,7 @@ import { join } from "node:path"
 import { WatchdogEngine } from "../src/engine"
 import { apply } from "../src/index"
 import { readHeartbeats } from "../src/store"
-import { agent, pluginCtx, sandbox, stubAdapter, testConfig, writeTeam } from "./support"
+import { agent, pluginCtx, sandbox, stubAdapter, testConfig, writeTeam, openOutstandingChannel } from "./support"
 
 function stubCtx(): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
   return { on: () => () => {} }
@@ -174,6 +174,7 @@ describe("AC-15 fail-safe", () => {
       // A WARN awaits, so the first tick is genuinely in flight when the second starts.
       engine.stamp("step", agent("a1", box.workspace))
       const from = readHeartbeats(box.workspace, box.stateDir, "Architect")[0].at
+      openOutstandingChannel(stub, "a1", from)
       const first = engine.tickOnce(from + 90_001)
       const second = await engine.tickOnce(from + 90_002)
       expect(second.skipped).toBe("previous tick still running")

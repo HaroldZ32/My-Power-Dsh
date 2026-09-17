@@ -12,6 +12,7 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, openSync, readdirSync, read
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const NOTICE_LINE = "Copyright (c) 2026 程序员阿江(Relakkes)"
@@ -79,7 +80,7 @@ async function runReal() {
   const outDir = join(repoRoot, "evidence", "plan-c", "c1-team", ts)
   mkdirSync(outDir, { recursive: true })
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-c1-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   // The live provider chain lives in settings.yaml (llm-pi-ai providers +
   // agent-default-model). Without it the sandbox falls back to the base
   // deepseek-official route and dies MISSING_CREDENTIAL on homes whose keys
@@ -91,7 +92,7 @@ async function runReal() {
   mkdirSync(ws, { recursive: true })
   // QA isolation discipline (AGENTS.md §7): HOME must be the sandbox, not the real
   // home — plugins resolving ~/.mpd (e.g. mpd-codegraph) must never touch /root.
-  const env = { ...process.env, DSH_HOME: sandbox, HOME: sandbox }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: sandbox  })
   if (env.DSH_HOME !== sandbox || env.HOME !== sandbox) fail("isolation assertion failed")
   const steps = {}
   let failed = false
@@ -131,7 +132,7 @@ async function runReal() {
   //    isolated home, mirroring the real single-profile install flow
   //    (`dsh plugin add dist/mpd-package`), not a mixed headless+web home.
   const webHome = mkdtempSync(join(tmpdir(), "mpd-c1-web-"))
-  cpSync(creds, join(webHome, ".credentials.yaml"))
+  seedSandboxCredentials(webHome, { credentialsFile: creds })
   if (existsSync(settings)) cpSync(settings, join(webHome, "settings.yaml"))
   const webWs = join(webHome, "ws")
   mkdirSync(webWs, { recursive: true })
@@ -145,21 +146,35 @@ async function runReal() {
   let routeOk = false
   let routeStatus = null
   let routeBody = ""
+  let routeArm = null
+  let sessionCookie = null
+  const routeUrl = "http://127.0.0.1:" + port + "/plugins/dsh-agent-teams/state"
   const t0 = Date.now()
   while (Date.now() - t0 < 120000) {
     await new Promise((r) => setTimeout(r, 2000))
     try {
-      const res = await fetch("http://127.0.0.1:" + port + "/plugins/dsh-agent-teams/state", { signal: AbortSignal.timeout(4000) })
+      // The route is wrapped in the host's browser-auth fence (trusted Host/Origin, then a
+      // session cookie), so a plain server-side probe is REFUSED BY DESIGN — asserting a 200 here
+      // could never hold. Two arms, both falsifiable:
+      //   (a) if the index exchange hands out a session cookie, assert the real payload (200);
+      //   (b) otherwise assert the FENCE contract: the route is MOUNTED and refuses the
+      //       unauthenticated call with 401/403. A 404 (route missing) or 503 (assembly failure,
+      //       e.g. the credential store failing its owner-only check) is a FAILURE, never a pass.
+      if (sessionCookie === null) {
+        const index = await fetch("http://127.0.0.1:" + port + "/", { signal: AbortSignal.timeout(4000) })
+        const setCookie = index.headers.get("set-cookie")
+        if (setCookie) sessionCookie = setCookie.split(";")[0]
+      }
+      const res = await fetch(routeUrl, { headers: sessionCookie ? { cookie: sessionCookie } : {}, signal: AbortSignal.timeout(4000) })
       routeStatus = res.status
       routeBody = (await res.text()).slice(0, 2000)
-      // Only a 200 settles the probe: the HTTP server can answer 404 before the
-      // agent-teams route lands (boot race), so anything else keeps retrying.
-      if (res.status === 200) { routeOk = true; break }
+      if (res.status === 200) { routeOk = true; routeArm = "authenticated-payload"; break }
+      if (sessionCookie === null && (res.status === 401 || res.status === 403)) { routeOk = true; routeArm = "fence-refusal"; break }
     } catch { /* not up yet */ }
   }
   web.kill("SIGTERM")
   try { await new Promise((r) => setTimeout(r, 1500)) } catch {}
-  steps.webRoute = { ok: routeOk, status: routeStatus, body: routeBody, webLog: webLog }
+  steps.webRoute = { ok: routeOk, arm: routeArm, status: routeStatus, body: routeBody, webLog: webLog }
 
   const allOk = Object.values(steps).every((s) => (typeof s === "object" && "ok" in s) ? s.ok : true)
   if (!allOk) failed = true

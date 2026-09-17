@@ -1,0 +1,61 @@
+{
+  "task": "t63",
+  "kind": "verification",
+  "subject": "re-run workmate-library green after the guard fix (the leg t21 deferred under the proven product defect)",
+  "command": "bun skills/dsh-qa/scripts/workmate-library.mjs --no-skip",
+  "exitCode": 0,
+  "verdict": "PASS",
+  "finishedAt": "2026-09-17T04:05:54.472Z",
+  "laneEvidence": "evidence/plan-f/workmate-library/2026-09-17T04-03-49.570Z",
+  "revision": {
+    "laneScript": "skills/dsh-qa/scripts/workmate-library.mjs",
+    "laneScriptSha256": "f0ec4a325af9844ea37157c3c8cf0c97ae8fcd4e734c4061b797136c3a8cd1c7",
+    "guardSrc": "packages/mpd-workmate-plugin/src/index.ts",
+    "guardSrcSha256": "63f9c00928aead71231d0c1859edb6d4fd82c569ac1e84586f39de39b41d7559",
+    "guardDist": "packages/mpd-workmate-plugin/dist/index.js",
+    "guardDistSha256": "5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d"
+  },
+  "realHomeGuard": {
+    "realHomeRefusedOccurrencesInLaneOutput": 0,
+    "allowRealHomeEnvSet": false,
+    "note": "the 403 `real-home-refused` naming the sandbox is GONE: the fix makes the guard ALLOW a sandboxed HOME"
+  },
+  "isolation": {
+    "laneStep": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-tW4cYI",
+      "sandboxRoot": "/tmp/mpd-wm-home-tW4cYI/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    },
+    "independentCheck": {
+      "listingBeforeSha256": "9a85ae32d313f345aa65e70fe142efc8a20fd0e6c43f4356d5c58c9490cf4a66",
+      "listingAfterSha256": "9a85ae32d313f345aa65e70fe142efc8a20fd0e6c43f4356d5c58c9490cf4a66",
+      "diffLines": 0,
+      "filesBefore": 33,
+      "filesAfter": 33,
+      "windowStartUtc": "2026-09-17T04:03:49Z",
+      "filesNewerThanWindow": 0,
+      "probeCorrection": "the first probe printed 29 because the window start was passed as a naive UTC string to `find -newermt`, which interprets it in the shell timezone (CST+0800) — 8 h early; re-probed with the epoch and the LOCAL-time string, both 0. Disclosed, not hidden: see windowed-real-home-check.txt"
+    }
+  },
+  "bound": "this closes the leg t21 DEFERRED (a proven product defect blocked it) and the repair is t62, so the leg could not pass by re-running before the fix landed; had the lane still failed, the finding would name the exact refusal and the revision and go back to the owner — it was NOT worked around with MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1 (the variable is absent from this run environment)",
+  "skillsEdited": false,
+  "workmateFlow": {
+    "tools": [
+      "mpd_workmate_init",
+      "mpd_workmate_list",
+      "mpd_workmate_spawn",
+      "mpd_workmate_reflect",
+      "mpd_workmate_match"
+    ],
+    "allCalled": true,
+    "attempts": 1,
+    "retryNotes": []
+  },
+  "dshHome": "/tmp/mpd-wm-dsh-TWzedN",
+  "wmHome": "/tmp/mpd-wm-home-tW4cYI"
+}

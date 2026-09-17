@@ -1,0 +1,1 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=1 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c14-agent-teams-dispatch

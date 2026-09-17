@@ -1,0 +1,1 @@
+[repin-vendor] FAIL - refusing to --write the repository's own VENDOR_LOCK.json: this wave's single re-pin is the captain's commit-time step. Re-run with --i-know-this-is-the-captains-step if you really are that step, or pass --lock <scratch-copy> to exercise this helper.

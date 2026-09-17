@@ -1,0 +1,121 @@
+
+====================== BEFORE self-test ======================
+=== hash BEFORE ===
+30b796c268872e32c7166b68cdbdec63e8f152cbf2cbc29cb8f5cf0fd9b0ca1f  scripts/verify-dist-fresh.mjs
+
+$ node scripts/verify-dist-fresh.mjs --self-test
+PASS (a) matching fixture -> 0 findings, ok=true — ok=true findings=0 targets=3
+PASS (a2) the spawned gate exits 0 on the clean fixture — exit=0 json.ok=true
+PASS (b) a mutated fixture dist -> STALE finding + exit 1 — exit=1 kinds=STALE
+PASS (b2) the restored fixture is green again and the bytes are identical — sha ff933aef75dd… -> ff933aef75dd… exit=0
+PASS (c) src without dist -> MISSING finding — exit=1 kinds=MISSING
+PASS (d) dist with no source -> NOT COVERED with a reason — reason="package has no src/ directory (dist is the only committed artifact)"
+PASS (d2) every mapped dist is covered, incl. the declared sdk entry — targets=packages/alpha/dist/index.js, packages/delta/dist/index.js, packages/delta/dist/sdk.js
+PASS (e) --only filters to the matching target only — exit=0 targets=["packages/alpha/dist/index.js"]
+PASS (e2) a filter matching nothing is a zero-subject failure — exit=1
+PASS (f) bad flag -> exit 1 + usage on stderr — exit=1 stderr="[verify-dist-fresh] unknown flag: --definitely-not-a-flag"
+
+[verify-dist-fresh self-test] 10/10 arms passed — PASS
+[exit=0]
+
+====================== BEFORE runs (seeded fixture + real tree) ======================
+$ node scripts/verify-dist-fresh.mjs --root <fixture>   # seeded mismatch, real run (BEFORE wording)
+  STALE   packages/alpha/dist/index.js  <- packages/alpha/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh/evidence/gates/dist-fresh-message/20260917T025956Z/fixture  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+  STALE: packages/alpha/dist/index.js — committed packages/alpha/dist/index.js (220 B, a7a8265d4fd7ac32…) != fresh build of packages/alpha/src/index.ts (177 B, ff933aef75dde688…) — rebuild: bun build packages/alpha/src/index.ts --target node --format esm --outfile packages/alpha/dist/index.js
+[verify-dist-fresh] NOT COVERED (0): every committed packages/*/dist file maps to a covered target
+[verify-dist-fresh] FAIL - 1 of 1 targets not fresh (STALE: 1) — 55ms
+[exit=1]
+
+$ node scripts/verify-dist-fresh.mjs   # REAL tree (expected RED: t48 owns the workmate rebuild)
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha 30006247814f… 51ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 8903b8e38434… 66ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 35ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 0c5b75fb453b… 48ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha 1fed18d454e1… 47ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha 11ab1c6da2d3… 75ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha a030858014af… 21ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha f6097fd3383f… 83ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 46ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 193ce68dbded… 85ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha f95fec2d48ff… 54ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha 8eb77dedfe2f… 47ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha a835d71afff0… 40ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 38d4a459f64d… 60ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 23bfa6190584… 42ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha 7b821135d24a… 89ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha fa8f64b8d313… 45ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha d75ddd8917d4… 79ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha 24122dae82a7… 46ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 6b1715d0f8be… 48ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 1179ms
+[exit=0]
+
+====================== AFTER self-test ======================
+$ node scripts/verify-dist-fresh.mjs --self-test
+PASS (a) matching fixture -> 0 findings, ok=true — ok=true findings=0 targets=3
+PASS (a2) the spawned gate exits 0 on the clean fixture — exit=0 json.ok=true
+PASS (b) a mutated fixture dist -> STALE finding + exit 1 — exit=1 kinds=STALE
+PASS (b2) the restored fixture is green again and the bytes are identical — sha ff933aef75dd… -> ff933aef75dd… exit=0
+PASS (c) src without dist -> MISSING finding — exit=1 kinds=MISSING
+PASS (d) dist with no source -> NOT COVERED with a reason — reason="package has no src/ directory (dist is the only committed artifact)"
+PASS (d2) every mapped dist is covered, incl. the declared sdk entry — targets=packages/alpha/dist/index.js, packages/delta/dist/index.js, packages/delta/dist/sdk.js
+PASS (e) --only filters to the matching target only — exit=0 targets=["packages/alpha/dist/index.js"]
+PASS (e2) a filter matching nothing is a zero-subject failure — exit=1
+PASS (f) bad flag -> exit 1 + usage on stderr — exit=1 stderr="[verify-dist-fresh] unknown flag: --definitely-not-a-flag"
+
+[verify-dist-fresh self-test] 10/10 arms passed — PASS
+[exit=0]
+
+====================== AFTER runs (seeded fixture + real tree) ======================
+$ node scripts/verify-dist-fresh.mjs --root <fixture>   # seeded STALE + MISSING (new wording)
+  STALE   packages/alpha/dist/index.js  <- packages/alpha/src/index.ts
+  MISSING packages/beta/dist/index.js  <- packages/beta/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh/evidence/gates/dist-fresh-message/20260917T025956Z/fixture  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+  STALE: packages/alpha/dist/index.js — committed packages/alpha/dist/index.js (220 B, a7a8265d4fd7ac32…) != fresh build of packages/alpha/src/index.ts (177 B, ff933aef75dde688…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/alpha/src/index.ts --target node --format esm --outfile packages/alpha/dist/index.js
+  MISSING: packages/beta/dist/index.js — packages/beta/src/index.ts exists but there is no committed packages/beta/dist/index.js (rebuild from the repository root — a package-directory build is flagged, because bun writes the entry path relative to cwd: bun build packages/beta/src/index.ts --target node --format esm --outfile packages/beta/dist/index.js)
+[verify-dist-fresh] NOT COVERED (0): every committed packages/*/dist file maps to a covered target
+[verify-dist-fresh] FAIL - 2 of 2 targets not fresh (STALE: 1, MISSING: 1) — 42ms
+[exit=1]
+
+$ node scripts/verify-dist-fresh.mjs   # REAL tree reading (green after t48; recorded as a reading, never a pass/fail claim)
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha 30006247814f… 52ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 8903b8e38434… 44ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 49ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 0c5b75fb453b… 35ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha 1fed18d454e1… 42ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha 11ab1c6da2d3… 45ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha a030858014af… 32ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha f6097fd3383f… 58ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 31ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 193ce68dbded… 48ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha f95fec2d48ff… 39ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha 8eb77dedfe2f… 36ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha a835d71afff0… 38ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 38d4a459f64d… 32ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 23bfa6190584… 41ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha 7b821135d24a… 66ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha fa8f64b8d313… 32ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha d75ddd8917d4… 66ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha 24122dae82a7… 42ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 6b1715d0f8be… 48ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 929ms
+[exit=0]

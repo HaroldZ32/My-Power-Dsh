@@ -1,0 +1,37 @@
+[mpd-qa:all] runner start manifest=skills/dsh-qa/cases.json sha256=919656a8cac1 lanes=33 evidence=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z
+[mpd-qa:all] FAIL case=agent-teams-adopt reason=exit-1 exit=1 evidence=evidence/plan-c/c1-team/2026-09-17T01-19-11.124Z/web.log log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/agent-teams-adopt.log ms=127498
+[mpd-qa:all] FAIL case=agent-teams-dispatch reason=exit-1 exit=1 evidence=evidence/dsh-qa/agent-teams-dispatch/2026-09-17T01-21-18.635Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/agent-teams-dispatch.log ms=907000
+[mpd-qa:all] PASS case=agent-teams-sidebar evidence=evidence/agent-teams/sidebar-migration/2026-09-17T01-36-25.632Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/agent-teams-sidebar.log ms=17024
+[mpd-qa:all] PASS case=bundle-lifecycle evidence=evidence/dsh-qa/bundle-lifecycle/2026-09-17T01-36-42.651Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/bundle-lifecycle.log ms=17002
+[mpd-qa:all] FAIL case=codegraph-smoke reason=exit-1 exit=1 evidence=evidence/dsh-qa/codegraph/2026-09-17T01-37-05.966Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/codegraph-smoke.log ms=6360
+[mpd-qa:all] FAIL case=dual-track-smoke reason=exit-1 exit=1 evidence=evidence/dsh-qa/llm-dual-track/deepseek/2026-09-17T01-37-15.981Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/dual-track-smoke.log ms=10013
+[mpd-qa:all] PASS case=extension-lifecycle evidence=evidence/extensions/extension-lifecycle/2026-09-17T01-37-16.133Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/extension-lifecycle.log ms=32337
+[mpd-qa:all] PASS case=extension-mcp-bridge evidence=evidence/extensions/extension-mcp-bridge/2026-09-17T01-37-48.486Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/extension-mcp-bridge.log ms=6390
+[mpd-qa:all] PASS case=extension-template evidence=evidence/extensions/extension-template/2026-09-17T01-37-54.912Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/extension-template.log ms=8495
+[mpd-qa:all] FAIL case=mcp-call reason=exit-1 exit=1 evidence=evidence/dsh-qa/mcp-call/2026-09-17T01-38-19.048Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/mcp-call.log ms=15823
+[mpd-qa:all] FAIL case=memory-smoke reason=exit-1 exit=1 evidence=evidence/plan-c/c6-memory/2026-09-17T01-38-19.129Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/memory-smoke.log ms=9707
+[mpd-qa:all] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T01-38-28.943Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/mount-assert.log ms=156
+[mpd-qa:all] FAIL case=plan-c-smoke reason=exit-1 exit=1 evidence=evidence/plan-c/plan-c-smoke/2026-09-17T01-38-29.003Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/plan-c-smoke.log ms=4782
+[mpd-qa:all] PASS case=preset-conformance evidence=evidence/dsh-qa/preset-conformance/2026-09-17T01-38-33.792Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/preset-conformance.log ms=35125
+[mpd-qa:all] PASS case=preset-register evidence=evidence/dsh-qa/preset-register/2026-09-17T01-39-16.697Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/preset-register.log ms=7848
+[mpd-qa:all] PASS case=relocate-smoke evidence=evidence/plan-d/relocate/2026-09-17T01-39-16.769Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/relocate-smoke.log ms=6665
+[mpd-qa:all] PASS case=session-start-team evidence=evidence/dsh-qa/session-start-team/2026-09-17T01-39-23.411Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/session-start-team.log ms=101655
+[mpd-qa:all] PASS case=skill-catalog-probe evidence=evidence/plan-d/skill-catalog/2026-09-17T01-41-05.064Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/skill-catalog-probe.log ms=6078
+[mpd-qa:all] PASS case=software-smoke evidence=evidence/dsh-qa/software-smoke/2026-09-17T01-41-11.159Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/software-smoke.log ms=17257
+[mpd-qa:all] PASS case=team-route-rewire evidence=evidence/plan-e/e4-team-vendor/2026-09-17T01-41-28.411Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/team-route-rewire.log ms=30518
+[mpd-qa:all] FAIL case=tool-output-validation reason=exit-1 exit=1 evidence=evidence/fix/boulder-status-planprogress/2026-09-17T01-42-07.171Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/tool-output-validation.log ms=13190
+[mpd-qa:all] FAIL case=ultrawork-smoke reason=exit-1 exit=1 evidence=evidence/plan-c/c2-ultrawork/2026-09-17T01-42-12.113Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/ultrawork-smoke.log ms=5554
+[mpd-qa:all] FAIL case=vision-smoke reason=exit-1 exit=1 log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/vision-smoke.log ms=39
+[mpd-qa:all] PASS case=web-client-adapt evidence=evidence/plan-f/web-client-adapt/2026-09-17T01-42-17.708Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/web-client-adapt.log ms=17156
+[mpd-qa:all] PASS case=web-settings-bridge evidence=evidence/mpd-bridge/web-settings-bridge/20260917T014234Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/web-settings-bridge.log ms=52935
+[mpd-qa:all] FAIL case=workmate-library reason=exit-1 exit=1 evidence=evidence/plan-f/workmate-library/2026-09-17T01-43-27.803Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/workmate-library.log ms=10697
+[mpd-qa:all] FAIL case=workmate-team-member reason=exit-1 exit=1 evidence=evidence/plan-f/workmate-team-member/2026-09-17T01-43-38.502Z log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/workmate-team-member.log ms=6138
+[mpd-qa:all] PASS case=qa-lane-drift log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/qa-lane-drift.log ms=61
+[mpd-qa:all] PASS case=qa-runner-self-test log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/qa-runner-self-test.log ms=1338
+[mpd-qa:all] PASS case=mpd-ext-self-test log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/mpd-ext-self-test.log ms=1185
+[mpd-qa:all] PASS case=mpd-ext-validate-example log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/mpd-ext-validate-example.log ms=66
+[mpd-qa:all] PASS case=mpd-ext-validate-template log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/mpd-ext-validate-template.log ms=77
+[mpd-qa:all] PASS case=pack-closure log=evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z/lanes/pack-closure.log ms=86
+[mpd-qa:all] summary selected=33 pass=21 unavailable=0 fail=12
+[mpd-qa:all] evidence -> evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z
+[mpd-qa:all] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

@@ -1,0 +1,53 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+(pass) capabilities > reports every seam of a full harness [5.28ms]
+(pass) capabilities > reports absent seams without throwing [0.12ms]
+(pass) tool plane > registerTool normalizes schema, render and the (args, exec) call shape [0.55ms]
+(pass) tool plane > registerTool keeps a caller-supplied schema and render [0.10ms]
+(pass) tool plane > services resolve through ctx.get OR a plain ctx property [0.11ms]
+(pass) tool plane > registerTools registers every definition and disposes them together [0.17ms]
+(pass) tool plane > registerTool without a tools service fails with an actionable error [0.18ms]
+(pass) tool plane > guardTool passes the exec through and installs on the tools service [0.20ms]
+(pass) tool plane > onPostToolExecute owns next() and passes the downstream decision through [0.36ms]
+(pass) tool plane > onPostToolExecute lets a listener replace the decision [0.17ms]
+(pass) tool plane > onPostToolExecute is a no-op when the harness has no event bus [0.06ms]
+(pass) tool plane > onPreToolExecute OWNS next(): the observer sees the gate and the gate is passed through [0.33ms]
+(pass) tool plane > onPreToolExecute cannot alter or veto a call: deny survives, a returned decision is ignored, a throw is contained [0.35ms]
+(pass) tool plane > onPreToolExecute hands the observer a FROZEN COPY: the live execution cannot be changed [0.25ms]
+(pass) tool plane > onPreToolExecute is a no-op when the harness has no event bus, and capabilities() reports the seam [0.13ms]
+(pass) tool plane > hasTool + toolRuntime expose internal tool calls without raw ctx access [0.75ms]
+(pass) tool plane > executeTool normalizes success, tool error, thrown error and a missing runtime [0.36ms]
+(pass) tool plane > executeTool forwards the optional calling agent VERBATIM as exec.agent, and stays absent when not given [3.30ms]
+(pass) agent plane > spawnAgent normalizes prompt, flat route and the result shape [0.59ms]
+(pass) agent plane > spawnAgent accepts pre-built prompt blocks and agentOptions [0.14ms]
+(pass) agent plane > spawnAgent tolerates a harness that returns no result [0.18ms]
+(pass) agent plane > spawnAgent without a subagent service fails with an actionable error [0.19ms]
+(pass) skill + preset plane > skill provider registration, catalog read and body load [0.39ms]
+(pass) skill + preset plane > skill calls without a skills service fail with actionable errors [0.20ms]
+(pass) skill + preset plane > resolvePreset returns a normalized preset record [0.29ms]
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+(pass) row entry > apply provides the mpdDsh service [0.16ms]
+(pass) row entry > decision helpers use the harness feedback key [0.06ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > the source of the SAME change is delivered, not the previous one's [7.55ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a raw-section change whose RESOLVED value did not change reports source undefined [1.53ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > another namespace is ignored, and the disposer stops delivery [2.67ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a throwing listener never escapes into the host's emit [1.38ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsReader describes the namespace and degrades when it is absent [0.56ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsMutate writes through the service with the revision fence [0.60ms]
+(pass) workspaceRootsAll(): the design's stated-unverified facts (§A.1, measured here) > duplicates collapse, relative cwds resolve, a cwd-less agent is skipped, no registry is [] [0.56ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a REAL tool call returns the same result with and without the hook, and the gate is unchanged [574.46ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a downstream DENY still denies: the observer cannot upgrade a blocked call [2.58ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > NEGATIVE CONTROL: a listener that returns without delegating DOES veto the gate [4.33ms]
+(pass) lazy mpdDsh resolution (T-50) > a transient miss is served temporarily, warned honestly, and is NOT cached for the session [0.67ms]
+(pass) lazy mpdDsh resolution (T-50) > a strict success is cached; a miss is retried on every use [0.14ms]
+(pass) lazy mpdDsh resolution (T-50) > a clean boot never warns and reports the mounted identity [0.07ms]
+(pass) lazy mpdDsh resolution (T-50) > a provably absent provider keeps the row-order hint — and only that case does [0.15ms]
+(pass) lazy mpdDsh resolution (T-50) > REAL vendored cordis: the sibling-apply window exists and the SAME facade crosses it [10.17ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+
+ 42 pass
+ 0 fail
+ 137 expect() calls
+Ran 42 tests across 2 files. [856.00ms]

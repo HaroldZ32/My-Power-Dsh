@@ -1,0 +1,12 @@
+PASS (a) matching fixture -> 0 findings, ok=true — ok=true findings=0 targets=3
+PASS (a2) the spawned gate exits 0 on the clean fixture — exit=0 json.ok=true
+PASS (b) a mutated fixture dist -> STALE finding + exit 1 — exit=1 kinds=STALE
+PASS (b2) the restored fixture is green again and the bytes are identical — sha ff933aef75dd… -> ff933aef75dd… exit=0
+PASS (c) src without dist -> MISSING finding — exit=1 kinds=MISSING
+PASS (d) dist with no source -> NOT COVERED with a reason — reason="package has no src/ directory (dist is the only committed artifact)"
+PASS (d2) every mapped dist is covered, incl. the declared sdk entry — targets=packages/alpha/dist/index.js, packages/delta/dist/index.js, packages/delta/dist/sdk.js
+PASS (e) --only filters to the matching target only — exit=0 targets=["packages/alpha/dist/index.js"]
+PASS (e2) a filter matching nothing is a zero-subject failure — exit=1
+PASS (f) bad flag -> exit 1 + usage on stderr — exit=1 stderr="[verify-dist-fresh] unknown flag: --definitely-not-a-flag"
+
+[verify-dist-fresh self-test] 10/10 arms passed — PASS

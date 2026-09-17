@@ -1,0 +1,8 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=4 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c2
+[mpd-qa:(only)] PASS case=skill-catalog-probe evidence=evidence/plan-d/skill-catalog/2026-09-17T04-37-31.389Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/skill-catalog-probe.log ms=18380
+[mpd-qa:(only)] PASS case=tool-output-validation evidence=evidence/fix/boulder-status-planprogress/2026-09-17T04-38-03.030Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/tool-output-validation.log ms=24491
+[mpd-qa:(only)] PASS case=web-client-adapt evidence=evidence/plan-f/web-client-adapt/2026-09-17T04-38-14.301Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/web-client-adapt.log ms=29461
+[mpd-qa:(only)] PASS case=web-settings-bridge evidence=evidence/mpd-bridge/web-settings-bridge/20260917T043843Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/web-settings-bridge.log ms=104705
+[mpd-qa:(only)] summary selected=4 pass=4 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c2
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

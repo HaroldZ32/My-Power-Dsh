@@ -1,0 +1,4 @@
+=== which scripts/ file moved after my pass-2 pack? ===
+2026-09-17T11:00:21.7494761480 scripts/verify-dist-fresh.mjs
+=== is it SHIPPED (i.e. does the artifact carry a copy)? ===
+  NOT SHIPPED (artifact has no copy) -> scripts/verify-dist-fresh.mjs

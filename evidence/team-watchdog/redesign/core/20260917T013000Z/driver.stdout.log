@@ -1,0 +1,88 @@
+[2026-09-17T01:32:12.727Z] §9 rows (a), (b), (d) — RED (/root/dshProj/my-power-dsh/.mpd/red-baseline) vs GREEN (/root/dshProj/my-power-dsh)
+baseline BEFORE [red] /root/dshProj/my-power-dsh/.mpd/red-baseline
+  machine.ts = fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef  matchesContract=true
+  engine.ts  = f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b  matchesContract=true
+  tools.js   = 49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2  matchesContract=true
+baseline BEFORE [green] /root/dshProj/my-power-dsh
+  machine.ts = fbe2db0b790684f6f9ec47b66da00f60fe053fc89c91741f15a7c043b3843eca  matchesContract=false
+  engine.ts  = 51c95b95f7f16f51deaa6530664818b5ddf7d2d1300f0e2a72ccb01437782e6b  matchesContract=false
+  tools.js   = 895523ee9541e831b123f8292d4e23d3f197741d5020cd5de6c3c6eb850b1f86  matchesContract=false
+[rows-driver] WARN team-a task=t1 member=Architect silence=90987ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-02J7tP/.mpd/team/watchdog/scene/team-a/20260917T013343Z-warn.json
+[rows-driver] WARN team-a task=t1 member=Architect silence=180987ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-02J7tP/.mpd/team/watchdog/scene/team-a/20260917T013513Z-warn.json
+[rows-driver] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[rows-driver] ESCALATE team-a task=t1 member=Architect silence=270987ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-02J7tP/.mpd/team/watchdog/scene/team-a/20260917T013643Z-escalate.json
+
+ROW (a) — a member streaming/writing a long answer, 12+ min simulated
+  required      : NO warn, NO hold
+  RED   verdict : FAIL  (warn=true hold=true)
+    defaults    : {"warnSilenceMs":90000,"warnStreakToEscalate":3,"actionOnEscalate":"pause"}
+    ticks       : ["91000:warn","181000:warn","271000:escalate","720000:"]
+    hold on disk: true
+  GREEN verdict : PASS  (warn=false hold=false)
+    defaults    : {"warnSilenceMs":600000,"warnStreakToEscalate":6,"actionOnEscalate":"warn-only"}
+    ticks       : ["91000:","181000:","271000:","720000:"]
+    causes      : []
+    states      : {"a1":"ALIVE"}
+    hold on disk: false
+  ROW RESULT    : red-fails / green-passes ✅
+[rows-driver] WARN team-a task=t1 member=Architect silence=86401000ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-QJiTkC/.mpd/team/watchdog/scene/team-a/20260917T013213Z-warn.json
+[rows-driver] WARN team-a task=t1 member=Architect silence=86402000ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-QJiTkC/.mpd/team/watchdog/scene/team-a/20260917T013214Z-warn.json
+[rows-driver] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[rows-driver] ESCALATE team-a task=t1 member=Architect silence=86403000ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-QJiTkC/.mpd/team/watchdog/scene/team-a/20260917T013215Z-escalate.json
+
+ROW (b) — a member whose only open task is dependency-blocked (turn closed, stale prior-generation stamp)
+  required      : NO warn, NO hold, and PARKED is the named state
+  RED   verdict : FAIL  (warn=true hold=true state=n/a)
+    defaults    : {"warnSilenceMs":90000,"warnStreakToEscalate":3,"actionOnEscalate":"pause"}
+    ticks       : ["1000:warn","2000:warn","3000:escalate"]
+    hold on disk: true
+  GREEN verdict : PASS  (warn=false hold=false state=PARKED)
+    defaults    : {"warnSilenceMs":600000,"warnStreakToEscalate":6,"actionOnEscalate":"warn-only"}
+    ticks       : ["1000:","2000:","3000:"]
+    causes      : []
+    states      : {"a1":"PARKED"}
+    hold on disk: false
+  ROW RESULT    : red-fails / green-passes ✅
+[rows-driver] WARN team-a task=t1 member=Architect silence=90099ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-Sapd2Q/.mpd/team/watchdog/scene/team-a/20260917T013342Z-warn.json
+[rows-driver] WARN team-a task=t1 member=Architect silence=599998ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-Sapd2Q/.mpd/team/watchdog/scene/team-a/20260917T014212Z-warn.json
+[rows-driver] the hold action was unreachable through the tool seam (unknown tool session-watchdog-hold) — falling back to a direct write
+[rows-driver] ESCALATE team-a task=t1 member=Architect silence=600099ms streak=3 hold=applied scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-Sapd2Q/.mpd/team/watchdog/scene/team-a/20260917T014212Z-escalate.json
+[rows-driver] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600100ms streak=1 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-ez8gAn/.mpd/team/watchdog/scene/team-a/20260917T014212Z-warn.json
+[rows-driver] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600101ms streak=2 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-ez8gAn/.mpd/team/watchdog/scene/team-a/20260917T014212Z-warn-2.json
+[rows-driver] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600102ms streak=3 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-ez8gAn/.mpd/team/watchdog/scene/team-a/20260917T014212Z-warn-3.json
+[rows-driver] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600103ms streak=4 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-ez8gAn/.mpd/team/watchdog/scene/team-a/20260917T014212Z-warn-4.json
+[rows-driver] WARN team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600104ms streak=5 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-ez8gAn/.mpd/team/watchdog/scene/team-a/20260917T014212Z-warn-5.json
+[rows-driver] ESCALATE team-a task=t1 member=Architect cause=silence-channel state=OUTSTANDING silence=600105ms streak=6 hold=not-requested scene=/root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T013000Z/sandbox-ez8gAn/.mpd/team/watchdog/scene/team-a/20260917T014212Z-escalate.json
+
+ROW (d) — an OUTSTANDING request with no response
+  required      : first WARN only after warnSilenceMs (600 s), then ESCALATE per the frozen ladder
+  RED   verdict : FAIL  (firstWarnAt=90100ms firstEscalateAt=600100ms)
+    defaults    : {"warnSilenceMs":90000,"warnStreakToEscalate":3,"actionOnEscalate":"pause"}
+    ticks       : ["1000:","90100:warn","599999:warn","600100:escalate","600101:","600102:","600103:","600104:","600105:"]
+    hold on disk: true
+  GREEN verdict : PASS  (firstWarnAt=600100ms firstEscalateAt=600105ms)
+    defaults    : {"warnSilenceMs":600000,"warnStreakToEscalate":6,"actionOnEscalate":"warn-only"}
+    ticks       : ["1000:","90100:","599999:","600100:warn","600101:warn","600102:warn","600103:warn","600104:warn","600105:escalate"]
+    causes      : ["silence-channel","silence-channel","silence-channel","silence-channel","silence-channel","silence-channel"]
+    states      : {"a1":"OUTSTANDING"}
+    hold on disk: false
+  ROW RESULT    : red-fails / green-passes ✅
+
+settling 50000 ms before the settled-hash re-measurement …
+hashes AFTER : red.machine=fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef
+hashes AFTER : red.engine =f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b
+hashes AFTER : green.machine=fbe2db0b790684f6f9ec47b66da00f60fe053fc89c91741f15a7c043b3843eca
+hashes AFTER : green.engine =51c95b95f7f16f51deaa6530664818b5ddf7d2d1300f0e2a72ccb01437782e6b
+hashes AFTER : green.channel=b9d7acaf6350eff96365d75f2272e55db0034c7ae7c4569c7d3be42d11bafd84
+settled (identical before/after): true
+red tree carries NO channel.ts (pre-redesign): true
+A2 — baseline hashes re-measured from the ROOT tree (they MOVE by design once the lane lands):
+  green.machine=fbe2db0b790684f6f9ec47b66da00f60fe053fc89c91741f15a7c043b3843eca (contract false)
+  green.engine =51c95b95f7f16f51deaa6530664818b5ddf7d2d1300f0e2a72ccb01437782e6b (contract false)
+  green.tools  =895523ee9541e831b123f8292d4e23d3f197741d5020cd5de6c3c6eb850b1f86 (contract false)
+A2 — baseline hashes re-measured from .mpd/red-baseline (the reproducible side):
+  red.machine  =fc10fc41f404d79457660403f9645483fe123e588df6bfe5b8b55c4b8728c1ef (contract true)
+  red.engine   =f529ca2cdef498eca8b60c441824aa5ab898689bc60c3c81ffc7da063f49281b (contract true)
+  red.tools    =49025f4d9901fb2599f42bbb5233ead2a71837a65f51e1d6d95c567c002422d2 (contract true)
+
+DRIVER RESULT: PASS — every row fails RED and passes GREEN on settled hashes

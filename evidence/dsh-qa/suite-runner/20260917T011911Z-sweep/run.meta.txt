@@ -1,0 +1,4 @@
+ts=20260917T011911Z
+dir=evidence/dsh-qa/suite-runner/20260917T011911Z-sweep
+cmd=bun run test:qa:all
+manifest=skills/dsh-qa/cases.json sha256=919656a8cac1

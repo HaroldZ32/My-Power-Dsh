@@ -1,0 +1,107 @@
+{
+  "task": "t61",
+  "kind": "verification",
+  "attemptId": "56e1d3af-5930-4119-b03a-d788f203b235",
+  "objective": "independent re-measurement of the FINAL post-t35 artifact on its frozen revision (t28 was bound to superseded bytes)",
+  "verdict": "PASS — the artifact may ship on this revision",
+  "NON_AUTHOR": true,
+  "non_author_note": "the pack is the packaging lane's; this seat MEASURED it and wrote nothing under dist/mpd-package/**",
+  "measured_at": "2026-09-17T05:36:35Z..05:37:56Z",
+  "measurement_only_proof": {
+    "claim": "nothing under dist/mpd-package/** was written by this task",
+    "evidence": "the twin scan was run BEFORE (05:37:24Z) and AFTER (05:37:56Z) every leg: packStampUtc 2026-09-17T05:19:48.266Z, identical 1187, drift 0, missing 0, afterPack [] (length 0), noTwin 1, byDesign 2, ok true — byte-identical readings; a write to the artifact would have made afterPack non-empty",
+    "manifest_mtime": "2026-09-17T05:19:48Z (unchanged by the measurement)",
+    "no_other_evidence_dir_edited": true
+  },
+  "revision_pin": {
+    "packed_manifest": {
+      "path": "dist/mpd-package/package.json",
+      "sha256": "eaa0919702bf5b334332d5b701b6a2a85ab5aa0a84cc4ccd9b4faa6636ebf61c",
+      "mtime": "2026-09-17T05:19:48Z",
+      "bytes": 1440,
+      "packStampUtc_from_the_instrument": "2026-09-17T05:19:48.266Z"
+    },
+    "fingerprints_REMEASURED": {
+      "scripts/pack-mpd.mjs": "79563bc5fdd6518e",
+      "scripts/verify-pack-closure.mjs": "b82941ec2d4cd744",
+      "scripts/mpd-ext.mjs": "e9e5c78007e88610"
+    },
+    "instrument": {
+      "path": "evidence/platform/pack-drift/20260917T031548Z/packed-twin-scan.mjs",
+      "sha256_16_before": "858cd130b6caacad",
+      "sha256_16_after": "858cd130b6caacad",
+      "bytes": 18056
+    },
+    "voiding_statement": "this verdict is bound to the manifest stamp above; ANY later write to a shipped tree voids it — checked at 05:37:56Z: `find packages skills presets extensions templates docs agent-references scripts -newermt 05:36:35Z` returns 0 files"
+  },
+  "findings": [
+    {
+      "id": "F-1",
+      "severity": "documentation (not an artifact defect)",
+      "text": "the acceptance's expected fingerprints are stale for two of the three pins: the packer is now `79563bc5fdd6518e` (acceptance expected `b4aff7cc`), the closure checker now `b82941ec2d4cd744` (expected `b7f940b4`); only the CLI matches (`e9e5c780`). The two scripts were legitimately edited later in the wave (T-70 root-file work and the closure gate's own changes), and the artifact is built from the CURRENT packer — so the reading is fine and the expectation needs updating.",
+      "reading": "re-measured with `sha256sum` at 05:36:35Z; never inherited from the task text"
+    },
+    {
+      "id": "F-2",
+      "severity": "none (explained, not a defect)",
+      "text": "two checkout files are newer than the pack instant but neither makes the artifact stale: `skills/dsh-qa/SKILL.md` is shipped AND byte-identical to its packed copy, and `scripts/run-qa-lanes.mjs` is not shipped at all (the packer copies only install-mcp.mjs + mpd-ext.mjs from scripts/).",
+      "reading": "`find <shipped trees> -newermt 05:19:48Z` -> those two; per-file comparison as above"
+    }
+  ],
+  "acceptance_readings": {
+    "A1_revision_pinned": "see revision_pin; fingerprints re-measured, not inherited (F-1 names the two stale expectations)",
+    "A2_content_assertion": {
+      "command": "grep -c 'T-23' dist/mpd-package/agent-references/troubleshooting.md",
+      "target_quoted_from_source": "source count = 2 (the target)",
+      "packed_count": 2,
+      "source_sha256_16": "f6b4d1bec8745da6",
+      "packed_sha256_16": "f6b4d1bec8745da6",
+      "equal": true,
+      "note": "a warm re-pack of the superseded bytes would read 0 here and a differing sha; both sides now carry both ids"
+    },
+    "A3_twin_scan": {
+      "command": "node <instrument> --json",
+      "exit": 0,
+      "packStampUtc": "2026-09-17T05:19:48.266Z",
+      "identical": 1187,
+      "drift": [],
+      "missing": [],
+      "afterPack": [],
+      "noTwin": 1,
+      "byDesign": 2,
+      "ok": true,
+      "by_design_non_twins_named": [
+        { "rel": "package.json", "why": "packer-generated packed-form manifest (scripts/pack-mpd.mjs:372)" },
+        { "rel": "packages/mpd-ext-plugin/dist/validator.js", "why": "packer-generated CLI validator entry (scripts/pack-mpd.mjs:125)" }
+      ],
+      "note": "noTwin=1 is the declared-but-absent root file count class; byDesign=2 are the packer-generated entries named above — neither is drift"
+    },
+    "A4_legs": {
+      "leg_a_directional": { "compared": 1187, "drift": 0, "no_source": 0, "generated_allowlisted": ["package.json", "cordis.patch.yml", "packages/mpd-ext-plugin/dist/validator.js"], "at": "05:37:24Z" },
+      "leg_c_wholesale_groups": { "skills": 0, "presets": 0, "extensions": 0, "docs": 0, "templates": 0, "agent-references": 0, "unit": "missing files", "at": "05:37:24Z" },
+      "closure": { "command": "node scripts/verify-pack-closure.mjs", "exit": 0, "reading": "17 dist/index.js rows + 1 adopted lib row + 4 mcp rows resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS exist; root assets declared and present; CLI validator surface 9 exports; packed tree 379 asset files; agent references 3/3; root files 1/1; declared packages 23/23", "at": "05:37:24Z" },
+      "packed_cli": {
+        "validate_example": 0,
+        "validate_template": 0,
+        "self_test": { "exit": 0, "reading": "[mpd-ext] --self-test passed (53 checks) [validator: compiled]" },
+        "scaffold": { "exit": 0, "produced": ["flows", "mpd-ext.json", "personas", "README.md", "README.zh-CN.md", "skills"] },
+        "at": "05:37:43Z"
+      },
+      "root_parity": { "packed": "pairs=35 failed=0 violations=0 exempt=17 PASS", "repo": "pairs=37 failed=0 violations=0 exempt=17 PASS", "at": "05:37:43Z" },
+      "history_note": "t28's pass-2 numbers (1185 compared, drift 0, closure 0, CLI 0/0/0, parity 35/0) are cited ONLY as history; every number above was re-measured on this revision"
+    },
+    "A5_dist_half": {
+      "command": "per-file sha256 of every dist/mpd-package/packages/*/dist/*.js against its checkout twin",
+      "packed_dist_js_files": 24,
+      "byte_identical": 23,
+      "differing": 0,
+      "no_checkout_twin": 1,
+      "no_checkout_twin_named": "packages/mpd-ext-plugin/dist/validator.js (packer-generated sidecar, declared by-design)",
+      "rebuilt_after_pack": 0,
+      "note": "the packer ship-set is a SUBSET of the checkout: 23 of 24 have twins and all 23 match"
+    },
+    "A6_ship_verdict": "The artifact MAY SHIP on revision packStampUtc 2026-09-17T05:19:48.266Z: the twin scan's four clauses hold (drift empty, missing empty, afterPack empty, ok true) with identical 1187 and the two by-design non-twins named; the content assertion reads 2 ids on both sides with equal sha; legs (a)/(c), closure, the four packed-CLI legs and the packed doc parity are all green at their own moments; the dist half shows 23/23 comparable files byte-identical and 0 rebuilt after the pack. Two non-blocking findings: F-1 (two stale expectations in the task text) and F-2 (two post-pack checkout writes, one shipped-and-identical, one not shipped)."
+  },
+  "declared_non_coverage": "a green t61 does NOT certify that the shipped artifact's QA LANES run: legs were the twin scan, legs (a)/(c), closure, the packed CLI and packed doc parity. The packed-tree QA-lane gap is a separate wave-2 self-sufficiency row (the shipped `agent-teams-messaging.mjs` reads VENDOR_LOCK.json and spawns scripts/verify-vendor.mjs, neither of which the artifact ships).",
+  "bound": "every reading belongs to the revision pinned above and the moments stamped; a later write to a shipped tree voids the verdict, and a later edit to the instrument voids its own readings (instrument hash quoted before and after: 858cd130b6caacad both times)."
+}

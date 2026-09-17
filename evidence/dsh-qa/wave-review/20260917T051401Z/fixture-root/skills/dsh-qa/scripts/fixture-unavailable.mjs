@@ -1,0 +1,2 @@
+console.log("[mpd-qa] SKIP case=fixture-unavailable lane=fixture-unavailable reason=absent-fixture prereq=a fixture remedy=provide the fixture")
+process.exit(0)

@@ -1,0 +1,42 @@
+{
+  "kind": "finding",
+  "severity": "high",
+  "agent": "docs-gate-engineer",
+  "date": "2026-09-17T03:45Z",
+  "subject": "AGENTS.md §6 (t60's landed sentence) overstates the path-comment count 2×: 26/24 are DIFF-OUTPUT lines, the true differing path comments are 13/12",
+  "where": "AGENTS.md lines 350-354 (the §6 Build bullet), landed by t60",
+  "method": "two builds per package into TEMP outfiles — repo-root path-qualified form vs package-directory form — then a full line-by-line comparison; no packages/** write",
+  "measurements": {
+    "mpd-ext-plugin": {
+      "root": { "sha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a", "bytes": 152855 },
+      "package_dir": { "sha256": "a7b843e19656dbe950131f9c597222436f671a15b35ee3c62776fd4f6f76864a", "bytes": 152579 },
+      "differing_source_lines": 13,
+      "differing_source_lines_after_first": 12,
+      "diff_output_lines_lt_gt": 26,
+      "diff_output_lines_after_first_pair": 24,
+      "non_path_comment_differences": 0,
+      "comment_lines_per_artifact": 13
+    },
+    "mpd-tools-plugin": {
+      "differing_source_lines": 3,
+      "differing_source_lines_after_first": 2,
+      "diff_output_lines_lt_gt": 6,
+      "diff_output_lines_after_first_pair": 4,
+      "non_path_comment_differences": 0,
+      "size_delta_bytes": -58
+    }
+  },
+  "finding": "The landed sentence says the artifact's path comments are '26 of them … 24 remain after dropping the first'. 26/24 is the diff-output convention (one `<` line plus one `>` line per differing source line); the artifact contains 13 `// ` comment lines, 12 of them after the entry line. A reader counting comments gets 13 — the number as written is not the thing it names.",
+  "not_affected": "the rest of the sentence — 'not one banner line', the foreclosure of banner normalization, the canonical repo-root command, the three-package residual, the §4 pointer — is correct; the round-trip pair it rests on was re-reproduced byte-exactly in this measurement",
+  "addendum_correction": "platform-engineer's line-diff-addendum.json uses the same convention for mpd-tools ('6 / 4'); the true positions are 3 / 2. Its structural classification (entry banner + one comment per inlined module, no code line differing) is CONFIRMED.",
+  "proposed_fix": "in §6 replace the count clause with: 'the entry banner plus one comment per inlined module (13 such comment lines in the `mpd-ext-plugin` build, 12 of them after the entry line; measured)' — structural, portable to other packages, and it forecloses the normalization remedy without quoting any diff convention",
+  "re_measurement_needed_on_fix": [
+    "sha256sum AGENTS.md",
+    "bun evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs current=AGENTS.md",
+    "bun run verify:docs",
+    "node scripts/verify-rows-parity.mjs",
+    "reverse-substitution identity check against the pre-edit sha (single hunk, words only)"
+  ],
+  "process_note": "t60 is terminal; this is a NEW finding and needs its own repair contract before the wave commit. Not edited by me: the fix needs scope ownership (AGENTS.md) and a re-measurement, and the wave's requirement/task/review separation is what prevented a drive-by edit.",
+  "evidence": "evidence/gates/build-form/20260917T034500Z-counting-convention/{DEFECT-26-24-are-diff-lines-not-comments.md,result.json}"
+}

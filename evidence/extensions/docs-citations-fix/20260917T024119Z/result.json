@@ -1,0 +1,399 @@
+{
+  "task": "t47 (attempt 1, attempt_id acd09d4f-aa55-4d4a-8938-736f3d76bdac)",
+  "objective": "turn the citation checker's four docs/extension-* FAILs green by correcting the ANCHORS, never the checker",
+  "generatedAt": "2026-09-17T02:47:15Z",
+  "checkerBefore": {
+    "command": "node evidence/extensions/docs-claims/check-citations.mjs",
+    "exit": 1,
+    "reading": "6/12 checks passed, 6 failed, 249 citations resolved",
+    "raw": "evidence/extensions/docs-citations-fix/20260917T024119Z/raw-before.log",
+    "unresolved": {
+      "docs/extension-authoring-guide.md": 5,
+      "docs/extension-authoring-guide.zh-CN.md": 5,
+      "docs/extension-adaptation-report.md": 4,
+      "docs/extension-adaptation-report.zh-CN.md": 4,
+      "EXTENSIONS-FOR-AGENTS.md": 1
+    }
+  },
+  "checkerAfter": {
+    "command": "node evidence/extensions/docs-claims/check-citations.mjs",
+    "exit": 1,
+    "reading": "11/12 checks passed, 1 failed, 241 citations resolved, 0 pending, 12 illustrative",
+    "raw": "evidence/extensions/docs-citations-fix/20260917T024119Z/raw-after-2.log",
+    "filesGreen": {
+      "docs/extension-authoring-guide.md": "0 unresolved (53 checked: path 41, dir 1, command 11; illustrative 3)",
+      "docs/extension-authoring-guide.zh-CN.md": "0 unresolved (same counts)",
+      "docs/extension-adaptation-report.md": "0 unresolved (44 checked; illustrative 1)",
+      "docs/extension-adaptation-report.zh-CN.md": "0 unresolved (44 checked; illustrative 1)"
+    },
+    "remainingFail": "EXTENSIONS-FOR-AGENTS.md:24 \u2014 the `EXPECTED_TOOLS` anchor (packages/mpd-ext-plugin/src/index.ts:548). DELIBERATELY NOT FIXED HERE: that file is held by t43's writer window. Exactly the one residual the contract allows.",
+    "alsoGreen": [
+      "annotations:pending (none)",
+      "content:anchors \u2014 40 anchored citations verified, 0 without a content claim",
+      "guide-heading-tree \u2014 10 EN vs 10 zh, levels identical",
+      "split-headings",
+      "split-prose",
+      "skeleton-validates"
+    ]
+  },
+  "lineRotFindings": [
+    {
+      "claim": "redactedDescriptor",
+      "old": "packages/mpd-ext-plugin/src/index.ts:659",
+      "new": "packages/mpd-ext-plugin/src/index.ts:643",
+      "sourceLineQuoted": "  const redactedDescriptor = (entry: ExtensionView): Record<string, unknown> => {",
+      "docs": [
+        "docs/extension-authoring-guide.md:75",
+        "docs/extension-authoring-guide.zh-CN.md:66"
+      ],
+      "class": "LINE-ROT (file shrank ~16 lines)"
+    },
+    {
+      "claim": "connectExtensionMcpServers",
+      "old": "packages/mpd-ext-plugin/src/index.ts:1062",
+      "new": "packages/mpd-ext-plugin/src/index.ts:1046",
+      "sourceLineQuoted": "    bridge = await connectExtensionMcpServers({",
+      "docs": [
+        "docs/extension-authoring-guide.md:104",
+        "docs/extension-authoring-guide.zh-CN.md:90"
+      ],
+      "class": "LINE-ROT (~16 lines)"
+    },
+    {
+      "claim": "resolveAdapter -> dshAdapterIdentity",
+      "old": "packages/mpd-ext-plugin/src/index.ts:102",
+      "new": "packages/mpd-ext-plugin/src/index.ts:497",
+      "sourceLineQuoted": "    adapterIdentity: dshAdapterIdentity(ctx),",
+      "docs": [
+        "docs/extension-adaptation-report.md:376",
+        "docs/extension-adaptation-report.zh-CN.md:180"
+      ],
+      "class": "LINE-ROT **plus a RENAME** \u2014 reported honestly: the token `resolveAdapter` no longer exists in that file at all (grep: zero hits); the current symbol for the same behaviour is `dshAdapterIdentity`, and the row's stale hint `:58-92` was refreshed to the note's real span `:59-100`",
+      "residualNotMine": "the stale token survives ONLY as a string inside a runtime warning in packages/mpd-dsh-adapter-plugin/src/index.ts:1001 (\"\u2026canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).\") \u2014 packages/** is outside this task's inScope, so it is recorded, not touched"
+    },
+    {
+      "claim": "\"../packages/mpd-ext-plugin/src/registry.ts\"",
+      "old": "scripts/mpd-ext.mjs:35",
+      "new": "scripts/mpd-ext.mjs:49",
+      "sourceLineQuoted": "  registry: \"../packages/mpd-ext-plugin/src/registry.ts\",",
+      "docs": [
+        "docs/extension-adaptation-report.md:406",
+        "docs/extension-adaptation-report.zh-CN.md:208"
+      ],
+      "class": "LINE-ROT caused by THIS wave's own lane-E change (the source-import table moved to 48-56); the trailing clause was reworded to name the table by symbol"
+    },
+    {
+      "claim": "SOURCE_VALIDATOR (was a bare anchor)",
+      "old": "`scripts/mpd-ext.mjs:48-56` with NO content claim",
+      "new": "`SOURCE_VALIDATOR`, `scripts/mpd-ext.mjs:48-56`",
+      "sourceLineQuoted": "const SOURCE_VALIDATOR = {",
+      "docs": [
+        "docs/extension-adaptation-report.md:407",
+        "docs/extension-adaptation-report.zh-CN.md:209"
+      ],
+      "class": "MISSING CONTENT CLAIM"
+    }
+  ],
+  "authorsCallsSemanticFindings": [
+    {
+      "path": "mpd-dsh/mpd/scripts/mpd-ext.mjs",
+      "docs": [
+        "docs/extension-authoring-guide.md:134",
+        "docs/extension-authoring-guide.md:235",
+        "docs/extension-authoring-guide.zh-CN.md:118",
+        "docs/extension-authoring-guide.zh-CN.md:210"
+      ],
+      "call": "ANNOTATED illustrative (not a repo path \u2014 it is a path INSIDE an installed bundle: the doc sentence says `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs <command>` from the profile directory). Re-wording it to the repo path would have destroyed the information the sentence exists to convey.",
+      "reason": "a path inside an installed bundle, not a repo path",
+      "placement": "the annotation is appended to the END of the paragraph line ABOVE the citation line (an inline HTML comment: no paragraph break, and the checker's next-line rule still applies). In the zh guide the paragraph wraps differently, so there it sits on its OWN line directly above the citation"
+    },
+    {
+      "path": "packages/mpd-ext-plugin/dist/validator.js",
+      "docs": [
+        "docs/extension-authoring-guide.md:223",
+        "docs/extension-authoring-guide.zh-CN.md:199",
+        "docs/extension-adaptation-report.md:419",
+        "docs/extension-adaptation-report.zh-CN.md:220"
+      ],
+      "call": "ANNOTATED illustrative (a pack-time artifact that exists only inside the packed tree; the repo has no such file). `pending` would have been wrong \u2014 there is no task that will make it a repo path, it is by design an artifact.",
+      "reason": "a pack-time artifact emitted by the packer into the artifact, not a repo path",
+      "antiLieCheck": "the annotations were audited against the checker's illustrative listing after the run: every illustrative entry points at one of the two NON-repo paths above. One intermediate state DID annotate a repo path by accident (the zh guide's `scripts/mpd-ext.mjs` was flagged because the annotation shared a line with its citation) \u2014 caught by the listing, fixed by moving the annotation onto its own line, and re-verified (raw-after-1.log vs raw-after-2.log)."
+    }
+  ],
+  "verify": {
+    "command": "bun run verify:docs",
+    "exit": 0,
+    "reading": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 \u2014 PASS",
+    "log": "evidence/extensions/docs-citations-fix/20260917T024119Z/verify-docs.log"
+  },
+  "changedPaths": [
+    "docs/extension-authoring-guide.md",
+    "docs/extension-authoring-guide.zh-CN.md",
+    "docs/extension-adaptation-report.md",
+    "docs/extension-adaptation-report.zh-CN.md",
+    "evidence/extensions/docs-citations-fix/20260917T024119Z/result.json",
+    "evidence/extensions/docs-citations-fix/20260917T024119Z/output.log"
+  ],
+  "fileHashes": {
+    "docs/extension-authoring-guide.md": "1bfcf5b7f3b2ba7d41fea75ce685585da8f7fede29afb00d67bf0f9fdb097c80",
+    "docs/extension-authoring-guide.zh-CN.md": "dc3c9ea60825959fdb96cd832d31c69b936cfc59bf70f3d27ddb6ffd0b853c35",
+    "docs/extension-adaptation-report.md": "b6f5db6b428a64550182c091d68e27668ff0f0c3c775e4b291b50b4faf3a2ef0",
+    "docs/extension-adaptation-report.zh-CN.md": "85b5f9e415cc405b2c6f81ea04f5684c2eca6cbec178a09ab2b77e6f404e3549"
+  },
+  "scopeProof": {
+    "byThisLane": "exactly the four docs/extension-* files; no packages/**, scripts/**, skills/**, AGENTS.md or EXTENSIONS-FOR-AGENTS.md edit",
+    "checkerUntouched": "evidence/extensions/docs-claims/check-citations.mjs was only READ (grep/sed, first read ~10:41Z). Bound: its git-mtime is 10:34:53 \u2014 BEFORE this task started \u2014 so the modification git reports is t21's in-flight work in its own inScope, not this lane's. Neither the checker's rules nor its targets were relaxed.",
+    "runsDir": "evidence/extensions/docs-claims/runs/ is produced by the CHECKER ITSELF on every run (its own immutable-output mechanism), not written by this lane",
+    "headingTrees": "EN 10 / zh 10 with identical levels after the edits; the checker's guide-heading-tree arm reports ok",
+    "checkerFingerprintForT49": {
+      "measuredByMe": {
+        "evidence/extensions/docs-claims/check-citations.mjs": "5e56c82c25038b5a78878ad07a2289c7cd4e65324f04d01eacbf60c8dc72de83",
+        "skills/dsh-qa/scripts/lib/immutable-output.mjs": "5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976"
+      },
+      "sizesBytes": {
+        "evidence/extensions/docs-claims/check-citations.mjs": 25530,
+        "skills/dsh-qa/scripts/lib/immutable-output.mjs": 4823
+      },
+      "reviewerPreRegistration_20260917T024751Z": {
+        "evidence/extensions/docs-claims/check-citations.mjs": "5e56c82c25038b5a78878ad07a2289c7cd4e65324f04d01eacbf60c8dc72de83",
+        "skills/dsh-qa/scripts/lib/immutable-output.mjs": "5b94f4c9\u2026"
+      },
+      "verdict": "MATCH on both files \u2014 checked by hash, not by timestamp (the mtime bound is corroborating only, since t21 legitimately holds check-citations.mjs in its active window). The checker was not touched by this lane.",
+      "helperWhyItMatters": "immutable-output.mjs is the helper every run's evidence write goes through; hashing it too closes the 'the rules did not change but the writer did' loophole."
+    }
+  },
+  "evidenceBound": "all readings above are from the checker run against the working tree at 2026-09-17 ~02:45Z, with the four file hashes pinned; the residual EXTENSIONS-FOR-AGENTS.md:24 is out of this task's scope by contract.",
+  "settledReRun": {
+    "command": "node evidence/extensions/docs-claims/check-citations.mjs",
+    "afterSettleSeconds": 6,
+    "exit": 1,
+    "reading": "11/12 checks passed, 1 failed, 241 citations resolved, 0 pending, 12 illustrative \u2014 the single failure is EXTENSIONS-FOR-AGENTS.md:24 (the `EXPECTED_TOOLS` anchor, t43's window), so the four docs/extension-* files are green",
+    "exitCodeCorrection": "the first capture of this run piped the checker into `tail` and printed tail's exit 0; re-run WITHOUT the pipe to report the checker's own exit 1 (`raw-after-final.log` now carries the corrected marker, with the raw stdout in `raw-after-final.stdout`). Recorded because a log that shows the wrong exit code is exactly the class this lane exists to make loud.",
+    "log": "evidence/extensions/docs-citations-fix/20260917T024119Z/raw-after-final.log",
+    "hashNote": "the four doc hashes were re-pinned after this run"
+  },
+  "t55ConsistencyNote": {
+    "observation": "AGENTS.md \u00a712's T-55 rule ('cite code by SYMBOL, never by line number') and the citation checker's grammar (every anchored citation needs `CLAIM`, `path:line`) look contradictory. They are not: the checker requires the SYMBOL to be present ON the cited line, i.e. symbol + line, so a rotted pointer fails loudly instead of silently drifting \u2014 which is T-55's actual intent (the rule exists because a line pointer drifted off-by-3 to off-by-15 before a review caught it).",
+    "appliedHere": "every repaired anchor carries its symbol claim verified on the line (content:anchors arm: 40 verified, 0 without a claim); the two bare anchors this task fixed were the ones that had ONLY a line and no symbol \u2014 exactly the shape T-55 warns about.",
+    "forTheWaveReport": "if T-55 and the docs-claims checker are both quoted, state the combination: the checker is the executable enforcement of T-55 (symbol claimed, line verified), not an exception to it.",
+    "codeAlreadyKnewThis": "the canonical note in packages/mpd-ext-plugin/src/index.ts:100 says the same thing in its own words: 'Pointers here are by SYMBOL, never by line: the line numbers this note used to cite had drifted by 15-17 lines \u2014 T-55.'"
+  },
+  "liveReadingsAtCompletion": {
+    "verifyDistFresh": {
+      "command": "node scripts/verify-dist-fresh.mjs",
+      "exit": 1,
+      "reading": "FAIL - 1 of 20 targets not fresh (STALE: 1) \u2014 packages/mpd-workmate-plugin/dist/index.js committed 54,704 B (401573a0173b03db\u2026) != fresh build 55,875 B (6b1715d0f8bebda0\u2026) \u2014 982ms",
+      "note": "confirms the captain's report; t48 holds the one rebuild, in the canonical REPO-ROOT form (T-67's measured trap). My own re-pack is BLOCKED until this gate is green (precondition #1), so no packing was attempted."
+    },
+    "checkerAfterT47": "11/12 checks passed, 1 failed (EXTENSIONS-FOR-AGENTS.md:24 only), 241 citations resolved \u2014 the four docs/extension-* files at 0 unresolved"
+  },
+  "checkerInvocation": {
+    "literalContractCommand": "node evidence/extensions/docs-claims/check-citations.mjs",
+    "executedCommand": "node evidence/extensions/docs-claims/check-citations.mjs --out=evidence/extensions/docs-citations-fix/20260917T024119Z/checker-run",
+    "reason": "the bare form writes a fresh `runs/run-<ts>/` directory UNDER `evidence/extensions/docs-claims/`, which is t21's in-progress inScope and this task's outOfScope; `--out=<my evidence dir>` keeps the checker's output inside t47's own evidence tree",
+    "honestNotes": [
+      "The EARLIER before/after captures (raw-before.log, raw-after-1.log, raw-after-2.log, raw-after-final.log) used the bare form, because that literal command is what THIS TASK'S OWN acceptance names ('the RED is reproduced FIRST and quoted raw: node evidence/extensions/docs-claims/check-citations.mjs'). Each bare run produced its default run directory as the CHECKER'S OWN output \u2014 this lane never wrote under that tree; the modification git reports on check-citations.mjs is t21's in-flight edit.",
+      "Run-dir census under evidence/extensions/docs-claims/runs/: 14 entries before the compliant --out run and 14 after \u2014 the compliant run created NO foreign directory (its output went to <this evidence dir>/checker-run).",
+      "So the executed command differs from the verify line by the addition of --out=\u2026; stated plainly rather than papered over, and the compliant run reproduces the same reading."
+    ],
+    "compliantRunReading": {
+      "exit": 1,
+      "reading": "11/12 checks passed, 1 failed, 241 citation(s) resolved, 0 pending, 12 illustrative",
+      "log": "evidence/extensions/docs-citations-fix/20260917T024119Z/checker-out-run.log",
+      "stdout": "evidence/extensions/docs-citations-fix/20260917T024119Z/checker-out-run.stdout"
+    }
+  },
+  "owedItemsFromReview": {
+    "rawRedQuotation": {
+      "where": "evidence/extensions/docs-citations-fix/20260917T024119Z/raw-before.log",
+      "verbatimExitAndSummary": "exit 1 \u2014 [docs-claims] 6/12 checks passed, 6 failed, 249 citation(s) resolved, 0 pending, 4 illustrative",
+      "fourFailLines": [
+        "FAIL citations:docs/extension-authoring-guide.md \u2014 5 unresolved: line 75 redactedDescriptor \u2026 :659 | line 104 connectExtensionMcpServers \u2026 :1062 | line 134 mpd-dsh/mpd/scripts/mpd-ext.mjs does not exist | line 223 packages/mpd-ext-plugin/dist/validator.js does not exist | line 235 mpd-dsh/mpd/scripts/mpd-ext.mjs does not exist",
+        "FAIL citations:docs/extension-authoring-guide.zh-CN.md \u2014 5 unresolved: lines 66 | 90 | 118 | 197 | 209 (same five claims)",
+        "FAIL citations:docs/extension-adaptation-report.md \u2014 4 unresolved: line 376 resolveAdapter :102 | line 406 ../packages/mpd-ext-plugin/src/registry.ts :35 | line 407 no content claim (:48) | line 419 packages/mpd-ext-plugin/dist/validator.js does not exist",
+        "FAIL citations:docs/extension-adaptation-report.zh-CN.md \u2014 4 unresolved: lines 180 | 208 | 209 | 220 (same four claims)"
+      ]
+    },
+    "perAnchorProofs": {
+      "where": "result.json -> lineRotFindings (old anchor, new anchor, the quoted source line that carries the symbol, and the EN+zh doc lines for each)",
+      "compactTable": [
+        {
+          "claim": "redactedDescriptor",
+          "en": "guide:75",
+          "zh": "guide:66",
+          "old": "packages/mpd-ext-plugin/src/index.ts:659",
+          "new": "packages/mpd-ext-plugin/src/index.ts:643",
+          "sourceLine": "const redactedDescriptor = (entry: ExtensionView): Record<string, unknown> => {"
+        },
+        {
+          "claim": "connectExtensionMcpServers",
+          "en": "guide:104",
+          "zh": "guide:90",
+          "old": "\u2026/index.ts:1062",
+          "new": "\u2026/index.ts:1046",
+          "sourceLine": "    bridge = await connectExtensionMcpServers({"
+        },
+        {
+          "claim": "dshAdapterIdentity (was resolveAdapter)",
+          "en": "report:376",
+          "zh": "report:180",
+          "old": "\u2026/index.ts:102",
+          "new": "\u2026/index.ts:497",
+          "sourceLine": "    adapterIdentity: dshAdapterIdentity(ctx),"
+        },
+        {
+          "claim": "\"../packages/mpd-ext-plugin/src/registry.ts\"",
+          "en": "report:406",
+          "zh": "report:208",
+          "old": "scripts/mpd-ext.mjs:35",
+          "new": "scripts/mpd-ext.mjs:49",
+          "sourceLine": "  registry: \"../packages/mpd-ext-plugin/src/registry.ts\","
+        },
+        {
+          "claim": "SOURCE_VALIDATOR (was a bare anchor)",
+          "en": "report:407",
+          "zh": "report:209",
+          "old": "scripts/mpd-ext.mjs:48-56 with no claim",
+          "new": "`SOURCE_VALIDATOR`, `scripts/mpd-ext.mjs:48-56`",
+          "sourceLine": "const SOURCE_VALIDATOR = {"
+        }
+      ]
+    },
+    "beforeAfterReadings": {
+      "where": "evidence/extensions/docs-citations-fix/20260917T024119Z/raw-before.log vs evidence/extensions/docs-citations-fix/20260917T024119Z/raw-after-2.log + checker-out-run.log",
+      "before": "6/12 passed, 6 failed, 249 resolved",
+      "after": "11/12 passed, 1 failed, 241 resolved \u2014 the four docs/extension-* files at 0 unresolved; only EXTENSIONS-FOR-AGENTS.md:24 (t50)"
+    },
+    "residualNamed": "EXTENSIONS-FOR-AGENTS.md:24 (`EXPECTED_TOOLS`) is NOT fixed here and must not be: that file belongs to t43's window / t50's follow-up."
+  },
+  "crossFileClosures": {
+    "note": "the three cross-file stale claims this lane flagged are ALL CLOSED by the manual/contract files themselves (verified read-only); no action remains for me",
+    "items": [
+      {
+        "item": "AGENTS.md \u00a78 packer copy list",
+        "status": "CLOSED",
+        "nowReads": "names skills/, presets/, extensions/, the scaffold templates/, the docs/ set (EN + *.zh-CN.md pairs), the English-only on-demand agent-references/, scripts/ and the licence/README files, declaring all of them in `files` with the author-facing groups also in `exports`"
+      },
+      {
+        "item": "AGENTS.md \u00a73 mpd-ext.mjs line",
+        "status": "CLOSED",
+        "nowReads": "extension developer CLI (validate/scaffold/list/--self-test/--validator); shares the RUNTIME validator (TS sources in a checkout, the packer-generated `dist/validator.js` inside a packed artifact)"
+      },
+      {
+        "item": "EXTENSIONS-FOR-AGENTS.md \u00a79 hard limit ('the CLI does NOT work inside a PACKED artifact')",
+        "status": "CLOSED",
+        "nowReads": "the CLI works from a CHECKOUT (it imports the TypeScript validator sources) AND from a PACKED artifact: the packer ships templates/, the docs/ pairs, agent-references/ and scripts/, and emits packages/mpd-ext-plugin/dist/validator.js \u2014 the compiled entry\u2026",
+        "verification": "grep -c 'does NOT work inside a PACKED artifact' EXTENSIONS-FOR-AGENTS.md -> 0"
+      }
+    ],
+    "checkerStateAfterTheClosures": {
+      "command": "node evidence/extensions/docs-claims/check-citations.mjs --out=<this evidence dir>/checker-run-post43",
+      "reading": "see checker-post43.stdout",
+      "residual": "EXTENSIONS-FOR-AGENTS.md:24 (`EXPECTED_TOOLS`) remains t50's, per the contract"
+    },
+    "newFindingsFromTheRewrite": {
+      "observed": "the corrected \u00a79 text (which DID remove the false hard limit \u2014 grep count 0) also introduced TWO new unresolved citations in the same file; the checker's totals moved from 241 citations / 1 unresolved to 246 citations / 3 unresolved (11/12 checks, the file-level FAIL now lists three lines).",
+      "items": [
+        {
+          "line": 224,
+          "citation": "packages/mpd-ext-plugin/dist/validator.js",
+          "why": "a pack-time artifact that exists only inside dist/mpd-package/ \u2014 the same class t47 annotated illustrative in its four files",
+          "remedy": "append `<!-- citation-check: illustrative: a pack-time artifact emitted by the packer into the artifact, not a repo path -->` to the line ABOVE the citation (the checker's next-line rule), exactly as docs/extension-authoring-guide.md:222 now does"
+        },
+        {
+          "line": 225,
+          "citation": "`src/`",
+          "why": "a DIR citation whose ROOT_DIRS prefix ('src/') does not exist at the repo root (the repo has no top-level src/)",
+          "remedy": "re-word to the scoped, MORE accurate form this lane used: 'when `packages/*/src/` is absent' \u2014 the glob contains '*' so the checker does not read it as a directory citation, and it says what is actually true (the missing sources are the packages' src/, not a top-level src/)"
+        }
+      ],
+      "ownership": "EXTENSIONS-FOR-AGENTS.md is t43's window / t50's follow-up \u2014 NOT this lane's (t47's inScope is the four docs/extension-* files). Reported to docs-gate-engineer (t50's owner) and the captain; nothing edited here.",
+      "supersedes": "my earlier statement that the remaining residual is one line (EXTENSIONS-FOR-AGENTS.md:24 EXPECTED_TOOLS) \u2014 it is now THREE lines in that file, two of them new from the \u00a79 rewrite",
+      "status": "CLOSED by t50 (and t57) \u2014 superseded"
+    },
+    "finalState": {
+      "measuredByMe": {
+        "command": "node evidence/extensions/docs-claims/check-citations.mjs --out=<this evidence dir>/checker-run-t50-closure",
+        "exit": 0,
+        "reading": "12/12 checks passed, 0 failed, 249 citation(s) resolved, 0 pending, 12 illustrative",
+        "perFile": {
+          "docs/extension-authoring-guide.md": "0 unresolved",
+          "docs/extension-authoring-guide.zh-CN.md": "0 unresolved",
+          "EXTENSIONS-FOR-AGENTS.md": "0 unresolved (59 citations, 55 checked)",
+          "docs/extension-adaptation-report.md": "0 unresolved",
+          "docs/extension-adaptation-report.zh-CN.md": "0 unresolved"
+        },
+        "contentAnchors": "46 verified, 0 without a claim",
+        "checkerRevision": "dfe260902b8ec1f1"
+      },
+      "howTheThreeLinesWereClosed": [
+        ":24 \u2014 re-anchored to the declaration's current line with the symbol visible: (`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts:532`) \u2014 T-55 style",
+        ":224 \u2014 the artifact path is GONE as a repo-path token (the sentence names the compiled validator.js entry the packer emits, forming no citation). NOTE: docs-gate-engineer deliberately did NOT use my worked remedy #1 (the illustrative annotation) because t50's acceptance forbade achieving the fix by annotating \u2014 the stricter reading, and correct",
+        ":225 \u2014 the bare `src/` token is GONE (\"when the package's TypeScript sources are absent\"), which reaches my remedy #2's accuracy by dropping the token rather than scoping it to `packages/*/src/`; the scoped form survives one line later where it never tripped the DIR grammar"
+      ],
+      "precisionSentenceKept": "line 232 ('\u2026it does carry other `.ts` files, e.g. the adopted plugin's `lib/types/` declarations') \u2014 the scoping my measurement forced, kept intact",
+      "t57Addition": "five bare :NNN refs in the same file were anchored (safeRegisterTool@521, mpd_ext_list@699, mpd_ext_show@791, mpd_flow_list@914, mpd_flow_show@968), which is why the file's citation count is 59 and the corpus-wide resolution is 249 \u2014 arithmetic (+5 checked), not a recount"
+    }
+  },
+  "checkerDriftDetected": {
+    "detectedAt": "2026-09-17T03:05:44Z",
+    "what": "the checker's hash moved AFTER this task completed; the reviewer pre-registered it and will see a mismatch, so it is reported here rather than left for them to discover",
+    "checker": {
+      "recordedInThisEvidence": "5e56c82c25038b5a78878ad07a2289c7cd4e65324f04d01eacbf60c8dc72de83 (25,530 B, mtime 10:34:53)",
+      "onDiskNow": "969ec5704f515a181278b3fa71d8b9e14361851b335b72e940ed705c41cb9b30",
+      "bytesNow": 29770,
+      "mtimeNow": "2026-09-17 11:04:43"
+    },
+    "helper": {
+      "recorded": "5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976",
+      "onDiskNow": "5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976",
+      "verdict": "UNCHANGED"
+    },
+    "whoWrote": "NOT this lane \u2014 my t47 changedPaths contain no evidence/** path and this task completed before 11:04:43; evidence/extensions/docs-claims/** is t21's in-progress inScope (the file is still `M` in git) and the only other entries under that tree are the run dirs the checker itself writes",
+    "stillTrueUnderTheDriftedRevision": {
+      "reading": "11/12 checks passed, 1 failed, 246 citation(s) resolved, 0 pending, 12 illustrative (exit 1)",
+      "fourFilesUnderRepair": "still 0 unresolved \u2014 none of docs/extension-authoring-guide{,.zh-CN}.md or docs/extension-adaptation-report{,.zh-CN}.md appears in the FAIL list",
+      "remainingFailure": "EXTENSIONS-FOR-AGENTS.md only (3 unresolved: :24 EXPECTED_TOOLS, :224 validator.js artifact path, :225 bare `src/`) \u2014 t50's window, as reported",
+      "command": "node evidence/extensions/docs-claims/check-citations.mjs --out=<this evidence dir>/checker-run-drift",
+      "log": "evidence/extensions/docs-citations-fix/20260917T024119Z/checker-drift.stdout"
+    },
+    "bound": "I cannot show WHAT changed between the two revisions: no copy of my recorded revision was retained (the file is tracked-but-modified, so git HEAD is an older, different state). What is proven is the pair of hashes, the times, the size delta (25,530 \u2192 28,116 B), and that my four files are green under BOTH revisions.",
+    "forTheReviewer": "interpret the checker's mismatch as t21's in-flight edit (11:04:43), not as a t47 regression; the t47 claim survives the drift and the four-file GREEN is reproduced under the new revision",
+    "driftChain": [
+      {
+        "revision": "5e56c82c25038b5a78878ad07a2289c7cd4e65324f04d01eacbf60c8dc72de83",
+        "bytes": 25530,
+        "mtime": "10:34:53",
+        "note": "the revision t47 verified and the reviewer pre-registered"
+      },
+      {
+        "revision": "e332da7013ed828be1bf9806895fb27085f2ca43c2776e4c7d9377396bc64ed8",
+        "bytes": 28116,
+        "mtime": "11:04:43",
+        "note": "my drift sample; re-ran it and the four files were still green"
+      },
+      {
+        "revision": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c",
+        "bytes": 30345,
+        "mtime": "11:07:02",
+        "note": "the reviewer's settled revision (50 s window); THREE revisions inside one window"
+      }
+    ],
+    "finalReadingUnderTheSettledRevision": {
+      "command": "node evidence/extensions/docs-claims/check-citations.mjs --out=<this evidence dir>/checker-run-review",
+      "exit": 0,
+      "reading": "12/12 checks passed, 0 failed, 249 citation(s) resolved, 0 pending, 12 illustrative",
+      "contentAnchors": "46 anchored citation(s) verified, 0 without a content claim (was 40/0 at t47's revision)",
+      "myFourFiles": "all four UNCHANGED since t47 \u2014 verified by re-hashing each against the fileHashes recorded then (1bfcf5b7f3b2 / dc3c9ea60825 / b6f5db6b428a / 85b5f9e415cc)",
+      "residualClosed": "EXTENSIONS-FOR-AGENTS.md is now GREEN too (its three anchors :24/:224/:225 landed after my reading), so nothing remains from either side",
+      "helper": "immutable-output.mjs still the pinned 5b94f4c998836612\u2026"
+    }
+  },
+  "methodAdoptedFromTheReviewer": {
+    "name": "arm-name + verdict SET DIFF between revisions",
+    "what": "characterise a checker drift as a NON-relaxation by diffing the arm-name/verdict sets between the original and current revisions: exactly one line changed (EXTENSIONS-FOR-AGENTS FAIL -> ok), the denominator stayed 12, and content:anchors verifies MORE now (46/0 vs 40/0)",
+    "whyItBeatsMyMethod": "a hash mismatch alone tells you THAT the file moved, never WHICH DIRECTION; the set diff makes 'the checker was not weakened' decidable rather than assumed",
+    "recordedBy": "code-reviewer, evidence/review/t49-recheck/20260917T031527Z/ + their appended o2TriggerFiredReJudgment block",
+    "adoptedHere": true
+  }
+}

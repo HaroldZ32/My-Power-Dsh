@@ -1,0 +1,24 @@
+{
+  "question": "does the checker accept a symbol-first anchor with NO line number?",
+  "arms": {
+    "symbolOnlyPresent": {
+      "anchor": "`alphaSymbol`, `src/probe.ts`",
+      "exitCode": 0,
+      "accepted": true,
+      "reported": "  ok   citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved |   ok   citations:docs/extension-authoring-guide.zh-CN.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved |   ok   citations:E"
+    },
+    "symbolOnlyAbsent": {
+      "anchor": "`gammaSymbol`, `src/probe.ts`",
+      "exitCode": 1,
+      "falsifiable": true,
+      "reported": "  FAIL citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 1 unresolved: doc line 3: the cited file does not contain the claim `gammaSymbol` (src/probe.ts) |   FAIL citations:docs/extension-authoring-guide.zh-CN.md — 1 citation(s) (checked 1: pat"
+    },
+    "lineAnchoredControl": {
+      "anchor": "`alphaSymbol`, `src/probe.ts:2`",
+      "exitCode": 0,
+      "accepted": true,
+      "reported": "  ok   citations:docs/extension-authoring-guide.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved |   ok   citations:docs/extension-authoring-guide.zh-CN.md — 1 citation(s) (checked 1: path 1, dir 0, command 0; pending 0, illustrative 0), 0 unresolved |   ok   citations:E"
+    }
+  }
+}
+[anchor-form] DURABLE: a symbol-only anchor is accepted when the symbol is in the cited file and still fails when it is not

@@ -1,0 +1,8 @@
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  PACKED-MISSING [mpd-team-compact-plugin] - packages/mpd-team-compact-plugin is declared by the packer (PLUGIN_PKGS/MCP_PKGS or the adopted main-code row) but <packed>/packages/mpd-team-compact-plugin is absent - a wholly absent package is the omission shape no per-file rule can see
+  offending packages: mpd-team-compact-plugin
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/control-copy (379 asset files)

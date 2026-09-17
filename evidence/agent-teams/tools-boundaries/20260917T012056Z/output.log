@@ -1,0 +1,61 @@
+[t49] sandbox DSH_HOME=/root/dshProj/my-power-dsh/evidence/agent-teams/tools-boundaries/20260917T012056Z/sandbox/dsh-home HOME=/root/dshProj/my-power-dsh/evidence/agent-teams/tools-boundaries/20260917T012056Z/sandbox/home ws=/root/dshProj/my-power-dsh/evidence/agent-teams/tools-boundaries/20260917T012056Z/sandbox/ws
+[t49] stub listening on 127.0.0.1:41297; booting the headless profile
+[t49] boot exit=0 stubCalls=10
+[t49] assertions {"A1_captain_seat_classified":true,"A2_member_lists_contract_tool":true,"A3_member_does_not_list_approve":true,"A4a_member_log_records_contract_call":true,"A4b_member_log_has_nonerror_result":true,"A5_member_denied_write_tools":true,"A6_contract_result_returned_to_member":true}
+[t49] wrote /root/dshProj/my-power-dsh/evidence/agent-teams/tools-boundaries/20260917T012056Z/result.json ok=true
+{
+  "case": "agent-teams-tools-boundaries-t49-mounted",
+  "startedAt": "2026-09-17T01:23:08.017Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "isolation": {
+    "dshHome": "/root/dshProj/my-power-dsh/evidence/agent-teams/tools-boundaries/20260917T012056Z/sandbox/dsh-home",
+    "runHome": "/root/dshProj/my-power-dsh/evidence/agent-teams/tools-boundaries/20260917T012056Z/sandbox/home",
+    "ws": "/root/dshProj/my-power-dsh/evidence/agent-teams/tools-boundaries/20260917T012056Z/sandbox/ws",
+    "realHomeUntouched": true,
+    "sandboxInsideEvidence": true,
+    "installExit": 0
+  },
+  "stub": {
+    "calls": [
+      {
+        "call": 1,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 2,
+        "seat": "aux",
+        "toolCount": 0,
+        "hasContractTool": false,
+        "hasApproveTool": false,
+        "hasBash": false,
+        "toolResultSnippets": [],
+        "contractResultSeen": false
+      },
+      {
+        "call": 3,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [
+          "Team \"t49-contract-seat-probe\" plan created under /root/dshProj/my-power-dsh/evidence/agent-teams/tools-boundaries/20260917T012056Z/sandbox/ws/.mpd/team/t49-con"
+        ],
+        "contractResultSeen": false
+      },
+      {
+        "call": 4,
+        "seat": "captain",
+        "toolCount": 99,
+        "hasContractTool": true,
+        "hasApproveTool": true,
+        "hasBash": true,
+        "toolResultSnippets": [
+          "Team \"t49-contract-seat-probe\" plan created under /root/dshProj/my-power-dsh/evidence/agent-teams/tools-boundaries/20260917T012056Z/sandbox/ws/.mpd/team/t49-con",
+          "Member \"Architect\" added to the staged roster (deepseek-official/deep

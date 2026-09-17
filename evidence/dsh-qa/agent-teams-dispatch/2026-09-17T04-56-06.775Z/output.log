@@ -1,0 +1,377 @@
+$ /root/.nvm/versions/node/v24.16.0/lib/node_modules/bun/bin/bun.exe /root/dshProj/my-power-dsh/scripts/install-profile.mjs --yes --dsh-home /tmp/mpd-dispatch-aJxAtY --profile mpd-headless --skip-toolchain
+[[exit=0]]
+[install-profile] dshHome=/tmp/mpd-dispatch-aJxAtY profile=mpd-headless write=true
+[install-profile] profileDir=/tmp/mpd-dispatch-aJxAtY/profiles/mpd-headless
+[install-profile] homePatch=/tmp/mpd-dispatch-aJxAtY/cordis.patch.yml
+[install-profile] presets -> /tmp/mpd-dispatch-aJxAtY/.agent-presets/mpd-*
+[install-profile] toolchain missing=false (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 25 (id-target=0, insert=25)
+- insert:
+  - id: mpd-web-compat
+    name: "@mpd-dsh/mpd"
+  - id: mcp-astgrep
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "ast_grep"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/dist/cli.js"
+      env:
+        MPD_AST_GREP_SG_PATH: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/sg"
+      toolCallTimeoutMs: 60000
+  - id: mcp-gitbash
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "git_bash"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-gitbash/dist/cli.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-lsp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "lsp"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-lsp/dist/cli.js"
+        - "mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-codegraph
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "codegraph"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js"
+      env:
+        MPD_CODEGRAPH_BIN: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+      toolCallTimeoutMs: 60000
+  - id: mcp-context7
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "context7"
+      transport: "streamable-http"
+      url: "https://mcp.context7.com/mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-grepapp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "grep_app"
+      transport: "streamable-http"
+      url: "https://mcp.grep.app"
+      toolCallTimeoutMs: 60000
+  - id: mpd-codegraph
+    name: "/root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js"
+    config:
+      autoInit: true
+      initTimeoutMs: 60000
+      binary: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+  - id: mpd-tools
+    name: "/root/dshProj/my-power-dsh/packages/mpd-tools-plugin/dist/index.js"
+    config:
+      writeGuard: true
+      truncateMaxBytes: 8192
+  - id: mpd-modelchain
+    name: "/root/dshProj/my-power-dsh/packages/mpd-modelchain-plugin/dist/index.js"
+  - id: mpd-ulw
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js"
+    config:
+      maxRounds: 3
+  - id: mpd-hashline
+    name: "/root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/dist/index.js"
+    config:
+      guardEditTools: true
+  - id: mpd-boulder
+    name: "/root/dshProj/my-power-dsh/packages/mpd-boulder-plugin/dist/index.js"
+  - id: mpd-dsh-adapter
+    name: "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js"
+  - id: mpd-config
+    name: "/root/dshProj/my-power-dsh/packages/mpd-config-plugin/dist/index.js"
+  - id: mpd-comment-checker
+    name: "/root/dshProj/my-power-dsh/packages/mpd-comment-checker-plugin/dist/index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "/root/dshProj/my-power-dsh/packages/mpd-memory-plugin/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-ext
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js"
+    config:
+      quiet: false
+  - id: mpd-roles
+    name: "/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-workmate
+    name: "/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-team-compact
+    name: "/root/dshProj/my-power-dsh/packages/mpd-team-compact-plugin/dist/index.js"
+  - id: mpd-team-watchdog
+    name: "/root/dshProj/my-power-dsh/packages/mpd-team-watchdog-plugin/dist/index.js"
+    config:
+      stateDir: ".mpd/team"
+      warnSilenceMs: 90000
+      tickIntervalMs: 15000
+      warnStreakToEscalate: 3
+      actionOnEscalate: "pause"
+  - id: mpd-bootstrap
+    name: "/root/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: mpd-tui
+    name: "/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/dist/index.js"
+  - id: agent-teams
+    name: "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/index.js"
+    config:
+      stateDir: ".mpd/team"
+      memberProvider: "spawn"
+      memberMaxDepth: 1
+      maxMembers: 16
+      maxParallelMembers: 8
+      maxMessagesPerRun: 10000
+      maxWallClockMinutes: 120
+      maxMemberTurns: 500
+      messagePayloadMaxBytes: 32768
+      recipientUnreadMaxBytes: 262144
+      mailboxPollIntervalMs: 3000
+      enforcement: "enforce"
+      reclaimStaleAfterMs: 3600000
+      sessionTeamPolicy:
+        mode: "off"
+        autoRoute: true
+        profile: "mpd"
+        presets: ["mpd"]
+        name: "MPD Default"
+        approval: "required"
+      profiles:
+        mpd:
+          description: "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
+          protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match."
+          taskPlanning: captain
+          # fallback.provider is ALWAYS deepseek-official (never the bare
+          # "deepseek" compat-track provider): the original layered design
+          # intended dsh-llm-pi-ai ("deepseek") as the degradation tier, but
+          # that row is OFF by default (install-profile --with-compat-track is
+          # gone) and the harness only registers deepseek-official
+          # (dsh-llm-deepseek), so a "deepseek" fallback would fail with
+          # NO_ADAPTER exactly when the fallback is needed. Models stay
+          # tiers: every member is flash — the five that used to default to
+          # the pro tier (Architect/Planner/Reviewer/Lead/Senior Engineer)
+          # carry an explicit reasoning_effort: max, the highest effort this
+          # deployment exposes (off/low/high/max).
+          members:
+            - name: Architect
+              reasoning_effort: max
+              role: architecture review / deep debugging / self-review
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
+              # Read-only members are MECHANICALLY restricted, not just instructed: these
+              # names are the same seven the one-shot roster path denies
+              # (mpd-roles-plugin / mpd-workmate-plugin READONLY_DENY), carried as profile
+              # data because the adopted plugin cannot import across packages. Without
+              # them a "read-only" member in a team kept write/edit/bash (measured
+              # 2026-09-14: a member's own session ran `pwd` for real).
+
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Researcher
+              role: code / open-source evidence search
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Planner
+              reasoning_effort: max
+              role: planning / task decomposition
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Explorer
+              role: read-only codebase exploration
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Reviewer
+              reasoning_effort: max
+              role: correctness / risk review
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
+            - name: Plan Reviewer
+              role: work-plan QA review / UI-UX critique
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Vision Analyst
+              role: image / diagram analysis
+              provider: deepseek-official
+              model: deepseek-v4-flash-vision-exp
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Lead
+              reasoning_effort: max
+              role: orchestration / integration
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+            - name: Deep Worker
+              role: autonomous goal-driven implementation
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+            - name: Senior Engineer
+              reasoning_effort: max
+              role: primary implementation
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+            - name: Junior Engineer
+              role: small mechanical changes
+              provider: deepseek-official
+              model: deepseek-v4-flash
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+
+[install-profile] wrote profile/ home patch/ presets(1) + web-compat shim @mpd-dsh/mpd
+[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)
+
+
+---
+
+$ dsh --profile mpd-headless AgentTeams dispatch probe. Do exactly this and nothing else:
+1. Call agent_teams_approve for the staged team (the approval is already authorized).
+2. Call agent_teams_create_task for subject DISPATCH-PROBE-A with assignee Planner, no dependencies,
+   description: 'Reply with exactly A-OK in your report, then complete this task immediately with status=completed and output A-OK. Do not run any command.'
+3. Call agent_teams_create_task for subject DISPATCH-PROBE-B with assignee Researcher, dependencies = the returned id of DISPATCH-PROBE-A,
+   description: 'Reply with exactly B-OK in your report, then complete this task immediately with status=completed and output B-OK. Do not run any command.'
+4. Call agent_teams_approve again for the staged team so the two tasks are approved together.
+5. Then keep the process alive while the team works: call the bash tool three times, each time with
+   command `sleep 110` — three SEPARATE calls, do NOT combine them into one command.
+   (headless dsh exits the moment your turn ends, which disposes every member before the
+   scheduler can assign it; the sleeps only hold the process open. Do not poll anyone.)
+6. After the third sleep returns, end your turn. Do not message the members; the scheduler assigns them.
+[[exit=0]]
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-dispatch-aJxAtY/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+**Probe aborted at step 1 — there is no staged team to approve.**
+
+What happened:
+
+1. `agent_teams_approve` → **Error: you are not leading any team yet — call agent_teams_create first**
+2. Confirmed with `agent_teams_status` → **Error: you do not lead or belong to any active team yet**
+
+So nothing is staged in this session: no team, no roster, no plan waiting for review. The premise of the probe ("the staged team") does not hold.
+
+I deliberately stopped rather than improvise, because the remaining steps cannot be salvaged:
+
+- Steps 2–3 (`create_task` for DISPATCH-PROBE-A/B) require a live team; there is none to attach them to, so a dependency-carrying B has no A to reference.
+- Steps 4–6 (second approve, then three `sleep 110` holds) would only hold the process open for members that were never spawned.
+- Reconstructing a team now would not work either: `agent_teams_create` stages a plan, and the protocol forbids approving a plan in the same turn that created it. A create-then-approve probe is impossible inside one turn by design, which is exactly the kind of thing this probe seems meant to expose.
+
+No members were messaged, no sleeps were burned, and nothing was created or modified.
+
+If you want the probe to actually run, tell me which you prefer:
+
+- **(a)** I stage the team now (Planner + Researcher roster, tasks DISPATCH-PROBE-A → DISPATCH-PROBE-B) and you approve it in your next turn (or via Approve & Run); then I execute steps 2–6 against the running team.
+- **(b)** The staged team lives somewhere I can't see (a different session/workspace, or an approval that was discarded) — give me the team id/name and I'll retry step 1 against it.
+dsh: reasoning:
+The user is asking me to do a dispatch probe. There's a staged team, presumably. Let me check the status first? The instruction says: call agent_teams_approve for the staged team (approval already authorized). Then create tasks, then approve again, then three separate sleeps.
+
+Wait — rule 3 says "Never call agent_teams_approve during the planning turn" and only explicit approval may call approve. Here the user explicitly approves in a new user turn ("the approval is already authorized"). So this is legitimate — the user's message is an explicit approval statement.
+
+However, there's a wrinkle: approve twice. The second approve is for "the staged team so the two tasks are approved together". Hmm, after the first approve, the team is running; creating tasks in a running team adds them. A second approve call after approval... it may error or be a no-op. The user explicitly instructs it. Let's just do it as instructed — it's a probe. The approve tool requires "confirmation" string.
+
+Let me check status first to know the team exists. Actually the instruction says do exactly this and nothing else. But a status check might be reasonable to confirm there's a staged team. Rule: "Do exactly this and nothing else". Hmm, but calling create_task requires a team to exist. Let me just proceed with the calls as instructed. Actually, I think a quick status call is harmless and helps, but the user said do exactly this and nothing else. I'll follow instructions literally: approve, create task A, create task B, approve, three sleeps, end turn.
+
+Let me do step 1 and then steps 2/3 which depend on the team existing.
+
+Actually, wait — step 1 and the task creation are dependent (task creation needs the running team). Let me call approve first.
+
+I'll call agent_teams_approve with confirmation = the user's explicit approval statement.
+
+Then create task A, get its id, then create task B with dependency.
+
+Then approve again, then three sleeps of 110s each.
+
+Let me start.
+dsh: reasoning:
+There's no staged team. Hmm. The user assumed a staged team exists. But the probe says "the staged team". There is no team. So I need to create one? The instruction says "Do exactly this and nothing else". But step 1 failed because no team exists.
+
+Options: create a team and stage a plan, then approve... but the instruction was to not do other things. However, without any team the probe cannot proceed. The rule also says: "never infer that a missing or paused team should be recreated." That's about the review UI control message. Hmm — "The review UI injects an authoritative control message for return/discard actions: follow it exactly and never infer that a missing or paused team should be recreated."
+
+So per protocol, I should not invent a team out of nothing based on an assumption. But the user did give an explicit instruction as a dispatch probe. Hmm.
+
+Let me check status to see if there's a team at all.
+
+Actually let me call agent_teams_status to confirm.
+
+The situation: no team is led by me. The user's instructions assume a staged team exists (perhaps from a prior session that was compacted/lost). Since there's no staged team, I cannot approve. The instruction says do exactly this and nothing else. Creating a team would require a profile and additional decisions (roster, plan), which contradicts "nothing else". But arguably the probe is about dispatch; the user wants the team to be created? No — they said the team is staged already.
+
+Best path: report the failure honestly. But maybe I should verify via status first, and maybe create the team minimally so the probe can succeed? Hmm. Let me think about what's most useful.
+
+The user's intent: test whether the dispatch works in headless mode. They believe a staged team exists. If it doesn't, the honest response is to report that agent_teams_approve failed with "you are not leading any team yet — call agent_teams_create first", and ask whether to create one.
+
+But maybe I can make the probe work: create a team with approval=required... no, that stages a plan requiring approval. I could create the team with approval required and then approve it? Rule 3 says never call approve during the planning turn. But the user pre-authorized approval in this turn. Then create tasks, then approve again (which would be a no-op/error after approval).
+
+Hmm, but creating a team requires a roster (members). Without members, tasks assigning Planner/Researcher would be unassigned. The mpd profile has Planner and Researcher members.
+
+Given ambiguity, the safest and most useful action: first check status to be sure there's no team. Then, since the user clearly wants the probe to run, I could create the team... but that deviates from "do exactly this and nothing else" and may contradict "never infer that a missing team should be recreated."
+
+Actually the rule about not recreating a missing team is scoped to "the review UI injects an authoritative control message for return/discard actions". There was no such control message here. So it's about the review UI flow. Here we have an explicit user instruction.
+
+Hmm, but the explicit user instruction presupposes a staged team. The failure is a fact I should surface. Yet the user is doing a "dispatch probe" — a test of the harness. If I just report the error, the probe's purpose (test dispatch) is unfulfilled.
+
+Let me consider: the user says step 4 "Call agent_teams_approve again for the staged team so the two tasks are approved together." That suggests the team is in staged mode and creating tasks in staging, then approving. This is odd: after first approve the team is running, so creating tasks adds them to the running team; a second approve would presumably error.
+
+I think the right move: check status first. If no team, report the blocker and ask. Actually, the harness instructions say: don't detour through chat to ask permission in the sandbox-denial case only. Generally, I should be honest.
+
+But wait — maybe I could do a minimal recovery: create the team via agent_teams_create (name e.g. "dispatch-probe") with approval required, add members Planner and Researcher, then approve... But rule 3 says during the planning turn don't approve. The user authorized approval though. And creating the team requires a "goal" description.
+
+Hmm. The instruction "Do exactly this and nothing else" is strong. Deviating to create a team + members is a lot of extra work. But it's the only way to fulfill the spirit. There's risk either way.
+
+Let me first check status — maybe there IS a team but I'm not the leader (e.g., another team in the workspace). agent_teams_status should show. Let's call it.
+dsh: reasoning:
+Confirmed: no team exists at all. So the premise of the probe is false — there is nothing staged to approve.
+
+What's the best action? The user wants a dispatch probe: verify that members get dispatched, A then B. For that to happen, a team must exist with members Planner and Researcher, and tasks A and B.
+
+Option A: Report blocker, ask user.
+Option B: Reconstruct minimally: create team (approval=required per protocol), add members Planner and Researcher (as staged roster), create tasks A and B staged, then... the user asked to approve. But we're allowed to approve only in response to explicit user approval in a new user turn. This turn is a new user turn with explicit approval. Hmm, "Call this only in response to an explicit user approval in a new user turn; never call it during the turn that created or edited the plan." So if I create the plan in this turn, I cannot approve in the same turn.
+
+That's an explicit prohibition. So Option B's full chain is impossible in a single turn: I'd create the team this turn and could not approve until the next user turn. That means the probe can't complete this turn anyway.
+
+So the correct behavior: report the truth — there is no staged team, so step 1 failed; I can't create-and-approve in the same turn per protocol. Offer to create the staged team now so the user can approve it in their next turn (or with the Web button), and then run the probe.
+
+Hmm, but should I create the team proactively? The user said do exactly this and nothing else. Creating a team would be "something else". But it's the necessary prerequisite that's missing... I think the honest and most helpful move is: report the failure and offer. Maybe also do the harmless minimal thing: create the staged team with the two members and the two tasks so the user can approve next turn? That gives real progress and matches the probe's intent. But it violates "nothing else" and could be seen as inferring a missing team should be recreated.
+
+Actually, rule 3's phrase "never infer that a missing or paused team should be recreated" is in the context of the review UI control messages. But it also expresses a general principle: don't invent a team when none exists. Given the user's explicit instruction set assumed existence, and the fact I cannot approve in this same turn anyway, the safest path is to report and ask.
+
+I'll report: step 1 failed twice-verified; no team exists; I did not proceed to steps 2-6 because create_task requires a team and approve-in-the-same-turn-as-create is prohibited. Offer two paths: (a) I stage the team now with Planner+Researcher and tasks A/B, you approve on the next turn; (b) you tell me the team name if it was created elsewhere.
+
+Wait — step 1 says the approval "is already authorized" — but the tool errored. Since step 1 failed, the rest are moot. I'll keep it concise.
+
+Actually, let me reconsider whether to just do the create now. The user is testing dispatch in headless mode; a probe requires everything this turn. Since I can't approve this turn after creating, the probe simply cannot run this turn. So the answer is: report.
+
+I could offer to create the staged plan immediately (that's the useful prep), but the user said "nothing else". I'll ask before creating, since creating a team is a side-effecting action that the user didn't request (they requested approval of an existing one).
+
+Let me write a concise report.

@@ -1,0 +1,49 @@
+{
+  "task": "t36 (lane B5) \u2014 T-07: a terminal task is never offered to a seat",
+  "attempt": "30f98c39-9935-4547-9496-3be854b4d8d3",
+  "measured_at": "2026-09-17T02:39:02.387499+00:00",
+  "the_route": {
+    "file": "packages/mpd-agent-teams-plugin/lib/scheduler.js",
+    "identified_by_reading": "kickMember composes the ticket INSIDE withTeamLock(...) and delivers it through deliverToMember(...) AFTER that lock is released. Every SELECTION predicate already excludes terminal work: isTaskReady requires pending (mpd-delta ready-task-predicate), ownedOpenTask requires claimed/in_progress, nextCapableTask filters through isTaskReady \u2014 which is exactly why test/s1-s4-semantics.test.mjs:144-150 passes (it tests the PREDICATE).",
+    "fix_region": "mpd-delta terminal-dispatch-recheck (+ mpd-delta terminal-dispatch-import), applied at the delivery boundary"
+  },
+  "red_evidence": {
+    "live_instance": "quoted from the frozen contract: 2026-09-17, Architect was handed the already-completed `t1` and its claim was refused with `task status cannot move from \"completed\" to \"claimed\"`",
+    "acceptance_premise_tested": "'the assertion must FAIL before the fix on a seeded terminal task' \u2014 MEASURED AND REFUTED",
+    "measurement": "raw/red-seeded-probe.mjs runs the seeded-terminal case (completed/failed/cancelled) against the SHIPPED scheduler AND against a copy with the re-check region stripped: deliveries=0 and the record byte-unchanged in BOTH shapes, for all three statuses. The predicates already exclude terminal work, so that assertion passes pre-fix.",
+    "race_reproducibility": "raw/red-probe.mjs runs the compose\u2192deliver race 20x against both shapes: refusalsObserved=0/20 (the in-process harness cannot make the member's completion land before the delivery DECISION: the only awaits between the compose's writeTeam and my re-check are fs promises the test does not own). terminalDeliveries=1/20 in the shipped shape is the probe's own ambiguity \u2014 the stub reads the file AFTER the decision, so a task that became terminal in the microseconds after a legitimate wake is indistinguishable there; the stripped shape read 0/20. BOUND: the race is closed at the route but cannot be steered deterministically in-process, and no in-process reading can witness the pre-fix failure."
+  },
+  "deterministic_pins": [
+    "a READY task still reaches its assignee (positive control; guards against a blanket refusal)",
+    "a seeded terminal task (completed/failed/cancelled) is NEVER delivered and the record stays byte-identical",
+    "a refused OR delivered dispatch never rewrites finished work (status/verdict/attempt preserved)",
+    "both regions are registered in lib/mpd-deltas.js and both live in scheduler.js"
+  ],
+  "gates": {
+    "bun test packages/mpd-agent-teams-plugin": {
+      "exit": 0,
+      "reading": "242 pass / 0 fail / 242, 1998 expect() calls (incl. s1-s4-semantics, dispatch-stall-regression and the 4 new terminal-dispatch cases)"
+    },
+    "node scripts/patch-agent-teams-fixes.mjs --check": {
+      "exit": 0,
+      "reading": "already applied: 73 mpd delta region(s) across 9 adopted file(s)"
+    },
+    "bun run typecheck": {
+      "exit": 0,
+      "reading": "0 errors"
+    }
+  },
+  "hashes": {
+    "packages/mpd-agent-teams-plugin/lib/scheduler.js": "4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "5388c56fe4e9d061dacb5973df411ed7a10a1f1559454b65169148a2f6109e2d",
+    "packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs": "94998c13cbdbc257f4ee6bef1e5f7458915cb1bd177b3f5feb4a120c73737180"
+  },
+  "second_data_loss_vector": {
+    "question_answered": "Is the chosen route the same one `state.js:174` sits behind? YES.",
+    "mechanism": "`lib/scheduler.js` `kickMember`'s compose calls `beginTaskAttempt(task, member)` \u2192 `lib/state.js` `activateTaskAttempt`, which sets `task.status='claimed'`, mints a new `attemptId` AND sets `task.output = undefined` (the line the wave records as L44(a) / t19's second data-loss vector). My delivery-boundary re-check runs AFTER that, so it can prevent the WAKE but never the WIPE.",
+    "measured": "raw/output-wipe-probe.mjs \u2014 one `kickMember` on a task holding `output: \"THE STORED DELIVERABLE (9000 bytes of findings)\"` (status in_progress, attempt 1): after the kick the record reads `output: null`, `attempt: 2`, `status: claimed`, with 1 delivery. DETERMINISTIC, not a race: the compose rotates the attempt on every dispatched ticket.",
+    "consequence": "A stored deliverable is destroyed by any re-dispatch of the task \u2014 including one my own re-check will then REFUSE, because the wipe happens at compose time and the refusal at the delivery boundary. T-46's append guarantee therefore has a second, independent hole that this task does NOT close.",
+    "where_the_fix_belongs": "`lib/state.js` (`activateTaskAttempt`/`beginTaskAttempt`) \u2014 OUTSIDE t36's inScope. Two shapes, both needing their own test: (i) keep `output` when the new attempt belongs to the SAME generation (a re-dispatch of the same owner), or (ii) snapshot `output` before the compose and restore it in the refusal path when the task is terminal and its output is undefined. I did NOT implement either: (ii) inside scheduler.js would be an untestable-in-process repair on a path the race cannot steer, and (i) is another file's contract.",
+    "row": "Already tracked as plan \u00a78 L44(a); this measurement adds that it fires on EVERY composed ticket, not only a completed re-dispatch."
+  }
+}

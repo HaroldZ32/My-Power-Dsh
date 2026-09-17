@@ -1,0 +1,54 @@
+t64 — NON-AUTHOR second reading of the T-43 real-home guard after t62 (measurement only; nothing written outside this directory).
+imported module: packages/mpd-workmate-plugin/dist/index.js
+dist sha256: 5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d  (56585 B, mtime 2026-09-17T03:37:33.924Z)
+src→dist correspondence: verify-dist-fresh 20/20 fresh immediately before the arms
+
+ARMS (HOME set AT PROCESS START — the shape that failed):
+  A1 node expect=ALLOWED                      observed=ALLOWED                      PASS  (the QA-boot shape that FAILED pre-fix: sandbox HOME and DSH_HOME set AT PROCESS START)
+  A2 bun  expect=ALLOWED                      observed=ALLOWED                      PASS  (the runtime where os.homedir() freezes at process start — the compiler of the old bug)
+  A3 node expect=ALLOWED                      observed=ALLOWED                      PASS  (normal session: DSH_HOME unset, the early return must stay untouched)
+  A4 node expect=REFUSED real-home-refused    observed=REFUSED real-home-refused    PASS  (isolated boot whose HOME is the REAL home: the guard must still refuse — a passive guard would mutate the real library)
+  A5 node expect=ALLOWED                      observed=ALLOWED                      PASS  (the documented override still releases the guard (NOT covered by the platform lane's 4x2 pre-flight — stated new coverage))
+  C1 node expect=ALLOWED                      observed=ALLOWED                      PASS  (DISCRIMINATING CONTROL: plain node, HOME repointed to the sandbox AT RUNTIME. Pre-fix this was REFUSED because node's homedir() follows the live env while bun's is frozen; post-fix the passwd entry decides, so a pass here shows the fix does not depend on the freeze quirk)
+
+real library invariant: ~/.mpd/workmate before 33 files digest b764aa195badeeb1e3f376c7ab8f24c15b974c8e5f016de86f16f6ea2d7bda36
+                                    after  33 files digest b764aa195badeeb1e3f376c7ab8f24c15b974c8e5f016de86f16f6ea2d7bda36
+                                    UNCHANGED: true
+
+ALL ARMS PASS: true
+
+=== verifier command (the contract's verify: bun test packages/mpd-workmate-plugin) ===
+
+ 28 pass
+ 0 fail
+ 333 expect() calls
+Ran 28 tests across 4 files. [244.00ms]
+bun test exit=0
+
+=== revision pin, re-read AFTER the arms (nothing rebuilt them) ===
+dist sha256: 5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d
+src  sha256: 63f9c00928aead71231d0c1859edb6d4fd82c569ac1e84586f39de39b41d7559
+dist mtime:  2026-09-17 11:37:33.924036693 +0800
+src  mtime:  2026-09-17 11:37:33.902036146 +0800
+freshness after the arms: [verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 470ms
+
+=== the RED side's bound, stated rather than implied ===
+pre-fix A1 (sandbox HOME at process start, node) was REFUSED and pre-fix C1 (runtime repoint, node) was REFUSED at ~03:23Z against the THEN-current dist (rebuild at 03:37:33Z replaced it).
+Those ad-hoc readings did not pin a dist hash; their corroboration is (a) this seat's t28 ADDENDUM 3, (b) the platform lane's own 4x2 pre-flight (arm A FAIL in both runtimes pre-fix, all 8 rows PASS post-patch on a scratch module).
+
+=== WINDOWED SCOPING OF THE REAL-LIBRARY INVARIANT (appended after platform-engineer's shared-store caveat) ===
+The invariant's two snapshots were taken inside the run that ended 2026-09-17T03:41:08.801Z, i.e. a window of a few seconds — NOT a multi-minute window. Recorded values (see result.json): 33 files, digest b764aa195badeeb1e3f376c7ab8f24c15b974c8e5f016de86f16f6ea2d7bda36 on BOTH sides.
+Peer writes attributable around it, by mtime:
+  inside/adjacent the bracket: code-reviewer 03:41:01.064Z (its reflect) — the digest did NOT move, so either it landed outside the bracket or it rewrote identical bytes
+  after the bracket, outside my window: watchdog-engineer 03:42:54.069Z (this seat's own reflect), docs-gate-engineer + index.json 03:43:19.43Z
+CORRECT READING: the invariant holds for THIS seat's own run window and nothing more. The real library is a SHARED user-level store that peers legitimately write via mpd_workmate_reflect, so a multi-minute before/after comparison would show changes unrelated to the guard (platform-engineer measured exactly that: its 03:28:52Z baseline moved via two peer reflects). A future re-run must scope the check to its own window and additionally assert `find /root/.mpd/workmate -newermt <window start>` is empty inside that window.
+CORRECTION TO THE COMPLETION MESSAGE (not to the evidence): the message to the captain said "same 11 entries, same digest 8b6a4c…" — those two numbers are WRONG in the message; the evidence has always carried the correct 33 entries / b764aa19…. The file is authoritative; the prose was a transcription error and is corrected in a follow-up message.
+
+=== CORRECTION 2 (appended 2026-09-17T03:5xZ): my "A5 = new coverage" claim was WRONG ===
+platform-engineer (the guard's author) corrected it and I verified the three declarations before accepting:
+  evidence/platform/workmate-real-home-guard/20260917T032852Z/guard-arms.mjs  -> ARMS[3] id "D" = sandbox HOME + override -> ALLOWED
+  packages/mpd-workmate-plugin/test/sandbox-guard.test.ts:102                -> { id: "override", label: "sandbox HOME + explicit override -> ALLOWED", expect: "ALLOWED" }
+  packages/mpd-workmate-plugin/test/sandbox-guard.test.ts:120                -> the control table's override row
+So A5 is a RE-READING of a shape already covered by the author's harness, the permanent suite pin, AND the `bun test` run this seat performed (28 pass includes :102).
+The ONLY genuinely new coverage in this task is **C1**, the runtime-HOME-repoint control: it discriminates "the fix decides by the passwd entry" from "the fix merely rides bun's start-frozen os.homedir()", and neither the pre-flight nor the suite arms assert it.
+Also adopted from their note: digest equality is NECESSARY BUT NOT SUFFICIENT - two explanations (write outside the bracket vs identical rewrite) are indistinguishable from a hash; `find <root> -newermt <window start>` emptiness is what decides, which is why the windowed rule above pairs both.

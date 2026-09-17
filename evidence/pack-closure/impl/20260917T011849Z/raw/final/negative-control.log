@@ -1,0 +1,50 @@
+
+===== clean-copy-positive-control (expected 0) =====
+$ node scripts/verify-pack-closure.mjs --packed <copy-of-dist/mpd-package>
+[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/my-power-dsh/evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed (373 asset files)
+[exit=0] (expected exit 0)
+
+===== seed-missing-scaffold-template-manifest (expected 1) =====
+$ node scripts/verify-pack-closure.mjs --packed <copy-of-dist/mpd-package>
+[verify-pack-closure] FAIL - 2 closure violation(s)
+  TEMPLATES - scripts/mpd-ext.mjs scaffold copies <root>/templates/mpd-extension but the packed tree has no templates/mpd-extension/mpd-ext.json — the documented author workflow would have nothing to copy (T-35)
+  TREE-DRIFT - templates/ differs from the source tree - dropped by the pack: mpd-extension/mpd-ext.json; not in the source: (none)
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed (372 asset files)
+[exit=1] (expected exit 1)
+
+===== half-doc-pair (expected 1) =====
+$ node scripts/verify-pack-closure.mjs --packed <copy-of-dist/mpd-package>
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  DOC-PAIR - docs/user-guide.md shipped without its twin user-guide.zh-CN.md — a packed doc pair must never be half (EN + *.zh-CN.md ship together)
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed (372 asset files)
+[exit=1] (expected exit 1)
+
+===== manifest-drops-templates (expected 1) =====
+$ node scripts/verify-pack-closure.mjs --packed <copy-of-dist/mpd-package>
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  MANIFEST - <packed>/templates is in the artifact but no `files` pattern covers it — present but unlisted is a closure failure
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed (373 asset files)
+[exit=1] (expected exit 1)
+
+===== packed-validator-entry-missing (expected 1) =====
+$ node scripts/verify-pack-closure.mjs --packed <copy-of-dist/mpd-package>
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  CLI-VALIDATOR - the packed tree ships scripts/mpd-ext.mjs but no packages/mpd-ext-plugin/dist/validator.js — validate/scaffold/--self-test would all die on the missing validator (T-51)
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed (373 asset files)
+[exit=1] (expected exit 1)

@@ -1,0 +1,178 @@
+{
+  "purpose": "Refresh of the pre-claim pin set while the tail is blocked on t21 (sixth stale dispatch received; nothing claimable). Lets each pending review detect drift between the pin and its claim time.",
+  "takenAt": "20260917T032339Z",
+  "blockedOn": "t21 in_progress -> blocks t54 (frozen citation re-judge), t26, t24 -> t29 -> t30, and t32",
+  "t54_citation": {
+    "checker": {
+      "path": "evidence/extensions/docs-claims/check-citations.mjs",
+      "sha256": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c",
+      "mtime": "2026-09-17T03:07:02Z"
+    },
+    "helper": {
+      "path": "skills/dsh-qa/scripts/lib/immutable-output.mjs",
+      "sha256": "5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976"
+    },
+    "fourDocs": {
+      "docs/extension-authoring-guide.md": "1bfcf5b7f3b2ba7d41fea75ce685585da8f7fede29afb00d67bf0f9fdb097c80",
+      "docs/extension-authoring-guide.zh-CN.md": "dc3c9ea60825959fdb96cd832d31c69b936cfc59bf70f3d27ddb6ffd0b853c35",
+      "docs/extension-adaptation-report.md": "b6f5db6b428a64550182c091d68e27668ff0f0c3c775e4b291b50b4faf3a2ef0",
+      "docs/extension-adaptation-report.zh-CN.md": "85b5f9e415cc405b2c6f81ea04f5684c2eca6cbec178a09ab2b77e6f404e3549"
+    },
+    "fifthSubject": {
+      "path": "EXTENSIONS-FOR-AGENTS.md",
+      "sha256": "9a157363a16bfeab78837b73e07405306694c1e365c14001c06709fda3430bdb"
+    },
+    "myLastReJudgment": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c -> 12/12 passed, 0 failed, 249 citations resolved"
+  },
+  "t30_watchdog": {
+    "frozenContract": {
+      "path": ".mpd/plans/watchdog-redesign-contract.md",
+      "sha256": "2550a3f8623e69fedafe495cb4362b2dacf4fd8bd656ba43070c076d0a73f18a"
+    },
+    "pluginSrc": {
+      "path": "packages/mpd-team-watchdog-plugin/src",
+      "fileCount": 12,
+      "treeSha256": "28b14107b81a29e100af4c76a415a0e6c8c47bfc0a2f7f9bee478e6f405ce77a"
+    },
+    "pluginTests": {
+      "path": "packages/mpd-team-watchdog-plugin/test",
+      "fileCount": 14,
+      "treeSha256": "46adaf81e1e4b6b63a43228bdcb6b6656dc6de85957fa6ab3e7b170008c870da"
+    },
+    "faultLaneScript": {
+      "path": "skills/dsh-qa/scripts/team-watchdog-fault.mjs",
+      "sha256": "a5d91a75d0e8ca287e686bfd0811559fe94c1ce3b9e5fd01588e00c94f9a9188"
+    },
+    "note": "my t31 observation O1 (fault lane red vs plugin suite 127/0) is still open; t29 is the task that owns that reading"
+  },
+  "t32_qa": {
+    "advisory": true,
+    "runner": {
+      "path": "scripts/run-qa-lanes.mjs",
+      "sha256": "f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e"
+    },
+    "manifest": {
+      "path": "skills/dsh-qa/cases.json",
+      "sha256": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86"
+    },
+    "helper": {
+      "path": "skills/dsh-qa/scripts/lib/immutable-output.mjs",
+      "sha256": "5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976"
+    },
+    "provenanceCarry": "runner f60ef2b5... vs the author-recorded d90dc10b... - demand provenance at claim"
+  },
+  "driftVsEarlierPinSet_20260917T025642Z": "none",
+  "t30_moduleAgeBound": {
+    "measuredAt": "20260917T033108Z",
+    "command": "node scripts/mpd-bg.mjs reload-check packages/mpd-agent-teams-plugin/<file>",
+    "reproduced": "the captain's split is confirmed by my own run",
+    "restartRequired": [
+      "lib/scheduler.js",
+      "lib/mpd-deltas.js",
+      "lib/quality-gates.js",
+      "lib/tool-names.js"
+    ],
+    "fresh": [
+      "lib/tools.js",
+      "lib/state.js",
+      "lib/members.js",
+      "lib/capabilities.js"
+    ],
+    "perFile": {
+      "lib/scheduler.js": {
+        "exit": 1,
+        "verdict": "RESTART-REQUIRED"
+      },
+      "lib/mpd-deltas.js": {
+        "exit": 1,
+        "verdict": "RESTART-REQUIRED"
+      },
+      "lib/quality-gates.js": {
+        "exit": 1,
+        "verdict": "RESTART-REQUIRED"
+      },
+      "lib/tool-names.js": {
+        "exit": 1,
+        "verdict": "RESTART-REQUIRED"
+      },
+      "lib/tools.js": {
+        "exit": 0,
+        "verdict": "FRESH"
+      },
+      "lib/state.js": {
+        "exit": 0,
+        "verdict": "FRESH"
+      },
+      "lib/members.js": {
+        "exit": 0,
+        "verdict": "FRESH"
+      },
+      "lib/capabilities.js": {
+        "exit": 0,
+        "verdict": "FRESH"
+      }
+    },
+    "boundForT30": "the long-running session serves pre-fix bytes for the RESTART-REQUIRED files (scheduler dispatch, registry reads, gate enforcement, the read-only name list), so any \"measured live\" claim about them in the lane-A evidence means ROUTE EXERCISED IN A FRESH PROCESS, never observed in this session; t30 must state that bound rather than absorb it.",
+    "t30_precondition": "t59 decided lane A's fault-lane red is a STALE LANE EXPECTATION (report-only fallback because the fixture supplies no member ids / fold events) \u2014 not an engine regression; lane A must not be read as verified while that lane is red, and the missing reading (a fold-path escalation case) belongs to the lane repair in t21's window."
+  },
+  "t54_procedure": {
+    "guidance": "per the captain: the drift pair in the description is HISTORY; the operative requirements are (1) re-measure BOTH hashes at verdict time and (4) bind the verdict to the hashes measured at THIS run, void on any later checker edit.",
+    "claimTimeSteps": [
+      "sha256 the checker + helper in the claim moment and quote the pair",
+      "run: node evidence/extensions/docs-claims/check-citations.mjs --out=<t54 evidence dir>/checker-run (never bare: a bare run writes a fresh runs/ dir into t21's tree)",
+      "read the per-file lines for the four docs/extension-* files and EXTENSIONS-FOR-AGENTS.md; re-judge the green",
+      "diff the arm-name+verdict sets against my dfe26090... run to characterise the drift direction (not a bare size/hash compare)",
+      "re-run verify:docs (pairs=37) and recompute the heading trees with my own fence-stripped code (guide 10/10, report 15/15)",
+      "settle-check the checker hash after a ~50 s window and bind the verdict to that reading"
+    ],
+    "lastObservedRevision": {
+      "at": "20260917T033305Z",
+      "checker": "dfe260902b8ec1f1e8f0858126ea5466c0915563fbd231a898179f28c66da65c",
+      "checkerMtime": "2026-09-17T03:07:02Z",
+      "helper": "5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976",
+      "note": "advisory until t21 goes terminal"
+    }
+  },
+  "t32_midFlightSnapshots": [
+    {
+      "at": "20260917T033402Z",
+      "note": "advisory only - t32 must re-take at claim time per the captain/O2",
+      "subjects": {
+        "runner": {
+          "path": "scripts/run-qa-lanes.mjs",
+          "sha256": "f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e",
+          "bytes": 38564,
+          "mtime": "2026-09-17T01:49:38Z"
+        },
+        "manifest": {
+          "path": "skills/dsh-qa/cases.json",
+          "sha256": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86",
+          "bytes": 14164,
+          "mtime": "2026-09-17T01:18:55Z"
+        },
+        "helper": {
+          "path": "skills/dsh-qa/scripts/lib/immutable-output.mjs",
+          "sha256": "5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976",
+          "bytes": 4823,
+          "mtime": "2026-09-17T02:33:29Z"
+        },
+        "workmateLibrary": {
+          "path": "skills/dsh-qa/scripts/workmate-library.mjs",
+          "sha256": "f0ec4a325af9844ea37157c3c8cf0c97ae8fcd4e734c4061b797136c3a8cd1c7",
+          "bytes": 16464,
+          "mtime": "2026-09-17T03:18:29Z"
+        }
+      }
+    }
+  ],
+  "sharedStateMeasurementBound": {
+    "source": "captain, from the t62 guard repair",
+    "bound": "the real ~/.mpd/workmate is a SHARED user-level store that peers legitimately write (mpd_workmate_reflect), so a wall-clock before/after digest can go stale for reasons unrelated to the run. Scope any such invariant to the OPERATION WINDOW: `find <store> -newermt <window-start>` must be empty plus a before/after digest taken INSIDE the window. The t62 repair proved passivity that way while its own 26-minute-old baseline had already moved.",
+    "appliesTo": [
+      "t30",
+      "t32",
+      "any verdict touching ~/.mpd/workmate or other shared user-level state"
+    ],
+    "recordedAt": "20260917T034231Z"
+  }
+}

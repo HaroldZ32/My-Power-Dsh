@@ -1,0 +1,88 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86",
+  "suite": "(only)",
+  "selected": 2,
+  "startedAt": "2026-09-17T01:52:44.278Z",
+  "finishedAt": "2026-09-17T01:54:53.228Z",
+  "durationMs": 128950,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "mount-assert",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 501,
+      "command": "bun skills/dsh-qa/scripts/mount-assert.mjs --no-skip --expect=name: '@deepseek-ai/dsh-llm'",
+      "script": "skills/dsh-qa/scripts/mount-assert.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/mount-assert/2026-09-17T01-52-44.769Z",
+      "logPath": "evidence/dsh-qa/suite-runner/2026-09-17T01-52-44.275Z/lanes/mount-assert.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "agent-teams-adopt",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "unauthorized",
+      "note": "the lane's own output/evidence records this failure — the service answered and refused",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 128436,
+      "command": "bun skills/dsh-qa/scripts/agent-teams-adopt.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "marker": null,
+      "signature": {
+        "code": "unauthorized",
+        "label": "HTTP 401 / unauthorized route",
+        "file": "(the lane's own stdout)",
+        "line": 11
+      },
+      "alsoDetected": [
+        {
+          "code": "absent-credentials",
+          "file": "evidence/plan-c/c1-team/2026-09-17T01-52-44.868Z/output.log",
+          "line": 869
+        }
+      ],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/plan-c/c1-team/2026-09-17T01-52-44.868Z/web.log",
+      "logPath": "evidence/dsh-qa/suite-runner/2026-09-17T01-52-44.275Z/lanes/agent-teams-adopt.log",
+      "outputTail": [
+        "  live: {\"ok\":false,\"exit\":1}",
+        "  teamState: {\"ok\":false,\"teamIds\":[],\"inbox\":[],\"teamJson\":[]}",
+        "  archive: {\"ok\":false,\"archiveIds\":[]}",
+        "  taskTerminal: {\"ok\":false,\"tasks\":0,\"taskTerminal\":false}",
+        "  webInstaller: {\"ok\":true,\"exit\":0}",
+        "  webRoute: {\"ok\":false,\"status\":401,\"body\":\"{\\\"error\\\":\\\"unauthorized\\\"}\",\"webLog\":\"/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T01-52-44.868Z/web.log\"}"
+      ],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 1
+  },
+  "exitCode": 1
+}

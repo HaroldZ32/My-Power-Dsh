@@ -1,0 +1,67 @@
+### t12 verification — 20260917T012724Z
+
+### verify 1/3: bun test packages/mpd-dsh-adapter-plugin
+(pass) lazy mpdDsh resolution (T-50) > REAL vendored cordis: the sibling-apply window exists and the SAME facade crosses it [4.26ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+
+ 42 pass
+ 0 fail
+ 137 expect() calls
+Ran 42 tests across 2 files. [722.00ms]
+
+### verify 2/3: bun test packages/mpd-ext-plugin
+packages/mpd-ext-plugin/test/mcp.test.ts:
+
+ 74 pass
+ 0 fail
+ 560 expect() calls
+Ran 74 tests across 6 files. [2.32s]
+
+### verify 3/3: bun test packages/mpd-roles-plugin
+packages/mpd-roles-plugin/test/roles.test.ts:
+
+ 31 pass
+ 0 fail
+ 485 expect() calls
+Ran 31 tests across 4 files. [224.00ms]
+
+### verify 4/4 (extra): bun run typecheck
+$ tsgo --noEmit
+typecheck exit=0
+
+### T-55 rider check: symbols cited, no surviving line pointers in the canonical block
+76: * (`defaultTimeoutMs`, declared by `createDshAdapter(…, { defaultTimeoutMs })`, so tool calls
+78: * per-agent compaction-engine memo, `engineCache`). It does NOT double the tree's
+bare-line-pointer survivors (expect none):
+(none)
+
+### acceptance-4 inventory: consumers of the eager idiom
+packages/mpd-bootstrap-plugin/src/index.ts:412
+packages/mpd-boulder-plugin/src/index.ts:47
+packages/mpd-codegraph-plugin/src/index.ts:121
+packages/mpd-comment-checker-plugin/src/index.ts:101
+packages/mpd-config-plugin/src/index.ts:151
+packages/mpd-ext-plugin/src/index.ts:65
+packages/mpd-hashline-plugin/src/index.ts:94
+packages/mpd-memory-plugin/src/index.ts:140
+packages/mpd-modelchain-plugin/src/index.ts:88
+packages/mpd-qa-roles-probe/src/index.ts:28
+packages/mpd-team-compact-plugin/src/index.ts:448
+packages/mpd-tools-plugin/src/index.ts:16
+packages/mpd-ulw-plugin/src/index.ts:97
+packages/mpd-workmate-plugin/src/index.ts:497
+(mpd-ext/mpd-roles above are COMMENT lines; their code now calls createLazyDshAdapter)
+
+### stale-dist handoff check (t40)
+0ebad6573abac96a5e0599208ba1d948c5e6ff315b5f47671ebfe82939acba55  packages/mpd-ext-plugin/dist/index.js
+22595b921903286873855185bbf05a5a06aba8d80201eadcb036d174d4778deb  packages/mpd-roles-plugin/dist/index.js
+createLazyDshAdapter in ext dist: 0
+createLazyDshAdapter in roles dist: 0
+ADAPTER FALLBACK still in STALE ext dist (why its marker test passes): 1
+
+### changed src hashes
+62f3ac1e66c6e45807434fb0bfbc22d4282c1f007188a37dd7618de7b326ad7b  packages/mpd-dsh-adapter-plugin/src/index.ts
+b17a1c6a57167085d030501d83bce88871c6e4d72d74516ab4d9eb1e90a9e974  packages/mpd-dsh-adapter-plugin/test/adapter.test.ts
+a5167018d25a3544894380ba9d8a3f34c73effe9742e32d44b6a181e310e2fb8  packages/mpd-ext-plugin/src/index.ts
+0ecd4ea33e7b6ce065da887dfc70d9795d43f8b11d489fbc6a46b32671fe64ab  packages/mpd-roles-plugin/src/index.ts

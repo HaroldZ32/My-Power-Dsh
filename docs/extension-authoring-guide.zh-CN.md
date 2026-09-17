@@ -63,7 +63,7 @@
    它就能读你的用户能读的任何文件，包括凭证文件。白名单阻止的是**环境变量**层面的意外泄漏，它不是
    沙箱。
 2. **作者声明的密钥就是真实密钥。** 你写进清单 `env` 的任何内容，在磁盘上的清单里都是可读的。
-   `mpd_ext_show` 会抹掉**值**（键仍可见，`redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:659`），所以
+   `mpd_ext_show` 会抹掉**值**（键仍可见，`redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:643`），所以
    会话日志里的工具结果不会泄漏它们——但文件本身没有加密，你写下来的值就是你要负责的值。
 3. **文件系统信任。** 安装一个扩展就意味着执行一个你或别人提供的 stdio 服务器。这里没有签名、没有
    沙箱命名空间、没有 seccomp 配置、没有能力裁剪。
@@ -87,7 +87,7 @@ v1 没有重新加载工具：**重启就是重新加载**（`"No reload"`, `doc
 | `skills` | 项目 | **每次调用**，从调用会话的工作区解析 | 不需要 |
 | `flows` | 项目 | **每次调用** | 不需要 |
 | `skills`、`flows` | user、bundle | 在 **apply** 时发现 | 需要 |
-| `mcp` | user、bundle | 扩展在 apply 时被发现，服务器也在 **apply 时连接**——并行、受 `connectTimeoutMs` 限时、绝不惰性（`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1062`） | 需要 |
+| `mcp` | user、bundle | 扩展在 apply 时被发现，服务器也在 **apply 时连接**——并行、受 `connectTimeoutMs` 限时、绝不惰性（`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1046`） | 需要 |
 | `roles` | user、bundle | 声明在 apply 时被发现；角色本身由名册平面**每次调用**解析，并重新读取 persona 文本（`extensionRoles`, `packages/mpd-roles-plugin/src/index.ts:225-292`） | 新增或改名需要；只改 persona 正文不需要 |
 
 三个值得记住的推论：
@@ -113,6 +113,10 @@ bun scripts/mpd-ext.mjs scaffold my-extension --dir ~/.mpd/extensions
 # B. 或者你自己拷贝——它就是一个普通目录
 cp -r templates/mpd-extension ~/.mpd/extensions/my-extension
 ```
+
+上面两条命令都假定你在检出目录里。若用的是已安装（打包）的 bundle，同一个 CLI 就在包内——在 profile <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
+目录下运行 `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs <command>`——而 §7 精确说明了这样的产物
+携带什么、以及仍存在哪一条边界。
 
 然后走每个扩展都要走的同样五步：
 
@@ -187,15 +191,25 @@ bun skills/dsh-qa/scripts/extension-template.mjs
 - **给别人、且不在 bundle 内：** 直接把目录交出去（打个压缩包也行）。这里没有注册表、没有版本求解、
   没有依赖图：接收方放进去、校验、重启。
 
-有一条已测量的限制专门针对**打包**产物：打包器只交付 `packages/<pkg>/dist`，不交付 `src`
-（`cpDist`, `scripts/pack-mpd.mjs:67-77`），而开发者 CLI 从 `src` 导入校验器
-（`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:35`），因此在 `dist/mpd-package/` 内
-每一个 CLI 入口都以
-`Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'` 退出 1——`validate` 在 checkout 中
-可用、在那里不可用，而且即使还原了 `src`，`scaffold` 仍会因为 `templates/` 未被一起打包而失败。这是
-已测量的结论，并已在撰写本指南的那个 wave 中记录、引用，且**未**修复
-（`evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json`；记录为
-`.mpd/TODO.md` T-51）。
+自 2026-09-17 的打包变更起，打包产物就是**面向作者**的，因此这些命令在那里同样可用。打包器会交付
+脚手架模板（`templates/mpd-extension`，T-35）、带 EN + `*.zh-CN.md` 配对的 `docs/` 文档集
+（T-36/T-45）、按需查阅的 `agent-references/`（`troubleshooting.md`——症状 → 原因/修复对照表——加上
+采纳插件的 delta 登记册与其索引），以及一个**已编译的校验器入口**：
+<!-- citation-check: illustrative: a pack-time artifact emitted by the packer into the artifact, not a repo path -->
+（`packages/mpd-ext-plugin/dist/validator.js`，打包时由已交付的 bundle 生成）；当 TypeScript 源码不存在时，
+`scripts/mpd-ext.mjs` 会回退到它（T-51）。在刚打包出的 `dist/mpd-package/` 内实测：
+
+```bash
+bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example   # 退出 0
+bun scripts/mpd-ext.mjs scaffold my-extension --dir /tmp/demo # 退出 0 —— 复制打包进来的模板
+node scripts/mpd-ext.mjs --self-test                          # 退出 0 —— 已编译入口不需要 TS 加载器
+bun scripts/mpd-ext.mjs --validator                           # 本次运行实际加载了哪个校验器、来自哪里
+```
+
+已安装的 bundle 带有同一个 CLI：在 profile 目录下运行 <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
+`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs validate <dir>`。诚实的边界：检出目录中的运行从 `src`
+校验（规则是活的、无需构建步骤），因此**源码**改动在产物内要等下一次 `npm run pack` 才可见——判断打包 CLI
+之前请先重新打包。
 
 v1 中**不存在**、因此不要围绕它做规划的东西：`mpd_ext_reload`、YAML 流程、MCP resources/prompts、
 图形面板、应用市场或远程下载、由扩展贡献的 agent preset，以及扩展角色成为 agent-teams 队友。

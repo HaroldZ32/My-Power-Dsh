@@ -1,0 +1,26 @@
+[check-relative-links] root=/root/dshProj/my-power-dsh/evidence/packaging/t70-root-file/20260917T040100Z/scratch-artifact
+[check-relative-links] markdown files scanned: 291; relative links seen: 449
+[check-relative-links] links to EXTENSIONS-FOR-AGENTS.md: 10 (resolving: 10, broken: 0)
+  OK     README.md -> ./EXTENSIONS-FOR-AGENTS.md
+  OK     README.md -> ./EXTENSIONS-FOR-AGENTS.md
+  OK     README.zh-CN.md -> ./EXTENSIONS-FOR-AGENTS.md
+  OK     README.zh-CN.md -> ./EXTENSIONS-FOR-AGENTS.md
+  OK     docs/extension-authoring-guide.md -> ../EXTENSIONS-FOR-AGENTS.md
+  OK     docs/extension-authoring-guide.md -> ../EXTENSIONS-FOR-AGENTS.md
+  OK     docs/extension-authoring-guide.zh-CN.md -> ../EXTENSIONS-FOR-AGENTS.md
+  OK     docs/extension-authoring-guide.zh-CN.md -> ../EXTENSIONS-FOR-AGENTS.md
+  OK     docs/index.md -> ../EXTENSIONS-FOR-AGENTS.md
+  OK     docs/index.zh-CN.md -> ../EXTENSIONS-FOR-AGENTS.md
+[check-relative-links] broken relative links of ANY target in this tree: 34
+  broken: README.md -> ./AGENTS.md
+  broken: README.zh-CN.md -> ./AGENTS.md
+  broken: docs/extension-authoring-guide.md -> ../templates/mpd-extension
+  broken: docs/extension-authoring-guide.zh-CN.md -> ../templates/mpd-extension
+  broken: docs/index.md -> ../AGENTS.md
+  broken: docs/index.md -> ../extensions/mpd-ext-example
+  broken: docs/index.zh-CN.md -> ../AGENTS.md
+  broken: docs/index.zh-CN.md -> ../extensions/mpd-ext-example
+  broken: extensions/README.md -> ./mpd-ext-example
+  broken: extensions/README.zh-CN.md -> ./mpd-ext-example
+  broken: packages/mpd-agent-teams-plugin/README.md -> ./docs/quality-gates.md
+  broken: packages/mpd-agent-teams-plugin/README.md -> ./docs/usage.md

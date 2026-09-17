@@ -31,34 +31,79 @@
 // lists (never a duplicated copy of them) and never invokes the packer.
 // `scripts/pack-mpd.mjs` is READ-ONLY for the whole wave; this file only reads it.
 //
+// TWO HALVES (2026-09-17, lane E of the friction wave):
+//   * STATIC — the checker above, over the packer source, the bundle patch and the repo tree.
+//     It now also asserts the packer's ROOT_ASSET_DIRS table (the flipped T-35 arm: `templates`
+//     and `docs` MUST be declared and MUST exist, see below — the third group the user's
+//     decision names, `agent-references`, MUST be declared too and its three named files MUST be
+//     in the source tree) and that the packer's VALIDATOR_SHIM_EXPORTS list is exactly the CLI's
+//     REQUIRED_COMPILED_EXPORTS list.
+//   * PACKED — when `dist/mpd-package/` exists (or `--packed <dir>` is given) it ALSO checks the
+//     artifact itself: every declared root asset arrived non-empty, the scaffold template root
+//     the CLI hard-codes arrived with its manifest, `docs/`+`templates/`+`agent-references/`
+//     match the source set file for file (a dropped doc, a HALF pair, or an invented file is a
+//     failure), the three named reference files are present, the packed manifest's
+//     `files`/`exports` agree with what is on disk, and the CLI's compiled validator entry is
+//     there. `--require-packed` turns an absent artifact into a failure instead of a printed skip.
+//
+// FLIPPED ARM (captain-visible history): until this wave the checker asserted the OPPOSITE —
+// that no `templates` path literal appeared in the packer ("the generic template must never be
+// packed", with a negative control that seeded one to prove the assertion discriminated). The
+// user decision of 2026-09-17 (ship templates + docs) inverts the invariant, so the arm now
+// REQUIRES the declaration instead of forbidding it, and `scripts/pack-mpd.mjs` +
+// `scripts/verify-pack-closure.mjs` were flipped in ONE change by the same writer — a half-flip
+// would leave the tree red between commits (raised as t6 finding F1).
+//
 // Gate story: `node scripts/verify-pack-closure.mjs` (exit 0 = closed) and
 // `node scripts/verify-pack-closure.mjs --self-test` (both arms: a positive control
 // on the real tree and negative controls that replay the historical defect on a TEMP
 // fixture, so the checker's falsifiability is proven without touching the real packer).
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const SELF = fileURLToPath(import.meta.url)
 const repoRoot = dirname(dirname(SELF))
 const DEFAULT_PACKER = join(repoRoot, "scripts", "pack-mpd.mjs")
+const DEFAULT_CLI = join(repoRoot, "scripts", "mpd-ext.mjs")
 const DEFAULT_PACKAGES_DIR = join(repoRoot, "packages")
 const DEFAULT_PATCH = join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml")
+const DEFAULT_PACKED = join(repoRoot, "dist", "mpd-package")
 const PREFIX = "[verify-pack-closure]"
+
+// The asset classes a PACKED install needs to be author-facing, as decided 2026-09-17:
+// `templates` (T-35), `docs` (T-36/T-45) and the ON-DEMAND agent `agent-references`
+// (captain's t11 addition, after t16 moved the manual's bulk there). Named here as the groups
+// that must never silently vanish again; `skills`/`presets`/`extensions` are asserted the same
+// way but were never absent.
+const REQUIRED_ROOT_ASSETS = ["templates", "docs", "agent-references"]
+// Finding kind per group. The templates/docs decision arm keeps the "TEMPLATES" kind its
+// evidence block and self-test arm cite (the flipped arm — see the header), while the reference
+// group reports "REFERENCES" so a missing author-critical file is never read as a template
+// problem. An unknown group falls back to "ASSET-MISSING".
+const ROOT_ASSET_KIND = { templates: "TEMPLATES", docs: "TEMPLATES", "agent-references": "REFERENCES" }
+// The three files an external author needs when a boot misbehaves or when they touch the adopted
+// plugin (AGENTS.md's on-demand Reference Index). Named because "the directory arrived" is not
+// the claim — these files are. English-only: no *.zh-CN.md twin belongs in this group, and
+// `bun run verify:docs` does not discover the tree (measured: pairs unchanged).
+const REQUIRED_REFERENCE_FILES = ["index.md", "troubleshooting.md", "agent-teams-deltas.md"]
+// Root FILES that must ship by NAME (not by directory). Same shape as the reference list above
+// and for a sharper reason: the manifest arm below is DECLARATION-DRIVEN — a file present but
+// unlisted is loud, a pattern listed but absent is loud, and a file declared NOWHERE is invisible
+// by construction. A `files[]` entry alone would therefore make a future REMOVAL loud but never a
+// future ADDITION-omission, which is exactly the shape that shipped an artifact whose own README,
+// docs/index.md and extension authoring guide linked by relative path to a file it did not carry
+// (T-70: ten such links across six shipped files). This list is the source-side expectation, and
+// `scripts/pack-mpd.mjs` carries the matching ROOT_FILES table the static half compares it to.
+const REQUIRED_ROOT_FILES = ["EXTENSIONS-FOR-AGENTS.md"]
+const ROOT_FILE_KIND = "ROOT-FILE"
 
 // Package path references of the bundle patch, in both spellings it uses:
 // `@mpd-dsh/mpd/packages/<pkg>/<rel>` and the CLI form
 // `node_modules/@mpd-dsh/mpd/packages/<pkg>/<rel>`.
 const PATH_REF_RE = /mpd\/packages\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._/-]+)/g
-
-// A quoted path literal that would put a `templates` directory into the packed tree:
-// matches "templates", "templates/<x>", "<x>/templates" and "<x>/templates/<y>".
-// Measured trap: an earlier `templates/` (with a mandatory slash) form missed the
-// realistic spelling `join(repoRoot, "templates", "mpd-extension")`, where the quoted
-// segment is just "templates" — the falsifier for this assertion is arm 6.
-const TEMPLATE_PATH_RE = /["'`]([^"'`]*\/)?templates(\/[^"'`]*)?["'`]/
 
 // Mini-lexer over ONE `const <NAME> = [ … ]` literal: returns its double-quoted
 // entries plus the span of the literal. Comments (`// …`) and single-quoted/backtick
@@ -115,6 +160,42 @@ function readPackageList(src, constName) {
   return span.entries.filter((s) => s.length > 0)
 }
 
+/** Every file below `root`, as sorted `/`-separated paths. Absent root = []. */
+function treeFiles(root) {
+  const out = []
+  const walk = (dir, prefix) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const child = prefix === "" ? entry.name : prefix + "/" + entry.name
+      if (entry.isDirectory()) walk(join(dir, entry.name), child)
+      else if (entry.isFile()) out.push(child)
+    }
+  }
+  if (existsSync(root)) walk(root, "")
+  return out.sort()
+}
+
+/** `a/b.zh-CN.md` <-> `a/b.md`; undefined for a file that carries no language suffix rule. */
+function twinName(file) {
+  if (file.endsWith(".zh-CN.md")) return file.slice(0, -".zh-CN.md".length) + ".md"
+  if (file.endsWith(".md")) return file.slice(0, -".md".length) + ".zh-CN.md"
+  return undefined
+}
+
+/**
+ * The scaffold template the CLI copies, DERIVED from its source instead of hard-coded here:
+ * `scripts/mpd-ext.mjs` declares `const TEMPLATE_DIR = join(repoRoot, "<a>", "<b>")` and
+ * `const MANIFEST_FILE = sdk.MPD_EXT_CONTRACT.manifestFile`, and the SDK names the file
+ * through a constant. Null = the shape changed, which is a FINDING (never a guess).
+ */
+function resolveCliTemplate(cliSrc, sdkSrc) {
+  const dir = /const\s+TEMPLATE_DIR\s*=\s*join\(repoRoot,\s*"([^"]+)",\s*"([^"]+)"\)/.exec(cliSrc)
+  const ref = /manifestFile:\s*([A-Za-z0-9_]+)/.exec(sdkSrc)
+  if (dir === null || ref === null) return null
+  const file = new RegExp("const\\s+" + ref[1] + "\\s*=\\s*\"([^\"]+)\"").exec(sdkSrc)
+  if (file === null) return null
+  return { segments: [dir[1], dir[2]], manifestFile: file[1] }
+}
+
 // Reference class of a patch row, keyed on the FILE the row mounts:
 //   A  `dist/index.js` — a built plugin package: MUST be in PLUGIN_PKGS ∪ MCP_PKGS.
 //   B  `lib/index.js`  — adopted main code copied wholesale (no dist/): the package
@@ -134,6 +215,177 @@ function patchPackageRefs(patchText) {
     if (!refs.has(key)) refs.set(key, { pkg: m[1], rel: m[2] })
   }
   return [...refs.values()].sort((a, b) => (a.pkg + "|" + a.rel).localeCompare(b.pkg + "|" + b.rel))
+}
+
+/**
+ * The PACKED half: does the artifact actually carry what the static half says it must? Every
+ * rule here is per-FILE, so a violation names the file — the omission class this wave closes
+ * (`npm run pack` exits 0 while the tree silently lacks an asset) can never be a summary line
+ * again. Pushes findings into the caller's array; returns the stats it measured.
+ */
+function checkPackedHalf(opts, findings, asked) {
+  const packed = opts.packedDir
+  const stats = { packedDir: packed, packed: "skipped", rootAssets: [], template: asked.template, files: 0, referenceFiles: 0, rootFiles: 0, packedPackages: { present: 0, declared: 0 } }
+  if (!existsSync(packed)) {
+    if (opts.requirePacked) {
+      findings.push({ kind: "PACKED-MISSING", packages: [], detail: "no packed tree at " + packed + " and --require-packed was given: run `npm run pack` first" })
+      stats.packed = "missing (required)"
+    } else {
+      stats.packed = "skipped: " + packed + " does not exist (run `npm run pack`)"
+    }
+    return stats
+  }
+  stats.packed = "checked"
+  stats.rootAssets = asked.rootAssets
+
+  // 1. every declared root asset really arrived — and arrived non-empty.
+  for (const dir of asked.rootAssets) {
+    const target = join(packed, dir)
+    const files = treeFiles(target)
+    if (!existsSync(target)) {
+      findings.push({ kind: "ASSET-MISSING", packages: [], detail: "ROOT_ASSET_DIRS declares <root>/" + dir + " but the packed tree has no " + target })
+    } else if (files.length === 0) {
+      findings.push({ kind: "ASSET-MISSING", packages: [], detail: "ROOT_ASSET_DIRS declares <root>/" + dir + " but the packed copy is EMPTY" })
+    }
+    stats.files += files.length
+  }
+
+  // 2. the scaffold template root (derived from the CLI) arrived WITH its manifest: without it
+  //    `scaffold` has nothing to copy, which is exactly T-35.
+  if (asked.template !== null) {
+    const rel = asked.template.segments.join("/")
+    const packedManifest = join(packed, ...asked.template.segments, asked.template.manifestFile)
+    if (!existsSync(packedManifest)) {
+      findings.push({ kind: "TEMPLATES", packages: [], detail: "scripts/mpd-ext.mjs scaffold copies <root>/" + rel + " but the packed tree has no " + relative(packed, packedManifest) + " — the documented author workflow would have nothing to copy (T-35)" })
+    }
+  }
+
+  // 3. docs/ + templates/ + agent-references/: the packed set must EQUAL the source set, file for
+  //    file. A HALF pair (a doc whose zh-CN twin exists in the source and did not ship) is
+  //    reported as such, because that is the failure mode a selective copy produces (T-36/T-45).
+  for (const rel of ["docs", "templates", "agent-references"]) {
+    const source = treeFiles(join(opts.sourceRoot, rel))
+    const shipped = treeFiles(join(packed, rel))
+    if (source.length === 0 && shipped.length === 0) continue
+    const missing = source.filter((file) => !shipped.includes(file))
+    const extra = shipped.filter((file) => !source.includes(file))
+    const half = missing.filter((file) => {
+      const twin = twinName(file)
+      return twin !== undefined && shipped.includes(twin)
+    })
+    for (const file of half) {
+      const twin = twinName(file)
+      findings.push({ kind: "DOC-PAIR", packages: [], detail: rel + "/" + twin + " shipped without its twin " + file + " — a packed doc pair must never be half (EN + *.zh-CN.md ship together)" })
+    }
+    const dropped = missing.filter((file) => !half.includes(file))
+    if (dropped.length > 0 || extra.length > 0) {
+      findings.push({
+        kind: "TREE-DRIFT",
+        packages: [],
+        detail: rel + "/ differs from the source tree - dropped by the pack: " + (dropped.slice(0, 6).join(", ") || "(none)") + "; not in the source: " + (extra.slice(0, 6).join(", ") || "(none)") + (dropped.length + extra.length > 12 ? " (+" + (dropped.length + extra.length - 12) + " more)" : ""),
+      })
+    }
+  }
+
+  // 4. the packed manifest's `files` list against the real tree: a file present but unlisted is
+  //    not published, a pattern listed but absent is a lie about the artifact.
+  const manifestPath = join(packed, "package.json")
+  let manifest = null
+  if (!existsSync(manifestPath)) {
+    findings.push({ kind: "MANIFEST", packages: [], detail: "the packed tree has no package.json — the artifact is not an installable package" })
+  } else {
+    try {
+      manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
+    } catch (error) {
+      findings.push({ kind: "MANIFEST", packages: [], detail: "the packed package.json is not parseable: " + String(error?.message ?? error) })
+    }
+  }
+  if (manifest !== null) {
+    const patterns = Array.isArray(manifest.files) ? manifest.files.filter((p) => typeof p === "string") : []
+    if (patterns.length === 0) findings.push({ kind: "MANIFEST", packages: [], detail: "the packed manifest declares no `files` list — npm would publish whatever it defaults to, not what this checker verified" })
+    const topOf = (pattern) => (pattern.endsWith("/**") ? pattern.slice(0, -3) : pattern).split("/")[0]
+    for (const entry of readdirSync(packed).sort()) {
+      if (entry === "package.json") continue // npm always includes it, listed or not
+      if (!patterns.some((pattern) => topOf(pattern) === entry)) {
+        findings.push({ kind: "MANIFEST", packages: [], detail: "<packed>/" + entry + " is in the artifact but no `files` pattern covers it — present but unlisted is a closure failure" })
+      }
+    }
+    for (const pattern of patterns) {
+      const top = topOf(pattern)
+      if (top.length === 0 || top.includes("*")) {
+        findings.push({ kind: "MANIFEST", packages: [], detail: "the `files` pattern " + pattern + " has no concrete top-level entry to check — refusing to treat an unverifiable pattern as closed" })
+        continue
+      }
+      const target = join(packed, top)
+      if (!existsSync(target)) {
+        findings.push({ kind: "MANIFEST", packages: [], detail: "the packed manifest lists `" + pattern + "` but <packed>/" + top + " is absent — listed but absent is a closure failure" })
+      } else if (pattern.endsWith("/**") && treeFiles(target).length === 0) {
+        findings.push({ kind: "MANIFEST", packages: [], detail: "the packed manifest lists `" + pattern + "` but <packed>/" + top + " is EMPTY" })
+      }
+    }
+    const exported = manifest.exports !== null && typeof manifest.exports === "object" ? manifest.exports : {}
+    for (const dir of asked.rootAssets) {
+      if (!("./" + dir + "/*" in exported)) {
+        findings.push({ kind: "MANIFEST", packages: [], detail: "the packed manifest exports no `./" + dir + "/*` — <packed>/" + dir + " ships but is not addressable like skills/ and presets/ (the asset + its declaration ship together, plan §1.9 rule)" })
+      }
+    }
+  }
+
+  // 5. the named agent references: the group being non-empty is not the claim, these files are.
+  for (const file of REQUIRED_REFERENCE_FILES) {
+    const rel = "agent-references/" + file
+    if (!existsSync(join(packed, rel))) {
+      findings.push({ kind: "REFERENCES", packages: [], detail: "the packed tree does not carry " + rel + " - an external author loses the reference the artifact is supposed to be self-sufficient for" })
+    }
+  }
+  stats.referenceFiles = REQUIRED_REFERENCE_FILES.filter((file) => existsSync(join(packed, "agent-references", file))).length
+
+  // 5b. the named ROOT FILES: existence AND byte equality against the tree the packer copies from.
+  // Existence alone is not the claim — a packed copy that differs from its source is the same class
+  // of failure (the artifact would ship bytes no reading was taken on). The list lives in the GATE
+  // rather than being derived from the packer, precisely because a file nobody declared has to be
+  // expected from the source side before the artifact can be asked for it (T-70).
+  for (const file of REQUIRED_ROOT_FILES) {
+    const packedFile = join(packed, file)
+    const sourceFile = join(opts.sourceRoot, file)
+    if (!existsSync(packedFile)) {
+      findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed tree does not carry " + file + " - the artifact's own README/docs link to it by relative path, so those links break for an author who holds only the artifact (T-70)" })
+      continue
+    }
+    if (existsSync(sourceFile) && !readFileSync(packedFile).equals(readFileSync(sourceFile))) {
+      findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed " + file + " differs byte-wise from " + sourceFile + " - the artifact would ship bytes no reading was taken on" })
+    }
+  }
+  stats.rootFiles = REQUIRED_ROOT_FILES.filter((file) => existsSync(join(packed, file))).length
+
+  // 5c. EVERY DECLARED PACKAGE DIRECTORY must be present in the artifact with at least one file.
+  // The static half asserts these entries against the SOURCE, and every other packed rule is
+  // per-FILE — so a package that never arrives at all produces no row anywhere: the manifest arm
+  // only checks that `<packed>/packages` exists (a `files` pattern's top-level entry), and the
+  // per-file rules have nothing to walk. Measured with a seeded control (T-70 finding 2): a copy
+  // of the artifact with one declared PLUGIN_PKG removed left this checker exiting 0 while its own
+  // verdict line still asserted "18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist". That sentence is
+  // SOURCE-rooted; this block is the product-side half that makes the omission loud.
+  const declaredPkgs = [...new Set([...(asked.pluginPkgs ?? []), ...(asked.mcpPkgs ?? []), ...(asked.adoptedPkgs ?? [])])]
+  let packedPkgsPresent = 0
+  for (const pkg of declaredPkgs) {
+    const dir = join(packed, "packages", pkg)
+    const files = existsSync(dir) ? treeFiles(dir) : []
+    if (files.length === 0) {
+      findings.push({ kind: "PACKED-MISSING", packages: [pkg], detail: "packages/" + pkg + " is declared by the packer (PLUGIN_PKGS/MCP_PKGS or the adopted main-code row) but <packed>/packages/" + pkg + " is " + (existsSync(dir) ? "EMPTY" : "absent") + " - a wholly absent package is the omission shape no per-file rule can see" })
+    } else {
+      packedPkgsPresent += 1
+    }
+  }
+  stats.packedPackages = { present: packedPkgsPresent, declared: declaredPkgs.length }
+
+  // 6. the CLI's compiled validator entry: without it every packed CLI command dies with
+  //    `Cannot find module …/src/registry.ts` (T-51) while `npm run pack` still exits 0.
+  const validatorEntry = join(packed, "packages", "mpd-ext-plugin", "dist", "validator.js")
+  if (!existsSync(validatorEntry)) {
+    findings.push({ kind: "CLI-VALIDATOR", packages: [], detail: "the packed tree ships scripts/mpd-ext.mjs but no " + relative(packed, validatorEntry) + " — validate/scaffold/--self-test would all die on the missing validator (T-51)" })
+  }
+  return stats
 }
 
 // Pure comparison over explicit inputs, so `--self-test` can drive it at a fixture.
@@ -202,17 +454,76 @@ function runCheck(opts) {
     }
   }
 
-  // Static assertion: the generic template must stay OUT of the packed tree.
-  for (const pkg of [...listed].sort()) {
-    if (/(^|\/)templates(\/|$)/.test(pkg)) {
-      findings.push({ kind: "TEMPLATES", packages: [pkg], detail: "the packer's allowlist names `" + pkg + "` - the generic template must never be packed" })
+  // Root-asset contract (the FLIPPED T-35 arm): the packer must DECLARE the root assets a
+  // packed install needs and they must exist in the source tree it copies from. The old
+  // invariant here was the opposite ("no `templates` path literal"); the user decision of
+  // 2026-09-17 ships templates + docs, so the assertion follows the decision and the packer
+  // was flipped in the same change.
+  const rootAssets = readPackageList(packerSrc, "ROOT_ASSET_DIRS")
+  if (rootAssets === null) {
+    findings.push({ kind: "PARSE", packages: [], detail: "no `const ROOT_ASSET_DIRS = [` literal in " + opts.packerPath + " - the root-asset contract is gone, refusing to report PASS" })
+  }
+  const assets = rootAssets ?? []
+  for (const required of REQUIRED_ROOT_ASSETS) {
+    if (!assets.includes(required)) {
+      findings.push({ kind: ROOT_ASSET_KIND[required] ?? "ASSET-MISSING", packages: [], detail: "the packer's ROOT_ASSET_DIRS does not name `" + required + "` - a packed install would silently lose it (user decision 2026-09-17: templates/ AND docs/ ship; captain's addition: agent-references/ ships)" })
     }
   }
-  packerSrc.split(/\r?\n/).forEach((line, i) => {
-    if (TEMPLATE_PATH_RE.test(line)) {
-      findings.push({ kind: "TEMPLATES", packages: [], detail: opts.packerPath + ":" + (i + 1) + " carries a `templates` path literal - the generic template must never be packed" })
+  for (const dir of assets) {
+    if (!existsSync(join(opts.sourceRoot, dir))) {
+      findings.push({ kind: "ASSET-MISSING", packages: [], detail: "ROOT_ASSET_DIRS names `" + dir + "` but " + join(opts.sourceRoot, dir) + " does not exist" })
     }
-  })
+  }
+  // The reference FILES, not just the directory: an author whose boot misbehaves needs
+  // troubleshooting.md specifically (and the adopted-plugin delta registry specifically).
+  for (const file of REQUIRED_REFERENCE_FILES) {
+    if (!existsSync(join(opts.sourceRoot, "agent-references", file))) {
+      findings.push({ kind: "REFERENCES", packages: [], detail: "the packed artifact must ship agent-references/" + file + " (an external author needs it) but the source tree has no such file" })
+    }
+  }
+  // The named ROOT FILES, source side. Two assertions, because the artifact-side one cannot run
+  // without a packed tree: (a) the packer's ROOT_FILES table must NAME each file — this is the ONLY
+  // check that fires when the file is declared nowhere, since the manifest arm and the packed arm
+  // both reason over what the packer already decided to ship; (b) the file must exist in the tree
+  // the packer copies from (T-70).
+  const rootFiles = readPackageList(packerSrc, "ROOT_FILES")
+  if (rootFiles === null) {
+    findings.push({ kind: "PARSE", packages: [], detail: "no `const ROOT_FILES = [` literal in " + opts.packerPath + " - the named-root-file contract is gone, refusing to report PASS" })
+  }
+  for (const file of REQUIRED_ROOT_FILES) {
+    if (rootFiles !== null && !rootFiles.includes(file)) {
+      findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packer's ROOT_FILES does not name `" + file + "` - the artifact would omit it while its own shipped README/docs link to it by relative path (T-70)" })
+    }
+    if (!existsSync(join(opts.sourceRoot, file))) {
+      findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the artifact must ship " + file + " but the tree it copies from has no such file" })
+    }
+  }
+
+  // The packed CLI's validator surface: the packer's shim list IS the CLI's requirement list.
+  // Two hand-kept lists cannot be allowed to drift — the CLI would load a shim that misses a
+  // binding and only the packed artifact would notice (T-51).
+  const cliSrc = readFileSync(opts.cliPath, "utf8")
+  const sdkSrc = readFileSync(join(opts.sourceRoot, "packages", "mpd-ext-plugin", "src", "sdk.ts"), "utf8")
+  const template = resolveCliTemplate(cliSrc, sdkSrc)
+  if (template === null) {
+    findings.push({ kind: "PARSE", packages: [], detail: "cannot resolve the scaffold template from " + opts.cliPath + " (TEMPLATE_DIR join) and the SDK (manifestFile) - refusing to check the packed scaffold asset against a guess" })
+  }
+  const requiredExports = readPackageList(cliSrc, "REQUIRED_COMPILED_EXPORTS")
+  const shimExports = readPackageList(packerSrc, "VALIDATOR_SHIM_EXPORTS")
+  if (requiredExports === null || shimExports === null) {
+    findings.push({ kind: "PARSE", packages: [], detail: "no REQUIRED_COMPILED_EXPORTS (" + opts.cliPath + ") or VALIDATOR_SHIM_EXPORTS (" + opts.packerPath + ") array literal - the compiled-validator contract is gone, refusing to report PASS" })
+  } else {
+    if (requiredExports.length < 8) {
+      findings.push({ kind: "CLI-VALIDATOR", packages: [], detail: "the CLI requires only " + requiredExports.length + " compiled exports - a degenerate list would let a shim pass that cannot serve the commands" })
+    }
+    const want = [...requiredExports].sort()
+    const got = [...shimExports].sort()
+    if (want.join("\u0000") !== got.join("\u0000")) {
+      const onlyCli = want.filter((n) => !got.includes(n))
+      const onlyPacker = got.filter((n) => !want.includes(n))
+      findings.push({ kind: "CLI-VALIDATOR", packages: [], detail: "scripts/mpd-ext.mjs REQUIRED_COMPILED_EXPORTS and scripts/pack-mpd.mjs VALIDATOR_SHIM_EXPORTS disagree - only in the CLI: " + (onlyCli.join(", ") || "(none)") + "; only in the packer: " + (onlyPacker.join(", ") || "(none)") })
+    }
+  }
 
   const stats = {
     pluginCount: plugin.length,
@@ -220,8 +531,17 @@ function runCheck(opts) {
     refCount: refs.length,
     classA: refs.filter((r) => classifyRef(r.rel) === "A").length,
     classB: refs.filter((r) => classifyRef(r.rel) === "B").length,
-    classC: refs.filter((r) => classifyRef(r.rel) === "C").length
+    classC: refs.filter((r) => classifyRef(r.rel) === "C").length,
+    rootAssets: assets,
+    shimExports: shimExports ?? [],
+    template
   }
+  // The adopted main-code packages the bundle patch mounts as class B (no dist/, copied
+  // wholesale by the packer). Derived from the patch rows — the same source the static half
+  // classifies from — so the packed-package assertion below covers PLUGIN_PKGS, MCP_PKGS and the
+  // adopted package in one pass (T-70 finding 2).
+  const adopted = [...new Set(refs.filter((r) => classifyRef(r.rel) === "B").map((r) => r.pkg))]
+  stats.packedStats = checkPackedHalf(opts, findings, { rootAssets: assets, template, pluginPkgs: plugin, mcpPkgs: mcp, adoptedPkgs: adopted })
   return { findings, stats }
 }
 
@@ -230,9 +550,10 @@ function offendingPackages(findings) {
 }
 
 function printReport(report, opts) {
+  const s = report.stats
+  const packedLine = "packed tree: " + (s.packedStats.packed === "checked" ? report.stats.packedStats.packedDir + " (" + report.stats.packedStats.files + " asset files)" : s.packedStats.packed)
   if (report.findings.length === 0) {
-    const s = report.stats
-    console.log(PREFIX + " ok: " + s.classA + " dist/index.js row(s) + " + s.classB + " adopted lib/index.js row(s) + " + s.classC + " mcp row(s) of the bundle patch all resolve; " + s.pluginCount + " PLUGIN_PKGS + " + s.mcpCount + " MCP_PKGS entries all exist; allowlist carries no templates/ entry")
+    console.log(PREFIX + " ok: " + s.classA + " dist/index.js row(s) + " + s.classB + " adopted lib/index.js row(s) + " + s.classC + " mcp row(s) of the bundle patch all resolve; " + s.pluginCount + " PLUGIN_PKGS + " + s.mcpCount + " MCP_PKGS entries all exist; root assets " + s.rootAssets.join("/") + " declared and present; CLI validator surface " + s.shimExports.length + " exports in step; " + packedLine + (s.packedStats.packed === "checked" ? "; agent references " + s.packedStats.referenceFiles + "/" + REQUIRED_REFERENCE_FILES.length + "; root files " + s.packedStats.rootFiles + "/" + REQUIRED_ROOT_FILES.length + "; declared packages " + s.packedStats.packedPackages.present + "/" + s.packedStats.packedPackages.declared + " present in the artifact" : ""))
     return
   }
   console.error(PREFIX + " FAIL - " + report.findings.length + " closure violation(s)")
@@ -243,24 +564,33 @@ function printReport(report, opts) {
   const bad = offendingPackages(report.findings)
   if (bad.length) console.error("  offending packages: " + bad.join(", "))
   console.error("  packer: " + opts.packerPath)
+  console.error("  cli: " + opts.cliPath)
   console.error("  packages dir: " + opts.packagesDir)
   console.error("  patch: " + opts.patchPath)
+  console.error("  " + packedLine)
 }
 
 function printUsage() {
-  console.log("usage: node scripts/verify-pack-closure.mjs [--self-test] [--packer <path>] [--packages-dir <dir>] [--patch <path>]")
-  console.log("  no flags        check the real tree (exit 0 = the packer's allowlist is closed)")
+  console.log("usage: node scripts/verify-pack-closure.mjs [--self-test] [--packer <path>] [--cli <path>] [--packages-dir <dir>] [--patch <path>] [--packed <dir>] [--source-root <dir>] [--require-packed]")
+  console.log("  no flags        check the real tree AND the real dist/mpd-package/ artifact (exit 0 = closed)")
   console.log("  --self-test     run the positive control and the negative controls on TEMP fixtures")
+  console.log("  --packed <dir>  check another packed tree (default " + DEFAULT_PACKED + ")")
+  console.log("  --source-root <dir>  the tree the assets are copied FROM (default the repo root)")
+  console.log("  --require-packed     treat an absent packed tree as a failure instead of a printed skip")
 }
 
 function parseArgs(argv) {
-  const opts = { selfTest: false, packerPath: DEFAULT_PACKER, packagesDir: DEFAULT_PACKAGES_DIR, patchPath: DEFAULT_PATCH }
+  const opts = { selfTest: false, packerPath: DEFAULT_PACKER, cliPath: DEFAULT_CLI, packagesDir: DEFAULT_PACKAGES_DIR, patchPath: DEFAULT_PATCH, packedDir: DEFAULT_PACKED, sourceRoot: repoRoot, requirePacked: false }
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === "--self-test") opts.selfTest = true
     else if (a === "--packer") opts.packerPath = resolve(argv[++i] ?? "")
+    else if (a === "--cli") opts.cliPath = resolve(argv[++i] ?? "")
     else if (a === "--packages-dir") opts.packagesDir = resolve(argv[++i] ?? "")
     else if (a === "--patch") opts.patchPath = resolve(argv[++i] ?? "")
+    else if (a === "--packed") opts.packedDir = resolve(argv[++i] ?? "")
+    else if (a === "--source-root") opts.sourceRoot = resolve(argv[++i] ?? "")
+    else if (a === "--require-packed") opts.requirePacked = true
     else if (a === "--help" || a === "-h") { printUsage(); process.exit(0) }
     else { console.error(PREFIX + " FAIL - unknown argument: " + a); printUsage(); process.exit(2) }
   }
@@ -338,11 +668,184 @@ function selfTest() {
       writeFileSync(f3, original.slice(0, span.start) + "[]" + original.slice(span.end + 1))
       arm("negative-control (zero-subject degraded run, exit 1)", runChecker(["--packer", f3]), (c) => c.status === 1 && c.all.includes("DEGRADED"))
     }
-    // Arm 6 — negative control: the templates/ static assertion must discriminate. Add
-    // a path literal that would pack the generic template, and require the TEMPLATES arm.
-    const f6 = join(scratch, "packer-referencing-templates.mjs")
-    writeFileSync(f6, original.replace("const MCP_PKGS =", 'const PACKED_TEMPLATE_ROOT = join(repoRoot, "templates", "mpd-extension")\nconst MCP_PKGS ='))
-    arm("negative-control (templates path literal, exit 1)", runChecker(["--packer", f6]), (c) => c.status === 1 && c.all.includes("TEMPLATES") && /templates/.test(c.all))
+    // Arm 6 — negative control for the FLIPPED templates/docs arm: a packer whose
+    // ROOT_ASSET_DIRS table drops `templates` must fail, naming the asset. (Before this wave
+    // the same arm proved the OPPOSITE assertion — that a templates literal was forbidden.)
+    const lines6 = original.split(/\r?\n/)
+    const kept6 = lines6.filter((l) => l.trim() !== '"templates",')
+    if (kept6.length !== lines6.length - 1) {
+      arms.push({ name: "negative-control fixture 6 (build)", ok: false, exitCode: null, firstLine: "fixture build removed " + (lines6.length - kept6.length) + " line(s), expected exactly 1 - refusing to trust a fixture that silently did not apply" })
+    } else {
+      const f6 = join(scratch, "packer-without-templates.mjs")
+      writeFileSync(f6, kept6.join("\n"))
+      arm("negative-control (ROOT_ASSET_DIRS drops templates, exit 1)", runChecker(["--packer", f6]), (c) => c.status === 1 && c.all.includes("TEMPLATES") && /does not name `templates`/.test(c.all))
+    }
+
+    // Arm 7 — negative control: the compiled-validator contract. Drop one name from the
+    // packer's shim list; the checker must name the drift instead of trusting two hand-kept
+    // lists to stay equal.
+    const lines7 = original.split(/\r?\n/)
+    const kept7 = lines7.filter((l) => l.trim() !== '"bundleExtensionsDir",')
+    if (kept7.length !== lines7.length - 1) {
+      arms.push({ name: "negative-control fixture 7 (build)", ok: false, exitCode: null, firstLine: "fixture build removed " + (lines7.length - kept7.length) + " line(s), expected exactly 1 - refusing to trust a fixture that silently did not apply" })
+    } else {
+      const f7 = join(scratch, "packer-with-shim-drift.mjs")
+      writeFileSync(f7, kept7.join("\n"))
+      arm("negative-control (shim list drifts from the CLI, exit 1)", runChecker(["--packer", f7]), (c) => c.status === 1 && c.all.includes("CLI-VALIDATOR") && /bundleExtensionsDir/.test(c.all))
+    }
+
+    // ── Arms 8+ — the PACKED half, driven at a fixture artifact ────────────────────────────
+    // The rules under test read a packed tree, so the fixtures build a minimal source tree and
+    // a minimal packed tree with the SAME shape (the asset dirs come from the real packer's own
+    // ROOT_ASSET_DIRS table, so a future asset is covered by these arms automatically).
+    const assets = readPackageList(original, "ROOT_ASSET_DIRS") ?? []
+    const rootFiles = readPackageList(original, "ROOT_FILES") ?? []
+    // The declared package set the packed-package arm asserts against — read from the same three
+    // sources the production halves read: the packer's two lists and the patch's class-B rows.
+    const pluginPkgs = readPackageList(original, "PLUGIN_PKGS") ?? []
+    const mcpPkgs = readPackageList(original, "MCP_PKGS") ?? []
+    const adoptedPkgs = [...new Set(patchPackageRefs(readFileSync(DEFAULT_PATCH, "utf8")).filter((r) => classifyRef(r.rel) === "B").map((r) => r.pkg))]
+    const fixturePkgs = [...new Set([...pluginPkgs, ...mcpPkgs, ...adoptedPkgs])]
+    const fxSource = join(scratch, "fixture-repo")
+    const fxPacked = join(scratch, "fixture-packed")
+    const put = (root, rel, body) => {
+      mkdirSync(dirname(join(root, rel)), { recursive: true })
+      writeFileSync(join(root, rel), body)
+    }
+    const manifestBody = () =>
+      JSON.stringify(
+        {
+          name: "@mpd-dsh/mpd",
+          version: "0.0.0",
+          type: "module",
+          exports: { "./packages/*": "./packages/*", ...Object.fromEntries(assets.map((dir) => ["./" + dir + "/*", "./" + dir + "/*"])) },
+          files: [...assets.map((dir) => dir + "/**"), "packages/**", ...rootFiles],
+        },
+        null,
+        2,
+      )
+    const buildPacked = () => {
+      put(fxPacked, "package.json", manifestBody())
+      for (const dir of assets) put(fxPacked, dir + "/.keep", "")
+      for (const f of rootFiles) put(fxPacked, f, "# fixture root file\n")
+      for (const pkg of fixturePkgs) put(fxPacked, "packages/" + pkg + "/" + (adoptedPkgs.includes(pkg) ? "lib/index.js" : "dist/index.js"), "export {}\n")
+      put(fxPacked, "templates/mpd-extension/mpd-ext.json", "{}\n")
+      put(fxPacked, "templates/mpd-extension/README.md", "# fixture template\n")
+      put(fxPacked, "docs/guide.md", "# guide\n")
+      put(fxPacked, "docs/guide.zh-CN.md", "# 指南\n")
+      for (const file of REQUIRED_REFERENCE_FILES) put(fxPacked, "agent-references/" + file, "# fixture reference\n")
+      put(fxPacked, "packages/mpd-ext-plugin/dist/validator.js", "export {}\n")
+    }
+    put(fxSource, "scripts/mpd-ext.mjs", readFileSync(DEFAULT_CLI, "utf8"))
+    put(fxSource, "packages/mpd-ext-plugin/src/sdk.ts", readFileSync(join(repoRoot, "packages", "mpd-ext-plugin", "src", "sdk.ts"), "utf8"))
+    for (const dir of assets) put(fxSource, dir + "/.keep", "")
+    for (const f of rootFiles) put(fxSource, f, "# fixture root file\n")
+    put(fxSource, "templates/mpd-extension/mpd-ext.json", "{}\n")
+    put(fxSource, "templates/mpd-extension/README.md", "# fixture template\n")
+    put(fxSource, "docs/guide.md", "# guide\n")
+    put(fxSource, "docs/guide.zh-CN.md", "# 指南\n")
+    for (const file of REQUIRED_REFERENCE_FILES) put(fxSource, "agent-references/" + file, "# fixture reference\n")
+    buildPacked()
+    const fixtureArgs = ["--source-root", fxSource, "--packed", fxPacked]
+
+    arm("positive-control (fixture packed tree, exit 0)", runChecker(fixtureArgs), (c) => c.status === 0 && /packed tree: .*fixture-packed/.test(c.all))
+
+    const zhGuide = join(fxPacked, "docs", "guide.zh-CN.md")
+    const zhBody = readFileSync(zhGuide, "utf8")
+    rmSync(zhGuide)
+    arm("negative-control (half doc pair, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes("DOC-PAIR") && c.all.includes("guide.zh-CN.md"))
+    writeFileSync(zhGuide, zhBody)
+
+    const tplManifest = join(fxPacked, "templates", "mpd-extension", "mpd-ext.json")
+    const tplBody = readFileSync(tplManifest, "utf8")
+    rmSync(tplManifest)
+    arm("negative-control (packed scaffold template manifest gone, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes("TEMPLATES") && c.all.includes("mpd-ext.json"))
+    writeFileSync(tplManifest, tplBody)
+
+    put(fxPacked, "package.json", manifestBody().replace('"packages/**"', '"packages/**",\n          "notes/**"'))
+    arm("negative-control (files pattern listed but absent, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes("MANIFEST") && /notes\/\*\*/.test(c.all))
+    put(fxPacked, "package.json", manifestBody())
+
+    put(fxPacked, "extra/thing.md", "# unlisted\n")
+    arm("negative-control (file present but unlisted, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes("MANIFEST") && /<packed>\/extra is in the artifact but no `files` pattern covers it/.test(c.all))
+    rmSync(join(fxPacked, "extra"), { recursive: true, force: true })
+
+    rmSync(join(fxPacked, "packages", "mpd-ext-plugin", "dist", "validator.js"))
+    arm("negative-control (packed validator entry gone, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes("CLI-VALIDATOR") && c.all.includes("validator.js"))
+    buildPacked()
+
+    // Arm 8 — negative control for the reference group: a packer whose ROOT_ASSET_DIRS table
+    // drops `agent-references` must fail, naming the group (captain's t16 addition to this lane).
+    const lines8 = original.split(/\r?\n/)
+    const kept8 = lines8.filter((l) => l.trim() !== '"agent-references",')
+    if (kept8.length !== lines8.length - 1) {
+      arms.push({ name: "negative-control fixture 8 (build)", ok: false, exitCode: null, firstLine: "fixture build removed " + (lines8.length - kept8.length) + " line(s), expected exactly 1 - refusing to trust a fixture that silently did not apply" })
+    } else {
+      const f8 = join(scratch, "packer-without-agent-references.mjs")
+      writeFileSync(f8, kept8.join("\n"))
+      arm("negative-control (ROOT_ASSET_DIRS drops agent-references, exit 1)", runChecker(["--packer", f8]), (c) => c.status === 1 && c.all.includes("REFERENCES") && /does not name `agent-references`/.test(c.all))
+    }
+
+    // Arm 9 — packed-tree negative control: one NAMED reference file missing from the artifact.
+    const refFile = join(fxPacked, "agent-references", "troubleshooting.md")
+    const refBody = readFileSync(refFile, "utf8")
+    rmSync(refFile)
+    arm("negative-control (packed reference file gone, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes("REFERENCES") && c.all.includes("troubleshooting.md"))
+    writeFileSync(refFile, refBody)
+
+    // Arm 10 — source-side negative control: the named reference file absent from the tree the
+    // packer copies FROM (the same discrimination, one stage earlier).
+    const srcRef = join(fxSource, "agent-references", "index.md")
+    const srcRefBody = readFileSync(srcRef, "utf8")
+    rmSync(srcRef)
+    arm("negative-control (reference file absent from the source tree, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes("REFERENCES") && c.all.includes("index.md"))
+    writeFileSync(srcRef, srcRefBody)
+
+    arm("negative-control (--require-packed with no tree, exit 1)", runChecker(["--source-root", fxSource, "--packed", join(scratch, "no-such-pack"), "--require-packed"]), (c) => c.status === 1 && c.all.includes("PACKED-MISSING"))
+
+    // Arms 11-14 — the named ROOT FILES (T-70). Four shapes, because the manifest arm is
+    // declaration-driven: it can see a file present but unlisted and a pattern listed but absent,
+    // but a file declared NOWHERE is invisible to it, so only a source-side expectation (here) and
+    // the packer-table comparison can make an ADDITION-omission go red rather than a later removal.
+    const rootFile = join(fxPacked, REQUIRED_ROOT_FILES[0])
+    const rootBody = readFileSync(rootFile, "utf8")
+    rmSync(rootFile)
+    arm("negative-control (packed root file gone, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes(ROOT_FILE_KIND) && c.all.includes(REQUIRED_ROOT_FILES[0]))
+    writeFileSync(rootFile, rootBody)
+
+    put(fxPacked, REQUIRED_ROOT_FILES[0], "# fixture root file\nDRIFTED\n")
+    arm("negative-control (packed root file differs from its source, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes(ROOT_FILE_KIND) && c.all.includes("differs byte-wise"))
+    writeFileSync(rootFile, rootBody)
+
+    const srcRootFile = join(fxSource, REQUIRED_ROOT_FILES[0])
+    const srcRootBody = readFileSync(srcRootFile, "utf8")
+    rmSync(srcRootFile)
+    arm("negative-control (root file absent from the source tree, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes(ROOT_FILE_KIND) && c.all.includes(REQUIRED_ROOT_FILES[0]))
+    writeFileSync(srcRootFile, srcRootBody)
+
+    const linesRoot = original.split(/\r?\n/)
+    const keptRoot = linesRoot.filter((l) => l.trim() !== '"' + REQUIRED_ROOT_FILES[0] + '",')
+    if (keptRoot.length !== linesRoot.length - 1) {
+      arms.push({ name: "negative-control fixture (ROOT_FILES build)", ok: false, exitCode: null, firstLine: "fixture build removed " + (linesRoot.length - keptRoot.length) + " line(s), expected exactly 1 - refusing to trust a fixture that silently did not apply" })
+    } else {
+      const fRoot = join(scratch, "packer-without-root-file.mjs")
+      writeFileSync(fRoot, keptRoot.join("\n"))
+      arm("negative-control (packer ROOT_FILES drops the file, exit 1)", runChecker(["--packer", fRoot]), (c) => c.status === 1 && c.all.includes(ROOT_FILE_KIND) && /does not name/.test(c.all))
+    }
+
+    // Arm 15 — the DECLARED PACKAGE arm (T-70 finding 2), seeded exactly like the control that
+    // exposed the hole: a declared PLUGIN_PKG whose directory arrives nowhere must go RED. Before
+    // this arm the same shape exited 0 while the verdict line still asserted that every declared
+    // package "all exists" — a SOURCE-rooted sentence printed over a pack missing one of them.
+    const pkgToDrop = pluginPkgs[0]
+    const pkgDir = pkgToDrop === undefined ? null : join(fxPacked, "packages", pkgToDrop)
+    if (pkgDir === null || !existsSync(pkgDir)) {
+      arms.push({ name: "negative-control fixture (declared package build)", ok: false, exitCode: null, firstLine: "fixture has no packed directory for PLUGIN_PKGS[0] (" + String(pkgToDrop) + ") - refusing to trust a fixture that silently did not apply" })
+    } else {
+      rmSync(pkgDir, { recursive: true, force: true })
+      arm("negative-control (declared package dir absent from the artifact, exit 1)", runChecker(fixtureArgs), (c) => c.status === 1 && c.all.includes("PACKED-MISSING") && c.all.includes(pkgToDrop))
+      buildPacked()
+    }
 
   } finally {
     rmSync(scratch, { recursive: true, force: true })

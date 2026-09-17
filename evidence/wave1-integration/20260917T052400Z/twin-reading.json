@@ -1,0 +1,39 @@
+{
+  "pack": "dist/mpd-package",
+  "repo": ".",
+  "identical": 1187,
+  "drift": [],
+  "byDesign": [
+    {
+      "rel": "package.json",
+      "packedBytes": 1440,
+      "packedSha256": "eaa0919702bf5b334332d5b701b6a2a85ab5aa0a84cc4ccd9b4faa6636ebf61c",
+      "why": "packer-generated packed-form manifest (scripts/pack-mpd.mjs:372)"
+    },
+    {
+      "rel": "packages/mpd-ext-plugin/dist/validator.js",
+      "packedBytes": 153262,
+      "packedSha256": "7128166c28b1b4ceb15c92521405c84020ea330ef030295d57c0d7c33259a79d",
+      "why": "packer-generated CLI validator entry (scripts/pack-mpd.mjs:125)"
+    }
+  ],
+  "noTwin": 1,
+  "missing": [],
+  "afterPack": [],
+  "symlinks": [],
+  "packStampUtc": "2026-09-17T05:19:48.266Z",
+  "rootFilesSource": "packer",
+  "rootFiles": [
+    "LICENSE.md",
+    "LICENSE-NOTICES.md",
+    "README.md",
+    "README.zh-CN.md",
+    "EXTENSIONS-FOR-AGENTS.md"
+  ],
+  "declaredCounts": {
+    "rootAssetDirs": 6,
+    "rootFiles": 5,
+    "packages": 23
+  },
+  "ok": true
+}

@@ -82,6 +82,11 @@ export type Config = {
    * 0 disables the in-flight suppression entirely (the pre-r6, POST-only behaviour).
    */
   toolInFlightMaxMs?: number
+  /**
+   * T-17's hold TTL (§3): a hold a `pause` escalation persisted is auto-released after this
+   * long, with a durable `hold-auto-released` incident. `0` = never expire.
+   */
+  holdTtlMs?: number
   /** Print skipped-team reasons to the console as well as the debug channel (default false). */
   verboseSkips?: boolean
   /** Diagnostic prefix. */
@@ -100,6 +105,7 @@ export const Config: Schemastery<Config> = z.object({
   keepGenerations: z.number().default(3),
   deadTeamGraceMs: z.number().default(86_400_000),
   toolInFlightMaxMs: z.number().default(WATCHDOG_DEFAULTS.toolInFlightMaxMs),
+  holdTtlMs: z.number().default(WATCHDOG_DEFAULTS.holdTtlMs),
   verboseSkips: z.boolean().default(false),
   logPrefix: z.string().default("mpd-team-watchdog"),
 })
@@ -128,12 +134,17 @@ export function resolveConfig(config: Config = {}): EngineConfig {
     warnSilenceMs: num(config.warnSilenceMs, WATCHDOG_DEFAULTS.warnSilenceMs, 1),
     tickIntervalMs: num(config.tickIntervalMs, WATCHDOG_DEFAULTS.tickIntervalMs, 1),
     warnStreakToEscalate: num(config.warnStreakToEscalate, WATCHDOG_DEFAULTS.warnStreakToEscalate, 1),
-    actionOnEscalate: config.actionOnEscalate === "warn-only" ? "warn-only" : WATCHDOG_DEFAULTS.actionOnEscalate,
+    // §3: the frozen DEFAULT is `warn-only`, and `pause` — the ONE action that persists a
+    // hold — must be asked for explicitly by the row config. The comparison used to run the
+    // other way round (anything that was not `warn-only` fell through to the default), which
+    // would silently discard an explicit `pause` the moment the default stopped being `pause`.
+    actionOnEscalate: config.actionOnEscalate === "pause" ? "pause" : "warn-only",
     stateDir: typeof config.stateDir === "string" && config.stateDir !== "" ? config.stateDir : DEFAULT_STATE_DIR,
     teamCacheMs: num(config.teamCacheMs, 2000, 0),
     keepGenerations: num(config.keepGenerations, 3, 1),
     deadTeamGraceMs: num(config.deadTeamGraceMs, 86_400_000, 0),
     toolInFlightMaxMs: num(config.toolInFlightMaxMs, WATCHDOG_DEFAULTS.toolInFlightMaxMs, 0),
+    holdTtlMs: num(config.holdTtlMs, WATCHDOG_DEFAULTS.holdTtlMs, 0),
     verboseSkips: bool(config.verboseSkips, false),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix !== "" ? config.logPrefix : "mpd-team-watchdog",
   }
@@ -229,7 +240,15 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
 
   let disposers: (() => void)[] = []
   try {
-    registerWatchdogActions(dsh, resolved.stateDir, registry)
+    // The status tool reports WHICH predicate is running (§4) — a diagnostics provider,
+    // never a decision input, and the engine is already constructed at this point.
+    registerWatchdogActions(dsh, resolved.stateDir, registry, {
+      predicate: () => engine.predicateStatus(),
+      // §7.2: the per-knob live-vs-file reading the status view prints.
+      knobs: () => engine.knobDivergence(),
+      // T-17: a hold created without an explicit `ttl_ms` inherits the resolved `holdTtlMs`.
+      holdTtlMs: () => engine.getKnobs().holdTtlMs,
+    })
     disposers = engine.install()
   } catch (error) {
     warn(resolved.logPrefix, "registration degraded: " + message(error))
@@ -300,7 +319,10 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
         " holdService=" + (holdService ?? "none") +
         " hydratedHolds=" + hydratedHolds +
         " deadTeamGraceMs=" + (resolved.deadTeamGraceMs === 0 ? "off" : resolved.deadTeamGraceMs) +
-        " toolInFlightMaxMs=" + (resolved.toolInFlightMaxMs === 0 ? "off" : resolved.toolInFlightMaxMs),
+        " toolInFlightMaxMs=" + (resolved.toolInFlightMaxMs === 0 ? "off" : resolved.toolInFlightMaxMs) +
+        " holdTtlMs=" + (resolved.holdTtlMs === 0 ? "off" : resolved.holdTtlMs) +
+        " predicate=" + engine.predicateStatus().source +
+        " enrichment=" + (engine.predicateStatus().enrichment ? "on" : "off"),
     )
   } catch {
     // stdout closed

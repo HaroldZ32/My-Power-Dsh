@@ -1,0 +1,110 @@
+diff --git a/packages/mpd-workmate-plugin/src/index.ts b/packages/mpd-workmate-plugin/src/index.ts
+index e92edd6..7990a89 100644
+--- a/packages/mpd-workmate-plugin/src/index.ts
++++ b/packages/mpd-workmate-plugin/src/index.ts
+@@ -12,8 +12,8 @@
+ // exception to the workspace-scoped state rule (AGENTS.md §6); QA boots with
+ // HOME=<sandbox> so tests never touch the real home.
+ import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
+-import { homedir } from "node:os"
+-import { join } from "node:path"
++import { homedir, userInfo } from "node:os"
++import { join, resolve, sep } from "node:path"
+ import { createDshAdapter, workspaceRootOf, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+ 
+ export const name = "mpd-workmate"
+@@ -94,6 +94,62 @@ function homeDir(): string { return process.env.HOME || homedir() }
+ 
+ function workmateRoot(): string { return join(homeDir(), ".mpd", "workmate") }
+ 
++/**
++ * T-43 — the REAL-HOME guard. The workmate library is the ONE state root that deliberately lives
++ * under the user's HOME (cross-project, user-owned), so a QA/verification boot that forgets
++ * `HOME=<sandbox>` writes the REAL `~/.mpd/workmate` library — the exact failure the register's T-43
++ * names and the `workmate-library` QA lane asserts. This guard refuses a MUTATION in that case and
++ * does nothing else:
++ *   · it fires ONLY when the process looks isolated (`DSH_HOME` is set) AND the resolved library
++ *     would land in the real user home — i.e. `HOME` is absent/empty, or equals the real home, or
++ *     does not cover the library root;
++ *   · a NORMAL session (`DSH_HOME` unset) is never refused, and reads are never guarded;
++ *   · the deliberate escape hatch is `MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1`.
++ * Proven by one positive and one negative case in `evidence/platform/harness-close/` (the plugin's
++ * own test files are outside this change's scope; they set HOME to a temp dir, so they stay green).
++ */
++export const WORKMATE_ALLOW_REAL_HOME_ENV = "MPD_DSH_WORKMATE_ALLOW_REAL_HOME"
++
++/** A HOME-INDEPENDENT home for the real user. `homedir()` must NOT be used for that comparison:
++ * on POSIX it reads $HOME, so comparing $HOME against it is a tautology — which is how the T-43 guard
++ * came to refuse the SANCTIONED sandboxed boot while being unable to tell it from the real home. node's
++ * `userInfo()` is passwd-derived, but bun's follows $HOME, so the passwd entry for the effective uid is
++ * consulted first and `userInfo()` stays as the fallback. `undefined` means undeterminable. */
++function realUserHome(): string | undefined {
++  try {
++    const uid = typeof process.getuid === "function" ? process.getuid() : undefined
++    if (uid !== undefined) {
++      const line = readFileSync("/etc/passwd", "utf8").split("\n").find((l) => l.split(":")[2] === String(uid))
++      const home = line === undefined ? undefined : line.split(":")[5]
++      if (home !== undefined && home !== "") return home
++    }
++  } catch { /* fall through to the API below */ }
++  try {
++    const api = userInfo().homedir
++    if (api !== "" && resolve(api) !== resolve(process.env.HOME ?? api)) return api
++  } catch { /* undeterminable on this host */ }
++  return undefined
++}
++
++export function assertMutationSandboxed(operation: string): void {
++  const dshHome = process.env.DSH_HOME
++  if (dshHome === undefined || dshHome === "") return                 // normal session: unaffected
++  if (process.env[WORKMATE_ALLOW_REAL_HOME_ENV] === "1") return       // explicit, documented override
++  const root = workmateRoot()
++  const home = process.env.HOME
++    const realHome = realUserHome()
++  const inside = (h: string): boolean => root === h || root.startsWith(h.endsWith(sep) ? h : h + sep)
++  if (home !== undefined && home !== "" && realHome !== undefined && resolve(home) !== resolve(realHome) && inside(resolve(home))) return
++  throw new WorkmateError(
++    "real-home-refused",
++    "mpd_workmate: refusing to " + operation + " inside the REAL library " + root
++      + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set "
++      + WORKMATE_ALLOW_REAL_HOME_ENV + "=1 to override deliberately"
++      + (realHome === undefined ? " (the real home could not be determined on this host)" : ""),
++    403,
++  )
++}
++
+ /** Instance path. Guarded (§B): `wmDir("")` would resolve to the LIBRARY ROOT itself, so an empty
+  * name can never name a directory — the root is not an instance and can never be moved or removed. */
+ function wmDir(name: string): string {
+@@ -423,6 +479,7 @@ function rewriteNoteIdentity(dir: string, baseName: string, oldKey: string, newK
+  * The gate, the collision guard and the mutation run in ONE synchronous block (§E, §J): no `await`
+  * appears between them, so no spawn or reflect can interleave. */
+ export function renameWorkmate(nameArg: unknown, newNameArg: unknown, teamRoots?: string[]) {
++  assertMutationSandboxed("rename a workmate")
+   const oldKey = nameKey(nameArg, "name")
+   const newKey = nameKey(newNameArg, "new_name")
+   if (newKey === oldKey) throw new WorkmateError("invalid-name", `mpd_workmate: new_name "${newKey}" equals the current key — nothing to rename`, 400)
+@@ -456,6 +513,7 @@ export function renameWorkmate(nameArg: unknown, newNameArg: unknown, teamRoots?
+  * into `.archive/`. Real removal requires `purge: true` AND `confirm === name`. The index key is
+  * dropped on BOTH paths, and a failed delete leaves the instance fully intact. */
+ export function deleteWorkmate(nameArg: unknown, purgeArg: unknown, confirmArg: unknown, teamRoots?: string[]) {
++  assertMutationSandboxed("delete a workmate")
+   const key = nameKey(nameArg, "name")
+   // Strictly boolean: a non-true `purge` archives instead of destroying, which is the safe direction.
+   const purge = purgeArg === true
+@@ -516,6 +574,7 @@ export function apply(ctx: Ctx): void {
+   }
+ 
+   function initWorkmate(baseKey: string, nameArg: string, noteArg: string) {
++    assertMutationSandboxed("initialize a workmate")
+     const base = resolveBase(baseKey)
+     const given = sanitizeName(nameArg)
+     let name = given
+@@ -629,6 +688,7 @@ export function apply(ctx: Ctx): void {
+     parameters: { type: "object", properties: { name: { type: "string" }, task: { type: "string" }, outcome: { type: "string" }, persona_delta: { type: "string", description: "optional persona revision text (merged, capped)" }, note: { type: "string", description: "optional replacement note card; auto-generated if omitted" } }, required: ["name", "task", "outcome"], additionalProperties: false },
+     output: { schema: { type: "object", properties: { name: { type: "string" }, updated: { type: "boolean" }, uses: { type: "integer" }, personaChars: { type: "integer" }, memoryChars: { type: "integer" }, noteChars: { type: "integer" } }, required: ["name", "updated"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmate " + v.name + " reflected (uses=" + v.uses + ", persona " + v.personaChars + "B / memory " + v.memoryChars + "B / note " + v.noteChars + "B)") },
+     execute: async (args: any) => {
++      assertMutationSandboxed("reflect a workmate")
+       // M4: a reflect arriving with a LEGACY (pre-rename) key does NOT resolve through renamedFrom —
+       // ensureInstance fails with "no workmate named X" and zero side effects, so a legacy key can
+       // never resurrect a directory. renamedFrom stays purely informational (list/get/read).

@@ -1,0 +1,73 @@
+{
+  "addendum_to": "../result.json (the build-form magnitude correction)",
+  "filed_by": "platform-engineer",
+  "filed_at": "2026-09-17T03:19:41.188Z",
+  "question": "AGENTS.md §6's landed sentence says `bun build` writes the entry path into the artifact's FIRST LINE. The docs lane measured the two build forms differing on 26 lines (24 after dropping the first) and asked whether the sentence invites the normalization remedy the matrix disproves.",
+  "answer": "CONFIRMED and generalized: the divergence is not a first-line effect. Measured by diffing both forms of the same source:",
+  "measurements": [
+    {
+      "pkg": "mpd-ext-plugin",
+      "differingLinesTotal": 26,
+      "differingLinesAfterDroppingLine1": 24,
+      "sizeDelta": -276,
+      "line1Root": "// packages/mpd-dsh-adapter-plugin/src/index.ts",
+      "line1PkgDir": "// ../mpd-dsh-adapter-plugin/src/index.ts"
+    },
+    {
+      "pkg": "mpd-tools-plugin",
+      "differingLinesTotal": 6,
+      "differingLinesAfterDroppingLine1": 4,
+      "sizeDelta": -58,
+      "line1Root": "// packages/mpd-tools-plugin/src/index.ts",
+      "line1PkgDir": "// src/index.ts"
+    }
+  ],
+  "classification": "EVERY differing line is a path comment (`// <module path>`): the entry banner plus one comment per inlined module. Nothing else in the bundle differs, so the count scales with the number of inlined modules (ext 24, tools 4) and the byte delta scales with the path-length difference — which is why the range is 34-528 B and why a banner-only normalization cannot reconcile it.",
+  "wording_that_avoids_the_trap": "describe the path rewriting as covering the entry path AND every inlined module comment, both relative to CWD — not 'the first line'.",
+  "bound": "measured on two packages (the largest and one of the smallest divergences); the classification is from the full diff of each, not a sample.",
+  "counting_convention_correction": {
+    "added_at": "2026-09-17T03:48:37.176Z",
+    "raised_by": "docs-gate-engineer (re-measured independently; filed as a HIGH-severity defect for the sentence)",
+    "what_was_ambiguous": "the addendum's 26/24 (ext) and 6/4 (tools) are DIFF-OUTPUT line counts — `diff` prints every differing source line twice (one `<`, one `>`) — but it labelled them 'differing lines', which reads as comment lines in the artifact. Source-line counts are 13/12 (ext) and 3/2 (tools).",
+    "corrected_numbers": {
+      "ext_plugin": {
+        "diff_output_lines_total": 26,
+        "diff_output_lines_after_first": 24,
+        "differing_source_lines": 13,
+        "differing_source_lines_after_first": 12,
+        "comment_lines_in_artifact": 13,
+        "distinct_modules": 11,
+        "duplicates": [
+          "// packages/mpd-ext-plugin/src/registry.ts (x2)",
+          "// packages/mpd-ext-plugin/src/mcp.ts (x2)"
+        ]
+      },
+      "tools_plugin": {
+        "diff_output_lines_total": 6,
+        "diff_output_lines_after_first": 4,
+        "differing_source_lines": 3,
+        "differing_source_lines_after_first": 2,
+        "comment_lines_in_artifact": 3,
+        "distinct_modules": 2,
+        "duplicates": [
+          "// packages/mpd-tools-plugin/src/index.ts (x2 — as line 1 AND line 454)"
+        ]
+      }
+    },
+    "structural_finding_that_changes_the_WORDING": {
+      "claim_tested": "'the entry banner plus one comment per inlined module (13 comment lines, 12 of them after the entry line)'",
+      "measured": "the FIRST comment line is not guaranteed to be the entry: in the ext build line 1 is the ADAPTER's comment (`// packages/mpd-dsh-adapter-plugin/src/index.ts`) while the ext entry appears at line 3128 (`// packages/mpd-ext-plugin/src/index.ts`). In the tools build line 1 IS the entry — and the entry appears AGAIN at line 454. So neither 'entry banner first' nor 'after the entry line' is safe; the only safe statement counts LINES and names the distinct-module count separately.",
+      "artifact_comment_lines": {
+        "ext_first_line": "// packages/mpd-dsh-adapter-plugin/src/index.ts",
+        "ext_entry_line": 3128,
+        "tools_first_line": "// packages/mpd-tools-plugin/src/index.ts",
+        "tools_entry_lines": [
+          1,
+          454
+        ]
+      }
+    },
+    "safe_wording": "one path comment per bundled module occurrence: 13 such lines in the mpd-ext-plugin build (11 distinct modules — registry.ts and mcp.ts each appear twice), 3 lines in mpd-tools-plugin (2 distinct). Both build forms differ at every one of them, and `diff` prints each differing line twice, so the output reads 26 and 6 lines respectively.",
+    "unchanged": "the classification (every differing line is a path comment; nothing else differs) and the T-67 conclusion (a package-directory build is flagged STALE byte-for-byte; normalizing one line cannot reconcile it)."
+  }
+}

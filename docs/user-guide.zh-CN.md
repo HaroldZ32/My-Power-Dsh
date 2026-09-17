@@ -31,7 +31,8 @@ cd <repo> && dsh plugin --profile dsh-tui add .
 
 同一个 bundle 会以**第三层 patch** 的身份装进终端界面，叠在 TUI 包之上：安装后
 `dsh.profile.bundles` 为 `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`，
-`dsh --profile dsh-tui --dump-config` 会把我们的行显示在独立的一层里
+`node scripts/dump-config.mjs --profile dsh-tui`（仓库包装器，会在自身输出里打印
+「仅组合」警告）会把我们的行显示在独立的一层里
 （`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`），并把 `mpd` preset 作为会话默认。
 用 `dsh-tui` 启动器（别名 `dst`）启动：
 
@@ -56,8 +57,14 @@ dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ```
 
 `pack-mpd` 是给 **分发** 用的：它组装出一个自包含的 `@mpd-dsh/mpd`（各插件已构建的 dist +
-采纳的 agent-teams 主代码 + skill 语料库与 presets + 合并后的 web 客户端 + 打包形态的 patch），
-不依赖检出目录。发布、制作 tarball 或验证可迁移性时才需要它；本地安装从不需要。
+采纳的 agent-teams 主代码 + skill 语料库与 presets + 脚手架 `templates/` + 带 EN / `zh-CN` 配对的
+`docs/` 文档集 + 按需查阅的 `agent-references/`（故障排查表与采纳插件的 delta 登记册）+
+合并后的 web 客户端 + 打包形态的 patch），不依赖检出目录。自 2026-09-17 的打包变更起，
+该产物同样**面向作者**：扩展 CLI、脚手架模板与全部指南都随包交付，因此已安装的 bundle 可以直接
+`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs validate <dir>`，其中的 `docs/` 也可就地阅读。
+发布、制作 tarball 或验证可迁移性时才需要它；本地安装从不需要。产物必须携带什么不再靠信任：
+`node scripts/verify-pack-closure.mjs` 会在已声明的资产缺失、`docs/`+`templates/` 与源目录逐文件不符、
+或打包 manifest 的 `files` 列表与磁盘内容不一致时大声失败。
 
 ### 卸载（一条命令，无残留）
 

@@ -1,0 +1,28 @@
+{
+  "apiVersion": 1,
+  "id": "final-demo",
+  "description": "The final-demo extension. Replace this sentence with what the extension contributes and when an agent should reach for it.",
+  "enabled": false,
+  "contributes": {
+    "skills": [
+      {
+        "root": "skills",
+        "rank": 300
+      }
+    ],
+    "flows": [
+      {
+        "dir": "flows",
+        "rank": 300
+      }
+    ],
+    "roles": [
+      {
+        "name": "final-demo reviewer",
+        "description": "Read-only reviewer contributed by the final-demo extension: checks a change against this extension's own contract and reports findings with evidence.",
+        "readonly": true,
+        "persona": "personas/final-demo-reviewer.md"
+      }
+    ]
+  }
+}

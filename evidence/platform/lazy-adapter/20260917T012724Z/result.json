@@ -1,0 +1,83 @@
+{
+  "task": "t12 — Impl — lane F1: lazy adapter resolution with an honest warning (T-50)",
+  "attempt_id": "4712b0e1-86ec-4bb5-84b6-36b3b4d28247",
+  "lane": "F1",
+  "revision_note": "read-only git status/diff only; the captain owns commits",
+  "design": {
+    "shape": "one stable facade (Proxy over the DshAdapter surface) whose EVERY property access resolves the service; nothing is resolved at apply",
+    "cache_rule": "only a SUCCESSFUL STRICT read (`ctx.get('mpdDsh')`, i.e. an ACTIVE provider) is cached; a miss is retried on every later use, so the mounted adapter is picked up the moment its fiber activates",
+    "miss_modes": {
+      "registered_but_not_active": "strict read undefined + non-strict read (`ctx.get('mpdDsh', false)`) hits -> warned ONCE per row as 'ADAPTER NOT YET ACTIVE … provider … is not ACTIVE yet', served by a temporary adapter, NO row-order hint",
+      "absent": "strict AND non-strict reads miss -> the row-order hint is the provable fix; warned ONCE per row as 'ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter) … fix the ROW ORDER'"
+    },
+    "identity": "dshAdapterIdentity(ctx) reports mounted:mpdDsh / pending:provider-not-active / fallback:createDshAdapter, READ AT SURFACE TIME (boot line + the adapterIdentity field of the mpdExtensions / mpdRoles services), never cached at apply",
+    "shared_symbols_added": ["ADAPTER_IDENTITY_MOUNTED", "ADAPTER_IDENTITY_PENDING", "ADAPTER_IDENTITY_FALLBACK", "AdapterIdentity", "LazyAdapterOptions", "createLazyDshAdapter", "dshAdapterIdentity"],
+    "bound_retry_choice": "per-use re-probe IS the bounded retry (every access, including tool handlers a row registered during apply, retries); no async wait is needed for a SYNCHRONOUS seam call"
+  },
+  "code_path_justification_measured_on_vendored_cordis": {
+    "why_needed": "the register's honest bound: six consecutive clean boots on the correctly ordered tree never opened the window (t24, 6/6 adapterIdentity=mounted:mpdDsh, zero fallback lines) — so this change is justified by the code path, not by an observed failure",
+    "probe_1_sibling_apply": "root.plugin(provider) then root.plugin(consumer) without awaiting: during the CONSUMER's apply the provider fiber state is 1 (not ACTIVE), consumer `ctx.get('mpdDsh')` (strict) = undefined, `ctx.get('mpdDsh', false)` = the value, provider state after the consumer settles = 2 (ACTIVE) and the strict read then succeeds",
+    "probe_2_activation": "await <fiber> moves state 1 -> 2 and flips the strict read from undefined to the value",
+    "cordis_source": "packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.js `_getImpl(name, strict)`: `if (strict && impl.fiber.state !== 2) return` — ACTIVE is state 2, and the miss is `undefined`, never a throw",
+    "pinned_by_test": "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts > 'REAL vendored cordis: the sibling-apply window exists and the SAME facade crosses it'"
+  },
+  "tests_added": [
+    "a transient miss is served temporarily, warned honestly ('NOT YET ACTIVE', never 'ROW ORDER'), and is NOT cached for the session; after activation the SAME facade reaches the mounted adapter",
+    "a strict success is cached; a miss is retried on every use",
+    "a clean boot never warns and reports the mounted identity",
+    "a provably absent provider keeps the row-order hint — and only that case does (one line per failure mode)",
+    "REAL vendored cordis: the sibling-apply window exists and the SAME facade crosses it"
+  ],
+  "consumers_of_the_old_idiom_acceptance_4": {
+    "routed_through_the_shared_lazy_resolver": [
+      "packages/mpd-ext-plugin/src/index.ts",
+      "packages/mpd-roles-plugin/src/index.ts"
+    ],
+    "still_eager_and_OUT_OF_SCOPE_reported_with_paths": [
+      "packages/mpd-bootstrap-plugin/src/index.ts:412",
+      "packages/mpd-boulder-plugin/src/index.ts:47",
+      "packages/mpd-codegraph-plugin/src/index.ts:121",
+      "packages/mpd-comment-checker-plugin/src/index.ts:101",
+      "packages/mpd-config-plugin/src/index.ts:151",
+      "packages/mpd-hashline-plugin/src/index.ts:94",
+      "packages/mpd-memory-plugin/src/index.ts:140",
+      "packages/mpd-modelchain-plugin/src/index.ts:88",
+      "packages/mpd-qa-roles-probe/src/index.ts:28",
+      "packages/mpd-team-compact-plugin/src/index.ts:448",
+      "packages/mpd-tools-plugin/src/index.ts:16",
+      "packages/mpd-ulw-plugin/src/index.ts:97",
+      "packages/mpd-workmate-plugin/src/index.ts:497",
+      "packages/mpd-tui-plugin/src/index.ts:173 (helper: mounted lookup then createDshAdapter)",
+      "packages/mpd-team-watchdog-plugin/src/index.ts:177 (already uses the NON-STRICT read, but still resolves eagerly)"
+    ],
+    "note": "each of these needs its own scoped change with its own mount proof (AGENTS.md §12); the canonical note now names this residual at the top so a future reader does not assume the fix is global"
+  },
+  "t55_rider_inside_t12": {
+    "why": "the stale pointers live in the same canonical block this change rewrites, and my adapter edits shift those lines further",
+    "requirement": "cite SYMBOLS, never bare line numbers",
+    "evidence": "`grep -n 'engineCache|defaultTimeoutMs' packages/mpd-ext-plugin/src/index.ts` -> :76 `createDshAdapter(…, { defaultTimeoutMs })`, :78 `engineCache`; `grep -n 'src/index.ts:390|src/index.ts:464'` -> no matches"
+  },
+  "changed_paths_with_hashes": {
+    "packages/mpd-dsh-adapter-plugin/src/index.ts": "62f3ac1e66c6e45807434fb0bfbc22d4282c1f007188a37dd7618de7b326ad7b (includes the captain's one-token repair of `probeMpdDsh` -> `{ value, missing: false }`; NOT mine, do not revert)",
+    "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts": "b17a1c6a57167085d030501d83bce88871c6e4d72d74516ab4d9eb1e90a9e974",
+    "packages/mpd-ext-plugin/src/index.ts": "a5167018d25a3544894380ba9d8a3f34c73effe9742e32d44b6a181e310e2fb8",
+    "packages/mpd-roles-plugin/src/index.ts": "0ecd4ea33e7b6ce065da887dfc70d9795d43f8b11d489fbc6a46b32671fe64ab",
+    "evidence/platform/lazy-adapter/20260917T012724Z/output.log": "see the file",
+    "evidence/platform/lazy-adapter/20260917T012724Z/result.json": "this file"
+  },
+  "residual_dist_handoff": {
+    "fact": "packages/mpd-ext-plugin/dist/index.js (0ebad657…) and packages/mpd-roles-plugin/dist/index.js (22595b92…) are now STALE relative to their src: neither contains `createLazyDshAdapter`; the banner bundle rows load dist/, so the T-50 fix is NOT live at runtime until they are rebuilt",
+    "ruling": "captain: complete t12 src-only and hand the dist rebuild to t40 (dist freshness / T-37/T-39/T-40)",
+    "trap_for_t40": "packages/mpd-ext-plugin/test/adapter-identity.test.ts > 'the built dist carries the adapter-identity fix' passes on the STALE bytes (it greps for 'ADAPTER FALLBACK', 'mounted:mpdDsh', 'fallback:createDshAdapter', 'adapterIdentity' — all present in BOTH versions) — that test cannot detect this staleness"
+  },
+  "verify_results": {
+    "bun test packages/mpd-dsh-adapter-plugin": {"exit": 0, "result": "42 pass / 0 fail (2 files)"},
+    "bun test packages/mpd-ext-plugin": {"exit": 0, "result": "74 pass / 0 fail (6 files) — includes the two pre-existing adapter-identity arms, both green with the lazy resolver"},
+    "bun test packages/mpd-roles-plugin": {"exit": 0, "result": "31 pass / 0 fail (4 files) — same two arms"},
+    "bun run typecheck": {"exit": 0}
+  },
+  "unverified": [
+    "no mounted boot was run by THIS task: the runtime behaviour of the lazy facade under a real dsh boot (and the absence of a transient-miss warning on the clean 6/6 tree) is t25/t29's lane",
+    "the transient window was never observed in a production boot by anyone (6/6 clean) — proven here only against the vendored cordis in-process"
+  ]
+}

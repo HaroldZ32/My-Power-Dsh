@@ -22,6 +22,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 import { readSessionEvents, findToolCall } from "./lib/session-evidence.mjs"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 // The temp project lives inside this checkout (sandbox-writable, and its path
@@ -57,7 +58,7 @@ function runReal() {
   writeFileSync(join(PROJ, "src/util.ts"), "export function norm(x:number){return x<0?0:x}\n")
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   // The vendored serve.js builds its state dir under homedir() (~/.mpd since the
   // rename): isolate HOME too, and mirror the creds at the DSH home location.
   mkdirSync(join(sandbox, ".dsh"), { recursive: true })
@@ -77,7 +78,7 @@ function runReal() {
   // green therefore says NOTHING about the bundle's own B8 resolution chain — a
   // case that must prove THAT is mcp-call (no binary/CLI pin) and the launcher
   // resolver's own tests. Do not "clean this pin up": it is the documented intent.
-  const env = { ...process.env, DSH_HOME: sandbox, HOME: sandbox, MPD_CODEGRAPH_PROJECT_CWD: PROJ, MPD_CODEGRAPH_BIN: TOOLCHAIN_BIN }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: sandbox, MPD_CODEGRAPH_PROJECT_CWD: PROJ, MPD_CODEGRAPH_BIN: TOOLCHAIN_BIN  })
   // The bundle patch references rows as @mpd-dsh/mpd/... (Plan D staged layout):
   // stage the package into the sandbox profile with npm before booting.
   const staged = join(repoRoot, "dist", "mpd-package")

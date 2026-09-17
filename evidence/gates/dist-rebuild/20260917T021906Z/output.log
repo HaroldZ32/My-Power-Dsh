@@ -1,0 +1,283 @@
+
+### AFTER hashes
+ddd92b76312d523bb3e7199d16549dc8aa04069631222b642348d5e35240c0f9  mpd-bootstrap-plugin
+5becea195f7bb679374eece2b3ea66af871655df02691a5b10349a706c734beb  mpd-boulder-plugin
+9f0676d64ea494b14ad8ea0c9fe042730ce2b65b74f8467d1757720459c27917  mpd-codegraph-plugin
+a13e58c5d6c83157d8dfe8aab63c2e0b77a5e229f8494dd7087eb9bc38b8ab7e  mpd-comment-checker-plugin
+db8f1351886dcbde14d9f3e48d6292c51270975c94762a4336eb9c1636be9c63  mpd-hashline-plugin
+20d9fb8cfa4487e1b1f06e681ba1f112c9ea3a6699ba608f3f2e47ebb4d6b473  mpd-memory-plugin
+7cd9cf8a73759eb6d3b8f4be926d1a1035855a6c6ffa603be48d8ce967a25309  mpd-modelchain-plugin
+259b99ae26ecd60dfd7fc67f377094aebf3106202530b7b1e284fef624cde026  mpd-qa-roles-probe
+0d7525a9dd60170def16ba78ee8cbbd67eea4f8ed6843d61e4fb5c4d348150c0  mpd-team-compact-plugin
+ddb30834942b3b4f755ab88adc1507a3f45b3c5268839c61544471d5eddcd53e  mpd-team-watchdog-plugin
+a90332455e39da3bee6806f0e3200dd8f191abaafad6cdcf4cffc611a3dafe75  mpd-tools-plugin
+bba5bdf016c4eff314d53be6b2726807fc8230a208754d256af69efaeeb36291  mpd-ulw-plugin
+fc0e225864414e8a2523a095004bf8c141755b001ce59dc9dad086f4da0658f5  mpd-workmate-plugin
+
+### src hashes re-checked (must equal the settle baseline: any change means the rebuild raced an edit)
+a104d89790017b7c31e68aa5786f6cbf3fd1f265e42ba45494a84c897ad51e20  mpd-bootstrap-plugin
+2055dd0f61e1bdf81ca812b62d7b1ee63ca82f03adce0775a35efa5e66a85b9a  mpd-boulder-plugin
+9024ae195f3a21d4ede06013a7c9feb7111f97f8d77d0bbc475861298b57a7cc  mpd-codegraph-plugin
+7cd8e76c25f1342c34d1e7f7779ff0c2bc9e01176b220d6bd1636d2c4d058314  mpd-comment-checker-plugin
+936a90410d37ff21a4c6183a209cd805e745d0f3bc747139821cccb373e4a849  mpd-hashline-plugin
+f6e40e866f1595f844e8a18038b359ff1af4588a82cd8a5403aace6e5990a704  mpd-memory-plugin
+96e2e335f00f9a2ff9fedc1aa8d06b33b1ccb917431393387070d31b35625b23  mpd-modelchain-plugin
+43093ec096341ebcaa2e348aa4c15d44e89d87d5c68d9adaddf4786ea720c2ba  mpd-qa-roles-probe
+04907216286351add6f51eefd1a5b8ff8815941c60dccdeab54d0cdcccb6491a  mpd-team-compact-plugin
+80c1b014d002421e94f43e36a5be0bcfef626c85d6ca1c87971698a29b7fd72a  mpd-team-watchdog-plugin
+e900c38d3d31feda3d202c772cd8b50b433a21f31207da94b68aafc16e67bd9d  mpd-tools-plugin
+c809e2a00622e283ed96639d585a8f486e0c8568725172eb427e754a61822598  mpd-ulw-plugin
+b8b4cf50f72eb44a29a71feaaf0efba65d565f77a7c88b2185cd1ded1cedc16e  mpd-workmate-plugin
+
+### verify 1/2: node scripts/verify-dist-fresh.mjs
+  STALE   packages/mpd-bootstrap-plugin/dist/index.js  <- packages/mpd-bootstrap-plugin/src/index.ts
+  STALE   packages/mpd-boulder-plugin/dist/index.js  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 28ms  <- packages/mpd-bundle-plugin/src/index.ts
+  STALE   packages/mpd-codegraph-plugin/dist/index.js  <- packages/mpd-codegraph-plugin/src/index.ts
+  STALE   packages/mpd-comment-checker-plugin/dist/index.js  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha 11ab1c6da2d3… 61ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha a030858014af… 48ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha f6097fd3383f… 52ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 18ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  STALE   packages/mpd-hashline-plugin/dist/index.js  <- packages/mpd-hashline-plugin/src/index.ts
+  STALE   packages/mpd-memory-plugin/dist/index.js  <- packages/mpd-memory-plugin/src/index.ts
+  STALE   packages/mpd-modelchain-plugin/dist/index.js  <- packages/mpd-modelchain-plugin/src/index.ts
+  STALE   packages/mpd-qa-roles-probe/dist/index.js  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 38d4a459f64d… 30ms  <- packages/mpd-roles-plugin/src/index.ts
+  STALE   packages/mpd-team-compact-plugin/dist/index.js  <- packages/mpd-team-compact-plugin/src/index.ts
+  STALE   packages/mpd-team-watchdog-plugin/dist/index.js  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  STALE   packages/mpd-tools-plugin/dist/index.js  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha d75ddd8917d4… 68ms  <- packages/mpd-tui-plugin/src/index.ts
+  STALE   packages/mpd-ulw-plugin/dist/index.js  <- packages/mpd-ulw-plugin/src/index.ts
+  STALE   packages/mpd-workmate-plugin/dist/index.js  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+  STALE: packages/mpd-bootstrap-plugin/dist/index.js — committed packages/mpd-bootstrap-plugin/dist/index.js (30286 B, ddd92b76312d523b…) != fresh build of packages/mpd-bootstrap-plugin/src/index.ts (30352 B, 30006247814f9f01…) — rebuild: bun build packages/mpd-bootstrap-plugin/src/index.ts --target node --format esm --outfile packages/mpd-bootstrap-plugin/dist/index.js
+  STALE: packages/mpd-boulder-plugin/dist/index.js — committed packages/mpd-boulder-plugin/dist/index.js (48029 B, 5becea195f7bb679…) != fresh build of packages/mpd-boulder-plugin/src/index.ts (48315 B, 8903b8e384343723…) — rebuild: bun build packages/mpd-boulder-plugin/src/index.ts --target node --format esm --outfile packages/mpd-boulder-plugin/dist/index.js
+  STALE: packages/mpd-codegraph-plugin/dist/index.js — committed packages/mpd-codegraph-plugin/dist/index.js (21848 B, 9f0676d64ea494b1…) != fresh build of packages/mpd-codegraph-plugin/src/index.ts (21914 B, 0c5b75fb453bf733…) — rebuild: bun build packages/mpd-codegraph-plugin/src/index.ts --target node --format esm --outfile packages/mpd-codegraph-plugin/dist/index.js
+  STALE: packages/mpd-comment-checker-plugin/dist/index.js — committed packages/mpd-comment-checker-plugin/dist/index.js (23799 B, a13e58c5d6c83157…) != fresh build of packages/mpd-comment-checker-plugin/src/index.ts (23877 B, 1fed18d454e161e5…) — rebuild: bun build packages/mpd-comment-checker-plugin/src/index.ts --target node --format esm --outfile packages/mpd-comment-checker-plugin/dist/index.js
+  STALE: packages/mpd-hashline-plugin/dist/index.js — committed packages/mpd-hashline-plugin/dist/index.js (54791 B, db8f1351886dcbde…) != fresh build of packages/mpd-hashline-plugin/src/index.ts (55203 B, 193ce68dbded38a7…) — rebuild: bun build packages/mpd-hashline-plugin/src/index.ts --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js
+  STALE: packages/mpd-memory-plugin/dist/index.js — committed packages/mpd-memory-plugin/dist/index.js (30716 B, 20d9fb8cfa4487e1…) != fresh build of packages/mpd-memory-plugin/src/index.ts (30776 B, f95fec2d48ff9dca…) — rebuild: bun build packages/mpd-memory-plugin/src/index.ts --target node --format esm --outfile packages/mpd-memory-plugin/dist/index.js
+  STALE: packages/mpd-modelchain-plugin/dist/index.js — committed packages/mpd-modelchain-plugin/dist/index.js (23415 B, 7cd9cf8a73759eb6…) != fresh build of packages/mpd-modelchain-plugin/src/index.ts (23483 B, 8eb77dedfe2fa7bf…) — rebuild: bun build packages/mpd-modelchain-plugin/src/index.ts --target node --format esm --outfile packages/mpd-modelchain-plugin/dist/index.js
+  STALE: packages/mpd-qa-roles-probe/dist/index.js — committed packages/mpd-qa-roles-probe/dist/index.js (23670 B, 259b99ae26ecd60d…) != fresh build of packages/mpd-qa-roles-probe/src/index.ts (23704 B, a835d71afff07adb…) — rebuild: bun build packages/mpd-qa-roles-probe/src/index.ts --target node --format esm --outfile packages/mpd-qa-roles-probe/dist/index.js
+  STALE: packages/mpd-team-compact-plugin/dist/index.js — committed packages/mpd-team-compact-plugin/dist/index.js (33538 B, 0d7525a9dd60170d…) != fresh build of packages/mpd-team-compact-plugin/src/index.ts (33610 B, 23bfa6190584d9c2…) — rebuild: bun build packages/mpd-team-compact-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-compact-plugin/dist/index.js
+  STALE: packages/mpd-team-watchdog-plugin/dist/index.js — committed packages/mpd-team-watchdog-plugin/dist/index.js (152791 B, ddb30834942b3b4f…) != fresh build of packages/mpd-team-watchdog-plugin/src/index.ts (153319 B, 7b821135d24a9bdd…) — rebuild: bun build packages/mpd-team-watchdog-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-watchdog-plugin/dist/index.js
+  STALE: packages/mpd-tools-plugin/dist/index.js — committed packages/mpd-tools-plugin/dist/index.js (19476 B, a90332455e39da3b…) != fresh build of packages/mpd-tools-plugin/src/index.ts (19534 B, fa8f64b8d3130cb7…) — rebuild: bun build packages/mpd-tools-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tools-plugin/dist/index.js
+  STALE: packages/mpd-ulw-plugin/dist/index.js — committed packages/mpd-ulw-plugin/dist/index.js (36990 B, bba5bdf016c4eff3…) != fresh build of packages/mpd-ulw-plugin/src/index.ts (37044 B, 24122dae82a78f8f…) — rebuild: bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
+  STALE: packages/mpd-workmate-plugin/dist/index.js — committed packages/mpd-workmate-plugin/dist/index.js (54640 B, fc0e225864414e8a…) != fresh build of packages/mpd-workmate-plugin/src/index.ts (54704 B, 401573a0173b03db…) — rebuild: bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] FAIL - 13 of 20 targets not fresh (STALE: 13) — 795ms
+gate exit=1
+
+### verify 2/2: bun run typecheck
+$ tsgo --noEmit
+typecheck exit=0
+
+### FINAL after-hashes
+30006247814f9f019e16a76ef04b9b08dfe290e7e657265c577fee20d8e769d7  mpd-bootstrap-plugin
+8903b8e384343723c50aee392ef191548e4bdb7e1ed7bf1fd799826b7bc37ffe  mpd-boulder-plugin
+0c5b75fb453bf73336b09a0d4d3abffad3675d3649491f20ad858efb83e7e0c6  mpd-codegraph-plugin
+1fed18d454e161e5164677a7fe117d4eda00c2285d718713898ff6937e74418c  mpd-comment-checker-plugin
+193ce68dbded38a7de2a5f112715d5339705a0bc412ad553231cd8e363c77de6  mpd-hashline-plugin
+f95fec2d48ff9dca60e6510c3b9e0fec99f257bed7dced2c692a18039a40eb70  mpd-memory-plugin
+8eb77dedfe2fa7bf8272d53ee87e524bad0a9450c01cda5ce3164788443a7c93  mpd-modelchain-plugin
+a835d71afff07adb6db3c365e065f8b522aeee7c06002dd117bd9ea247e0a67b  mpd-qa-roles-probe
+23bfa6190584d9c2327cc566a002f2e991ae93e2fbd7a863808ad35763cee459  mpd-team-compact-plugin
+7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8  mpd-team-watchdog-plugin
+fa8f64b8d3130cb7a5da78afddab38054d8a6852865d4bbcadb49c7ff427ad75  mpd-tools-plugin
+24122dae82a78f8f4ab9c31c8eb923d9f961fa0b54fdd0293f9bf883faa16bce  mpd-ulw-plugin
+401573a0173b03db8a6a8fe8dd38e78a9d6d3d6f1aae27de1d5d5f1faec4072a  mpd-workmate-plugin
+
+### verify 1/2: node scripts/verify-dist-fresh.mjs
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha 30006247814f… 25ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 8903b8e38434… 25ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 19ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 0c5b75fb453b… 19ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha 1fed18d454e1… 19ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha 11ab1c6da2d3… 26ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha a030858014af… 19ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha f6097fd3383f… 29ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 15ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 193ce68dbded… 22ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha f95fec2d48ff… 23ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha 8eb77dedfe2f… 22ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha a835d71afff0… 20ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 38d4a459f64d… 24ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 23bfa6190584… 23ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha 7b821135d24a… 29ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha fa8f64b8d313… 19ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha d75ddd8917d4… 28ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha 24122dae82a7… 20ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 401573a0173b… 25ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 477ms
+gate exit=0
+
+### FINAL after-hashes (corrected, repo-root build)
+mpd-bootstrap-plugin           30006247814f9f019e16a76ef04b9b08dfe290e7e657265c577fee20d8e769d7
+mpd-boulder-plugin             8903b8e384343723c50aee392ef191548e4bdb7e1ed7bf1fd799826b7bc37ffe
+mpd-codegraph-plugin           0c5b75fb453bf73336b09a0d4d3abffad3675d3649491f20ad858efb83e7e0c6
+mpd-comment-checker-plugin     1fed18d454e161e5164677a7fe117d4eda00c2285d718713898ff6937e74418c
+mpd-hashline-plugin            193ce68dbded38a7de2a5f112715d5339705a0bc412ad553231cd8e363c77de6
+mpd-memory-plugin              f95fec2d48ff9dca60e6510c3b9e0fec99f257bed7dced2c692a18039a40eb70
+mpd-modelchain-plugin          8eb77dedfe2fa7bf8272d53ee87e524bad0a9450c01cda5ce3164788443a7c93
+mpd-qa-roles-probe             a835d71afff07adb6db3c365e065f8b522aeee7c06002dd117bd9ea247e0a67b
+mpd-team-compact-plugin        23bfa6190584d9c2327cc566a002f2e991ae93e2fbd7a863808ad35763cee459
+mpd-team-watchdog-plugin       7b821135d24a9bdd79b246f52adf346ab056d540bda7c3478490acf36aab8dc8
+mpd-tools-plugin               fa8f64b8d3130cb7a5da78afddab38054d8a6852865d4bbcadb49c7ff427ad75
+mpd-ulw-plugin                 24122dae82a78f8f4ab9c31c8eb923d9f961fa0b54fdd0293f9bf883faa16bce
+mpd-workmate-plugin            401573a0173b03db8a6a8fe8dd38e78a9d6d3d6f1aae27de1d5d5f1faec4072a
+
+### src hashes re-checked against the settle baseline
+mpd-bootstrap-plugin           a104d89790017b7c31e68aa5786f6cbf3fd1f265e42ba45494a84c897ad51e20
+mpd-boulder-plugin             2055dd0f61e1bdf81ca812b62d7b1ee63ca82f03adce0775a35efa5e66a85b9a
+mpd-codegraph-plugin           9024ae195f3a21d4ede06013a7c9feb7111f97f8d77d0bbc475861298b57a7cc
+mpd-comment-checker-plugin     7cd8e76c25f1342c34d1e7f7779ff0c2bc9e01176b220d6bd1636d2c4d058314
+mpd-hashline-plugin            936a90410d37ff21a4c6183a209cd805e745d0f3bc747139821cccb373e4a849
+mpd-memory-plugin              f6e40e866f1595f844e8a18038b359ff1af4588a82cd8a5403aace6e5990a704
+mpd-modelchain-plugin          96e2e335f00f9a2ff9fedc1aa8d06b33b1ccb917431393387070d31b35625b23
+mpd-qa-roles-probe             43093ec096341ebcaa2e348aa4c15d44e89d87d5c68d9adaddf4786ea720c2ba
+mpd-team-compact-plugin        04907216286351add6f51eefd1a5b8ff8815941c60dccdeab54d0cdcccb6491a
+mpd-team-watchdog-plugin       80c1b014d002421e94f43e36a5be0bcfef626c85d6ca1c87971698a29b7fd72a
+mpd-tools-plugin               e900c38d3d31feda3d202c772cd8b50b433a21f31207da94b68aafc16e67bd9d
+mpd-ulw-plugin                 c809e2a00622e283ed96639d585a8f486e0c8568725172eb427e754a61822598
+mpd-workmate-plugin            b8b4cf50f72eb44a29a71feaaf0efba65d565f77a7c88b2185cd1ded1cedc16e
+
+### verify 2/2: bun run typecheck
+$ tsgo --noEmit
+typecheck exit=0
+
+### git status proof (expect ONLY packages/*/dist/** + the evidence dir; NO src edits)
+ M AGENTS.md
+ M docs/development.md
+ M docs/development.zh-CN.md
+ M docs/extension-adaptation-report.md
+ M docs/extension-adaptation-report.zh-CN.md
+ M docs/extension-authoring-guide.md
+ M docs/extension-authoring-guide.zh-CN.md
+ M docs/user-guide.md
+ M docs/user-guide.zh-CN.md
+ M evidence/dsh-qa/llm-dual-track/dual-track.tsv
+ M package.json
+ M packages/mpd-agent-teams-plugin/lib/members.js
+ M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+ M packages/mpd-agent-teams-plugin/lib/quality-gates.js
+ M packages/mpd-agent-teams-plugin/lib/state.js
+ M packages/mpd-agent-teams-plugin/lib/tool-names.js
+ M packages/mpd-agent-teams-plugin/lib/tools.js
+ M packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs
+ M packages/mpd-agent-teams-plugin/test/r3-view-parity.test.mjs
+ M packages/mpd-agent-teams-plugin/test/task-contract-tool.test.mjs
+ M packages/mpd-bootstrap-plugin/dist/index.js
+ M packages/mpd-boulder-plugin/dist/index.js
+ M packages/mpd-bundle-plugin/client.js
+ M packages/mpd-bundle-plugin/src/settings-card.js
+ M packages/mpd-bundle-plugin/test/settings-card.test.mjs
+ M packages/mpd-bundle/cordis.patch.yml
+ M packages/mpd-codegraph-plugin/dist/index.js
+ M packages/mpd-comment-checker-plugin/dist/index.js
+ M packages/mpd-config-plugin/dist/index.js
+ M packages/mpd-config-plugin/src/settings-schema.ts
+ M packages/mpd-config-plugin/test/settings-wiring.test.ts
+ M packages/mpd-dsh-adapter-plugin/dist/index.js
+ M packages/mpd-dsh-adapter-plugin/src/index.ts
+ M packages/mpd-dsh-adapter-plugin/test/adapter.test.ts
+ M packages/mpd-ext-plugin/dist/index.js
+ M packages/mpd-ext-plugin/src/index.ts
+ M packages/mpd-hashline-plugin/dist/index.js
+ M packages/mpd-memory-plugin/dist/index.js
+ M packages/mpd-modelchain-plugin/dist/index.js
+ M packages/mpd-qa-roles-probe/dist/index.js
+ M packages/mpd-roles-plugin/dist/index.js
+ M packages/mpd-roles-plugin/src/index.ts
+ M packages/mpd-team-compact-plugin/dist/index.js
+ M packages/mpd-team-watchdog-plugin/README.md
+ M packages/mpd-team-watchdog-plugin/README.zh-CN.md
+ M packages/mpd-team-watchdog-plugin/dist/index.js
+ M packages/mpd-team-watchdog-plugin/src/actions.ts
+ M packages/mpd-team-watchdog-plugin/src/engine.ts
+ M packages/mpd-team-watchdog-plugin/src/holds.ts
+ M packages/mpd-team-watchdog-plugin/src/index.ts
+ M packages/mpd-team-watchdog-plugin/src/machine.ts
+ M packages/mpd-team-watchdog-plugin/src/sidecars.ts
+ M packages/mpd-team-watchdog-plugin/src/team.ts
+ M packages/mpd-team-watchdog-plugin/test/failsafe.test.ts
+ M packages/mpd-team-watchdog-plugin/test/holds.test.ts
+ M packages/mpd-team-watchdog-plugin/test/machine.test.ts
+ M packages/mpd-team-watchdog-plugin/test/scene.test.ts
+ M packages/mpd-team-watchdog-plugin/test/support.ts
+ M packages/mpd-team-watchdog-plugin/test/tool-inflight.test.ts
+ M packages/mpd-tools-plugin/dist/index.js
+ M packages/mpd-tui-plugin/dist/index.js
+ M packages/mpd-tui-plugin/src/settings.ts
+ M packages/mpd-tui-plugin/test/plugin.test.ts
+ M packages/mpd-ulw-plugin/dist/index.js
+ M packages/mpd-workmate-plugin/dist/index.js
+ M scripts/mpd-ext.mjs
+ M scripts/pack-mpd.mjs
+ M scripts/verify-pack-closure.mjs
+ M skills/dsh-qa/scripts/agent-teams-adopt.mjs
+ M skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+ M skills/dsh-qa/scripts/agent-teams-messaging.mjs
+ M skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+ M skills/dsh-qa/scripts/bundle-lifecycle.mjs
+ M skills/dsh-qa/scripts/codegraph-smoke.mjs
+ M skills/dsh-qa/scripts/dual-track-smoke.mjs
+ M skills/dsh-qa/scripts/explicit-team-trigger.mjs
+ M skills/dsh-qa/scripts/mcp-call.mjs
+ M skills/dsh-qa/scripts/memory-smoke.mjs
+ M skills/dsh-qa/scripts/mount-assert.mjs
+ M skills/dsh-qa/scripts/plan-c-smoke.mjs
+ M skills/dsh-qa/scripts/preset-conformance.mjs
+ M skills/dsh-qa/scripts/preset-register.mjs
+ M skills/dsh-qa/scripts/readonly-deny.mjs
+ M skills/dsh-qa/scripts/relocate-smoke.mjs
+ M skills/dsh-qa/scripts/session-start-team.mjs
+ M skills/dsh-qa/scripts/skill-catalog-probe.mjs
+ M skills/dsh-qa/scripts/software-smoke.mjs
+ M skills/dsh-qa/scripts/team-route-rewire.mjs
+ M skills/dsh-qa/scripts/tool-output-validation.mjs
+ M skills/dsh-qa/scripts/ultrawork-smoke.mjs
+ M skills/dsh-qa/scripts/vision-smoke.mjs
+ M skills/dsh-qa/scripts/web-client-adapt.mjs
+ M skills/dsh-qa/scripts/workmate-library.mjs
+ M skills/dsh-qa/scripts/workmate-team-member.mjs
+--- untracked (top-level) ---
+?? .qa-before-dir
+?? .qa-run-stamp
+?? .qa-t15-dir
+?? .qa-t17-after
+?? .qa-t17-after-runner
+?? .qa-t17-dir
+?? .qa-t17-final
+?? agent-references/
+grep: write error: Broken pipe
+
+## t44 BEFORE hashes (session terminal capture, added for a self-contained record)
+mpd-bootstrap-plugin           abcc1cf14d668490bf707f49cd79cb20bdf0dcc95f1886cd1287dd7b6527a4db
+mpd-boulder-plugin             d1dcb9139a283cb161b4fbbf854a6616d36b6f57a37825e44f83843fd26b47fa
+mpd-codegraph-plugin           209a9c9c46a80b8d905a56a78ad2b987c6789a6dcf3e4478b3ddd748a0d03bf0
+mpd-comment-checker-plugin     6dec6aed942ab7a37aff8d5fecdd5273bf1419866037807f85fc4fcf636b2804
+mpd-hashline-plugin            b648b5901e368b935d005f1d295e271aea68ab10fa8ba76dba7863387afd8c74
+mpd-memory-plugin              b145e9a76d974e565a439b8377fd083628bb4aeb443ee7ac9f9a1a6160975300
+mpd-modelchain-plugin          2103df8ee5f4c35ded92d8b98f535a8f6a743f0f5deeaf114a0c19ce4b5f1587
+mpd-qa-roles-probe             a49573f146241c6a8ccb618960b34c52cae20ef4b5ed9f666e3b183c1c90b8ef
+mpd-team-compact-plugin        bb7f78fb424807a849eb8c12cd9e746fd2a6d6a055cac48e27c93e575d0a2eba
+mpd-team-watchdog-plugin       ddb30834942b3b4f755ab88adc1507a3f45b3c5268839c61544471d5eddcd53e
+mpd-tools-plugin               f26afae17afaeb4e8bd248613882e728350d494023e04c22eaf05f02ca9b07e4
+mpd-ulw-plugin                 b2ad0fb030c9edd0cc83a4a23bb5821ef6f3844c56ed0e0dfe5825801971f280
+mpd-workmate-plugin            e3310eb84f2cb1928ccd3a0739c05f1295bb41d9850deaaa60ff6932a6ee2156

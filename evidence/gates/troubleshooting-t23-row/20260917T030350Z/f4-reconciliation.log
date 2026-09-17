@@ -1,0 +1,204 @@
+=== F-4 reconciliation: 21 files vs 19 buckets (measured 2026-09-17T03:06:14Z) ===
+  agent-references/agent-teams-deltas.md
+  agent-references/index.md
+  agent-references/troubleshooting.md
+  packages/mpd-agent-teams-plugin/self-fix-tests/contract-surfaces.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/deliverable-channel.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/ownership-and-wave.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs
+  packages/mpd-team-watchdog-plugin/src/channel.ts
+  packages/mpd-team-watchdog-plugin/src/config-file.ts
+  packages/mpd-team-watchdog-plugin/test/channel-fold.test.ts
+  packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts
+  packages/mpd-team-watchdog-plugin/test/predicate.test.ts
+  scripts/dump-config.mjs
+  scripts/mpd-bg.mjs
+  scripts/repin-vendor.mjs
+  scripts/run-qa-lanes.mjs
+  scripts/verify-dist-fresh.mjs
+  skills/dsh-qa/cases.json
+  skills/dsh-qa/scripts/lib/credentials.mjs
+  skills/dsh-qa/scripts/lib/immutable-output.mjs
+--- FILES: 21 ---
+--- BUCKETS (agent-references/* collapsed into one entry, as the captain counted) ---
+  agent-references/ (tree)
+  packages/mpd-agent-teams-plugin/self-fix-tests/contract-surfaces.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/deliverable-channel.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/ownership-and-wave.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs
+  packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs
+  packages/mpd-team-watchdog-plugin/src/channel.ts
+  packages/mpd-team-watchdog-plugin/src/config-file.ts
+  packages/mpd-team-watchdog-plugin/test/channel-fold.test.ts
+  packages/mpd-team-watchdog-plugin/test/holds-lifecycle.test.ts
+  packages/mpd-team-watchdog-plugin/test/predicate.test.ts
+  scripts/dump-config.mjs
+  scripts/mpd-bg.mjs
+  scripts/repin-vendor.mjs
+  scripts/run-qa-lanes.mjs
+  scripts/verify-dist-fresh.mjs
+  skills/dsh-qa/cases.json
+  skills/dsh-qa/scripts/lib/credentials.mjs
+  skills/dsh-qa/scripts/lib/immutable-output.mjs
+--- bucket count: 19 ---
+=== branch totals (for the commit record) ===
+  untracked: 3242   modified/deleted: 101   HEAD: 646d801   branch: fix/todo-register-p1
+=== commit-shape totals, both counting variants (why 116 vs 3242) ===
+  git status --porcelain          untracked entries (DIRS COLLAPSED): 117
+  git status --porcelain -uall    untracked FILES:                   3242
+  modified/deleted:                                                  101
+  of the untracked files, under evidence/:                           3213
+  of the untracked files, under .mpd/:                               0
+  shipped/pinned trees (scripts packages skills presets extensions templates docs agent-references): 21 files = 19 buckets with agent-references collapsed
+=== is .mpd/ ignored? (it holds team state + memory) ===
+.gitignore:21:.mpd/	.mpd/team/friction-p1-wave/team.json
+11:.mpd-dsh/
+21:.mpd/
+=== pre-commit guard I can offer the captain: does any UNTRACKED file look like secret material? (names only, never values) ===
+--- filename patterns among the 3242 untracked files ---
+  credential     28
+  \.key$         0
+  \.pem$         0
+  token          0
+  secret         0
+  \.env          0
+  settings\.yaml 0
+--- the credential-named untracked FILES (names only) ---
+  evidence/dsh-qa/credentials/20260917T015010Z-before-runner/lanes/agent-teams-adopt.log
+  evidence/dsh-qa/credentials/20260917T015010Z-before-runner/lanes/dual-track-smoke.log
+  evidence/dsh-qa/credentials/20260917T015010Z-before-runner/lanes/mcp-call.log
+  evidence/dsh-qa/credentials/20260917T015010Z-before-runner/lanes/mount-assert.log
+  evidence/dsh-qa/credentials/20260917T015010Z-before-runner/output.log
+  evidence/dsh-qa/credentials/20260917T015010Z-before-runner/result.json
+  evidence/dsh-qa/credentials/20260917T015618Z-codemod/codemod.mjs
+  evidence/dsh-qa/credentials/20260917T015941Z-after/agent-teams-adopt-real.log
+  evidence/dsh-qa/credentials/20260917T015941Z-after/agent-teams-adopt-real2.log
+  evidence/dsh-qa/credentials/20260917T015941Z-after/agent-teams-adopt-real3.log
+  evidence/dsh-qa/credentials/20260917T015941Z-after/agent-teams-adopt-selftest.log
+  evidence/dsh-qa/credentials/20260917T015941Z-after/verify-1-vision.log
+  evidence/dsh-qa/credentials/20260917T015941Z-after/verify-2-adopt-real-settled.log
+  evidence/dsh-qa/credentials/20260917T015941Z-after/verify-2-adopt-real.log
+  evidence/dsh-qa/credentials/20260917T015941Z-after/verify-3-adopt-selftest.log
+  evidence/dsh-qa/credentials/20260917T015941Z-after/vision-smoke.log
+  evidence/dsh-qa/credentials/20260917T021011Z-after-runner/lanes/agent-teams-adopt.log
+  evidence/dsh-qa/credentials/20260917T021011Z-after-runner/lanes/dual-track-smoke.log
+  evidence/dsh-qa/credentials/20260917T021011Z-after-runner/lanes/mcp-call.log
+  evidence/dsh-qa/credentials/20260917T021011Z-after-runner/lanes/memory-smoke.log
+--- content scan of UNTRACKED EVIDENCE for secret-shaped strings (counts + FILE NAMES only; no values echoed) ---
+  files scanned: 3213
+  pattern sk-[A-Za-z0-9]\{20,\}                          files_with_hits(shown<=5)=0
+  pattern AIza[0-9A-Za-z_-]\{20,\}                       files_with_hits(shown<=5)=0
+  pattern eyJ[A-Za-z0-9_-]\{20,\}\.                      files_with_hits(shown<=5)=0
+  pattern BEGIN [A-Z ]*PRIVATE KEY                       files_with_hits(shown<=5)=0
+  pattern api[_-]\?key["']\?[:=] *["'][A-Za-z0-9_-]\{16,\} files_with_hits(shown<=5)=0
+=== same scan over the 101 MODIFIED (existing) paths, names only ===
+  files scanned: 101 (of 101 modified/deleted entries)
+  pattern sk-[A-Za-z0-9]\{20,\}                          files_with_hits=0
+  pattern AIza[0-9A-Za-z_-]\{20,\}                       files_with_hits=0
+  pattern BEGIN [A-Z ]*PRIVATE KEY                       files_with_hits=0
+  pattern api[_-]\?key["']\?[:=] *["'][A-Za-z0-9_-]\{16,\} files_with_hits=0
+  => pre-commit secret guard: 0 hits in untracked evidence (3213 files) AND 0 hits in the modified set
+
+=== independent check of the captain's planned EXCLUSION of the root .qa-* byproducts (read-only, 2026-09-17T03:07:21Z) ===
+--- what is there? ---
+-rw-r--r--  1 root root   59 Sep 17 09:52 .qa-before-dir
+-rw-r--r--  1 root root   17 Sep 17 09:16 .qa-run-stamp
+-rw-r--r--  1 root root   50 Sep 17 09:37 .qa-t15-dir
+-rw-r--r--  1 root root   51 Sep 17 09:59 .qa-t17-after
+-rw-r--r--  1 root root   58 Sep 17 10:10 .qa-t17-after-runner
+-rw-r--r--  1 root root   53 Sep 17 09:56 .qa-t17-dir
+-rw-r--r--  1 root root   49 Sep 17 10:17 .qa-t17-final
+-rw-r--r--  1 root root   47 Sep 17 10:39 .qa-t21-dir
+
+.qa-reloc:
+total 188
+drwxr-xr-x 24 root root 4096 Sep 17 10:14 .
+--- git view of them ---
+  ?? .qa-before-dir
+  ?? .qa-run-stamp
+  ?? .qa-t15-dir
+  ?? .qa-t17-after
+  ?? .qa-t17-after-runner
+  ?? .qa-t17-dir
+  ?? .qa-t17-final
+  ?? .qa-t21-dir
+--- are any of them TRACKED (i.e. would excluding an update leave a stale committed copy)? ---
+  .qa-before-dir                           untracked
+  .qa-reloc                                untracked
+  .qa-run-stamp                            untracked
+  .qa-t15-dir                              untracked
+  .qa-t17-after                            untracked
+  .qa-t17-after-runner                     untracked
+  .qa-t17-dir                              untracked
+  .qa-t17-final                            untracked
+  .qa-t21-dir                              untracked
+  .qa-tmp                                  untracked
+  .qa-web-client                           untracked
+--- does ANY tracked file reference the .qa-* names (script, gate, test, doc)? ---
+  .qa-before-dir                           refs=
+  .qa-reloc                                refs=./.qa-reloc/home/profiles/t/cordis.patch.yml ./.qa-reloc/home/profiles/t/package.json ./.qa-reloc/home/profiles/t/package-lock.json 
+  .qa-run-stamp                            refs=
+  .qa-t15-dir                              refs=
+
+=== independent check of the planned EXCLUSION of root .qa-* byproducts (read-only, 2026-09-17T03:08:30Z) ===
+--- what is there, and is it tracked? ---
+  .qa-before-dir                           untracked  59 bytes
+  .qa-reloc                                untracked  4096 bytes
+  .qa-run-stamp                            untracked  17 bytes
+  .qa-t15-dir                              untracked  50 bytes
+  .qa-t17-after                            untracked  51 bytes
+  .qa-t17-after-runner                     untracked  58 bytes
+  .qa-t17-dir                              untracked  53 bytes
+  .qa-t17-final                            untracked  49 bytes
+  .qa-t21-dir                              untracked  47 bytes
+  .qa-tmp                                  untracked  4096 bytes
+  .qa-web-client                           untracked  4096 bytes
+--- references from TRACKED files only (git grep over the index; evidence/.mpd excluded) ---
+  .qa-before-dir                           refs=[]
+  .qa-reloc                                refs=[.gitignore scripts/install-profile.mjs skills/dsh-qa/scripts/bundle-lifecycle.mjs ]
+  .qa-run-stamp                            refs=[]
+  .qa-t15-dir                              refs=[]
+  .qa-t17-after                            refs=[]
+  .qa-t17-after-runner                     refs=[]
+  .qa-t17-dir                              refs=[]
+  .qa-t17-final                            refs=[]
+  .qa-t21-dir                              refs=[]
+  .qa-tmp                                  refs=[.gitignore ]
+  .qa-web-client                           refs=[.gitignore skills/dsh-qa/scripts/web-client-adapt.mjs ]
+--- would they be shipped, or read by any gate? (packer ships an explicit list; git grep the scripts + manifest) ---
+scripts/install-profile.mjs:320:  // (under .qa-reloc/ — a gitignored scratch root, so failure residue never commits)
+scripts/install-profile.mjs:321:  const tmp = join(repoRoot, ".qa-reloc", "installer-selftest")
+skills/dsh-qa/scripts/agent-teams-messaging.mjs:864:    schema: "mpd.omo-align.qa-shipped-path/2",
+skills/dsh-qa/scripts/bundle-lifecycle.mjs:71:  const sandbox = join(repoRoot, ".qa-reloc", "bundle-lifecycle-" + ts)
+skills/dsh-qa/scripts/relocate-smoke.mjs:61:  const reloc = join(repoRoot, ".qa-reloc")
+  (empty above = nothing in the gates/the manifest/the QA scripts references the .qa-* names)
+
+=== .qa-* decision table for the staging step (2026-09-17T03:08:42Z) ===
+  ENTRY                    IGNORED    SIZE      STAGED-BY-git-add--A?
+  .qa-before-dir           no         4.0K      YES
+  .qa-reloc                yes        261M      no (ignored)
+  .qa-run-stamp            no         4.0K      YES
+  .qa-t15-dir              no         4.0K      YES
+  .qa-t17-after            no         4.0K      YES
+  .qa-t17-after-runner     no         4.0K      YES
+  .qa-t17-dir              no         4.0K      YES
+  .qa-t17-final            no         4.0K      YES
+  .qa-t21-dir              no         4.0K      YES
+  .qa-tmp                  yes        161M      no (ignored)
+  .qa-web-client           yes        20M       no (ignored)
+--- the .gitignore rows that matter ---
+  3:.qa-reloc/
+  4:.qa-tmp/
+  5:.qa-web-client/
+  14:.qa-tov/
+--- total bulk if staged by accident ---
+  441M	total
+--- do any of them contain a nested git repo / huge binaries that would bloat the commit? ---
+  nested .git: .qa-reloc/upstream-pinned/.git
+  nested .git: .qa-tmp/uv-cache/sdists-v9/.git
+  >1MB: .qa-reloc/upstream-pinned/.omo/evidence/20260729-give-me-tips/omo-fallback.html
+  >1MB: .qa-reloc/upstream-pinned/.omo/evidence/20260729-give-me-tips/omo-fallback.grid.json
+  >1MB: .qa-reloc/upstream-pinned/.git/index
+  >1MB: .qa-reloc/upstream-pinned/.git/objects/pack/pack-49e284575f703016ecdd944d818dde1fee6f0f7c.pack
+  >1MB: .qa-reloc/upstream-pinned/.git/objects/pack/pack-1e5d70cf02a1a38911869b864fdd2de7a001e552.pack

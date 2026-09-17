@@ -1,0 +1,17 @@
+[negative control/card-shape] pre-move card shape re-injected into the built client -> W2a/W2b red as required mutationLanded=true
+[card] W2a=ok W2b=ok W2c=ok W2d=ok W2e=ok W2f=ok | W3 NOT-CLAIMED (no browser)
+[static] S1=ok S2=ok S3=ok
+[boot] main: /tmp/mpd-settings-bridge-root-IxTaEX (port 40291)
+[boot] cookie=present log=evidence/mpd-bridge/web-settings-bridge/20260917T014234Z/raw/boot-main.log
+[session] one: status=200 transport=none
+[mutate] one root: status=200 {"ok":true,"value":{"ns":"mpd","schema":{"uid":37,"refs":{"1":{"type":"number","meta":{"default":20000}},"2":{"type":"object","meta":{"default":{}},"dict":{"maxDiffChars":1}},"4":{"type":"boolean","meta":{"default":true}},"5":{"type":"object","meta":{"default":{}},"dict":{"autoCheck":4}},"7":{"type":"number","meta":{"default":6}},"8":{"type":"object","meta":{"default":{}},"dict":{"maxRounds":7}},"9":{"type":"const","meta":{},"value":"git"},"10":{"type":"const","meta":{},"value":"svn"},"12":{"type":"union","meta":{"default":"git"},"list":[9,10]},"13":{"type":"object","meta":{"default":{}},"dict":{"vcs":12}},"15":{"type":"string","meta":{"default":".mpd/team"}},"16":{"type":"object","meta":{"default":{}},"dict":{"stateDir":15}},"18":{"type":"string","meta":{"default":".mpd"}},"19":{"type":"object","meta":{"default":{}},"dict":{"dir":18}},"21":{"type":"boolean","meta":{"default":true}},"23":{"type":"number","meta":{"default":600000}},"25":{"type":"number","meta":{"default":15000}},"27":{"type":"number","meta":{"default":6}},"28":{"type":"const","meta":{},"value":"pause"},"29":{"type":"const","meta":{},"value":"warn-only"},"31":{"type":"union","meta":{"default":"warn-only"},"list":[28,29]},"33":{"type":"number","meta":{"default":900000}},"35":{"type":"number","meta":{"default":900000}},"36":{"type":"object","meta":{"default":{}},"dict":{"enabled":21,"warnSilenceMs":23,"tickIntervalMs":25,"warnStreakToEscalate":27,"actionOnEscalate":31,"toolInFlightMaxMs":33,"holdTtlMs":35}},"37":{"type":"object","meta":{"default":{}},"dict":{"hashline":2,"commentChecker":5,"ulw":8,"memory":13,"team":16,"boulder":19,"watchdog":36}}}},"value":{"hashline":{"maxDiffChars":31415},"commentChecker":{"autoCheck":true},"ulw":{"maxRounds":6},"memory":{"vcs":"git"},"team":{"stateDir":".mpd/team"},"boulder":{"dir":".mpd"},"watchdog":{"enabled":true,"warnSilenceMs":600000,"tickIntervalMs":15000,"warnStreakToEscalate":6,"actionOnEscalate":"warn-only","toolInFlightMaxMs":900000,"holdTtlMs":900000}},"base":{"hashline":{"maxDiffChars":35000},"ulw":{"maxRounds":6}},"user":{"hashline":{"maxDiffChars":31415},"watchdog":{"actionOnEscalate":"warn-only"}},"applies":"restart","secrets":[],"revision":1}}
+[read-back] settings/describe: status=200 envelope=ok,value ns=mpd resolved=31415 base={"hashline":{"maxDiffChars":35000},"ulw":{"maxRounds":6}}
+[write] W1=ok W2=ok W3=ok W4=ok W5=ok W6=ok W7=ok W8=ok W9=ok W10=ok W11=ok W12=ok W15=ok W14=ok W13=ok
+[session] two: status=200 transport=none
+[mutate] two roots: status=200 "ok"
+[ambiguous] A1=ok A2=ok A3=ok A4=ok A5=ok
+[boot] disabled control: /tmp/mpd-settings-bridge-disabled-pgJNIQ (port 34147)
+[session] disabled control: status=200 transport=none
+[mutate] disabled control: status=200 "ok"
+[disabled] D1=ok D2=ok D3=ok D4=ok
+[negative control] injected fan-out fault -> verdict red as required

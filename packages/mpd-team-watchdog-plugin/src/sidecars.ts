@@ -19,13 +19,36 @@ export interface HoldRecord {
   attemptId: string | null
   /** The scene written for the escalation that produced this hold. */
   sceneAt: number
+  /**
+   * T-17 (§6): the bound after which this hold releases itself, with a durable
+   * `hold-auto-released` incident. `0` = no TTL (an explicit "never expire"), in which case
+   * only the ACTIVITY path can release it. A hold written before this field existed reads as
+   * `0`, so an old hold is never released on a bound nobody ever recorded for it.
+   */
+  ttlMs: number
 }
 
 /** The durable incident vocabulary (ONE definition, shared with the scene's incident rows). */
-export type IncidentKind = "warn" | "escalate" | "never-started" | "tool-expired"
+export type IncidentKind = "warn" | "escalate" | "never-started" | "tool-expired" | "hold-auto-released"
 
-/** Why an incident was recorded; `ms` is the silence window, the in-flight age or 0. */
-export type IncidentCause = { kind: "silence" | "never-started" | "tool-expired"; ms: number; tool?: string }
+/**
+ * Why an incident was recorded; `ms` is the silence window, the in-flight age or 0.
+ *
+ * `silence` is the PRE-redesign spelling, kept so every historical record still parses.
+ * New records name the predicate that produced them: `silence-channel` (the §1 four-state
+ * fold concluded OUTSTANDING) or `silence-heartbeat` (§4's report-only degradation).
+ */
+export type IncidentCause = {
+  kind: "silence" | "silence-channel" | "silence-heartbeat" | "never-started" | "tool-expired" | "hold-auto-released"
+  ms: number
+  tool?: string
+  /**
+   * T-17: WHICH auto-release path fired. `ttl` = the hold outlived its `ttlMs`; `activity` =
+   * a heartbeat stamp for that team arrived after `hold.since`, i.e. a member demonstrably
+   * worked and disproved the wedge the hold was raised for.
+   */
+  release?: "ttl" | "activity"
+}
 
 /**
  * One incident record: a WARN or an ESCALATE, durably logged.
@@ -62,7 +85,9 @@ export function readHold(workspace: string, stateDir: string, teamId: string): H
   try {
     const parsed = JSON.parse(text) as HoldRecord
     if (parsed === null || typeof parsed !== "object" || typeof parsed.id !== "string") return undefined
-    return parsed
+    // T-17 back-compat: a hold persisted before `ttlMs` existed reads as 0 (no TTL) rather than
+    // as `undefined`, so the auto-release arithmetic never invents a bound.
+    return { ...parsed, ttlMs: typeof parsed.ttlMs === "number" && Number.isFinite(parsed.ttlMs) ? parsed.ttlMs : 0 }
   } catch {
     return undefined
   }

@@ -1,0 +1,8 @@
+[tool-output-validation] config-get-lossless: ok=false -> /root/dshProj/my-power-dsh/evidence/fix/config-get-lossless/2026-09-17T01-41-58.980Z
+  live: {"ok":false,"exit":1}
+  expect: {"ok":false,"hits":[]}
+  forbid: {"ok":true,"hits":[]}
+[tool-output-validation] boulder-status-planprogress: ok=false -> /root/dshProj/my-power-dsh/evidence/fix/boulder-status-planprogress/2026-09-17T01-42-07.171Z
+  live: {"ok":false,"exit":1}
+  expect: {"ok":false,"hits":[]}
+  forbid: {"ok":true,"hits":[]}

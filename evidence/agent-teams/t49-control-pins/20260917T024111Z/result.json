@@ -1,0 +1,54 @@
+{
+  "task": "t41 \u2014 pin T-49's two refusal paths in the self-fix suite",
+  "attemptId": "2bc0fcde-a455-48b6-a243-faedea3d1fac",
+  "measuredAt": "2026-09-17T02:41Z",
+  "changedPaths": [
+    "packages/mpd-agent-teams-plugin/self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs"
+  ],
+  "pinsAdded": {
+    "a_nonParticipant": "expect(outsiderRefusal).toContain('you do not lead or belong to any active team yet') \u2014 the verbatim refusal measured pre-fix by the lane owner (lib/tools.js:64)",
+    "b_unknownTaskId": "expect(unknownRefusal).toContain('task \"t99\" does not exist in team') AND matches /\\(known tasks: t1\\)/ \u2014 the tools.js:2523 behaviour (known-ids list)"
+  },
+  "falsifiability": {
+    "method": "in-test scratch lane: lib/*.js copied to a temp dir (+ _deps symlinked, the t9 pattern), the two refusal TEXTS neutralised in the copy, the copy imported and driven with the SAME calls",
+    "readings": {
+      "scratch copies still refuse": "SCRATCH-NEUTRAL-PARTICIPANT-REFUSAL / SCRATCH-NEUTRAL-KNOWN-IDS \u2014 so the difference is the TEXT, not a missing refusal",
+      "pinned matchers go RED there": "the same toContain/matches assertions fail against the copy (asserted with not.toContain / not.toMatch)",
+      "result": "both pins depend on the real refusal text \u2014 they are falsifiable, not decoration"
+    }
+  },
+  "libUnchanged": {
+    "before": [
+      "d9fafd356f206c26838b9d119daa7cf04f41d499924cdd356529e5e1b45e7199  packages/mpd-agent-teams-plugin/lib/tool-names.js",
+      "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f  packages/mpd-agent-teams-plugin/lib/tools.js",
+      "b1b1ac53cc41f2265fcf5b4e0e4892ee24c617f0ae004ccdd4d8f28ce5289681  packages/mpd-agent-teams-plugin/lib/members.js",
+      "ec0baf212619872c521fe15b4dd1a0d50ef6d1834415ddc971074958688b5f5c  packages/mpd-agent-teams-plugin/lib/capabilities.js"
+    ],
+    "after": [
+      "d9fafd356f206c26838b9d119daa7cf04f41d499924cdd356529e5e1b45e7199  packages/mpd-agent-teams-plugin/lib/tool-names.js",
+      "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f  packages/mpd-agent-teams-plugin/lib/tools.js",
+      "b1b1ac53cc41f2265fcf5b4e0e4892ee24c617f0ae004ccdd4d8f28ce5289681  packages/mpd-agent-teams-plugin/lib/members.js",
+      "ec0baf212619872c521fe15b4dd1a0d50ef6d1834415ddc971074958688b5f5c  packages/mpd-agent-teams-plugin/lib/capabilities.js"
+    ],
+    "identical": true,
+    "note": "NO library change: this task adds pins only (inScope = self-fix-tests + evidence)."
+  },
+  "anchorSupersession": {
+    "changedByThisTask": "only self-fix-tests/tool-boundary-hold-and-contract-seat.test.mjs (t9 recorded 380f2ae241d8deeb\u2026; the new hash is in test-file-hash-after.txt) \u2014 expected, because t41 ADDS a test to that file",
+    "unchanged": "the four relevant lib files keep their hashes (see libUnchanged)",
+    "whyThatIsExpected": "t9's lib anchors were already superseded by the later lane-B batches (t14/t19/t20/t36 each added regions); the anchors THIS task could have disturbed are the lib files, and they are byte-identical. The test file is a PIN CARRIER, not a verdict anchor for lib behaviour."
+  },
+  "controlC_satisfiedByConstruction": "No new assertion needed for the captain's control (c): the allow-list shape was used (MEMBER_TOOL_NAMES in lib/tool-names.js), lib/members.js:586 was never touched by t9 or by this task, and the existing 'T-49: the contract tool is a MEMBER tool in BOTH deny computations' test already asserts that a read-only seat's spawn deny still carries write/edit/bash and that agent_teams_approve stays denied (captain 99 tools / read-only 83 in the t9 mounted boot).",
+  "gates": {
+    "bun test packages/mpd-agent-teams-plugin": "exit 0 \u2014 243 pass / 0 fail / 2007 expect() calls across 70 files (test.log); the pinned file ALONE is 6 pass / 0 fail / 54 expect() calls",
+    "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 \u2014 73 mpd delta region(s) across 9 adopted files (check.log); this task touched NO region (the count moved from 71 to 73 by OTHER lanes' batches, not here)"
+  },
+  "evidenceFiles": [
+    "result.json",
+    "lib-hashes-before.txt",
+    "lib-hashes-after.txt",
+    "test-file-hash-after.txt",
+    "test.log",
+    "check.log"
+  ]
+}

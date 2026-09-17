@@ -1,0 +1,12 @@
+[PASS] T-48/D2: the real claim_task tool exists — function
+[PASS] D2: claim_task SUCCEEDS while a working hold is live — status=claimed attempt=e68306bb
+[PASS] D2: update_task SUCCEEDS while the same hold is live — status=in_progress
+[PASS] D2: the durable record really moved — status=in_progress
+[PASS] D2: every hold read came from the DISPATCH half (scheduler.js), none from the tool boundary — reads=1 nonScheduler=0
+[PASS] T-46: output_append extends a TERMINAL task's summary with a >8 KB document — before=23B after=9537B prefixKept=true
+[PASS] T-46: a byte-dropping plain `output` replacement is REFUSED and the bytes survive — refusal=terminal task t2 is immutable: output would change; use agent_teams_reassign_task to retry
+[PASS] T-09: the artifact channel returns artifact_path + artifact_bytes — path=evidence/t25/artifact.md bytes=9045
+[PASS] T-09: the artifact file on disk holds the FULL text (byte-exact) — disk=9045B expected=9045B
+[PASS] T-49: agent_teams_task_contract is a MEMBER tool name — memberTools=6
+[PASS] T-49: the contract tool answers a member call with the declared contract — view={"task_id":"t2","subject":"terminal append probe","kind":"work","status":"completed","assignee":"Architect","attempt":1,
+[verify-lane-b] 11/11 cases passed — PASS

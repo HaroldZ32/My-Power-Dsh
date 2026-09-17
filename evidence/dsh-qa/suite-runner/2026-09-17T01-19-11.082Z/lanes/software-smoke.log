@@ -1,0 +1,5 @@
+[software-smoke] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/software-smoke/2026-09-17T01-41-11.159Z
+  install: {"ok":true,"exit":0,"tail":"fallback: { provider: deepseek-official, model: deepseek-v4-flash }\n              executionPrompt: \"Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.\"\n\n[install-profile] wrote profile/ home patch/ presets(1) + web-compat s
+  session: {"ok":true,"exit":0,"stubCalls":4,"writeToolOffered":true,"bashToolOffered":true,"writeResultOk":true,"missingCredential":false,"authFailed":false}
+  artifact: {"ok":true,"exists":true,"contentMatches":true,"deterministic":true,"optimal":true,"oracle":{"winner":1,"plies":11,"problems":[],"probes":{"3,4,5":{"output":"move 0 2","problems":[]},"1,2,3":{"output":"move 0 1","problems":[]},"7,5,3":{"output":"move 0 1","problems":[]},"2,2,0":{"output":"move 0 1",
+  isolation: {"ok":true,"checked":1,"keys":["--tmp-mpd-software-smoke-XFibO0-ws--"]}

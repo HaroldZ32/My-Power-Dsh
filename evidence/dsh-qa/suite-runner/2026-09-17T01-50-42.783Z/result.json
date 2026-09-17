@@ -1,0 +1,50 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-09-17T01:50:42.784Z",
+  "finishedAt": "2026-09-17T01:50:42.935Z",
+  "durationMs": 151,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "mount-assert",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 147,
+      "command": "bun skills/dsh-qa/scripts/mount-assert.mjs --no-skip --expect=name: '@deepseek-ai/dsh-llm'",
+      "script": "skills/dsh-qa/scripts/mount-assert.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/mount-assert/2026-09-17T01-50-42.928Z",
+      "logPath": "evidence/dsh-qa/suite-runner/2026-09-17T01-50-42.783Z/lanes/mount-assert.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}

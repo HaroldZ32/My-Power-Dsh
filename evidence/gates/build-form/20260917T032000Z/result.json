@@ -1,0 +1,83 @@
+{
+  "task": "t45 — land the canonical repo-root build form in AGENTS.md §6 and make §4 reach it (T-67 manual half)",
+  "attempt_id": "7cb4f71d-f2bc-4063-90ad-810c6aa6ec18",
+  "generated_at": "2026-09-17T03:22:00Z",
+  "verdict": "PASS",
+  "measured": {
+    "round_trip": {
+      "documented_command_index": "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile <tmp>/index.js → exit 0",
+      "documented_command_sdk": "bun build packages/mpd-ext-plugin/src/sdk.ts --target node --format esm --outfile <tmp>/sdk.js → exit 0",
+      "committed_index_sha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a",
+      "round_trip_index_sha256": "f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a",
+      "committed_index_bytes": 152855,
+      "committed_sdk_sha256": "4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195",
+      "round_trip_sdk_sha256": "4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195",
+      "verdict": "IDENTICAL for both entries",
+      "trap_contrast": "package-dir build of the same entry (temp outfile) = a7b843e19656dbe950131f9c597222436f671a15b35ee3c62776fd4f6f76864a, 152,579 B, first line `// ../mpd-dsh-adapter-plugin/src/index.ts` — byte-different from the canonical form and flagged STALE by the gate (-276 B)"
+    },
+    "gates_after_edits": {
+      "verify-dist-fresh": "exit 0 — ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed",
+      "verify:docs": "exit 0 — pairs=37 failed=0 violations=0 exempt=17",
+      "verify:rows": "exit 0 — 25 row ids match the bundle patch insert list",
+      "budget": "AGENTS.md 48,354 B → rendered 48,658 B against 65,536, truncated=false, GREEN (~16.9 KB headroom)"
+    },
+    "files": { "AGENTS.md": { "bytes": 48354, "sha256": "2b63d47434903a9495272ab558ec116f3140f24b971c3b57bd0e8a6fbb5fd054", "regions_changed": "§6 Build bullet, §4 Dist-freshness cell" } },
+    "no_tree_writes": "the round trip and the contrast build both wrote TEMP outfiles only; no packages/** or scripts/** byte moved (the three package-local build scripts are untouched — T-67's script half, wave 2)"
+  },
+  "acceptance": [
+    {
+      "criterion": "AGENTS.md §6's Build line names the canonical ROOT form explicitly (cwd = repo root; `bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js`) and says this is the form the freshness gate reproduces byte-for-byte.",
+      "status": "passed",
+      "evidence": "§6's Build bullet now reads 'Build — from the REPO ROOT, with path-qualified args' with the exact command, the multi-entry note (sdk.ts → dist/sdk.js), and the reason: bun build writes the entry path RELATIVE TO CWD into the artifact's first line, and verify-dist-fresh.mjs reproduces THESE bytes — a reader can copy it and get gate-clean bytes (proven: the round trip reproduces f6097fd3…/152,855 B and sdk 4117a1d5…/1,708 B exactly)."
+    },
+    {
+      "criterion": "The residual is stated EXPLICITLY where the form is named: the three packages still ship a package-local `build` script whose output is byte-different and therefore STALE under the gate; use the repo-root command until T-67's script half lands (wave 2).",
+      "status": "passed",
+      "evidence": "The same bullet names `mpd-ext-plugin`, `mpd-team-watchdog-plugin`, `mpd-tui-plugin` as the packages whose own build scripts produce the package-dir form, says that form is flagged STALE 'even though it looks sanctioned', and points at T-67's wave-2 script half. The byte-difference is measured for mpd-ext-plugin (152,855 vs 152,579 B, −276 B; first-line banner `// ../mpd-dsh-adapter-plugin/src/index.ts`)."
+    },
+    {
+      "criterion": "§4's dist-freshness row names the form or points at the §6 Build line (reviewer finding F3): whatever an agent reads first — the gate row or the build line — it reaches the canonical command and the residual note.",
+      "status": "passed",
+      "evidence": "§4's Dist-freshness cell now ends: 'the canonical REBUILD command — repo root, path-qualified args — and the package-directory trap are named in §6's Build line'. So the gate row is a pointer to the canonical form and the residual, and the build line carries both in full."
+    },
+    {
+      "criterion": "The round trip is PROVEN FROM DISK: the documented command is executed and its output compared BY SHA256 with the committed packages/mpd-ext-plugin/dist/index.js (f6097fd3…, 152,855 B), and verify-dist-fresh is re-read AFTER the edits; temp outfiles only, no packages/** write.",
+      "status": "passed",
+      "evidence": "Both documented commands ran exit 0 from the repo root into temp outfiles: index → f6097fd3…/152,855 B (identical to committed), sdk → 4117a1d5…/1,708 B (identical). verify-dist-fresh re-read AFTER the edits: exit 0, 'ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed'. No packages/** byte was written."
+    },
+    {
+      "criterion": "Nothing else changes: TWO clauses (the Build line + the gate-row pointer) plus the residual sentence — no packages/** or scripts/** byte touched, manual structure/numbering/budget untouched.",
+      "status": "passed",
+      "evidence": "Exactly two regions changed: the §6 Build bullet and the §4 Dist-freshness cell. No heading moved, section numbering unchanged, the 13 sections and the Reference Index are intact, and the budget is GREEN (48,354 B source → 48,658 B rendered, truncated:false)."
+    },
+    {
+      "criterion": "bun run verify:docs and node scripts/verify-rows-parity.mjs stay green; AGENTS.md is agent-facing English-only (no zh-CN twin, no census number moves).",
+      "status": "passed",
+      "evidence": "verify:docs exit 0 (pairs=37 failed=0 violations=0 exempt=17 — census unchanged), verify:rows exit 0 (25). AGENTS.md remains English-only agent-facing; no twin was added and no file was renamed."
+    }
+  ],
+  "commands": [
+    { "command": "node scripts/verify-dist-fresh.mjs", "exit": 0, "decisive_output": "ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed" },
+    { "command": "bun run verify:docs", "exit": 0, "decisive_output": "[verify-docs-parity] pairs=37 failed=0 violations=0 exempt=17 — PASS" },
+    { "command": "node scripts/verify-rows-parity.mjs", "exit": 0, "decisive_output": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list" },
+    { "command": "bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile <tmp>/index.js", "exit": 0, "decisive_output": "round-trip sha256 f6097fd3… == committed; 152,855 B" },
+    { "command": "bun build packages/mpd-ext-plugin/src/sdk.ts --target node --format esm --outfile <tmp>/sdk.js", "exit": 0, "decisive_output": "round-trip sha256 4117a1d5… == committed; 1,708 B" }
+  ],
+  "residual_risks": [
+    "The three package-local `build` scripts still emit the package-dir form (measured for mpd-ext-plugin: −276 B, different first-line banner); the manual now says so and points at T-67's wave-2 script half. Until then the gate stays the authority on which form is canonical.",
+    "The 20/20 reading is valid only for the revision it measured (t48 had landed the workmate rebuild at that point); a later src edit re-reddens a target, and the captain's commit-time sweep must re-run the gate rather than inherit this line.",
+    "The watchdog/tui delta SIZES are deliberately left OPEN for t46's review — only mpd-ext-plugin's package-dir delta was measured here; the derived repo-root-vs-package-dir RULE is settled.",
+    "No git writes; the captain commits."
+  ],
+  "artifacts": [
+    "AGENTS.md",
+    "evidence/gates/build-form/20260917T032000Z/result.json",
+    "evidence/gates/build-form/20260917T032000Z/output.log",
+    "evidence/gates/build-form/20260917T032000Z/round-trip.log",
+    "evidence/gates/build-form/20260917T032000Z/verify-dist-fresh.log",
+    "evidence/gates/build-form/20260917T032000Z/verify-docs.log",
+    "evidence/gates/build-form/20260917T032000Z/verify-rows.log",
+    "evidence/gates/build-form/20260917T032000Z/budget.txt",
+    "evidence/gates/build-form/20260917T032000Z/sizes.txt"
+  ]
+}

@@ -1,0 +1,217 @@
+{
+  "task": "t28",
+  "started_at": "2026-09-17T02:50:33.133Z",
+  "repo": "/root/dshProj/my-power-dsh",
+  "legs": {
+    "dist_freshness": {
+      "exit": 1,
+      "tail": "  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact |   packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/ | [verify-dist-fresh] FAIL - 1 of 20 targets not fresh (STALE: 1) — 811ms"
+    },
+    "pack": {
+      "exit": 0,
+      "stdout_tail": [
+        "> @mpd-dsh/mpd@0.9.1 pack",
+        "> node scripts/pack-mpd.mjs",
+        "",
+        "[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle",
+        "[pack-mpd] modes normalized: 1188 files (644: 1176, 755: 12)",
+        "[pack-mpd] staged package -> /root/dshProj/my-power-dsh/dist/mpd-package"
+      ],
+      "out_mtime_after": 1789613434788.746,
+      "out_existed_before": true
+    },
+    "a_directional": {
+      "compared": 1185,
+      "drift_count": 0,
+      "drift": [],
+      "missing_source_count": 0,
+      "missing_source": []
+    },
+    "c_completeness": {
+      "skills": {
+        "missing": 0,
+        "files": []
+      },
+      "presets": {
+        "missing": 0,
+        "files": []
+      },
+      "extensions": {
+        "missing": 0,
+        "files": []
+      },
+      "docs": {
+        "missing": 0,
+        "files": []
+      },
+      "templates": {
+        "missing": 0,
+        "files": []
+      },
+      "agent-references": {
+        "missing": 0,
+        "files": []
+      }
+    },
+    "b_closure": {
+      "exit": 0,
+      "tail": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/my-power-dsh/dist/mpd-package (378 asset files); agent references 3/3"
+    },
+    "b_parity": {
+      "packed_exit": 0,
+      "packed_line": "[verify-docs-parity] root=/root/dshProj/my-power-dsh/dist/mpd-package pairs=35 failed=0 violations=0 exempt=17 — PASS",
+      "repo_exit": 0,
+      "repo_line": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS"
+    },
+    "b_seeded_omission": {
+      "exit": 1,
+      "names_file": true,
+      "names_kind": true,
+      "tail": "  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml |   packed tree: /tmp/t28-copy-KWNt2K/mpd-package (377 asset files)"
+    },
+    "byte_identity": {
+      "groups": {
+        "agent-references": {
+          "exit": 0,
+          "lines": 0,
+          "differing": 0,
+          "only_in": 0,
+          "sample": []
+        },
+        "docs": {
+          "exit": 0,
+          "lines": 0,
+          "differing": 0,
+          "only_in": 0,
+          "sample": []
+        },
+        "templates": {
+          "exit": 0,
+          "lines": 0,
+          "differing": 0,
+          "only_in": 0,
+          "sample": []
+        },
+        "packages": {
+          "exit": 1,
+          "lines": 67,
+          "differing": 0,
+          "only_in": 67,
+          "sample": [
+            "Only in packages/mpd-agent-teams-plugin: self-fix-tests",
+            "Only in packages/mpd-agent-teams-plugin: test",
+            "Only in packages/mpd-bootstrap-plugin: package.json",
+            "Only in packages/mpd-bootstrap-plugin: src",
+            "Only in packages/mpd-bootstrap-plugin: test",
+            "Only in packages/mpd-boulder-plugin: package.json",
+            "Only in packages/mpd-boulder-plugin: src",
+            "Only in packages/mpd-boulder-plugin: test"
+          ]
+        },
+        "skills": {
+          "exit": 0,
+          "lines": 0,
+          "differing": 0,
+          "only_in": 0,
+          "sample": []
+        },
+        "presets": {
+          "exit": 0,
+          "lines": 0,
+          "differing": 0,
+          "only_in": 0,
+          "sample": []
+        },
+        "extensions": {
+          "exit": 0,
+          "lines": 0,
+          "differing": 0,
+          "only_in": 0,
+          "sample": []
+        },
+        "scripts": {
+          "exit": 1,
+          "lines": 18,
+          "differing": 0,
+          "only_in": 18,
+          "sample": [
+            "Only in scripts: bootstrap.mjs",
+            "Only in scripts: build-mcp.mjs",
+            "Only in scripts: build-mpd-client.mjs",
+            "Only in scripts: dump-config.mjs",
+            "Only in scripts: install-profile.mjs",
+            "Only in scripts: mpd-bg.mjs",
+            "Only in scripts: pack-mpd.mjs",
+            "Only in scripts: patch-agent-teams-client.mjs"
+          ]
+        }
+      },
+      "root_readme": {
+        "exit": 0
+      }
+    },
+    "cli": {
+      "validate": {
+        "exit": 0,
+        "tail": "  pending contributes.mcp[0]: pending: server \"lint-mcp\" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state | [mpd-ext] ok"
+      },
+      "self_test": {
+        "exit": 0,
+        "tail": "  ok no command prints usage or fails | [mpd-ext] --self-test passed (53 checks) [validator: compiled]"
+      },
+      "scaffold": {
+        "exit": 0,
+        "tail": "  contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s) |   next: bun scripts/mpd-ext.mjs validate /tmp/t28-scaffold-4PUkDS/verify-probe",
+        "produced": [
+          "skills",
+          "personas",
+          "mpd-ext.json",
+          "flows",
+          "README.zh-CN.md",
+          "README.md"
+        ]
+      }
+    },
+    "red": {
+      "archive_exit": 0,
+      "untar_exit": 0,
+      "tree": "/tmp/t28-red-7vtJWX/tree",
+      "pack_exit": 0,
+      "cli_exit": 1,
+      "cli_output": [
+        "  url: 'file:///tmp/t28-red-7vtJWX/tree/dist/mpd-package/packages/mpd-ext-plugin/src/registry.ts'",
+        "}",
+        "",
+        "Node.js v24.16.0"
+      ],
+      "module_not_found": true
+    }
+  },
+  "findings": [
+    {
+      "id": "F-1",
+      "text": "the packing input tree is NOT dist-fresh: the artifact ships whatever dist/ holds, so the packed workmate dist is stale at this revision (t23's routed residual: one canonical rebuild). Reported, not repaired — the dist belongs to another lane's inScope.",
+      "reading": "  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact |   packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/ | [verify-dist-fresh] FAIL - 1 of 20 targets not fresh (STALE: 1) — 811ms"
+    },
+    {
+      "id": "F-10",
+      "text": "byte-identity red for group(s) scripts — for the wholesale groups this is content drift (re-pack timing) or a packer bug",
+      "reading": "[[\"scripts\",[\"Only in scripts: bootstrap.mjs\",\"Only in scripts: build-mcp.mjs\",\"Only in scripts: build-mpd-client.mjs\",\"Only in scripts: dump-config.mjs\",\"Only in scripts: install-profile.mjs\",\"Only in scripts: mpd-bg.mjs\",\"Only in scripts: pack-mpd.mjs\",\"Only in scripts: patch-agent-teams-client.mjs\"]]]"
+    }
+  ],
+  "revision": {
+    "head": "646d8018a44bffb2d6e1c30afa090056f81b911e",
+    "dirty_paths": 214,
+    "fingerprints": {
+      "packages/mpd-dsh-adapter-plugin/src/index.ts": "62f3ac1e66c6e45807434fb0bfbc22d4282c1f007188a37dd7618de7b326ad7b",
+      "packages/mpd-ext-plugin/src/index.ts": "a5167018d25a3544894380ba9d8a3f34c73effe9742e32d44b6a181e310e2fb8",
+      "packages/mpd-team-watchdog-plugin/src/machine.ts": "ce8bd54cba5164dec1740b6a7d0e0d1a55eb3f8d675d0a4010675f30ff0b9a41",
+      "packages/mpd-agent-teams-plugin/lib/tools.js": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f",
+      "scripts/pack-mpd.mjs": "b4aff7cc81c030adca0cd3d29df9a3901c62cd4ad401d4c7fdc89178d88e7e68",
+      "scripts/verify-pack-closure.mjs": "b7f940b422d34bda1a7d615394f9289e4f23c90e8868417447bffcac30a589cd",
+      "scripts/mpd-ext.mjs": "e9e5c78007e886107b5f5b932c7d0eb2e92105994e24004bb85cf03a2671e262"
+    }
+  },
+  "finished_at": "2026-09-17T02:50:38.503Z",
+  "ok": false
+}

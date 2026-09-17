@@ -1,0 +1,6 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=2 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c9
+[mpd-qa:(only)] PASS case=software-smoke evidence=evidence/dsh-qa/software-smoke/2026-09-17T04-38-51.954Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c9/lanes/software-smoke.log ms=19746
+[mpd-qa:(only)] PASS case=ultrawork-smoke evidence=evidence/plan-c/c2-ultrawork/2026-09-17T04-39-11.808Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c9/lanes/ultrawork-smoke.log ms=86807
+[mpd-qa:(only)] summary selected=2 pass=2 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c9
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

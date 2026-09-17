@@ -1,0 +1,27 @@
+# T-43 workmate guard — RED in the PRODUCTION shape (env set at SPAWN), captured 2026-09-17T03:25:39Z
+# plugin dist under test: packages/mpd-workmate-plugin/dist/index.js (sha256 6b1715d0f8bebda0)
+
+## why the current predicate is a tautology (HOME-independence of the candidate primitives)
+  bun : homedir()=/tmp/fakehome  userInfo().homedir=/tmp/fakehome
+  node: homedir()=/tmp/fakehome  userInfo().homedir=/root
+  -> under node userInfo() is passwd-derived (/root); under bun it FOLLOWS HOME, so the recommended
+     one-line fix works in production (dsh is node: #!/usr/bin/env node) but not under bun/tests.
+
+## the four shapes x two runtimes (guard invoked exactly as a QA boot does)
+  node sandbox HOME     : REFUSED code=real-home-refused status=403
+  node HOME unset       : REFUSED code=real-home-refused status=403
+  node HOME=/root (real): REFUSED code=real-home-refused status=403
+  node sandbox+override : ALLOWED
+  bun  sandbox HOME     : REFUSED code=real-home-refused status=403
+  bun  HOME unset       : REFUSED code=real-home-refused status=403
+  bun  HOME=/root (real): REFUSED code=real-home-refused status=403
+  bun  sandbox+override : ALLOWED
+
+## the production runtime
+  dsh: /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js
+  shebang: #!/usr/bin/env node
+
+## verdict
+  ROW 1 (the sanctioned recipe: HOME=<sandbox> + DSH_HOME set) is REFUSED 403 in BOTH runtimes = the bug.
+  The guard therefore refuses the sandbox and cannot distinguish it from the real home, because
+  homedir() IS $HOME: the comparison 'resolve(home) !== resolve(realHome)' is false in every boot.

@@ -888,6 +888,133 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
 /** Service name other rows resolve with `ctx.get("mpdDsh")`. */
 export const SERVICE_NAME = "mpdDsh"
 
+/** The row is using the REAL mounted adapter (an ACTIVE strict read). */
+export const ADAPTER_IDENTITY_MOUNTED = "mounted:mpdDsh"
+/**
+ * The service IS registered in this composition but its providing fiber is not ACTIVE yet, so a
+ * strict read returns `undefined`. This is the transient miss T-50 is about: it must never be
+ * reported as a missing row, and it must not be cached as a fallback for the session.
+ */
+export const ADAPTER_IDENTITY_PENDING = "pending:provider-not-active"
+/** The service is not provided in this composition at all — the ONLY case where a row-order fix is provable. */
+export const ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter"
+
+export type AdapterIdentity = typeof ADAPTER_IDENTITY_MOUNTED | typeof ADAPTER_IDENTITY_PENDING | typeof ADAPTER_IDENTITY_FALLBACK
+
+export interface LazyAdapterOptions {
+  /** Row label used in the one-line warning (e.g. "mpd-ext"). */
+  label: string
+  /** Warning sink; defaults to console.log, because a headless boot has no logger sink. */
+  warn?: (line: string) => void
+}
+
+/**
+ * One contained service probe. `strict: true` asks cordis for an ACTIVE provider only
+ * (`get(name, strict = true)` drops a provider whose fiber state is not ACTIVE); `strict: false`
+ * sees the registration regardless of fiber state, which is what makes the two miss modes
+ * distinguishable. A probe NEVER throws out of here: a ctx that cannot answer (a scoped cordis
+ * proxy, an inject-filtered ctx, a test double) is reported as a miss, never as a crash.
+ */
+function probeMpdDsh(ctx: unknown, strict: boolean): { value?: unknown; missing: boolean } {
+  const get = (ctx as { get?: unknown } | undefined)?.get
+  if (typeof get !== "function") return { missing: true }
+  try {
+    const value = (get as (name: string, strict?: boolean) => unknown).call(ctx, SERVICE_NAME, strict)
+    return value === undefined || value === null ? { missing: true } : { value, missing: false }
+  } catch {
+    return { missing: true }
+  }
+}
+
+/**
+ * How THIS call reaches the shared adapter. Read it at surface/read time, never as an apply-time
+ * snapshot: with a lazy resolution the answer legitimately changes during the boot.
+ */
+export function dshAdapterIdentity(ctx: unknown): AdapterIdentity {
+  if (!probeMpdDsh(ctx, true).missing) return ADAPTER_IDENTITY_MOUNTED
+  if (!probeMpdDsh(ctx, false).missing) return ADAPTER_IDENTITY_PENDING
+  return ADAPTER_IDENTITY_FALLBACK
+}
+
+/**
+ * The T-50 fix: resolve `mpdDsh` LAZILY on every use instead of once at apply.
+ *
+ * WHY: the loader applies sibling rows CONCURRENTLY and cordis returns `undefined` — never a throw —
+ * for a provider whose fiber is not ACTIVE, so `ctx.get("mpdDsh")` can miss TRANSIENTLY even on a
+ * correctly ordered tree. The previous `ctx.get("mpdDsh") ?? createDshAdapter(ctx)` resolved once at
+ * apply, so such a miss handed that row a PRIVATE adapter for the whole session and said "row
+ * missing / fix the ROW ORDER", which was the wrong diagnosis for a provider that was merely still
+ * starting.
+ *
+ * HOW: the returned object is ONE stable facade whose property access resolves through
+ * {@link probeMpdDsh} until a STRICT read succeeds; only that success is cached. A miss serves the
+ * call through a temporary adapter and the NEXT access re-probes, so the mounted adapter is picked up
+ * automatically the moment its fiber activates — no row-order change is required for a transient miss.
+ * (This is the "lazy on first use" option of the register's fix; the alternative bounded retry is
+ * unnecessary because every access already retries, including the tool handlers a row registered
+ * during apply.)
+ *
+ * HONEST BOUND (T-50): six consecutive clean boots on the correctly ordered tree never observed the
+ * window opening (evidence/wave2 t24, 6/6 `adapterIdentity=mounted:mpdDsh`, zero fallback lines). The
+ * change is therefore justified by the CODE PATH — the loader's concurrent sibling apply and cordis's
+ * non-ACTIVE `undefined` — not by an observed failure; the unit tests drive the miss shape directly.
+ */
+export function createLazyDshAdapter(ctx: unknown, options: LazyAdapterOptions): DshAdapter {
+  const warning = (line: string): void => {
+    try {
+      ;(options.warn ?? ((text: string) => console.log("[" + options.label + "] " + text)))(line)
+    } catch { /* logging must never take a row down */ }
+  }
+  let mounted: DshAdapter | undefined
+  let temporary: DshAdapter | undefined
+  let warnedPending = false
+  let warnedMissing = false
+
+  const resolve = (): DshAdapter => {
+    if (mounted !== undefined) return mounted
+    const active = probeMpdDsh(ctx, true)
+    if (active.value !== undefined) {
+      mounted = active.value as DshAdapter
+      return mounted
+    }
+    temporary ??= createDshAdapter(ctx)
+    // Distinguish the two miss modes: a non-strict hit proves the service IS registered (the
+    // provider is starting), while a strict+non-strict miss proves it is absent from this
+    // composition — only the latter earns the row-order hint.
+    if (!probeMpdDsh(ctx, false).missing) {
+      if (!warnedPending) {
+        warnedPending = true
+        warning("ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber"
+          + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE"
+          + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted"
+          + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).")
+      }
+      return temporary
+    }
+    if (!warnedMissing) {
+      warnedMissing = true
+      warning("ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided"
+        + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter"
+        + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)"
+        + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working,"
+        + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the"
+        + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).")
+    }
+    return temporary
+  }
+
+  return new Proxy({} as DshAdapter, {
+    get(_target, property) {
+      const impl = resolve() as unknown as Record<PropertyKey, unknown>
+      const value = impl[property as keyof typeof impl]
+      return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(impl) : value
+    },
+    has(_target, property) {
+      return property in (resolve() as unknown as Record<PropertyKey, unknown>)
+    },
+  })
+}
+
 export function apply(ctx: any, config: { defaultTimeoutMs?: number; quiet?: boolean } = {}): void {
   const adapter = createDshAdapter(ctx, { ...(config.defaultTimeoutMs === undefined ? {} : { defaultTimeoutMs: config.defaultTimeoutMs }) })
   ctx.provide(SERVICE_NAME, adapter)

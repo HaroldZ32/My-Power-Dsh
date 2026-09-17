@@ -1,0 +1,66 @@
+# RESUME after the captain's stand-down retraction: this entry had NO board verdict (run 1 is void, c14 was cancelled mid-run)
+# alone in its chunk: it burned 934.7 s in run 1, close to the ~17-min job bound
+
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=1 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c14b-agent-teams-dispatch
+[mpd-qa:(only)] FAIL case=agent-teams-dispatch reason=exit-1 exit=1 evidence=evidence/dsh-qa/agent-teams-dispatch/2026-09-17T04-56-06.775Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c14b-agent-teams-dispatch/lanes/agent-teams-dispatch.log ms=930827
+[mpd-qa:(only)] summary selected=1 pass=0 unavailable=0 fail=1
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c14b-agent-teams-dispatch
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-09-17T04:56:06.724Z",
+  "finishedAt": "2026-09-17T05:11:37.557Z",
+  "durationMs": 930833,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "agent-teams-dispatch",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "exit-1",
+      "note": null,
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 930827,
+      "command": "bun skills/dsh-qa/scripts/agent-teams-dispatch.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/agent-teams-dispatch/2026-09-17T04-56-06.775Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c14b-agent-teams-dispatch/lanes/agent-teams-dispatch.log",
+      "outputTail": [
+        "  installer: {\"ok\":true,\"exit\":0}",
+        "  captainRun: {\"ok\":true,\"exit\":0,\"tail\":\" the rest are moot. I'll keep it concise.\\n\\nActually, let me reconsider whether to just do the create now. The user is testing dispatch in headless mode; a probe requires everything this turn. Since I can't approve this turn after creating, the probe simply cannot run th",
+        "  tasks: {\"total\":0}",
+        "  memberAssignments: {\"count\":0,\"sessions\":1,\"labels\":[]}",
+        "  secondBatchDispatched: {\"ok\":false}",
+        "  assignmentDelivery: {\"ok\":false}"
+      ],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 0,
+    "unavailable": 0,
+    "fail": 1
+  },
+  "exitCode": 1
+}
+[exit=1]

@@ -1,0 +1,6 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=919656a8cac1 lanes=2 evidence=evidence/dsh-qa/suite-runner/20260917T013507Z-verify
+[mpd-qa:(only)] PASS case=mount-assert evidence=evidence/dsh-qa/mount-assert/2026-09-17T01-35-07.619Z log=evidence/dsh-qa/suite-runner/20260917T013507Z-verify/lanes/mount-assert.log ms=168
+[mpd-qa:(only)] FAIL case=agent-teams-adopt reason=exit-1 exit=1 evidence=evidence/plan-c/c1-team/2026-09-17T01-35-07.700Z/web.log log=evidence/dsh-qa/suite-runner/20260917T013507Z-verify/lanes/agent-teams-adopt.log ms=129434
+[mpd-qa:(only)] summary selected=2 pass=1 unavailable=0 fail=1
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/suite-runner/20260917T013507Z-verify
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

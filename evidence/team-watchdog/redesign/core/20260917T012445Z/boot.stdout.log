@@ -1,0 +1,16 @@
+[team-watchdog-boot] boot=dsh web: http://127.0.0.1:35101/?token=<redacted> session=session-edefa6cf-f66b-48c7-86be-07de731576f2 preset=mpd
+[team-watchdog-boot] gui: index=200 clientUrls=63 ours=3 served=/plugins/??@mpd-dsh/mpd/client.js&rev=bba12f8aa04acce3-46 status=200 bytes=295612
+[team-watchdog-boot] outcome=model-error verdict=PASS — the turn reached the MODEL call and failed there (not at pre-step): llm-deepseek: no API key for provider route \
+[team-watchdog-boot]   ok   B1: the watchdog row APPLIED in the real boot ({"enabled":"true","disposers":8,"holdService":"mpdWatchdog"})
+[team-watchdog-boot]   ok   B2: the session was created on agentPreset mpd ("mpd")
+[team-watchdog-boot]   ok   B3: session/create and session/prompt were both accepted ({"create":true,"prompt":true})
+[team-watchdog-boot]   ok   B4: the sandbox home received BOTH `.credentials.yaml` and `settings.yaml` when present ([".credentials.yaml",".anonymous-user-id","settings.yaml"])
+[team-watchdog-boot]   ok   B5: the harness's own session log recorded at least one turn/end (1 turn/end line(s))
+[team-watchdog-boot]   ok   B6: NO turn/end carries the pre-step veto signature (map/findLastIndex/length)
+[team-watchdog-boot]   ok   B7: outcome=model-error — PASSED FOR THIS INVARIANT (the pre-step veto is gone; the turn reached the model call) and explicitly NOT a completed turn: the turn reached the MODEL call and failed there (not 
+[team-watchdog-boot]   ok   B8: no client-entry activation failure signature in the real boot log (did not activate / pending (waiting for service / failed to apply loader entry / a client-modules error naming @mpd-dsh/mpd)
+[team-watchdog-boot]   ok   B9: the host SERVED our client for the @mpd-dsh/mpd entry (HTTP 200 on /plugins/??@mpd-dsh/mpd/client.js&rev=bba12f8aa04acce3-46, 295612 bytes)
+[team-watchdog-boot]   ok   B10: the served bytes carry BOTH tab ids we register (mpd-agent-teams: true, mpd-workmate: true)
+[team-watchdog-boot]   ok   B11: the served bytes carry the adopted export bridge AND the sidebar page module
+[team-watchdog-boot]   ok   B12: the boot ran in the USER'S composition, mirrored as far as the sandbox allows (declared: ["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@linxin666/dsh-web-all","dshmarket","dsh-cost-meter","nowl
+[team-watchdog-boot] evidence: /root/dshProj/my-power-dsh/evidence/team-watchdog/redesign/core/20260917T012445Z/boot

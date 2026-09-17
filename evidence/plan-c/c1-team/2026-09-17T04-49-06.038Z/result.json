@@ -1,0 +1,137 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-c1-9fV39o",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": true,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        [
+          "captain.jsonl"
+        ]
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-0ec47b76-5430-41f5-8323-0b0c664b76ba",
+          "createdAt": 1789620564608,
+          "members": [
+            {
+              "id": "fbaec5fa-eeb7-4753-95df-f8e9cd33b86f",
+              "name": "librarian",
+              "role": "researcher",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "executionPrompt": "You write concise factual summaries. For your task, produce exactly one line summarizing the QA goal, then complete the task with that line as the output summary.",
+              "joinedAt": 1789620566615,
+              "status": "idle"
+            },
+            {
+              "id": "09889fce-3fad-4e91-b993-9219aa76b3e4",
+              "name": "oracle",
+              "role": "reviewer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "executionPrompt": "You judge a one-line summary against its stated goal. Read the dependency task's output, then complete your task with verdict=pass if the summary is accurate and one line, otherwise verdict=needs_revision with findings.",
+              "joinedAt": 1789620566657,
+              "status": "working"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Produce exactly one line that summarizes the team's QA goal: verifying that the c1qa AgentTeams adoption path (create team, add members, create dependent tasks, scheduler dispatch, status, archive) works end to end. Return the single line as your task output summary.",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1789620570179,
+              "updatedAt": 1789620575549,
+              "kind": "work",
+              "deliverables": [
+                "one-line summary string in the task output"
+              ],
+              "attemptId": "4329e039-49ee-40f5-a512-cf8eb2708299",
+              "reassigning": false,
+              "output": "QA the c1qa AgentTeams adoption path end to end: creating the team, adding members, creating dependent tasks, scheduler dispatch, status reporting, and archiving all work correctly."
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Review the one-line summary produced by t1 (librarian). Judge whether it is exactly one line and faithfully describes the QA goal. Complete with verdict=pass if acceptable; otherwise verdict=needs_revision with findings.",
+              "status": "claimed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1789620572478,
+              "updatedAt": 1789620575559,
+              "kind": "review",
+              "objective": "Approve or reject the one-line QA goal summary produced by t1.",
+              "acceptance": [
+                "The latest implementation meets the user goal",
+                "No unresolved blocker or high findings"
+              ],
+              "reviewedTaskId": "t1",
+              "attemptId": "1bc0054f-f686-4e74-a33d-ec4eb7a8952e",
+              "reassigning": false
+            }
+          ],
+          "taskSeq": 2
+        }
+      ]
+    },
+    "archive": {
+      "ok": false,
+      "archiveIds": []
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "arm": "fence-refusal",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T04-49-06.038Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

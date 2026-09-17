@@ -1,0 +1,114 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 4,
+  "startedAt": "2026-09-17T04:38:43.320Z",
+  "finishedAt": "2026-09-17T04:40:42.166Z",
+  "durationMs": 118845,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "codegraph-smoke",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 22454,
+      "command": "bun skills/dsh-qa/scripts/codegraph-smoke.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/codegraph-smoke.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/codegraph/2026-09-17T04-39-05.759Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c6/lanes/codegraph-smoke.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "memory-smoke",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 20539,
+      "command": "bun skills/dsh-qa/scripts/memory-smoke.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/memory-smoke.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/plan-c/c6-memory/2026-09-17T04-39-05.859Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c6/lanes/memory-smoke.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "team-route-rewire",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 60970,
+      "command": "bun skills/dsh-qa/scripts/team-route-rewire.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/team-route-rewire.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [
+        "absent-staged-pack"
+      ],
+      "evidencePath": "evidence/plan-e/e4-team-vendor/2026-09-17T04-39-26.580Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c6/lanes/team-route-rewire.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "relocate-smoke",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 14865,
+      "command": "bun skills/dsh-qa/scripts/relocate-smoke.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/relocate-smoke.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [
+        "absent-staged-pack"
+      ],
+      "evidencePath": "evidence/plan-d/relocate/2026-09-17T04-40-27.341Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c6/lanes/relocate-smoke.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 4,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}

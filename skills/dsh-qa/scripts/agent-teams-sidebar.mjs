@@ -39,6 +39,7 @@ import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
+import { seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = dirname(dirname(dirname(HERE)))
@@ -480,7 +481,7 @@ async function bootProbe(sandbox, artifactText) {
     symlinkSync(join(realProfileNodeModules, name), join(profile, "node_modules", name))
   }
   symlinkSync(ROOT, join(profile, "node_modules", "@mpd-dsh", "mpd"))
-  if (existsSync(credentials)) cpSync(credentials, join(home, ".credentials.yaml"))
+  seedSandboxCredentials(home, { credentialsFile: credentials })
   // AGENTS.md §7 — live cases must ALSO stage settings.yaml when present (gateway
   // providers keep the model route there; without it the boot dies with
   // MISSING_CREDENTIAL). Measured 2026-09-14 across the live suite.

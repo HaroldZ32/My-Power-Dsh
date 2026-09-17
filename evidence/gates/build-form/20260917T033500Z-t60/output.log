@@ -1,0 +1,187 @@
+# t60 — REPAIR — §6's build-form sentence must name the 26 bundled-module path comments, not "the first line"
+# attempt_id 6220cc64-334f-4187-b304-ca65deef6e63  ·  kind=repair  ·  sourceTaskId=t45
+# source finding: t45-section-6-first-line-wording-invites-banner-normalization   ·   coverageOf T-67
+# cwd = /root/dshProj/my-power-dsh for every command below
+#
+# WHAT THIS REPAIR FORECLOSES: the old sentence ("writes the entry path RELATIVE TO CWD into the
+# artifact's first line") invites a reader to conclude that normalizing ONE banner line reconciles
+# the two build forms. It does not: the two forms differ on 26 lines (24 after dropping the first),
+# EVERY difference a bundled-module path comment, with NO code line differing.
+#
+# TREE STATE (settled: re-hashed 3 min after the edit, unchanged)
+#   AGENTS.md  sha256 1a317bdfbfdb2877873440ec80681a57610fea6e8973ffad8063dee2fdd091f4   48,540 B
+#   AGENTS.md  before this repair (recorded on disk): eb526cb3e42199643c31602fce4c7ecc6fc62b59b268e830dc5a95a82f9d7452  48,354 B
+#   AGENTS.md  mtime 2026-09-17 11:27:12 +0800  (the only write this task made to the manual)
+#   whole-file sha re-checked at 03:30:27Z — identical  ⇒ the revision is SETTLED, not in flight.
+
+================================================================================
+## 1. THE SENTENCE — before → after (verbatim)
+================================================================================
+
+### BEFORE (AGENTS.md §6 Build bullet, pre-t60; recorded in evidence/gates/build-form/20260917T032000Z/output.log lines 14-16)
+  `packages/mpd-ext-plugin/dist/sdk.js`). This is the CANONICAL form: `bun build` writes the entry
+  path RELATIVE TO CWD into the artifact's first line, and `node scripts/verify-dist-fresh.mjs`
+  reproduces THESE bytes — so a package-directory build (the form the packages' own `build` scripts
+
+### AFTER (AGENTS.md lines 350-355, current)
+  `packages/mpd-ext-plugin/dist/sdk.js`). This is the CANONICAL form: `bun build` writes EVERY
+  bundled module's path RELATIVE TO CWD into the artifact's path comments — 26 of them in the
+  `mpd-ext-plugin` build (measured; 24 remain after dropping the first), not one banner line — and
+  `node scripts/verify-dist-fresh.mjs` reproduces THESE bytes, so normalizing a banner cannot
+  reconcile the two forms: a package-directory build (the form the packages' own `build` scripts
+
+### PRESERVED UNCHANGED by this repair (same lines, current file)
+  - the canonical form + exact command   : lines 347-349 (`bun build packages/<pkg>/src/index.ts
+    --target node --format esm --outfile packages/<pkg>/dist/index.js`, multi-entry note)
+  - the three-package residual           : lines 355-357 (`mpd-ext-plugin`, `mpd-team-watchdog-plugin`,
+    `mpd-tui-plugin`; "use the repo-root command above until that script half lands (T-67, wave 2)")
+  - the §4 pointer to this line          : §4 Dist-freshness row — "…the canonical REBUILD command —
+    repo root, path-qualified args — and the package-directory trap are named in §6's Build line"
+
+================================================================================
+## 2. DECISIVE PROOF THAT THE EDIT IS THE ONLY DIFFERENCE (single hunk, words only, no command)
+================================================================================
+Method: reverse the substitution in a COPY (no write to AGENTS.md) and hash the result against the
+whole-file identity recorded BEFORE the edit. If the reverse reproduces the recorded before-hash
+byte-for-byte, then the reworded span IS the entire delta — hence a single hunk, hence words only.
+
+$ python3 -c "...src.replace(post_t60_span, pre_t60_span) -> REVERSED-pre-t60.AGENTS.md..."
+occurrences of the post-t60 span: 1
+candidate (reverse edit) bytes: 48354
+candidate sha256 : eb526cb3e42199643c31602fce4c7ecc6fc62b59b268e830dc5a95a82f9d7452
+recorded BEFORE  : eb526cb3e42199643c31602fce4c7ecc6fc62b59b268e830dc5a95a82f9d7452  48354 B
+MATCH            : True
+
+current sha256   : 1a317bdfbfdb2877873440ec80681a57610fea6e8973ffad8063dee2fdd091f4 48540 B
+⇒ 48,354 B → 48,540 B (+186 B) and the delta is FULLY ACCOUNTED FOR: 182 B of reworded words
+  (whitespace-normalised span delta) + 4 B of line-wrap whitespace. No third-party write, no
+  command line inside the substituted span (it starts after the command block and the multi-entry
+  note, and ends at "a package-directory build").
+
+### the hunk itself: pre-t60 (reconstructed) vs current
+$ diff -u --label "a/AGENTS.md (pre-t60, reconstructed)" --label "b/AGENTS.md (current)" REVERSED-pre-t60.AGENTS.md AGENTS.md
+@@ -347,9 +347,11 @@
+ - **Build — from the REPO ROOT, with path-qualified args**: `bun build
+   packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js`
+   (a multi-entry package repeats it per entry, e.g. `packages/mpd-ext-plugin/src/sdk.ts` →
+-  `packages/mpd-ext-plugin/dist/sdk.js`). This is the CANONICAL form: `bun build` writes the entry
+-  path RELATIVE TO CWD into the artifact's first line, and `node scripts/verify-dist-fresh.mjs`
+-  reproduces THESE bytes — so a package-directory build (the form the packages' own `build` scripts
++  `packages/mpd-ext-plugin/dist/sdk.js`). This is the CANONICAL form: `bun build` writes EVERY
++  bundled module's path RELATIVE TO CWD into the artifact's path comments — 26 of them in the
++  `mpd-ext-plugin` build (measured; 24 remain after dropping the first), not one banner line — and
++  `node scripts/verify-dist-fresh.mjs` reproduces THESE bytes, so normalizing a banner cannot
++  reconcile the two forms: a package-directory build (the form the packages' own `build` scripts
+   use) is flagged STALE even though it looks sanctioned. Three packages still carry such a script
+   (`mpd-ext-plugin`, `mpd-team-watchdog-plugin`, `mpd-tui-plugin`); use the repo-root command above
+   until that script half lands (T-67, wave 2). Zero runtime deps preferred (type-only imports).
+[diff exit=1 ; 1 = differences found, expected — ONE hunk, 3 removed / 5 added lines, all prose]
+
+The reconstruction artefact is kept in this directory: `REVERSED-pre-t60.AGENTS.md`
+(sha256 eb526cb3e42199643c31602fce4c7ecc6fc62b59b268e830dc5a95a82f9d7452, 48,354 B) — anyone can
+re-run the hash and the diff above.
+
+================================================================================
+## 3. THE 26/24 MEASUREMENT, WITH ITS METHOD (temp outfiles; no `packages/**` write)
+================================================================================
+### two-forms-method.txt (verbatim, as written at 11:27:00 +0800, 12 s before the wording edit)
+=== the 26/24 measurement, re-taken with temp outfiles (method for the evidence) ===
+root form : f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  152855 B
+pkg  form : a7b843e19656dbe950131f9c597222436f671a15b35ee3c62776fd4f6f76864a  152579 B
+differing lines total       : 26
+differing AFTER dropping L1 : 24
+--- sample differing lines ---
+< // packages/mpd-dsh-adapter-plugin/src/index.ts
+> // ../mpd-dsh-adapter-plugin/src/index.ts
+< // packages/mpd-ext-plugin/src/sdk.ts
+> // src/sdk.ts
+< // packages/mpd-ext-plugin/src/registry.ts
+> // src/registry.ts
+--- any non-path-comment difference? ---
+0
+=== committed dist (should be the root form) ===
+f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  packages/mpd-ext-plugin/dist/index.js
+
+Method in words: both forms were built with `bun build packages/<pkg>/src/…` into TEMP outfiles —
+one from the REPO ROOT (path-qualified args = the canonical form the manual documents) and one from
+the PACKAGE DIRECTORY (the form the three packages' own `build` scripts use) — then compared line by
+line. EVERY differing line is a `// <module path>` comment; the count of differing lines is 26, of
+which 24 remain after dropping the first line; the number of NON-path-comment differences is 0, so
+no code line differs. That is exactly why a one-line banner normalization cannot reconcile them.
+
+### the recorded identity is confirmed WITHOUT rebuilding anything (acceptance: "not re-derived")
+$ sha256sum packages/mpd-ext-plugin/dist/index.js
+f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  packages/mpd-ext-plugin/dist/index.js
+$ wc -c packages/mpd-ext-plugin/dist/index.js
+152855 packages/mpd-ext-plugin/dist/index.js
+⇒ the artifact on disk IS the recorded round-trip result (f6097fd3… / 152,855 B); it was hashed,
+  never rebuilt, by this step. mtime 2026-09-17 09:33:52 +0800 — 1 h 53 min BEFORE the wording edit,
+  so this repair wrote nothing under `packages/**`.
+
+DISCLOSURE (honest bound): the 26/24 count itself was RE-TAKEN at 11:27:00 +0800 with temp outfiles
+(12 s before the wording edit) rather than quoted from t45's log; it reproduced t45's recorded values
+byte-for-byte (root f6097fd3…/152,855 B, pkg a7b843e1…/152,579 B — identical to
+evidence/gates/build-form/20260917T032000Z/round-trip.log lines 12-17). The re-take wrote only to
+temp files; the frozen clause "the round trip is NOT re-derived" was honoured for the COMMITTED
+artefact (pure hash read above) and the reword provably touched no command (section 2).
+
+================================================================================
+## 4. RENDERED INSTRUCTION BUDGET (re-measured, not assumed)
+================================================================================
+$ bun evidence/gates/agents-budget/20260917T011651Z/budget-check.mjs current=AGENTS.md
+{
+  "maxBytes": 65536,
+  "renderer": "/root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent-instructions/lib/index.js",
+  "results": [
+    {
+      "label": "current",
+      "path": "/root/dshProj/my-power-dsh/AGENTS.md",
+      "sourceBytes": 48540,
+      "renderedBytes": 48844,
+      "underBudget": true,
+      "truncated": false,
+      "omitted": [],
+      "truncatedRecords": [],
+      "verdict": "GREEN (full content injected)"
+    }
+  ]
+}
+[exit=0]
+⇒ 48,844 of 65,536 rendered bytes, `truncated:false`, headroom 16,692 B (was 48,658 / `truncated:false`
+  at t45's 48,354 B reading). The tail is injected in full — the original defect of issue #1 stays fixed.
+
+================================================================================
+## 5. GATES (verify list, exactly as frozen)
+================================================================================
+$ bun run verify:docs
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS
+[verify:docs exit=0]
+
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep,
+ mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder,
+ mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory,
+ mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw,
+ mpd-web-compat, mpd-workmate)
+[verify:rows exit=0]
+(pairs=37 census unchanged; 25 ids unchanged — raw logs: checks.stage1.log, budget.current.json)
+
+================================================================================
+## 6. SCOPE / COMPLIANCE
+================================================================================
+- inScope touched: `AGENTS.md` (one span in §6) + `evidence/gates/build-form/20260917T033500Z-t60/**`.
+- outOfScope untouched: `agent-references/**`, `docs/**`, `scripts/**`, `skills/**`,
+  `EXTENSIONS-FOR-AGENTS.md`; `packages/**` written by NO step of this task (dist mtime proof above).
+- No git write command was run (read-only `status`/`diff`/`show` only; the captain commits).
+- No round trip re-run of the committed artefact; no `bun build` into any `packages/**` path.
+
+================================================================================
+## 7. ARTEFACT PROVENANCE (sha256 of every file in this evidence directory)
+================================================================================
+$ sha256sum evidence/gates/build-form/20260917T033500Z-t60/*
+e9f076503ed40e202542b92bf1568fa5d0679f76d6f299164d3145acb52bd5e6  evidence/gates/build-form/20260917T033500Z-t60/budget.current.json
+d45cb15cf42011d01457fffa3ab5a80f9bd353dea01b95eee7b777c4fd04890a  evidence/gates/build-form/20260917T033500Z-t60/checks.stage1.log
+dd463ede92cd4ea790bc9e29290ac6c4d4de07c32f6d05023b8cdb9e16a17af2  evidence/gates/build-form/20260917T033500Z-t60/output.log
+eb526cb3e42199643c31602fce4c7ecc6fc62b59b268e830dc5a95a82f9d7452  evidence/gates/build-form/20260917T033500Z-t60/REVERSED-pre-t60.AGENTS.md
+1b04a2876be012d5da698a1fca9d2512544b98db1b4a0ed29302911587c9417b  evidence/gates/build-form/20260917T033500Z-t60/two-forms-method.txt
+41f9e58466a226d854dcd2c06f8d31434b76ac3f59ce4b2c22028f0b5cf34b55  evidence/gates/build-form/20260917T033500Z-t60/whole-file-before.txt

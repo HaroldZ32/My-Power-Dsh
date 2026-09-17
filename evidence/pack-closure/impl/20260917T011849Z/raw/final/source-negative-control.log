@@ -1,0 +1,4 @@
+$ sed s/"templates",/"templates-absent",/ scripts/pack-mpd.mjs > .pack-negative-control/pack-mpd.mjs
+$ node .pack-negative-control/pack-mpd.mjs
+[pack-mpd] FAIL: missing /root/dshProj/my-power-dsh/templates-absent — the packed tree must carry <root>/templates-absent (see ROOT_ASSET_DIRS); a bundle must never silently drop a shipped asset (T-38 class)
+[exit=1]

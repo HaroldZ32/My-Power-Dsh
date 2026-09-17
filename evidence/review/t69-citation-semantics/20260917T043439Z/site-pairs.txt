@@ -1,0 +1,49 @@
+pre lines: 237 cur lines: 237
+
+===== doc line 12 =====
+PRE: | The frozen constants (grammars, defaults, key sets) | `MPD_EXT_CONTRACT`, `packages/mpd-ext-plugin/src/sdk.ts:113-146` |
+CUR: | The frozen constants (grammars, defaults, key sets) | `MPD_EXT_CONTRACT`, `packages/mpd-ext-plugin/src/sdk.ts` |
+
+===== doc line 23 =====
+PRE: `packages/mpd-ext-plugin/src/index.ts`: the wrapper `safeRegisterTool`, `packages/mpd-ext-plugin/src/index.ts:521`;
+CUR: `packages/mpd-ext-plugin/src/index.ts`: the wrapper `safeRegisterTool`, `packages/mpd-ext-plugin/src/index.ts`;
+
+===== doc line 24 =====
+PRE: the four registrations `mpd_ext_list`, `packages/mpd-ext-plugin/src/index.ts:699`; `mpd_ext_show`,
+CUR: the four registrations `mpd_ext_list`, `packages/mpd-ext-plugin/src/index.ts`; `mpd_ext_show`,
+
+===== doc line 25 =====
+PRE: `packages/mpd-ext-plugin/src/index.ts:791`; `mpd_flow_list`, `packages/mpd-ext-plugin/src/index.ts:914`;
+CUR: `packages/mpd-ext-plugin/src/index.ts`; `mpd_flow_list`, `packages/mpd-ext-plugin/src/index.ts`;
+
+===== doc line 26 =====
+PRE: `mpd_flow_show`, `packages/mpd-ext-plugin/src/index.ts:968`.
+CUR: `mpd_flow_show`, `packages/mpd-ext-plugin/src/index.ts`.
+
+===== doc line 27 =====
+PRE: The same four strings are the gated list (`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts:532`)
+CUR: The same four strings are the gated list (`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts`)
+
+===== doc line 36 =====
+PRE: | `mcp` | `{ serverName, transport, command, args?, env?, cwd?, connectTimeoutMs?, toolCallTimeoutMs? }` | `transport` is exactly `"stdio"`; `serverName` matches `^[A-Za-z0-9_-]{1,32}$`; `command` is a non-empty string; `cwd` defaults to `"."` and is extension-root-relative; the declared server is spawned at apply with only the SDK's safe inherit list plus the manifest `env` (`childEnv`, `packages
+CUR: | `mcp` | `{ serverName, transport, command, args?, env?, cwd?, connectTimeoutMs?, toolCallTimeoutMs? }` | `transport` is exactly `"stdio"`; `serverName` matches `^[A-Za-z0-9_-]{1,32}$`; `command` is a non-empty string; `cwd` defaults to `"."` and is extension-root-relative; the declared server is spawned at apply with only the SDK's safe inherit list plus the manifest `env` (`childEnv`, `packages
+
+===== doc line 42 =====
+PRE: `packages/mpd-ext-plugin/src/registry.ts:583` — the runtime reads `enabled: input.enabled !== false`, so an omitted key is TRUE; a config `disable` still wins over it). The shipped
+CUR: `packages/mpd-ext-plugin/src/registry.ts` — the runtime reads `enabled: input.enabled !== false`, so an omitted key is TRUE; a config `disable` still wins over it). The shipped
+
+===== doc line 116 =====
+PRE: (`projectRejectionReason`, `packages/mpd-ext-plugin/src/sdk.ts:144-145`; refusal at
+CUR: (`projectRejectionReason`, `packages/mpd-ext-plugin/src/sdk.ts`; refusal at
+
+===== doc line 117 =====
+PRE: `refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:678-685`).
+CUR: `refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts`).
+
+===== doc line 141 =====
+PRE: | `pending contributes.mcp[0]: … not connected yet` | **not an error** — the server is declared and connect happens at apply | ignore in `validate`; read the live state from `mpd_ext_show` (`connecting`/`connected`/`unavailable`/`failed`/`disabled`, `McpServerState`, `packages/mpd-ext-plugin/src/mcp.ts:34`) |
+CUR: | `pending contributes.mcp[0]: … not connected yet` | **not an error** — the server is declared and connect happens at apply | ignore in `validate`; read the live state from `mpd_ext_show` (`connecting`/`connected`/`unavailable`/`failed`/`disabled`, `McpServerState`, `packages/mpd-ext-plugin/src/mcp.ts`) |
+
+===== doc line 233 =====
+PRE: No reload (a restart is the reload: `"No reload"`, `docs/extensions.md:524`); stdio MCP only; JSON flows only; no
+CUR: No reload (a restart is the reload: `"No reload"`, `docs/extensions.md`, section 11 "v1 limits and follow-ups"); stdio MCP only; JSON flows only; no

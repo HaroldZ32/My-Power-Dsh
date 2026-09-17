@@ -4,9 +4,10 @@
 // with dsh.bundle.patch, whose cordis.patch.yml references plugins via the resolvable
 // name '@mpd-dsh/mpd/packages/...' and every path-bearing value via the loader's
 // baseUrl (the profile directory) — no checkout-absolute paths anywhere.
+import { spawnSync } from "node:child_process"
 import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const dev = repoRoot.replace(/\\/g, "/")
@@ -64,6 +65,82 @@ const PLUGIN_PKGS = [
 ]
 const MCP_PKGS = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]
 
+// Root-level asset directories the packed tree MUST carry. Source and destination names are
+// the same (`<repo>/<dir>` -> `<packed>/<dir>`), and the table exists for two reasons:
+//   1. `scripts/verify-pack-closure.mjs` parses it and asserts BOTH that it names the assets a
+//      packed install needs and that they are really on disk (source and packed tree) — so a
+//      missing entry is loud WITHOUT a pack, and a missing directory is loud WITH one;
+//   2. cpAssets() loops over it, so a new root asset is one entry instead of another copy call.
+// The class it locks out is measured four times (see verify-pack-closure.mjs): a shipped asset
+// that no entry names is simply NOT packed while `npm run pack` still exits 0. `templates/`
+// (T-35) and `docs/` (T-36/T-45) were missing from the artifact for exactly that reason until
+// this wave's user decision (2026-09-17) to ship both.
+const ROOT_ASSET_DIRS = [
+  // the skill corpus, SERVED from <bundle>/skills by the `mpd-bootstrap` row (never copied
+  // into $DSH_HOME); a packed bundle without it silently loses every skill
+  "skills",
+  // the `mpd` preset, served through the bundle patch's agent-presets root (<bundle>/presets)
+  "presets",
+  // the mpd-ext bundle discovery root: mpd-ext resolves the bundle plane as
+  // `<bundleRoot>/extensions` (plan §1.9), so a packed bundle that ships the plugin but not
+  // this directory silently loses the whole bundle plane, reference extension included
+  "extensions",
+  // the extension scaffold template `templates/mpd-extension` — the ONLY source of
+  // `scripts/mpd-ext.mjs scaffold`; without it the documented author workflow has nothing to copy
+  "templates",
+  // the human-facing documentation set, EN + *.zh-CN.md pairs (T-36/T-45): external authors
+  // who install the bundle get the guides, not just the code
+  "docs",
+  // the ON-DEMAND agent references (t16 moved the manual's bulk there; captain's t11 addition):
+  // troubleshooting.md (the symptom -> cause/fix table), agent-teams-deltas.md (the adopted
+  // plugin's delta registry) and index.md. AGENTS.md itself deliberately stays out of the
+  // artifact (it is the repository's contributor manual), but an EXTERNAL AUTHOR needs these
+  // three when a boot misbehaves or when they touch the adopted plugin. English-only and
+  // OUTSIDE the bilingual gate's discovery on purpose: no *.zh-CN.md twin belongs here.
+  "agent-references",
+]
+
+// Root-level FILES the packed tree carries by name (not by directory). Same contract shape as
+// ROOT_ASSET_DIRS and for the same measured reason: a file that no table names is simply NOT
+// packed while `npm run pack` still exits 0, and the closure gate cannot report that from the
+// artifact alone — its manifest arm is DECLARATION-DRIVEN, so an asset declared NOWHERE is
+// invisible by construction. Naming this list, and letting `scripts/verify-pack-closure.mjs`
+// parse it, is what makes the ADDITION-omission loud instead of only a later removal. The
+// extension author's machine contract joins the licence/README set because the artifact's own
+// README, docs/index.md and the extension authoring guide link to it by RELATIVE path: without
+// the file those links break for an external author who holds only the artifact (T-70).
+const ROOT_FILES = [
+  "LICENSE.md",
+  "LICENSE-NOTICES.md",
+  "README.md",
+  "README.zh-CN.md",
+  "EXTENSIONS-FOR-AGENTS.md",
+]
+
+// The packed CLI's compiled-validator entry. `scripts/mpd-ext.mjs` shares ONE validator with the
+// runtime; in a checkout it imports the TypeScript sources, which the packer does NOT copy
+// (`cpDist()` ships `dist/` only) — measured: inside `dist/mpd-package/` every CLI entry point
+// died with `Cannot find module '…/packages/mpd-ext-plugin/src/registry.ts'` (T-51). The
+// compiled bundle `dist/index.js` carries that whole validator but exports only the plugin
+// surface (`name`/`inject`/`apply`/…), so the packed tree gets a generated sidecar:
+// `dist/validator.js` = the shipped bundle + ONE `export { … }` line. The plugin module itself
+// is never touched. Every name is checked against the bundle (a binding that is not there would
+// be a module syntax error, i.e. a dead CLI) and the emitted file is really IMPORTED once before
+// the pack returns.
+const VALIDATOR_SHIM_EXPORTS = [
+  "ROLES", // the base-roster table the CLI screens extension roles against
+  "MPD_EXT_CONTRACT", // the frozen descriptor contract (id / skill-name / server-name grammars)
+  "buildExtension",
+  "roleNameKey",
+  "roleNameCollisionReason",
+  "discoverPlane",
+  "projectExtensionsDir",
+  "userExtensionsDir",
+  "bundleExtensionsDir",
+]
+const VALIDATOR_BUNDLE = join("packages", "mpd-ext-plugin", "dist", "index.js")
+const VALIDATOR_ENTRY = join("packages", "mpd-ext-plugin", "dist", "validator.js")
+
 function cpDist() {
   const missing = []
   for (const p of [...PLUGIN_PKGS, ...MCP_PKGS]) {
@@ -80,24 +157,18 @@ function cpDist() {
 
 function cpAssets() {
   mkdirSync(join(outDir, "packages"), { recursive: true })
-  // the skills corpus lives at the repo root skills/ per AGENTS.md layout; the bundle
-  // SERVES it from <pkg>/skills at runtime (mpd-bootstrap registers it as a
-  // ctx.skills provider) — nothing is copied into $DSH_HOME any more.
-  const skillsSrc = join(repoRoot, "skills")
-  if (existsSync(skillsSrc)) cpSync(skillsSrc, join(outDir, "skills"), { recursive: true })
-  // The extension DISCOVERY ROOT. mpd-ext resolves the bundle plane as
-  // `<bundleRoot>/extensions` (manifest.ts bundleExtensionsDir()), so a packed bundle
-  // that ships the plugin but not this directory silently loses the whole bundle plane
-  // — the shipped reference extension disappears with no error anywhere. t1 §1.9
-  // requires the asset and the packed manifest entry in the same change.
-  const extensionsSrc = join(repoRoot, "extensions")
-  if (!existsSync(extensionsSrc)) {
-    console.error("[pack-mpd] FAIL: missing " + extensionsSrc + " — the mpd-ext bundle discovery root must ship (see plan §1.9)")
-    process.exit(1)
+  // Root assets (skills / presets / extensions / templates / docs): see ROOT_ASSET_DIRS for
+  // why each one ships and why the table — and not an inline `if (existsSync(...)) cpSync(...)`
+  // — is the contract. Every entry is REQUIRED: a missing root asset is a hard FAIL, because a
+  // packed bundle that silently drops one is exactly the defect this wave is closing (T-35/T-36).
+  for (const dir of ROOT_ASSET_DIRS) {
+    const src = join(repoRoot, dir)
+    if (!existsSync(src)) {
+      console.error("[pack-mpd] FAIL: missing " + src + " — the packed tree must carry <root>/" + dir + " (see ROOT_ASSET_DIRS); a bundle must never silently drop a shipped asset (T-38 class)")
+      process.exit(1)
+    }
+    cpSync(src, join(outDir, dir), { recursive: true })
   }
-  cpSync(extensionsSrc, join(outDir, "extensions"), { recursive: true })
-  // the main preset ships at the repo root presets/ and is SERVED from
-  // <pkg>/presets by the bundle patch's agent-presets root (no $DSH_HOME copy);
   // the roles plugin's persona assets ship under packages/mpd-roles-plugin/personas
   cpSync(join(repoRoot, "presets"), join(outDir, "presets"), { recursive: true })
   if (existsSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"))) {
@@ -115,13 +186,20 @@ function cpAssets() {
   // Root bilingual README pair (AGENTS.md language policy: both files ship together
   // and each carries the switch link to the other; copying only README.md would
   // leave the [中文](./README.zh-CN.md) switch link dangling in the package).
-  for (const f of ["LICENSE.md", "LICENSE-NOTICES.md", "README.md", "README.zh-CN.md"]) {
+  // …and every other root file travels through the SAME table as the manifest's `files`
+  // declaration below, so the copies and the declaration can never disagree about WHICH root
+  // files ship (T-70: the author contract was copied by nobody and declared nowhere, while six
+  // shipped files linked to it).
+  for (const f of ROOT_FILES) {
     if (existsSync(join(repoRoot, f))) cpSync(join(repoRoot, f), join(outDir, f))
   }
   // MCP install/activation helper ships with the package so dist installs can
   // bootstrap the sg/codegraph binaries + wave MCPs too. The extension CLI ships for
   // the same reason: it is the documented developer workflow (`validate`/`scaffold`/
-  // `list`) and the AGENTS.md §4 Extension-CLI gate runs it from the packed tree.
+  // `list`), and it runs from the packed tree too because writeValidatorEntry() below
+  // emits the compiled validator it falls back to — that is what makes an installed
+  // bundle author-facing (T-35/T-51). (AGENTS.md §4's Extension-CLI row names the
+  // checkout commands; the packed-tree run is asserted by verify-pack-closure.mjs.)
   mkdirSync(join(outDir, "scripts"), { recursive: true })
   cpSync(join(repoRoot, "scripts", "install-mcp.mjs"), join(outDir, "scripts", "install-mcp.mjs"))
   cpSync(join(repoRoot, "scripts", "mpd-ext.mjs"), join(outDir, "scripts", "mpd-ext.mjs"))
@@ -271,6 +349,14 @@ function writeManifest() {
       // by filesystem path, and the map entry keeps the packed form addressable exactly
       // like skills/ and presets/ (plan §1.9: the asset and this declaration ship together).
       "./extensions/*": "./extensions/*",
+      // The author-facing assets (user decision 2026-09-17, T-35/T-36/T-45): the scaffold
+      // template and the documentation pairs travel with the package, so an installed bundle
+      // can author an extension and read the guides without the repository checkout.
+      "./templates/*": "./templates/*",
+      "./docs/*": "./docs/*",
+      // the agent-facing references (troubleshooting + the adopted-plugin delta registry) ship
+      // with the same rule as every other root asset: the bytes AND the declaration together.
+      "./agent-references/*": "./agent-references/*",
       "./client": "./packages/mpd-bundle-plugin/client.js"
     },
     files: [
@@ -278,9 +364,14 @@ function writeManifest() {
       "skills/**",
       "presets/**",
       "extensions/**",
+      "templates/**",
+      "docs/**",
+      "agent-references/**",
       "scripts/**",
       "cordis.patch.yml",
-      "LICENSE.md", "LICENSE-NOTICES.md", "README.md", "README.zh-CN.md"
+      // the named root files, from the SAME table the copy loop uses — one source of truth, so a
+      // file cannot be copied without being declared or declared without being copied (T-70).
+      ...ROOT_FILES
     ],
     dsh: {
       bundle: { patch: "./cordis.patch.yml" },
@@ -334,11 +425,86 @@ function normalizeModes(root) {
   return counts
 }
 
+/**
+ * The exported names of an ESM module's `export { … }` blocks (the exported spelling, so
+ * `local as Public` yields `Public`). Used to refuse a shim that would re-export a name the
+ * bundle already exports — that is a module SYNTAX error ("Duplicate export"), i.e. a packed
+ * CLI that cannot even be loaded.
+ */
+function exportedNames(text) {
+  const names = new Set()
+  for (const m of text.matchAll(/export\s*\{([^}]*)\}/g)) {
+    for (const part of m[1].split(",")) {
+      const entry = part.trim()
+      if (entry.length === 0) continue
+      const [local, exported] = entry.split(/\s+as\s+/)
+      names.add((exported ?? local).trim())
+    }
+  }
+  return names
+}
+
+/**
+ * Import the emitted validator entry ONCE and assert every surface the CLI needs is there.
+ * A sidecar that parses but misses a binding would only fail later, inside the packed CLI;
+ * this makes it a PACK-time failure with the entry's path in the message.
+ */
+function verifyValidatorEntry(file, mode) {
+  const probe = [
+    "const m = await import(" + JSON.stringify(pathToFileURL(file).href) + ");",
+    "const missing = " + JSON.stringify(VALIDATOR_SHIM_EXPORTS) + ".filter((n) => m[n] === undefined);",
+    "if (missing.length > 0) { console.error('missing: ' + missing.join(',')); process.exit(1) }",
+    "console.log('validator entry ok: ' + " + JSON.stringify(mode) + " + ' (' + " + JSON.stringify(VALIDATOR_SHIM_EXPORTS.length) + " + ' exports)');",
+  ].join("\n")
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", probe], { encoding: "utf8" })
+  if (result.status !== 0) {
+    console.error("[pack-mpd] FAIL: the packed validator entry " + file + " does not load under node: " + String(result.stderr ?? "").trim() + " — a packed CLI without its validator is dead (T-51)")
+    process.exit(1)
+  }
+}
+
+/**
+ * Emit `<packed>/packages/mpd-ext-plugin/dist/validator.js`: the compiled validator surface the
+ * packed CLI loads (see VALIDATOR_SHIM_EXPORTS). A `dist/validator.js` built by the package
+ * itself wins — then the packer ships the build product verbatim instead of generating a sidecar.
+ */
+function writeValidatorEntry() {
+  const dest = join(outDir, VALIDATOR_ENTRY)
+  mkdirSync(dirname(dest), { recursive: true })
+  const prebuilt = join(repoRoot, VALIDATOR_ENTRY)
+  if (existsSync(prebuilt)) {
+    cpSync(prebuilt, dest)
+    console.log("[pack-mpd] validator: shipped the package's own " + VALIDATOR_ENTRY + " verbatim")
+    verifyValidatorEntry(dest, "prebuilt")
+    return
+  }
+  const bundlePath = join(repoRoot, VALIDATOR_BUNDLE)
+  const bundled = readFileSync(bundlePath, "utf8")
+  const declared = (name) => new RegExp("(?:^|\\n)(?:async function|function|const|let|var|class)\\s+" + name + "\\b").test(bundled)
+  const already = exportedNames(bundled)
+  const missing = VALIDATOR_SHIM_EXPORTS.filter((name) => !declared(name))
+  const duplicate = VALIDATOR_SHIM_EXPORTS.filter((name) => already.has(name))
+  if (missing.length > 0 || duplicate.length > 0) {
+    console.error("[pack-mpd] FAIL: " + VALIDATOR_BUNDLE + " cannot carry the packed CLI's validator surface — not declared: " + (missing.join(", ") || "(none)") + "; already exported: " + (duplicate.join(", ") || "(none)") + " — rebuild the package and keep VALIDATOR_SHIM_EXPORTS in step with scripts/mpd-ext.mjs REQUIRED_COMPILED_EXPORTS")
+    process.exit(1)
+  }
+  writeFileSync(
+    dest,
+    bundled + "\n// Appended by scripts/pack-mpd.mjs (VALIDATOR_SHIM_EXPORTS): the packed CLI's view of\n" +
+      "// this compiled validator, whose own export block exposes only the plugin surface. Do not\n" +
+      "// edit the packed copy — it is regenerated on every pack.\n" +
+      "export { " + VALIDATOR_SHIM_EXPORTS.join(", ") + " };\n",
+  )
+  console.log("[pack-mpd] validator: generated " + VALIDATOR_ENTRY + " (" + VALIDATOR_SHIM_EXPORTS.length + " exports) from the shipped bundle")
+  verifyValidatorEntry(dest, "generated")
+}
+
 function main() {
   rmSync(outDir, { recursive: true, force: true })
   mkdirSync(outDir, { recursive: true })
   cpDist()
   cpAssets()
+  writeValidatorEntry()
   writeFileSync(join(outDir, "cordis.patch.yml"), decouplePatch(devPatch))
   writeManifest()
   const raw = readFileSync(join(outDir, "cordis.patch.yml"), "utf8")

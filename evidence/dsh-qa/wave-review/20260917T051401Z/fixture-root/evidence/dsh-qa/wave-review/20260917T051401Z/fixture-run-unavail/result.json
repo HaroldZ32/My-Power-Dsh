@@ -1,0 +1,76 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh/evidence/dsh-qa/wave-review/20260917T051401Z/fixture-root",
+  "manifest": "skills/dsh-qa/cases-ok.json",
+  "manifestSha256": "5b398e1cce7cea1d5be6f4d35f3146a061a974e39413faf4f666c14ad84a86c3",
+  "suite": "(only)",
+  "selected": 2,
+  "startedAt": "2026-09-17T05:18:51.494Z",
+  "finishedAt": "2026-09-17T05:18:51.570Z",
+  "durationMs": 76,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "fixture-pass",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 34,
+      "command": "bun skills/dsh-qa/scripts/fixture-pass.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/fixture-pass.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/wave-review/20260917T051401Z/fixture-run-unavail/lanes/fixture-pass.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "fixture-unavailable",
+      "kind": "lane",
+      "verdict": "unavailable",
+      "reason": "absent-fixture",
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 28,
+      "command": "bun skills/dsh-qa/scripts/fixture-unavailable.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/fixture-unavailable.mjs",
+      "marker": {
+        "kind": "SKIP",
+        "lane": "fixture-unavailable",
+        "reason": "absent-fixture",
+        "prereq": "a fixture",
+        "remedy": "provide the fixture"
+      },
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/wave-review/20260917T051401Z/fixture-run-unavail/lanes/fixture-unavailable.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 1,
+    "fail": 0
+  },
+  "exitCode": 2
+}

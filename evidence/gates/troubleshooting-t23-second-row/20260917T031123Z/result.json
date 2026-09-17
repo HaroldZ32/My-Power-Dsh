@@ -1,0 +1,61 @@
+{
+  "task": "t56",
+  "kind": "repair",
+  "attemptId": "0a509dc6-3878-4312-a071-e0d288c76b20",
+  "finding_source": "t34's review, finding F2 — T-23 owns TWO symptom rows and only the `nohup` row gained its id in t52. This repair did NOT come from a fresh sweep; the gap was handed over by the review, and the review also noted that t28's F-2 was still open when it started and closed live mid-review (a race recorded, not a defect of either side).",
+  "started_at": "2026-09-17T03:11:23Z",
+  "finished_at": "2026-09-17T03:12:06Z",
+  "revision": {
+    "head": "646d8018a44bffb2d6e1c30afa090056f81b911e",
+    "branch": "fix/todo-register-p1",
+    "file": "agent-references/troubleshooting.md",
+    "tracked": "NONE — the file is UNTRACKED at HEAD (`?? `), so `git diff` is EMPTY for it by construction. The proof below is byte reconstruction (reconstructive equality), which the wave adopted for exactly this case; the evidence says so instead of implying a diff."
+  },
+  "gap_reproduced_before": {
+    "grep_n_T_23_before": "ONE line only: 17 — the `nohup` / `bwrap --die-with-parent` row that gained ` (T-23)` in t52 at 11:03:59 (sha b4032f41… -> cfc98118…)",
+    "second_row_without_id": "line 16 — the fresh-`/tmp` symptom row: `| a scratch file written under `/tmp` in an earlier bash call is gone in the next call | every bash tool call gets a FRESH `/tmp` (measured wave 3). Keep cross-call state inside the workspace … never assume `/tmp` persistence between calls. |` — no friction id",
+    "so": "T-23 owns both rows, and before this edit only the second of them was greppable"
+  },
+  "change": {
+    "edit": "append ` (T-23)` to the fresh-`/tmp` row in the same trailing shape the sibling rows use (`… (T-21). |`, `… (T-24). |`), never as a sentence",
+    "exact": "never assume `/tmp` persistence between calls. |  ->  never assume `/tmp` persistence between calls (T-23). |"
+  },
+  "readings": {
+    "before": { "grep_c": 1, "grep_n_lines": [17], "sha256": "cfc98118f2b2e86d8fa5cf68fd3b504e7cc48270854ce8a12568706b4e28c219", "bytes": 35541, "lines": 69 },
+    "after": { "grep_c": 2, "grep_n_lines": [16, 17], "sha256": "f6b4d1bec8745da6928e2d2a7cdfbc054efbe47f37ec02c4e494dfb4f0f7f955", "bytes": 35548, "lines": 69 },
+    "byte_delta": { "delta_bytes": 7, "len_of_inserted_substring": 7, "arithmetic": "35548 - 35541 = 7 = len(\" (T-23)\")", "line_delta": 0 },
+    "id_census_after": { "T-21": 1, "T-23": 2, "T-24": 1, "T-26": 1, "T-43": 1 }
+  },
+  "proof_only_the_append": {
+    "method": "reconstructive equality (adopted by this wave for files git cannot diff): delete exactly the appended substring ` (T-23)` from the AFTER revision and hash the result",
+    "reconstructed_sha256": "cfc98118f2b2e86d8fa5cf68fd3b504e7cc48270854ce8a12568706b4e28c219",
+    "recorded_before_sha256": "cfc98118f2b2e86d8fa5cf68fd3b504e7cc48270854ce8a12568706b4e28c219",
+    "match": true,
+    "conclusion": "byte-identical to the before-revision, so the sole delta is the 7-byte append on row 16 — every other row and the line count are untouched",
+    "diff_u0": {
+      "hunks": 1,
+      "header": "@@ -16 +16 @@",
+      "minus": "| a scratch file written under `/tmp` in an earlier bash call is gone in the next call | every bash tool call gets a FRESH `/tmp` (measured wave 3). Keep cross-call state inside the workspace (e.g. `<evidence>/…/raw/`) or finish the work in one call — never assume `/tmp` persistence between calls. |",
+      "plus": "| a scratch file written under `/tmp` in an earlier bash call is gone in the next call | every bash tool call gets a FRESH `/tmp` (measured wave 3). Keep cross-call state inside the workspace (e.g. `<evidence>/…/raw/`) or finish the work in one call — never assume `/tmp` persistence between calls (T-23). |",
+      "note": "diffed against reconstructed-before.md, which sits beside this file; a plain `git diff` is EMPTY because the file is untracked at HEAD"
+    },
+    "reconstructed_before_artifact": "reconstructed-before.md (in this directory)"
+  },
+  "gate": {
+    "command": "bun run verify:docs",
+    "exit": 0,
+    "line": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS",
+    "note": "census unchanged; agent-references/** is outside the bilingual gate's discovery (AGENTS.md Reference Index), so NO zh-CN twin was added and nothing was renamed — `ls agent-references/` is still exactly agent-teams-deltas.md, index.md, troubleshooting.md"
+  },
+  "scope": {
+    "changedPaths": ["agent-references/troubleshooting.md", "evidence/gates/troubleshooting-t23-second-row/20260917T031123Z"],
+    "untouched": ["AGENTS.md", "docs/**", "packages/**", "scripts/**", "skills/**", "EXTENSIONS-FOR-AGENTS.md"]
+  },
+  "settle": {
+    "re_hash_at": "2026-09-17T03:12:06Z",
+    "sha256": "f6b4d1bec8745da6928e2d2a7cdfbc054efbe47f37ec02c4e494dfb4f0f7f955",
+    "note": "identical to the post-edit reading — no writer moved the file after the edit"
+  },
+  "commit_note": "this file is one of the untracked new files recorded in t28's F-4; like t52's row, the fix only reaches the commit if staging is not limited to modified paths (`git add -A`). The file is SHIPPED by the packer, so this 7-byte change ages the artifact's copy — t35's re-pack must remain the wave's last action.",
+  "bound": "every reading belongs to HEAD 646d8018 + the moment stamped here; any later writer to agent-references/troubleshooting.md invalidates the hash pair, and the reconstruction must be re-run against the new before-revision."
+}

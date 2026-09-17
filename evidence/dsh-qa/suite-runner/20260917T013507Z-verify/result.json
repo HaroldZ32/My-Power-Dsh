@@ -1,0 +1,71 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86",
+  "suite": "(only)",
+  "selected": 2,
+  "startedAt": "2026-09-17T01:35:07.451Z",
+  "finishedAt": "2026-09-17T01:37:17.058Z",
+  "durationMs": 129606,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "mount-assert",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 168,
+      "command": "bun skills/dsh-qa/scripts/mount-assert.mjs --no-skip --expect=name: '@deepseek-ai/dsh-llm'",
+      "script": "skills/dsh-qa/scripts/mount-assert.mjs",
+      "marker": null,
+      "evidencePath": "evidence/dsh-qa/mount-assert/2026-09-17T01-35-07.619Z",
+      "logPath": "evidence/dsh-qa/suite-runner/20260917T013507Z-verify/lanes/mount-assert.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "agent-teams-adopt",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "exit-1",
+      "note": null,
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 129434,
+      "command": "bun skills/dsh-qa/scripts/agent-teams-adopt.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "marker": null,
+      "evidencePath": "evidence/plan-c/c1-team/2026-09-17T01-35-07.700Z/web.log",
+      "logPath": "evidence/dsh-qa/suite-runner/20260917T013507Z-verify/lanes/agent-teams-adopt.log",
+      "outputTail": [
+        "  live: {\"ok\":false,\"exit\":1}",
+        "  teamState: {\"ok\":false,\"teamIds\":[],\"inbox\":[],\"teamJson\":[]}",
+        "  archive: {\"ok\":false,\"archiveIds\":[]}",
+        "  taskTerminal: {\"ok\":false,\"tasks\":0,\"taskTerminal\":false}",
+        "  webInstaller: {\"ok\":true,\"exit\":0}",
+        "  webRoute: {\"ok\":false,\"status\":401,\"body\":\"{\\\"error\\\":\\\"unauthorized\\\"}\",\"webLog\":\"/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T01-35-07.700Z/web.log\"}"
+      ],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 1
+  },
+  "exitCode": 1
+}

@@ -1,0 +1,319 @@
+{
+  "name": "MPD Default",
+  "id": "mpd-default",
+  "description": "Auto-routed by the complexity gate (sessionTeamPolicy.autoRoute; staged — the captain designs the roster/DAG, then the user reviews and approves the plan in the Web panel).",
+  "profile": {
+    "name": "mpd",
+    "description": "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan).",
+    "protocol": "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match.",
+    "taskPlanning": "captain",
+    "reviewPolicy": {
+      "requiredReviewers": []
+    }
+  },
+  "reviewPolicy": {
+    "requiredReviewers": []
+  },
+  "captainSessionId": "session-e65a45c1-dd13-4e21-82a4-d2eb5fd07f0e",
+  "createdAt": 1789621330114,
+  "wave": {
+    "label": "w1",
+    "index": 1,
+    "openedAt": 1789621330114
+  },
+  "waveHistory": [],
+  "phase": "staged",
+  "planReviewState": "awaiting_review",
+  "members": [
+    {
+      "id": "",
+      "name": "Architect",
+      "role": "architecture review / deep debugging / self-review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789621330114,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Researcher",
+      "role": "code / open-source evidence search",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789621330114,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Planner",
+      "role": "planning / task decomposition",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789621330114,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Explorer",
+      "role": "read-only codebase exploration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only explorer. Answer with evidence and absolute file paths; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789621330114,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Reviewer",
+      "role": "correctness / risk review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789621330114,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Plan Reviewer",
+      "role": "work-plan QA review / UI-UX critique",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789621330114,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Vision Analyst",
+      "role": "image / diagram analysis",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash-vision-exp",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789621330114,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Lead",
+      "role": "orchestration / integration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789621330114,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Deep Worker",
+      "role": "autonomous goal-driven implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789621330114,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Senior Engineer",
+      "role": "primary implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789621330114,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Junior Engineer",
+      "role": "small mechanical changes",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789621330114,
+      "status": "idle"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "subject": "Resolve the patch artifact, the gate set, and the boot target for the 4-step request",
+      "status": "pending",
+      "assignee": "Researcher",
+      "dependencies": [],
+      "attempt": 0,
+      "createdAt": 1789621531135,
+      "updatedAt": 1789621531135,
+      "kind": "requirements",
+      "round": 1,
+      "objective": "The request is: (1) read the patch file, (2) audit the gates, (3) implement the change, (4) verify the boot. The session workspace holds NO source tree — it contains only .mpd/team state and an empty .codegraph index (0 nodes) — so no patch artifact is present at the root. Resolve, with reproducible evidence, exactly which patch file step 1 means and where it lives, which gate definitions step 2 refers to, and which command 'the boot' in step 4 is. An explicit NOT-FOUND result naming the searched locations is a required and acceptable outcome; inventing an artifact, path, or command from memory is a hard failure.",
+      "inScope": [
+        "evidence/patch-resolution.md"
+      ],
+      "acceptance": [
+        "Every search is reported as the exact command plus its literal output (workspace tree, *.patch/*.diff/*.diff.yml anywhere readable, the session area, and any path the user supplied)",
+        "Either the patch artifact's absolute path, byte size and the files it touches are recorded with sha256 or file:line evidence, OR the result states NOT FOUND with the searched locations and the single precise question the user must answer",
+        "The step-2 gate set is resolved to concrete gate definitions or runnable commands with file:line evidence in an existing file, or is reported unresolvable under the same NOT-FOUND standard — no gate is described from memory",
+        "The step-4 boot target is resolved to one exact command plus its expected observable success signal, or is reported unresolvable with the reason",
+        "The task only reads and reports: no file outside its declared scope is created or modified, and no artifact is fabricated"
+      ],
+      "deliverables": [
+        "evidence/patch-resolution.md"
+      ],
+      "nonGoals": [
+        "Do not implement, patch, or boot anything",
+        "Do not guess a patch path when the searches are empty"
+      ]
+    },
+    {
+      "id": "t2",
+      "subject": "Independently reproduce and falsify the artifact/gate/boot resolution (negative control)",
+      "status": "pending",
+      "assignee": "Deep Worker",
+      "dependencies": [
+        "t1"
+      ],
+      "attempt": 0,
+      "createdAt": 1789621533724,
+      "updatedAt": 1789621533724,
+      "kind": "verification",
+      "objective": "Independently reproduce t1's artifact/gate/boot resolution from a clean state and confirm or refute every claim. The failure mode under test is a hallucinated artifact: a file reported as existing that does not exist, an absence reported that is wrong because the search was too narrow, or a command reported as runnable that fails. Verification is only valid when it re-executes the claim itself.",
+      "inScope": [
+        "evidence/verification-resolution.md"
+      ],
+      "acceptance": [
+        "Each existence claim in t1 is re-tested with an independent command and the literal output is recorded",
+        "Each NOT-FOUND claim in t1 is re-tested through a different tool path than t1 used, and the literal output is recorded",
+        "Every claim that cannot be reproduced is listed as a contradiction with the exact command and output that refutes it",
+        "The result states plainly whether t1's resolution is trustworthy and whether the blocker question is answerable by the user in one line"
+      ],
+      "deliverables": [
+        "evidence/verification-resolution.md"
+      ],
+      "nonGoals": [
+        "Do not repair t1's findings — only confirm or refute them",
+        "Do not accept any path or command that you did not personally re-execute"
+      ]
+    },
+    {
+      "id": "t3",
+      "subject": "Review the resolution pack for fabrication and decision-completeness",
+      "status": "pending",
+      "assignee": "Reviewer",
+      "dependencies": [
+        "t1",
+        "t2"
+      ],
+      "attempt": 0,
+      "createdAt": 1789621537885,
+      "updatedAt": 1789621537885,
+      "kind": "review",
+      "round": 1,
+      "objective": "Adversarially review the resolution pack (t1) together with its independent verification (t2) and decide whether it is strong enough for the captain to contract steps 3 and 4 honestly: no fabricated artifact, no claim taken from memory, every path and command re-executed, and a blocker question the user can answer in one line.",
+      "inScope": [
+        "evidence/review-resolution.md"
+      ],
+      "acceptance": [
+        "Every acceptance criterion of t1 is judged pass or fail with quoted evidence, not restated",
+        "The no-fabrication criterion is explicitly checked: each reported path was shown to exist, or the report says NOT FOUND, in t2's re-executed evidence",
+        "The review judges the latest t1 and t2 outputs on their content, and does not pass merely because no revision was requested"
+      ],
+      "deliverables": [
+        "evidence/review-resolution.md"
+      ],
+      "nonGoals": [
+        "Do not fix what you find — report findings only",
+        "Do not demand needs_revision for a pack that is already decision-complete"
+      ],
+      "reviewedTaskId": "t1"
+    },
+    {
+      "id": "t4",
+      "subject": "Integrate the decision pack and hand the implementation route to the captain",
+      "status": "pending",
+      "assignee": "Lead",
+      "dependencies": [
+        "t3"
+      ],
+      "attempt": 0,
+      "createdAt": 1789621540731,
+      "updatedAt": 1789621540731,
+      "kind": "integration",
+      "objective": "Integrate the reviewed resolution into the single decision pack the user needs: the artifact to supply or its pinned path, the step-2 gate list, the step-3 implementation route with real inScope paths, and the step-4 boot command — or, if the artifact stays unresolved, the one-line question that unblocks everything. This pack is what the captain uses to create the implementation and boot-verification tasks.",
+      "inScope": [
+        "evidence/implementation-route.md"
+      ],
+      "acceptance": [
+        "evidence/implementation-route.md names, for step 3, the exact file paths that would change together with the evidence that they exist — or states plainly that no route can be contracted yet and why",
+        "For step 4 it names one exact boot command and its expected observable success signal, or states it is unresolved with the reason",
+        "No claim appears in the pack that t2 could not reproduce and t3 did not pass",
+        "It ends with exactly one of: a single precise question to the user, or an approve-and-run-ready route — never both and never neither"
+      ],
+      "deliverables": [
+        "evidence/implementation-route.md"
+      ],
+      "nonGoals": [
+        "Do not implement the change or run the boot yourself",
+        "Do not restate the raw evidence — integrate it into one decision"
+      ]
+    }
+  ],
+  "taskSeq": 4
+}

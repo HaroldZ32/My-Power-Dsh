@@ -1,0 +1,7 @@
+[agent-teams-dispatch] ok=false -> /root/dshProj/my-power-dsh/evidence/dsh-qa/agent-teams-dispatch/2026-09-17T03-45-52.361Z
+  installer: {"ok":true,"exit":0}
+  captainRun: {"ok":true,"exit":0,"tail":"ser can approve it via the Web UI? That seems helpful and within my authority? Rule 3 says the plan must be staged by me: create + members + tasks, then \"tell the user the Web plan is ready, then end this turn.\" But the user didn't ask for that and said \"nothing else\"
+  tasks: {"total":0}
+  memberAssignments: {"count":0,"sessions":1,"labels":[]}
+  secondBatchDispatched: {"ok":false}
+  assignmentDelivery: {"ok":false}

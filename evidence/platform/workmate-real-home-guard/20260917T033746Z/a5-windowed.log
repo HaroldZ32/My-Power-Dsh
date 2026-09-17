@@ -1,0 +1,29 @@
+# t62 A5 windowed passivity check @ 2026-09-17T03:38:18Z
+# the real library is a SHARED user-level store: peers legitimately write it via mpd_workmate_reflect,
+# so byte-identity must be scoped to THIS lane's own operation window, not to wall-clock.
+
+## window: immediately before and after my own suite run
+  window start: 2026-09-17T03:38:18Z
+  before: 7324687ec6eaf0bc74631587e996551b3ac783c2ece4e7870aef72cb9ddb4847 files=33
+  --- bun test packages/mpd-workmate-plugin ---
+ 0 fail
+ 333 expect() calls
+Ran 28 tests across 4 files. [264.00ms]
+  after : 7324687ec6eaf0bc74631587e996551b3ac783c2ece4e7870aef72cb9ddb4847 files=33
+  window end: 2026-09-17T03:38:18Z
+
+## any real-library file written during MY window? (must be none)
+  (empty above = my run wrote nothing into the real library)
+
+## attribution of the deltas that DID happen after my 03:28:52Z baseline
+  2026-09-17T11:30:28.9664554800 /root/.mpd/workmate/code-reviewer/memory.md
+  2026-09-17T11:30:28.9664554800 /root/.mpd/workmate/code-reviewer/meta.json
+  2026-09-17T11:30:28.9664554800 /root/.mpd/workmate/code-reviewer/note.md
+  2026-09-17T11:30:28.9664554800 /root/.mpd/workmate/code-reviewer/persona.md
+  2026-09-17T11:34:27.8104048600 /root/.mpd/workmate/docs-gate-engineer/memory.md
+  2026-09-17T11:34:27.8104048600 /root/.mpd/workmate/docs-gate-engineer/meta.json
+  2026-09-17T11:34:27.8104048600 /root/.mpd/workmate/docs-gate-engineer/note.md
+  2026-09-17T11:34:27.8104048600 /root/.mpd/workmate/docs-gate-engineer/persona.md
+  2026-09-17T11:34:27.8104048600 /root/.mpd/workmate/index.json
+  -> peer workmate instances (code-reviewer 03:30:28Z, docs-gate-engineer 03:34:27Z ref
+lect writes), i.e. the wave's own post-task bookkeeping, none of it mine

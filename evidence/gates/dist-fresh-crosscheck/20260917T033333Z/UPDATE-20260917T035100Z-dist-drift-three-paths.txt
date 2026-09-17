@@ -1,0 +1,23 @@
+# UPDATE — 2026-09-17T03:50:36Z — platform-engineer's t62 landing moved the revision under my 03:36:07Z citation
+
+$ node scripts/verify-dist-fresh.mjs --json | summary
+  "ok": true,
+  "summary": "[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 793ms"
+
+=== workmate dist NOW (t62 revision) ===
+5a1863b2755c6c9f034fe45f0790c59b80cb05a4a6036e1ab9f0b95f69d27b9d  packages/mpd-workmate-plugin/dist/index.js
+56585 packages/mpd-workmate-plugin/dist/index.js
+2026-09-17 11:37:33.924036693 +0800
+
+=== packed-vs-checkout drift, re-scanned NOW (python twin scan, generated manifests excluded by name) ===
+identical: 1182   drift: 3   packed-only/absent: 1
+  DRIFT agent-references/troubleshooting.md
+        packed 35534 B b4032f41a33ffea2  vs checkout 35548 B f6b4d1bec8745da6  (checkout mtime 2026-09-17T11:11:38.043279)
+  DRIFT packages/mpd-workmate-plugin/dist/index.js
+        packed 55875 B 6b1715d0f8bebda0  vs checkout 56585 B 5a1863b2755c6c9f  (checkout mtime 2026-09-17T11:37:33.924037)
+  DRIFT skills/dsh-qa/scripts/workmate-library.mjs
+        packed 14322 B ba9053b24a3d84f9  vs checkout 16464 B f0ec4a325af9844e  (checkout mtime 2026-09-17T11:18:29.577465)
+  PACKED-ONLY: packages/mpd-ext-plugin/dist/validator.js
+
+=== MID-RUN integrity: anything under packages/ or skills/ touched after the sweep start (11:44:01 +0800)? ===
+[end — empty = the running sweep's tree is frozen]

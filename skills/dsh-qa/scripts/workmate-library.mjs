@@ -9,10 +9,12 @@
 //      that the real ~/.mpd/workmate was NOT created.
 // Evidence -> evidence/plan-f/workmate-library/<ts>/. --self-test is offline.
 import { spawnSync } from "node:child_process"
-import { cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
-import { join, dirname } from "node:path"
+import { join, dirname, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { findToolCall, readSessionEvents, recordedToolNames } from "./lib/session-evidence.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PROMPT = `Use the workmate tools in this exact order and report each result:
@@ -82,6 +84,17 @@ function selfTest() {
     && !client.includes("mpd-workmate-toggle")
     && !/inject\(\s*["'`]shell\.overlay["'`]/.test(clientSource)
     && !/inject\(\s*["'`]sidebar\.footer\.action["'`]/.test(clientSource)])
+  // Isolation regression pin (T-60/T-21): the case must prove it never TOUCHES the real library by
+  // sandboxing HOME and comparing the real listing before/after. The old assertion — the real
+  // library must NOT EXIST — is false on any machine that ever used one and made the case red for
+  // the environment instead of the change; it must never come back.
+  const selfSource = readFileSync(join(repoRoot, "skills", "dsh-qa", "scripts", "workmate-library.mjs"), "utf8")
+  // Built by concatenation so this check's own needle cannot appear in the file it scans.
+  const oldAbsenceAssertion = "!" + "existsSync(realWm)"
+  checks.push(["isolation = sandbox HOME + real listing unchanged (never an absence assertion)",
+    selfSource.includes("realWmAfter === realWmBefore")
+    && selfSource.includes("HOME: wmHome")
+    && !selfSource.includes(oldAbsenceAssertion)])
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
   if (bad.length) fail("self-test: " + bad.join(" | "))
   console.log("[workmate-library self-test] ok: " + checks.length + " checks")
@@ -98,14 +111,21 @@ function runReal() {
   const wmHome = mkdtempSync(join(tmpdir(), "mpd-wm-home-"))
   const ws = join(wmHome, "ws")
   mkdirSync(ws, { recursive: true })
-  cpSync(creds, join(dshHome, ".credentials.yaml"))
+  seedSandboxCredentials(dshHome, { credentialsFile: creds })
   // Live-LLM case: a home whose keys come from gateway providers configures the model
   // chain in settings.yaml too — without it the sandbox falls back to the base
   // deepseek-official route and the run dies with MISSING_CREDENTIAL (§7).
   const settings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(settings)) cpSync(settings, join(dshHome, "settings.yaml"))
   writeFileSync(join(ws, "README.md"), "# my-power-dsh\nworkmate e2e workspace\n")
-  const env = { ...process.env, DSH_HOME: dshHome, HOME: wmHome }
+  const env = credentialEnv({ ...process.env, DSH_HOME: dshHome, HOME: wmHome  })
+  // The invariant this case must prove is that it never TOUCHES the real library — NOT that the
+  // real library is absent (it exists on any machine that ever used one; measured on this host:
+  // /root/.mpd/workmate). The library under test lives under the SANDBOX HOME, and the real one is
+  // snapshot before/after — the same shape workmate-team-member.mjs uses. The product resolves the
+  // root as `$HOME/.mpd/workmate` (mpd-workmate src/index.ts `homeDir(): process.env.HOME || homedir()`),
+  // so sandboxing HOME is what keeps it out of the real home.
+  const realWmBefore = existsSync(realWm) ? readdirSync(realWm).sort().join(",") : null
   const steps = {}
   function runSync(cmd, args, opts = {}) {
     const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
@@ -118,16 +138,81 @@ function runReal() {
   const dump = runSync("dsh", ["--profile", "mpd-headless", "--dump-config"], { timeout: 120000 })
   steps.dump = { ok: dump.status === 0 && dump.out.includes("id: mpd-workmate") && dump.out.includes("id: mpd-roles") && dump.out.includes("id: mpd-bootstrap"), exit: dump.status }
 
-  const live = runSync("dsh", ["--profile", "mpd-headless", PROMPT], { timeout: 900000, cwd: ws })
-  const out = live.out
+  // The flow assertion comes from the HARNESS session log, never from the model's prose (AGENTS.md
+  // §7): the five workmate tools must have been CALLED. Measured flakiness the prose form carried:
+  // 03:08Z a sample reasoned about the flow and called NO tool at all — the lane failed on
+  // `out.includes("alice")`-style markers without saying which tool was missing. One bounded RETRY
+  // absorbs live-model non-determinism; a flow that does not happen in either attempt is still a FAIL.
+  const REQUIRED_TOOLS = ["mpd_workmate_init", "mpd_workmate_list", "mpd_workmate_spawn", "mpd_workmate_reflect", "mpd_workmate_match"]
   const wmRoot = join(wmHome, ".mpd", "workmate")
   const alice = join(wmRoot, "alice")
-  const filesOk = ["meta.json", "persona.md", "memory.md", "note.md"].every((f) => existsSync(join(alice, f)))
+  const aliceFiles = ["meta.json", "persona.md", "memory.md", "note.md"]
+  let out = ""
+  let liveStatus = null
+  let attempts = 0
+  let tools = []
+  let missingTools = [...REQUIRED_TOOLS]
+  let filesOk = false
+  let calls = {}
+  const retryNotes = []
+  while (attempts < 2) {
+    attempts += 1
+    const live = runSync("dsh", ["--profile", "mpd-headless", PROMPT], { timeout: 900000, cwd: ws })
+    out = live.out
+    liveStatus = live.status
+    const store = readSessionEvents(dshHome, { workspace: ws })
+    // CALL evidence, not availability: `recordedToolNames` reads the request header's tool LIST
+    // (what the session had), while `findToolCall` joins a `tool/call` with a non-error
+    // `tool/result` — the only thing that proves the workmate tools really RAN.
+    tools = recordedToolNames(store.records)
+    calls = Object.fromEntries(REQUIRED_TOOLS.map((name) => [name, findToolCall(store.records, name)]))
+    missingTools = REQUIRED_TOOLS.filter((name) => calls[name].succeeded !== true)
+    filesOk = aliceFiles.every((f) => existsSync(join(alice, f)))
+    if (missingTools.length === 0 && filesOk) break
+    if (attempts < 2) retryNotes.push("attempt " + attempts + " did not complete the flow (unproven tools: " + (missingTools.join(",") || "none") + "; files present: " + filesOk + ") — retrying once")
+  }
   const note = existsSync(join(alice, "note.md")) ? readFileSync(join(alice, "note.md"), "utf8") : ""
-  steps.live = { ok: live.status === 0 && !out.includes("ERR_MODULE_NOT_FOUND"), exit: live.status }
-  steps.flow = { ok: out.includes("alice") && out.includes("initialized") && out.includes("DONE") && out.includes("MATCHED"), sample: out.slice(-1500).replace(/\n/g, " | ").slice(0, 600) }
-  steps.files = { ok: filesOk && (note.includes("Verilog") || note.includes("counter")), note: note.slice(0, 160), wmRoot }
-  steps.isolation = { ok: !existsSync(realWm), realWm }
+  const memory = existsSync(join(alice, "memory.md")) ? readFileSync(join(alice, "memory.md"), "utf8") : ""
+  let meta = {}
+  try { meta = JSON.parse(readFileSync(join(alice, "meta.json"), "utf8")) } catch { meta = {} }
+  steps.live = { ok: liveStatus === 0 && !out.includes("ERR_MODULE_NOT_FOUND"), exit: liveStatus, attempts, retryNotes }
+  steps.flow = {
+    ok: missingTools.length === 0,
+    calls: Object.fromEntries(Object.entries(calls).map(([name, call]) => [name, { called: call.called, succeeded: call.succeeded }])),
+    unproven: missingTools.map((name) => name + ": " + calls[name].reason),
+    availableTools: tools.length,
+    source: "harness session log (tool/call + non-error tool/result via findToolCall), not the model's prose",
+    sample: out.slice(-1500).replace(/\n/g, " | ").slice(0, 600),
+  }
+  steps.files = {
+    // The product's own contract (mpd-workmate src/index.ts, measured): init writes the note card and
+    // starts `meta.uses` at 0 with an EMPTY memory.md; `mpd_workmate_reflect` APPENDS to memory.md,
+    // bumps `uses` by 1 and REGENERATES note.md through autoNote() — so the INIT phrase is not
+    // guaranteed to survive. Asserting it asserts the model's verbosity: the same lane code read
+    // ok=true at 02:31Z and ok=false at 02:47Z (the second note dropped "Verilog counter specialist").
+    // Assert the durable bookkeeping instead: four files, a non-empty regenerated note, memory written
+    // by reflect, and `uses` advanced past init's 0.
+    ok: filesOk && note.trim().length > 0 && memory.trim().length > 0 && Number(meta.uses ?? 0) >= 1,
+    uses: meta.uses ?? null,
+    noteChars: note.trim().length,
+    memoryChars: memory.trim().length,
+    note: note.slice(0, 160),
+    wmRoot,
+  }
+  const realWmAfter = existsSync(realWm) ? readdirSync(realWm).sort().join(",") : null
+  steps.isolation = {
+    // (a) the exercised library root is INSIDE the sandbox HOME and the child really got it as
+    // HOME (a case that forgot to sandbox HOME would silently exercise the real library), and
+    // (b) the real library's listing is unchanged — measured, not asserted as an absence.
+    ok: realWmAfter === realWmBefore && wmRoot.startsWith(wmHome + sep) && env.HOME === wmHome && env.HOME !== homedir(),
+    realWm,
+    before: realWmBefore,
+    after: realWmAfter,
+    sandboxHome: wmHome,
+    sandboxRoot: wmRoot,
+    homeSandboxed: env.HOME === wmHome,
+    predicate: "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged",
+  }
 
   const allOk = Object.values(steps).every((s) => s.ok)
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: allOk, dshHome, wmHome, steps }, null, 2))

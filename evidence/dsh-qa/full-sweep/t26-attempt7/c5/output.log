@@ -1,0 +1,6 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=2 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c5
+[mpd-qa:(only)] FAIL case=session-start-team reason=exit-1 exit=1 evidence=evidence/dsh-qa/session-start-team/2026-09-17T04-38-14.171Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c5/lanes/session-start-team.log ms=472514
+[mpd-qa:(only)] PASS case=workmate-team-member evidence=evidence/plan-f/workmate-team-member/2026-09-17T04-46-06.677Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c5/lanes/workmate-team-member.log ms=131528
+[mpd-qa:(only)] summary selected=2 pass=1 unavailable=0 fail=1
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c5
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

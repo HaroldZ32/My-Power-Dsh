@@ -1,0 +1,41 @@
+{
+  "ok": false,
+  "dshHome": "/tmp/mpd-wm-dsh-VuO0GC",
+  "wmHome": "/tmp/mpd-wm-home-uEfyOH",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "dump": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "flow": {
+      "ok": false,
+      "sample": "well (for the spawn task) — not strictly needed, but the spawn never ran. Also check the sandbox dir for the workmate library in case it exists elsewhere (e.g., MPD_DSH_WORKMATE_ALLOW_REAL_HOME). Let me do a quick glob for note.md under /tmp to be thorough. Actually glob defaults to workspace; I can pass path /tmp... it may be restricted. Let me try a quick find via bash (may hit sandbox denial). Better: glob with path /tmp and pattern \"**/workmate/**/note.md\". Let's try — read-only might be allowed. |  | Actually the sandbox is workspace-write; reads outside the workspace may be allowed in so"
+    },
+    "files": {
+      "ok": false,
+      "uses": null,
+      "noteChars": 0,
+      "memoryChars": 0,
+      "note": "",
+      "wmRoot": "/tmp/mpd-wm-home-uEfyOH/.mpd/workmate"
+    },
+    "isolation": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,code-reviewer,docs-gate-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "sandboxHome": "/tmp/mpd-wm-home-uEfyOH",
+      "sandboxRoot": "/tmp/mpd-wm-home-uEfyOH/.mpd/workmate",
+      "homeSandboxed": true,
+      "predicate": "HOME is the sandbox (so $HOME/.mpd/workmate resolves inside it) AND the real library listing is unchanged"
+    }
+  }
+}

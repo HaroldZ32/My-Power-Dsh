@@ -1,0 +1,5 @@
+$ node evidence/extensions/docs-claims/check-citations.mjs   # settled re-run (no pipe: the exit code is the checker's)
+[exit=1]
+[docs-claims] evidence -> evidence/extensions/docs-claims/runs/run-2026-09-17T02-48-02.181Z
+
+[docs-claims] 11/12 checks passed, 1 failed, 241 citation(s) resolved, 0 pending, 12 illustrative

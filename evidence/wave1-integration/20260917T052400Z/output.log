@@ -1,0 +1,57 @@
+t35 integration record — derived from on-disk readings by build-result.py
+recorded_at_utc 2026-09-17T05:42:29Z  .mpd/TODO.md sha256 94bf0cfc43fb30e5
+
+SETTLED REVISION
+  settle-pin-1.log: pin 2026-09-17T05:25:30Z dirty 284 VENDOR_LOCK 6ca531d2b20afb19 skills 323 packer 79563bc5fdd6 closure b82941ec2d4c artifact manifest eaa0919702bf5b33 files 1190 mtime 05:19:48Z instrument 858cd130b6ca
+  settle-pin-2.log: pin 2026-09-17T05:26:15Z dirty 284 VENDOR_LOCK 6ca531d2b20afb19 skills 323 packer 79563bc5fdd6 closure b82941ec2d4c artifact manifest eaa0919702bf5b33 files 1190 mtime 05:19:48Z instrument 858cd130b6ca
+  reading identical across the two pins: True (gap 45 s; log name and pin time excluded by construction)
+
+MERGED-TIP GATE SWEEP (exit code per gate, raw output on disk)
+  pack-closure    exit=0  gate-pack-closure.log        {"verdict": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-refe", "packed_tree": "/root/dshProj/my-power-dsh/dist/mpd-package", "packed_asset_files": 379, "agent_references": "3/3", "root_files": "1/1", "declared_packages": "23/23"}
+  patch-check     exit=0  gate-patch-check.log         {"verdict": "[patch-agent-teams-fixes] already applied: 73 mpd delta region(s) across 9 adopted file(s)", "regions": 73, "adopted_files": 9}
+  test-packages   exit=1  gate-test-packages.log       {"verdict": "Ran 883 tests across 164 files. [27.51s]", "pass": 882, "fail": 1, "ran": "Ran 883 tests across 164 files", "failing_arm": "T-07 THE RACE: a task that becomes terminal before the wake is never carried by a wake", "failing_arm_location": "packages/mpd-agent-teams-plugin/self-fix-tests/terminal-dispatch.test.mjs:176"}
+  test-qa         exit=0  gate-test-qa.log             {"verdict": "[test:qa] all self-tests passed"}
+  typecheck       exit=0  gate-typecheck.log           {"verdict": "clean: `tsgo --noEmit` printed no diagnostics (exit 0)", "diagnostics": 0}
+  verify-docs     exit=0  gate-verify-docs.log         {"verdict": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS", "pairs": 37, "failed": 0, "violations": 0, "exempt": 17}
+  verify-rows     exit=0  gate-verify-rows.log         {"verdict": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mp", "row_ids": 25}
+  verify-vendor   exit=0  gate-verify-vendor.log       {"verdict": "[verify-vendor] PASS", "skills_files": 323}
+
+T-07 ISOLATED REPEATS (the one red arm, re-run in isolation)
+  t07-repeat-1.log: 4 pass / 0 fail — Ran 4 tests across 2 files. [254.00ms]
+  t07-repeat-2.log: 4 pass / 0 fail — Ran 4 tests across 2 files. [252.00ms]
+  t07-repeat-3.log: 4 pass / 0 fail — Ran 4 tests across 2 files. [247.00ms]
+
+PACKED ARTIFACT (current stamp)
+  manifest eaa0919702bf5b33 stamp 2026-09-17T05:19:48.266Z
+  twin scan identical=1187 drift=0 missing=0 byDesign=2 noTwin=1 afterPack=0 ok=True
+  [check-relative-links] markdown files scanned: 291; relative links seen: 449
+  [check-relative-links] links to EXTENSIONS-FOR-AGENTS.md: 10 (resolving: 10, broken: 0)
+
+REGISTER PARTITION
+  === register partition re-check (two directions) — .mpd/TODO.md sha256 94bf0cfc43fb30e5 ===
+  §8.2 FIXED rows            = 36
+  §8.3 ALREADY-FIXED rows    = 3  -> T-04 T-07 T-38
+  §8.4 PARTIAL rows          = 5  -> T-05 T-16 T-18 T-19 T-48
+  touched (union, originals) = 44
+  §8.5 untouched originals   = 16
+  §8.5 also lists            = T-67
+  ARITHMETIC                 = 36 + 3 + 5 + 16 = 60 (must be 60)
+  §8.6 new rows              = 20; ids: T-61 T-62 T-63 T-64 T-65 T-66 T-67 T-68 T-69 T-70 T-71 T-72 T-75 T-76 T-77 T-78 T-79 T-80 T-81 T-82
+  DIRECTION 1 (internal)     = CLEAN
+  DIRECTION 2 (coverage list from team.json) = CLEAN — every FIXED item carries an implementation task, no UNTOUCHED item does
+  DISAGREEMENTS              = 0
+
+VENDOR_LOCK RE-PIN DELTA (reported, not written)
+
+CHANGED PATHS
+  4305 entries — XY histogram {'??': 9, 'A ': 4185, 'AM': 7, 'M ': 104}
+  RE-ADD required (staged then modified again): 7 — RED-CLASSIFICATION.md, changed-paths.txt, output.log, register-partition-check.json, register-partition-check.log, result.json, result.json.sha256
+  staged raw noise: 2686 paths; top dirs evidence/pack-closure/impl/20260917T011849Z/raw/final (2410), evidence/team-watchdog/redesign/lane/2026-09-17T03-52-18.485Z/raw (21), evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw (21) — captain's call before committing; bytes {'evidence/pack-closure/impl/20260917T011849Z/raw/final': 29186126, 'evidence/team-watchdog/redesign/lane/2026-09-17T03-52-18.485Z/raw': 1294000, 'evidence/team-watchdog/redesign/lane/2026-09-17T03-54-06.652Z/raw': 1294210}
+  do NOT stage (untracked lane scratch): .qa-before-dir .qa-run-stamp .qa-t15-dir .qa-t17-after .qa-t17-after-runner .qa-t17-dir .qa-t17-final .qa-t21-dir
+  register .mpd/TODO.md tracked: False (ignored by .gitignore:21:.mpd/) — the register is workspace state, never committed
+
+INVARIANTS
+  - no git write command was run by this task
+  - no file under packages/** or skills/** was edited by this task
+  - VENDOR_LOCK.json content was not written by this task (re-pin is the captain's step)
+  - the only workspace-state file edited is .mpd/TODO.md

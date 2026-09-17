@@ -1,0 +1,10 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=6 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c11
+[mpd-qa:(only)] PASS case=qa-lane-drift log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/qa-lane-drift.log ms=52
+[mpd-qa:(only)] PASS case=qa-runner-self-test log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/qa-runner-self-test.log ms=1401
+[mpd-qa:(only)] PASS case=mpd-ext-self-test log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/mpd-ext-self-test.log ms=1994
+[mpd-qa:(only)] PASS case=mpd-ext-validate-example log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/mpd-ext-validate-example.log ms=112
+[mpd-qa:(only)] PASS case=mpd-ext-validate-template log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/mpd-ext-validate-template.log ms=121
+[mpd-qa:(only)] FAIL case=pack-closure reason=exit-1 exit=1 log=evidence/dsh-qa/full-sweep/t26-attempt7/c11/lanes/pack-closure.log ms=109
+[mpd-qa:(only)] summary selected=6 pass=5 unavailable=0 fail=1
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c11
+[mpd-qa:(only)] exit 1 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

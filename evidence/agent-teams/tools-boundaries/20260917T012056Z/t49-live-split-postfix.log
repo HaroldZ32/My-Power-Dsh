@@ -1,0 +1,7 @@
+TEAM_TOOL_NAMES: 14
+MEMBER_TOOL_NAMES: ["agent_teams_claim_task","agent_teams_update_task","agent_teams_send_message","agent_teams_status","agent_teams_task_contract"]
+CAPTAIN_TOOL_NAMES: 9 ["agent_teams_create","agent_teams_approve","agent_teams_edit_plan","agent_teams_add_member","agent_teams_remove_member","agent_teams_create_task","agent_teams_reassign_task","agent_teams_resume","agent_teams_delete"]
+MEMBER_TOOL_NAMES.includes(contract) = true
+CAPTAIN_TOOL_NAMES.includes(contract) = false
+is the contract tool member-visible? true
+capabilities runtime deny carries contract = false | deny size: 9 | still denies approve = true

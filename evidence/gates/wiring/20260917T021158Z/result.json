@@ -1,0 +1,120 @@
+{
+  "task": "t18 — lane D2: dist freshness, unmissable row/parity gates, a derivable vendor re-pin, and a composition-only banner (T-37, T-39, T-40, T-33, T-31)",
+  "attempt_id": "4dd5ffd1-fab4-4df5-bd14-01fc24736c7c",
+  "generated_at": "2026-09-17T02:25:00Z",
+  "verdict": "PASS (deliverables) — WITH A ROUTED TREE DEFECT: the T-37 gate's first full-tree run found 13/20 committed dists stale, 12 of them at HEAD",
+  "measured": {
+    "new_scripts": {
+      "scripts/verify-dist-fresh.mjs": { "bytes": 30741, "sha256": "30b796c268872e32c7166b68cdbdec63e8f152cbf2cbc29bf8f5cf0fd9b0ca1f", "self_test": "10/10 arms PASS (exit 0)" },
+      "scripts/repin-vendor.mjs": { "bytes": 31183, "sha256": "707d0f9d6fc853e48069ca980f342803af572c03a2a21507f5778ba39f0cb096", "self_test": "10/10 arms PASS (exit 0)" },
+      "scripts/dump-config.mjs": { "bytes": 16217, "sha256": "10f281ad27bbb851501366b95ca80ac0c56ca5f0cec17732d608f3a6c4b0fd3a", "self_test": "6/6 arms PASS (exit 0)" }
+    },
+    "negative_controls": {
+      "dist_fresh_seeded_mismatch": "packages/mpd-config-plugin/dist/index.js sha256 11ab1c6d… -> +48 B -> a18e3ab1…; `--only mpd-config-plugin` exit 0 -> exit 1 (STALE naming it) -> restore -> exit 0; sha256 AFTER == BEFORE (11ab1c6d…); no marker left",
+      "dist_fresh_self_test": "mutated fixture dist -> STALE + exit 1; missing dist -> MISSING; dist without source -> NOT COVERED with reason; zero-subject filter -> exit 1",
+      "repin_authority_tamper": "self-test arm (g): a tampered copy of scripts/verify-vendor.mjs's decisive tokens -> exit 1 'changed shape'; restored -> exit 0",
+      "repin_real_lock_guard": "`--write` (no override) -> exit 1 refusing the repository's own lock; real sha256 76d5914b… before == after",
+      "dump_config_exit_fidelity": "arm (b): child exit 3 -> wrapper exit 3 with banner+recap printed; arm (c): missing binary -> 127 with exitCodeSource=wrapper-missing-binary (never readable as a child code)"
+    },
+    "tree_finding": {
+      "gate_run": "node scripts/verify-dist-fresh.mjs -> exit 1: FAIL - 13 of 20 targets not fresh (STALE: 13), ~0.8 s",
+      "stale_at_HEAD": ["bootstrap", "boulder", "codegraph", "comment-checker", "hashline", "memory", "modelchain", "qa-roles-probe", "team-compact", "tools", "ulw", "workmate"],
+      "stale_mid_edit_by_another_lane": ["team-watchdog"],
+      "fresh": ["bundle-plugin", "config-plugin", "dsh-adapter-plugin", "ext-plugin(index+sdk)", "roles-plugin", "tui-plugin"],
+      "not_covered": "7 files, each printed with a reason: mcp-{astgrep,gitbash,lsp}/dist/BUILD.lock (build metadata), mcp-{astgrep,gitbash,lsp}/dist/cli.js (built offline by scripts/build-mcp.mjs), mpd-mcp-codegraph/dist/serve.js (sha-pinned prebuilt)",
+      "root_cause_verified_first_hand": "packages/mpd-bootstrap-plugin/src/index.ts:24 imports the adapter FROM SOURCE (`../../mpd-dsh-adapter-plugin/src/index`), so every consumer's dist INLINES it; commit a647d47 rebuilt only the adapter. HEAD adapter src settingsReader hits=2, adapter dist=1, bootstrap dist=0, fresh bootstrap build=1; fresh-vs-committed = 135 diff lines, 25,707 -> 30,352 B (+4,645 B shared inlined module). T-37's premise reproduced: `bun test` in mpd-hashline-plugin 11/0 and mpd-ulw-plugin 3/0 WITH stale dists.",
+      "remedy_out_of_scope": "12 rebuilds `bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js` (packages/** is out of this task's inScope) — routed to the captain as a repair task; serialize with the team-watchdog writer"
+    },
+    "vendor_readings": {
+      "task_stated_t15_era": { "lf": "3b41bda20d333d6842661c670604c2cd51c3aff754391dcfc330f1c8a0dfc7b3", "raw": "b283f614fd952ea7b70fb46ce484be09634cba51a2d108d0dcf88cd9f23515b3" },
+      "settled_current": { "lf": "ee716c0d01d5173cdb527bf0c312537eb0e9ca218cedfd676998cceb5ba48589", "raw": "d9d3825ddea263ab626ec29bc9b171e9b267e849a8a1a1d91889bfff971095e2", "fileCount": 321, "files_lf_normalized": 1 },
+      "locked": { "lf": "c0dab8641697b481e11379e084375721ceeea5b2f6beefc3c1d73196a21d61ff", "fileCount": 319 },
+      "why_the_stated_values_moved": "skills/** is being edited live by another lane (fileCount 319 -> 321); the lock's own gate reports the same drift (FAIL - asset skills count drifted: 321 vs 319). Re-measure at commit time.",
+      "deps_asset": "in sync: d1d106032b198d2392ca2fe36ea4b563c3010496192791a6e4812638b7cf8e37 / 635 files / 0 normalized",
+      "real_lock_sha256": "76d5914b8e337a9bd4d2671df1e772d5d648af89a6c140a73c6b356df55dfee7 (unchanged by every command this task ran)"
+    },
+    "package_json": "added verify:dist, verify:gates, repin:vendor, dump-config; every pre-existing script untouched; test:qa:all stays `node scripts/run-qa-lanes.mjs` (no lane re-listed); `bun run dump-config --self-test` exercised the wiring (exit 0)",
+    "agents_md": "§4: Vendor row now documents the derived re-pin + the guard override; new Dist freshness, Row/parity and Composition-only rows; the `--dump-config` paragraph routes every instruct-to-run site through the wrapper; a new paragraph names `bun run verify:gates`. §11: the sweep names every command exactly and spells the re-pin as `node scripts/repin-vendor.mjs --write --i-know-this-is-the-captains-step`",
+    "docs_routing": {
+      "edited_instruct_sites": ["docs/user-guide.md:37", "docs/user-guide.zh-CN.md:34", "docs/development.md:163", "docs/development.zh-CN.md:150"],
+      "left_as_contrast_on_purpose": ["docs/architecture{,.zh-CN}.md (never executes plugin code)", "docs/extension-authoring-guide{,.zh-CN}.md (one rule about evidence)", "docs/tui{,.zh-CN}.md (proves composition only)", "AGENTS.md §4's own paragraph", "docs/development.md:97 mount-assert mechanism row", "process records: docs/plan-*.md, docs/review-p0-p3.md, docs/extension-adaptation-report*"],
+      "verify_docs": "exit 0, pairs=37 failed=0 violations=0 exempt=17 (census unchanged)"
+    }
+  },
+  "acceptance": [
+    {
+      "criterion": "T-37: a deterministic rebuild-and-diff gate exists and FAILS when a committed dist does not match its src — proven with a seeded mismatch (negative control: mutate a built file, gate exits non-zero; restore, gate passes).",
+      "status": "passed",
+      "evidence": "scripts/verify-dist-fresh.mjs (30b796c2…) rebuilds every packages/*/src entry TWICE into a temp dir (byte-compare to enforce determinism; 60 s per-build timeout) and diffs against the committed dist; unmatched dist files are printed in a NOT COVERED section with reasons. Self-test 10/10 arms PASS. Real negative control: config-plugin dist sha 11ab1c6d… -> +48 B -> a18e3ab1…; `--only mpd-config-plugin` exit 0 -> 1 (STALE, naming both hashes) -> restore -> 0; sha AFTER == BEFORE. Full-tree run exit 1 is NOT a gate defect: it found 13/20 targets stale (12 at HEAD), root-caused to commit a647d47 inlining a newer adapter into consumers that were never rebuilt; 7 targets reproduce byte-for-byte, so the gate discriminates rather than mis-builds. Rebuilding those dists is packages/** = out of this task's inScope; routed to the captain as a repair task."
+    },
+    {
+      "criterion": "T-39/T-40: the row-schema + parity checks run as part of the repo's gate command(s) on a patch/preset edit, and AGENTS.md's release checklist names them with their exact commands.",
+      "status": "passed",
+      "evidence": "package.json gained `verify:gates` = `node scripts/verify-vendor.mjs && node scripts/verify-dist-fresh.mjs && bun run verify:rows && bun run verify:docs && node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` (plus `verify:dist`); AGENTS.md §4 gained Row/parity (verify:rows + preset-conformance --self-test) and Dist freshness rows and names `bun run verify:gates`; §11's sweep now names every command exactly. Measured: `bun run verify:rows` exit 0 (25 row ids), `preset-conformance --self-test` exit 0 (31 harness rows conform, 6 without schema, row parity 31/31), `verify:docs` exit 0 (pairs=37)."
+    },
+    {
+      "criterion": "T-33: a re-pin helper regenerates the VENDOR_LOCK.json corpus fingerprint FROM the working tree, prints the exact delta it would write, supports a check-only mode; proven on a SCRATCH copy without mutating the real lock; the real tree's reading recorded VERBATIM; verify:vendor legitimately RED until the captain's commit-time re-pin.",
+      "status": "passed",
+      "evidence": "scripts/repin-vendor.mjs (707d0f9d…, self-test 10/10 incl. an authority-shape guard that re-reads scripts/verify-vendor.mjs and a tamper negative control). Dry run: exit 0, prints algorithm + LF normalization + the raw-bytes WARNING + both values, and the real lock sha 76d5914b… is unchanged. `--check`: exit 1 RED, locked c0dab864…/319 vs computed (LF) ee716c0d…/321, _deps in sync. Scratch proof: `--write --lock <copy>` changed EXACTLY two lines (fileCount 319->321, treeSha c0dab864…->ee716c0d…), then `--check --lock <copy>` exit 0 GREEN. Guard: `--write` on the real lock exits 1 and leaves it byte-identical. `bun run verify:vendor` exit 1 is the DECLARED BOUND (count drifted 321 vs 319). READINGS RECORDED VERBATIM: the task text's t15-era values (LF 3b41bda2…, raw b283f614…) are superseded — skills/** moved under this task (fileCount 319->321) — and the settled current reading is LF ee716c0d…, raw d9d3825d…; re-measure at commit time."
+    },
+    {
+      "criterion": "T-31: a repo-side wrapper makes the composition-only nature of `dsh --dump-config` unmissable IN ITS OWN OUTPUT. Only the docs sites that INSTRUCT A READER TO RUN the flag switch to the wrapper; sites that merely CONTRAST stay; every touched bilingual pair is updated in BOTH halves.",
+      "status": "passed",
+      "evidence": "scripts/dump-config.mjs (10f281ad…): prints an 11-line banner BEFORE the child's output and a recap AFTER it — compose-only, cannot witness a plugin load/apply abort/schema rejection, the measured AGENTS.md §4 incident, the exact command, and the mounting-boot remedy — then propagates the child's exit code (arm b: exit 3 -> 3; missing binary -> 127 with exitCodeSource), streams via argv-array spawnSync, and rejects a bad flag with usage. Self-test 6/6; a real sandboxed run (DSH_HOME=/tmp/dc-home, profile web) exited 0 with 11 banner lines + 1001 composed lines + recap. Docs: exactly two instruct sites routed to the wrapper in EN+zh (user-guide:37/.zh:34; development:163/.zh:150); the contrast sites (architecture, extension-authoring-guide, tui, AGENTS.md §4's own paragraph, the mount-assert mechanism row) were deliberately left with the classification recorded in output.log; `bun run verify:docs` exit 0 (pairs=37 unchanged)."
+    },
+    {
+      "criterion": "Every new gate ships a negative control on disk: seeded violation -> non-zero exit, clean tree -> zero; and the gate commands are recorded in AGENTS.md where the other gates live.",
+      "status": "passed",
+      "evidence": "Three self-tests (10/10, 10/10, 6/6) each with seeded-violation arms, plus the real seeded-mismatch control on a committed dist with byte-exact restore, plus the authority-tamper control and the real-lock guard. All three gate commands — verify-dist-fresh.mjs, repin-vendor.mjs (dry-run/--check/--write), dump-config.mjs — are named in AGENTS.md §4 with their semantics, and the release sweep in §11 names them with exact commands."
+    },
+    {
+      "criterion": "package.json is shared with the QA runner task: your script wiring must keep every existing script working and must not re-list the QA lanes by hand.",
+      "status": "passed",
+      "evidence": "Only four entries were added (verify:dist, verify:gates, repin:vendor, dump-config); every pre-existing script is byte-unchanged, `test:qa:all` still delegates to `node scripts/run-qa-lanes.mjs`, and no lane is listed by hand anywhere. The wiring was exercised: `bun run dump-config --self-test` exit 0, `bun run repin:vendor` exit 0, `bun run verify:rows` exit 0."
+    }
+  ],
+  "commands": [
+    { "command": "node scripts/verify-dist-fresh.mjs", "exit": 1, "decisive_output": "FAIL - 13 of 20 targets not fresh (STALE: 13) — exit 1 is the TREE's real staleness (12 stale at HEAD, root-caused to a647d47), not a gate defect; the seeded-mismatch control gave 0->1->0 on an isolated target and 7/20 targets reproduce byte-for-byte" },
+    { "command": "bun run verify:rows", "exit": 0, "decisive_output": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list" },
+    { "command": "node skills/dsh-qa/scripts/preset-conformance.mjs --self-test", "exit": 0, "decisive_output": "ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31" },
+    { "command": "bun run verify:docs", "exit": 0, "decisive_output": "[verify-docs-parity] pairs=37 failed=0 violations=0 exempt=17 — PASS" },
+    { "command": "node scripts/verify-dist-fresh.mjs --self-test", "exit": 0, "decisive_output": "10/10 arms passed — PASS (incl. mutated-dist -> STALE + exit 1, restore -> green)" },
+    { "command": "node scripts/repin-vendor.mjs --self-test", "exit": 0, "decisive_output": "SELF-TEST PASS - 10/10 arm(s) passed (incl. the authority-tamper negative control)" },
+    { "command": "node scripts/dump-config.mjs --self-test", "exit": 0, "decisive_output": "6/6 arms passed — PASS (exit-code fidelity 3->3, missing binary -> 127, quiet, json, usage)" },
+    { "command": "bun run verify:vendor", "exit": 1, "decisive_output": "FAIL - asset skills count drifted: 321 vs 319 / treeSha mismatch — the DECLARED BOUND: the wave's single re-pin is the captain's commit-time step" }
+  ],
+  "residual_risks": [
+    "TREE DEFECT (routed, not fixed): 13 committed dists are stale — 12 at HEAD. Rebuilding them is `packages/**` (out of this task's inScope) and `team-watchdog` is mid-edit by another lane, so it needs a repair task with a single dist writer; the gate prints the exact 12 rebuild commands.",
+    "`bun run verify:gates` is RED on the current tree for two honest reasons (the stale dists above, and the dirty skills corpus that reddens the vendor gate until the captain's re-pin). It is a clean-tree aggregate by construction.",
+    "The vendor readings moved under this task (skills/** live edits): the values in the task text are superseded by the settled reading recorded above; any re-pin must be recomputed at commit time on a frozen corpus.",
+    "`node scripts/verify-dist-fresh.mjs` is not (yet) part of `bun run test:qa`-style suites — the acceptance forbade hand-listing lanes, so it is wired as its own script + inside `verify:gates`; a future manifest-driven addition belongs to the QA-runner lane.",
+    "repin-vendor.mjs is 516 code lines (the programming guidance prefers <=250 and a scripts/lib split); the single-file mandate of this task kept it whole — a follow-up split is a captain call.",
+    "No git write commands were run; the captain owns the commit and the re-pin."
+  ],
+  "artifacts": [
+    "scripts/verify-dist-fresh.mjs",
+    "scripts/repin-vendor.mjs",
+    "scripts/dump-config.mjs",
+    "package.json",
+    "AGENTS.md",
+    "docs/development.md",
+    "docs/development.zh-CN.md",
+    "docs/user-guide.md",
+    "docs/user-guide.zh-CN.md",
+    "evidence/gates/wiring/20260917T021158Z/result.json",
+    "evidence/gates/wiring/20260917T021158Z/output.log",
+    "evidence/gates/wiring/20260917T021158Z/dist-fresh-run.log",
+    "evidence/gates/wiring/20260917T021158Z/dist-fresh-self-test.log",
+    "evidence/gates/wiring/20260917T021158Z/repin-self-test.log",
+    "evidence/gates/wiring/20260917T021158Z/repin-check.log",
+    "evidence/gates/wiring/20260917T021158Z/repin-scratch-write.log",
+    "evidence/gates/wiring/20260917T021158Z/repin-scratch.diff",
+    "evidence/gates/wiring/20260917T021158Z/repin-guard.log",
+    "evidence/gates/wiring/20260917T021158Z/repin-verify-vendor-red.log",
+    "evidence/gates/wiring/20260917T021158Z/dump-config-self-test.log",
+    "evidence/gates/wiring/20260917T021158Z/dump-config-real-run.log",
+    "evidence/gates/wiring/20260917T021158Z/base-verify-docs.log",
+    "evidence/gates/wiring/20260917T021158Z/base-verify-rows.log",
+    "evidence/gates/wiring/20260917T021158Z/base-preset-conformance-self-test.log"
+  ]
+}

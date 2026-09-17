@@ -34,7 +34,8 @@ cd <repo> && dsh plugin --profile dsh-tui add .
 The same bundle installs into the terminal UI as the **THIRD patch layer**, on top of the TUI
 package: after the install `dsh.profile.bundles` is
 `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`, and
-`dsh --profile dsh-tui --dump-config` shows our rows in a layer of their own
+`node scripts/dump-config.mjs --profile dsh-tui` (the repo wrapper, which prints the
+composition-only warning in its own output) shows our rows in a layer of their own
 (`# == @deepseek-harness-tui/dsh-tui, patched by @mpd-dsh/mpd`) with the `mpd` preset as the
 session default. Start the TUI with the `dsh-tui` launcher (alias `dst`):
 
@@ -60,9 +61,17 @@ dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ```
 
 `pack-mpd` exists for DISTRIBUTION: it assembles a self-contained `@mpd-dsh/mpd` (built plugin
-dists + the adopted agent-teams main code + the skill corpus and presets + the combined web
-client + the packed-form patch) that does not depend on a checkout. Use it when publishing,
-shipping a tarball, or testing relocation; a local install never needs it.
+dists + the adopted agent-teams main code + the skill corpus and presets + the scaffold
+`templates/` + the `docs/` set with its EN / `zh-CN` pairs + the on-demand `agent-references/`
+(the troubleshooting table and the adopted-plugin delta registry) + the combined web client + the
+packed-form patch) that does not depend on a checkout. Since the 2026-09-17 packaging change the
+artifact is **author-facing** too: the extension CLI, the scaffold template and the guides all
+travel inside the package, so an installed bundle answers
+`bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.mjs validate <dir>` and its `docs/` is readable in
+place. Use it when publishing, shipping a tarball, or testing relocation; a local install never
+needs it. What the artifact must carry is not left to trust: `node scripts/verify-pack-closure.mjs`
+fails loudly when a declared asset is absent, when `docs/`+`templates/` differ from the source file
+for file, or when the packed manifest's `files` list disagrees with what is on disk.
 
 ### Uninstall (one command, no residue)
 

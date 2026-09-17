@@ -1,0 +1,68 @@
+{
+  "task": "t25 — Verify: lane B (the adopted-plugin batches) behave as claimed, in a real boot and a real call",
+  "attempt_id": "909a261d-8ef4-4b25-8a25-af3f0a8c9b8e",
+  "agent": "platform-engineer",
+  "verdict": "PASS with ONE finding",
+  "settle_anchor": {
+    "at": "2026-09-17T02:47:18Z",
+    "files": {
+      "lib/tools.js": "0e0908e5b002c934d300809320328fe70ae8da48321a62dd8ba18beb95197c6f",
+      "lib/scheduler.js": "4b824797195996fa2e5a267f00a0953e89ef7a5a245ed19558cf6df7ff070b68",
+      "lib/quality-gates.js": "04dc08ca13609722994953c78062ab56f305d0ad03e7c3f79057c68459cdf45a",
+      "lib/members.js": "b1b1ac53cc41f2265fcf5b4e0e4892ee24c617f0ae004ccdd4d8f28ce5289681",
+      "lib/capabilities.js": "ec0baf212619872c521fe15b4dd1a0d50ef6d1834415ddc971074958688b5f5c",
+      "lib/state.js": "391e85b4053bb7a8631d26bd5024ba40ab22f66309f4c5f38d22a07044768929",
+      "lib/mpd-deltas.js": "5388c56fe4e9d061dacb5973df411ed7a10a1f1559454b65169148a2f6109e2d"
+    },
+    "settle_re_read": "2026-09-17T02:53:39Z — all 7 hashes IDENTICAL (6-minute window); every verdict below is anchored to these bytes"
+  },
+  "checks_i_ran_myself": {
+    "shipped_suites": {
+      "bun test packages/mpd-agent-teams-plugin": "243 pass / 0 fail (70 files)",
+      "bun test packages/mpd-agent-teams-plugin/self-fix-tests": "86 pass / 0 fail (22 files)"
+    },
+    "registry": {
+      "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 — 'already applied: 73 mpd delta region(s) across 9 adopted file(s)'"
+    },
+    "independent_in_process_driver": {
+      "file": "verify-lane-b.mjs (written from scratch; registers the REAL registerAgentTeamsTools against synthetic state, injects a WORKING hold through the real reader shape)",
+      "result": "11/11 cases PASS",
+      "highlights": [
+        "D2: claim_task SUCCEEDS while a live hold is present (status=claimed, attempt id issued) and update_task SUCCEEDS on the same hold (status=in_progress), with the durable team.json record moved",
+        "D2: every hold read came from the DISPATCH half (scheduler.js frames); ZERO reads from the tool boundary — the deleted guards are really gone",
+        "T-46: output_append extended a TERMINAL task's summary from 23 B to 9 537 B with the prefix kept and the tail marker present; the same task's byte-dropping plain `output` replacement was REFUSED ('terminal task t2 is immutable: output would change; use agent_teams_reassign_task to retry') and the bytes survived",
+        "T-09: the artifact channel returned artifact_path=evidence/t25/artifact.md and artifact_bytes=9045, and the file on disk is byte-exact (9045 B)",
+        "T-49: agent_teams_task_contract is in MEMBER_TOOL_NAMES and answered a member call with the task's contract view"
+      ]
+    },
+    "mount": {
+      "driver": "mount-proof-driver.reproduced-t19.mjs (t19's driver, sha256 aee4e22ce07fcbb8, re-run in THIS evidence dir so the author's evidence stays intact)",
+      "result": "ok=true; assertions A1..A7 all true; boot exit 0; isolation: DSH_HOME/HOME/ws all inside this evidence dir with realHomeUntouched=true",
+      "artifact": "evidence/t19-probe/full-document.md — exists, 9017 B, recorded on the task",
+      "seat_surfaces_read_from_the_harnesss_own_records": "T-49 mount claim verified INDEPENDENTLY by me from `request/header.data.header.tools[]`: the read-only seat was advertised 84 tools, INCLUDING agent_teams_task_contract, and EXCLUDING agent_teams_approve / bash / write / edit; the captain seat carried the writer/approve surface"
+    }
+  },
+  "FINDING_F1": {
+    "what": "the reproduced mount driver's HEADER comment describes an assertion (A4: 'the harness SESSION LOG for the member records a `tool/call` for `agent_teams_task_contract` with a NON-ERROR `tool/result`') that its SHIPPED assertion set no longer implements — the live keys are A1_captain_seat_classified, A2_member_lists_update_tool, A3_member_does_not_list_approve, A4_member_denied_write_tools, A5_captain_is_a_writer_seat, A6_artifact_written_from_the_readonly_seat, A7_task_records_the_artifact_path.",
+    "evidence": "independent decode of BOTH session logs in the run's own store (`read-session-store.mjs`, the QA library's frame-by-frame decoder): captain session 51 records/22 frames, tool calls = agent_teams_create, agent_teams_add_member, agent_teams_create_task, agent_teams_approve, bash; member session 32 records/12 frames, tool calls = agent_teams_update_task ONLY. NO agent_teams_task_contract tool/call exists in either log, so the header's A4 could not have passed and is not claimed by the code.",
+    "impact": "the mount proves the contract tool is ADVERTISED to the read-only seat (t25 acceptance 2, which asks for 'listed') — it does NOT prove the member CALLED it. A reader citing the header would over-claim; the acceptance's own wording is satisfied by the advertisement + the deny list, both now independently re-read.",
+    "suggested_fix": "reword the driver header to match the shipped assertions (or restore a session-log assertion if the call is meant to be exercised) — the driver lives in t19's evidence, so this is a carry-forward for the wave report, not an edit inside t25's inScope."
+  },
+  "acceptance_mapping": {
+    "A1_behaviour_over_source": "PASS — the hold/claim/update behaviour is driven in-process through the real tools (11/11 cases), not read from source",
+    "A2_real_mount_tool_surface": "PASS — 84 advertised tools for the read-only seat incl. agent_teams_task_contract; approve/bash/write/edit absent (read by me from request/header records)",
+    "A3_register_items_vs_acceptance": "PASS — T-46 (append >8 KB to a terminal task; byte-dropping replacement refused), T-09 (artifact channel path+bytes, byte-exact on disk), T-49 (member tool + real answer) all reproduce",
+    "A4_falsification": "PASS — one finding filed (F1) with the exact command and reading; nothing else failed to behave as claimed",
+    "A5_registry_and_guards": "PASS — --check exit 0 (73 regions / 9 files) and the self-fix suites (86/0) green",
+    "A6_settled_hashes": "PASS — anchored at 02:47:18Z, re-read at 02:53:39Z, all 7 identical"
+  },
+  "attribution": {
+    "mine": "the 11-case in-process driver, both session-store readers, the mount re-run in my evidence dir, the settle anchor, the registry/suite runs",
+    "the_lane_authors": "the implementations under test (t9/t14/t19/t20) and t19's mount driver (reproduced, not authored, here)"
+  },
+  "honest_bounds": [
+    "the mount uses a stub model, so it proves the harness's composition/advertisement and the tool flow, not any real model behaviour",
+    "the in-process driver injects the hold through the documented reader shape; it does not prove the watchdog SERVICE writes such a view (that is the watchdog lane's own fixture)",
+    "F1 is about a header/prose claim, not about a functional regression: no acceptance item asked for a member-side contract CALL"
+  ]
+}

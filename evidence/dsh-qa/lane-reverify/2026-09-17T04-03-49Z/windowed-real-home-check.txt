@@ -1,0 +1,19 @@
+T-43 / t63 — the windowed REAL-home check (and one correction, disclosed)
+
+The real `~/.mpd/workmate` is a SHARED user-level store (peers legitimately write it via
+`mpd_workmate_reflect`), so a wall-clock before/after snapshot is not a valid anchor by itself
+(t62's finding). This run used the windowed form:
+
+1. Listing snapshot before the run: relpath + size + mtime for every file under
+   /root/.mpd/workmate  -> real-home-before.txt  (sha256 in result.json)
+2. Listing snapshot after the run:  -> real-home-after.txt
+3. `diff` between them: 0 lines — the store is byte-identical (names, sizes, mtimes).
+4. Window probe: 0 files newer than the run window 2026-09-17T04:03:49Z,
+   probed BOTH as `-newermt "@<epoch>"` and as the LOCAL-time string.
+
+CORRECTION, declared: the first probe in this dir printed `new_files_in_window=29`. That was an
+artifact of MY probe, not a write: the window start was passed as a naive UTC string
+(`2026-09-17T04:03:49`) to `find -newermt`, which interprets it in the shell timezone
+(Asia/Shanghai, +0800) — i.e. 8 hours EARLIER (2026-09-16T20:03:49Z), so every file touched today
+matched. Re-probed with the epoch and with the local-time form: 0 both ways. The decisive reading
+is the digest equality in step 3, and it never depended on the probe.

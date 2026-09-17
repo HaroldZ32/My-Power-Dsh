@@ -8,6 +8,7 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const TASK = "Use mpd_memory_write to save one note titled 'qa-note' with content 'alpha beta gamma' and kind 'note'. Then use mpd_memory_read with query 'alpha' and report how many entries match. Then report mpd_memory_status."
@@ -31,7 +32,7 @@ async function runReal() {
   const outDir = join(repoRoot, "evidence", "plan-c", "c6-memory", ts)
   mkdirSync(outDir, { recursive: true })
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-c6-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
 // model chain is configured through gateway providers (llm-pi-ai), so without it the
 // sandbox falls back to the base `deepseek-official` route and the boot dies with
@@ -42,7 +43,7 @@ async function runReal() {
   if (existsSync(qaSettings)) cpSync(qaSettings, join(sandbox, "settings.yaml"))
   const ws = join(sandbox, "ws")
   mkdirSync(ws, { recursive: true })
-  const env = { ...process.env, DSH_HOME: sandbox }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
   const steps = {}
   const inst = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
   steps.installer = { ok: inst.status === 0, exit: inst.status }

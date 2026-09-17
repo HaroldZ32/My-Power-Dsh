@@ -1,0 +1,50 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-09-17T04:38:13.825Z",
+  "finishedAt": "2026-09-17T04:38:50.401Z",
+  "durationMs": 36576,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "agent-teams-sidebar",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 36570,
+      "command": "bun skills/dsh-qa/scripts/agent-teams-sidebar.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/agent-teams-sidebar.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/agent-teams/sidebar-migration/2026-09-17T04-38-13.953Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c3/lanes/agent-teams-sidebar.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}

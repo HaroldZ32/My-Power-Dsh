@@ -1,0 +1,164 @@
+# post-pack gate re-run — the artifact was regenerated at 04:37:59.994Z (twin: drift=0 missing=0 afterPack=0 ok=true)
+# c11 (04:37:35Z) was bound to the PRE-pack artifact, where pack-closure correctly reported the one ROOT-FILE finding
+
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=6 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack
+[mpd-qa:(only)] PASS case=qa-lane-drift log=evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/qa-lane-drift.log ms=54
+[mpd-qa:(only)] PASS case=qa-runner-self-test log=evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/qa-runner-self-test.log ms=1241
+[mpd-qa:(only)] PASS case=mpd-ext-self-test log=evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/mpd-ext-self-test.log ms=932
+[mpd-qa:(only)] PASS case=mpd-ext-validate-example log=evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/mpd-ext-validate-example.log ms=59
+[mpd-qa:(only)] PASS case=mpd-ext-validate-template log=evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/mpd-ext-validate-template.log ms=60
+[mpd-qa:(only)] PASS case=pack-closure log=evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/pack-closure.log ms=68
+[mpd-qa:(only)] summary selected=6 pass=6 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 6,
+  "startedAt": "2026-09-17T04:43:48.812Z",
+  "finishedAt": "2026-09-17T04:43:51.231Z",
+  "durationMs": 2418,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "qa-lane-drift",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 54,
+      "command": "node scripts/run-qa-lanes.mjs --check-drift",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/qa-lane-drift.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "qa-runner-self-test",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 1241,
+      "command": "node scripts/run-qa-lanes.mjs --self-test",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/qa-runner-self-test.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "mpd-ext-self-test",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 932,
+      "command": "bun scripts/mpd-ext.mjs --self-test",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/mpd-ext-self-test.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "mpd-ext-validate-example",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 59,
+      "command": "bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/mpd-ext-validate-example.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "mpd-ext-validate-template",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 60,
+      "command": "bun scripts/mpd-ext.mjs validate templates/mpd-extension",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/mpd-ext-validate-template.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "pack-closure",
+      "kind": "gate",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 68,
+      "command": "node scripts/verify-pack-closure.mjs",
+      "script": null,
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c11b-gates-post-pack/lanes/pack-closure.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 6,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}
+[exit=0]

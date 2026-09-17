@@ -1,0 +1,82 @@
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-c1-web-JNtVK3/ws
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545
+		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
+		      ^
+
+Error: dsh: plugin tree failed to load: failed to apply loader entry include (cordis:include): failed to apply loader entry modules (@deepseek-ai/dsh-client-modules): client-modules: 1 client package failed to compose:
+  other failures:
+    - client-modules: package @mpd-dsh/mpd resolves from multiple active Loader sources: "@mpd-dsh/mpd" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/, "file:///root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/; remove one entry
+AggregateError: client-modules: 1 client package failed to compose:
+  other failures:
+    - client-modules: package @mpd-dsh/mpd resolves from multiple active Loader sources: "@mpd-dsh/mpd" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/, "file:///root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/; remove one entry
+    at new ClientModuleRegistry (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:479:34)
+    at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)
+    at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+    at file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/#modules
+    at file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/#include
+Error: client-modules: package @mpd-dsh/mpd resolves from multiple active Loader sources: "@mpd-dsh/mpd" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/, "file:///root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/; remove one entry
+    at ClientModuleRegistry.reconcilePackage (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:818:10)
+    at ClientModuleRegistry.processOne (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:794:13)
+    at ClientModuleRegistry.flush (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:841:14)
+    at new ClientModuleRegistry (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:478:8)
+    at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)
+    at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+    at composeError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:199:18)
+    at Fiber._execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1136:10)
+    at Fiber._reload (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1355:16)
+    at async Fiber.await (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1399:24)
+    at boot (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:311:14)
+    at async runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)
+    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23 {
+  [cause]: Error: failed to apply loader entry include (cordis:include): failed to apply loader entry modules (@deepseek-ai/dsh-client-modules): client-modules: 1 client package failed to compose:
+    other failures:
+      - client-modules: package @mpd-dsh/mpd resolves from multiple active Loader sources: "@mpd-dsh/mpd" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/, "file:///root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/; remove one entry
+      at updateError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+      at Entry._init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:529:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    [cause]: Error: failed to apply loader entry modules (@deepseek-ai/dsh-client-modules): client-modules: 1 client package failed to compose:
+      other failures:
+        - client-modules: package @mpd-dsh/mpd resolves from multiple active Loader sources: "@mpd-dsh/mpd" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/, "file:///root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/; remove one entry
+        at updateError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+        at Entry._init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:529:10)
+        at async Entry.init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:505:4)
+        at async Entry.update (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:426:37)
+        at async EntryGroup.create (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:65:4)
+        at async Promise.allSettled (index 106)
+        at async EntryGroup.update (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:97:21)
+        at async Include._apply (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:240:3) {
+      [cause]: ClientPackageCompositionError [AggregateError]: client-modules: 1 client package failed to compose:
+        other failures:
+          - client-modules: package @mpd-dsh/mpd resolves from multiple active Loader sources: "@mpd-dsh/mpd" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/, "file:///root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/; remove one entry
+          at new ClientModuleRegistry (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:479:34)
+          at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)
+          at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+          at file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/#modules
+          at file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/#include {
+        [errors]: [
+          Error: client-modules: package @mpd-dsh/mpd resolves from multiple active Loader sources: "@mpd-dsh/mpd" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/, "file:///root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js" from file:///tmp/mpd-c1-web-JNtVK3/profiles/mpd/; remove one entry
+              at ClientModuleRegistry.reconcilePackage (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:818:10)
+              at ClientModuleRegistry.processOne (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:794:13)
+              at ClientModuleRegistry.flush (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:841:14)
+              at new ClientModuleRegistry (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-modules/lib/index.js:478:8)
+              at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)
+              at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34
+              at composeError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:199:18)
+              at Fiber._execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1136:10)
+              at Fiber._reload (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1355:16)
+              at async Fiber.await (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1399:24)
+        ]
+      }
+    }
+  }
+}
+
+Node.js v24.16.0

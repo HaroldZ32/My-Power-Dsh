@@ -1,0 +1,34 @@
+{
+  "files": 2,
+  "sessions": [
+    {
+      "id": "session-56e73586-e49a-46df-8107-128e51165a33",
+      "bytes": 82290,
+      "frames": 22,
+      "records": 51,
+      "toolCalls": [
+        "agent_teams_create",
+        "agent_teams_add_member",
+        "agent_teams_create_task",
+        "agent_teams_approve",
+        "bash"
+      ],
+      "hasContractCall": false,
+      "contractResultFound": false,
+      "contractResultIsError": null
+    },
+    {
+      "id": "c660aa9c-46ce-4b05-8ede-3e5acba2957f",
+      "bytes": 58118,
+      "frames": 12,
+      "records": 32,
+      "toolCalls": [
+        "agent_teams_update_task"
+      ],
+      "hasContractCall": false,
+      "contractResultFound": false,
+      "contractResultIsError": null
+    }
+  ]
+}
+[read-session-store] contract tool call in 0 session(s); non-error result: false

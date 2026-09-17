@@ -33,6 +33,12 @@ export interface HoldArgs {
   attempt_id?: string
   cause?: string
   scene_at?: number
+  /**
+   * T-17: the bound after which this hold releases itself (`hold-auto-released`, cause `ttl`).
+   * Omitted, the caller's default applies (the engine passes the resolved `holdTtlMs`); `0`
+   * means "no TTL" and leaves only the activity path.
+   */
+  ttl_ms?: number
 }
 
 /** Arguments accepted by {@link RESUME_TOOL}. */
@@ -52,6 +58,7 @@ export function applyHold(
   stateDir: string,
   args: HoldArgs,
   registry?: HoldRegistry,
+  defaultTtlMs = 0,
 ): { applied: boolean; hold?: HoldRecord; error?: string; path: string; changed?: boolean } {
   const teamId = String(args.team_id ?? "").trim()
   if (teamId === "") return { applied: false, error: "team_id is required", path: holdPath(workspace, stateDir, "") }
@@ -64,6 +71,12 @@ export function applyHold(
     taskId: args.task_id ?? existing?.taskId ?? null,
     attemptId: args.attempt_id ?? existing?.attemptId ?? null,
     sceneAt: args.scene_at ?? existing?.sceneAt ?? 0,
+    // T-17: an explicit `ttl_ms` wins, an existing hold keeps ITS bound (a re-persist must not
+    // silently extend a pause), and otherwise the caller's default (the resolved knob) applies.
+    ttlMs:
+      typeof args.ttl_ms === "number" && Number.isFinite(args.ttl_ms) && args.ttl_ms >= 0
+        ? args.ttl_ms
+        : existing?.ttlMs ?? defaultTtlMs,
   }
   const written = writeHold(workspace, stateDir, hold)
   if (!written.ok) return { applied: false, error: written.error, path: written.path }
@@ -99,8 +112,41 @@ export function applyResume(
   return { resumed: true, hold, path: cleared.path }
 }
 
+/**
+ * Read the ACTIVE PREDICATE SOURCE (contract §4): `channel` when the §1 fold is the
+ * authority, `heartbeat` when the engine is running the report-only fallback. Supplied by
+ * `apply` as a live provider so the status view can never print a stale copy of it.
+ */
+export type PredicateSourceProvider = () => { source: "channel" | "heartbeat"; reason: string; enrichment: boolean; events: number; sessions: number; states: Record<string, string>; announced: boolean }
+
+/**
+ * §7.2: the per-knob live-vs-file reading the status view prints, plus where it came from.
+ * `file` is the `.mpd/mpd.jsonc` the reading was taken from and `fileFound` whether it existed.
+ */
+export interface KnobDivergenceView {
+  readings: Array<{ knob: string; live: number | boolean | string; file?: number | boolean | string; differs: boolean; restartRequired: boolean }>
+  divergent: string[]
+  restartRequired: boolean
+  file: string | null
+  fileFound: boolean
+}
+
+/** The live providers `apply` hands the status surface. Each is read at CALL time. */
+export interface WatchdogSurfaces {
+  predicate?: PredicateSourceProvider
+  knobs?: () => KnobDivergenceView
+  /** T-17: the resolved `holdTtlMs` a hold created without an explicit `ttl_ms` inherits. */
+  holdTtlMs?: () => number
+}
+
 /** Register the three actions on the adapter. */
-export function registerWatchdogActions(dsh: DshAdapter, stateDir: string, registry?: HoldRegistry): void {
+export function registerWatchdogActions(
+  dsh: DshAdapter,
+  stateDir: string,
+  registry?: HoldRegistry,
+  surfaces: WatchdogSurfaces = {},
+): void {
+  const predicateSource = surfaces.predicate
   dsh.registerTool({
     name: HOLD_TOOL,
     description:
@@ -113,6 +159,11 @@ export function registerWatchdogActions(dsh: DshAdapter, stateDir: string, regis
         attempt_id: { type: "string", description: "That task's attempt id at escalation time." },
         cause: { type: "string", description: "Why the hold was raised (default: silence)." },
         scene_at: { type: "number", description: "Epoch ms of the scene written for this escalation." },
+        ttl_ms: {
+          type: "number",
+          description:
+            "T-17: auto-release bound in ms. Omitted, the resolved watchdog.holdTtlMs applies; 0 means no TTL (only the activity path can release it). Both paths append a hold-auto-released incident.",
+        },
       },
       required: ["team_id"],
       additionalProperties: false,
@@ -128,7 +179,13 @@ export function registerWatchdogActions(dsh: DshAdapter, stateDir: string, regis
     },
     execute: (args: HoldArgs, exec: unknown) => {
       const workspace = dsh.workspaceRoot(exec as never)
-      return applyHold(workspace, stateDir, args ?? {}, registry)
+      let fallbackTtl = 0
+      try {
+        fallbackTtl = surfaces.holdTtlMs?.() ?? 0
+      } catch {
+        fallbackTtl = 0
+      }
+      return applyHold(workspace, stateDir, args ?? {}, registry, fallbackTtl)
     },
   })
 
@@ -160,18 +217,60 @@ export function registerWatchdogActions(dsh: DshAdapter, stateDir: string, regis
   dsh.registerTool({
     name: STATUS_TOOL,
     description:
-      "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log and the per-reader watermark. Use it to inspect what a lane or a restarting process would read from disk.",
+      "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag, and (T-19) which PAUSE mechanism is active per team: `halted` (`agent_teams_halt`) or `held` (a watchdog hold). Use it to inspect what a lane or a restarting process would read from disk.",
     parameters: {
       type: "object",
       properties: { team_id: { type: "string", description: "Limit to one team." } },
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { workspace: { type: "string" }, paths: { type: "object" }, teams: { type: "array", items: { type: "object" } } } },
+      schema: {
+        type: "object",
+        properties: {
+          workspace: { type: "string" },
+          paths: { type: "object" },
+          predicate: { type: "object" },
+          knobs: { type: "object" },
+          teams: { type: "array", items: { type: "object" } },
+        },
+      },
       render: (_args: unknown, raw: unknown) => {
-        const value = (raw ?? {}) as { teams: Array<{ teamId: string; held: boolean }> }
-        const lines = value.teams.map((team) => team.teamId + ": " + (team.held ? "HELD" : "not held"))
-        return [{ type: "text", text: lines.join("\n") || "no teams" }]
+        const value = (raw ?? {}) as {
+          teams: Array<{ teamId: string; held: boolean; halt: { halted: boolean; haltedAt: number | null }; pause: { active: string | null; mechanism: string | null } }>
+          predicate?: { source: string; reason: string }
+          knobs?: KnobDivergenceView
+        }
+        const lines: string[] = []
+        const predicate = value.predicate
+        lines.push(
+          predicate === undefined
+            ? "predicate: channel (unknown to this renderer)"
+            : "predicate: " + predicate.source + " — " + predicate.reason,
+        )
+        // §7.2: LIVE always; the FILE value only when the file states one that differs.
+        const knobs = value.knobs
+        if (knobs !== undefined) {
+          lines.push(
+            "knobs (live" + (knobs.fileFound ? " vs " + String(knobs.file) : ", no " + String(knobs.file)) + "): " +
+              knobs.readings
+                .map((reading) =>
+                  reading.file === undefined || !reading.differs
+                    ? reading.knob + "=" + String(reading.live)
+                    : reading.knob + "=" + String(reading.live) + " (file " + String(reading.file) + ", restartRequired)",
+                )
+                .join(" | ") +
+              (knobs.restartRequired ? "  ⟵ a .mpd/mpd.jsonc edit is waiting for the next dsh boot" : ""),
+          )
+        }
+        // T-19: the UNION of the two pause mechanisms, naming the one that is active.
+        for (const team of value.teams) {
+          const active = team.pause?.active ?? null
+          if (active === "halted") lines.push(team.teamId + ": PAUSED — halted (agent_teams_halt)")
+          else if (active === "held") lines.push(team.teamId + ": PAUSED — held (watchdog hold)")
+          else lines.push(team.teamId + ": not paused")
+          if (team.halt?.halted === true) lines.push("  halted since " + String(team.halt.haltedAt ?? "(unknown)"))
+        }
+        return [{ type: "text", text: lines.join("\n") }]
       },
     },
     execute: (args: { team_id?: string }, exec: unknown) => {
@@ -179,6 +278,10 @@ export function registerWatchdogActions(dsh: DshAdapter, stateDir: string, regis
       const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(workspace, stateDir) : [args.team_id]
       return {
         workspace,
+        // §4: the status view NAMES the active predicate source.
+        predicate: predicateSource?.() ?? { source: "unknown", reason: "the engine did not publish a predicate source", enrichment: false, events: 0, sessions: 0, states: {}, announced: false },
+        // §7.2: per knob, the LIVE value and the FILE value when it differs.
+        knobs: surfaces.knobs?.() ?? { readings: [], divergent: [], restartRequired: false, file: null, fileFound: false },
         paths: {
           heartbeat: heartbeatDir(workspace, stateDir),
           hold: join(workspace, stateDir, "watchdog", "hold"),
@@ -188,12 +291,26 @@ export function registerWatchdogActions(dsh: DshAdapter, stateDir: string, regis
         teams: ids.map((teamId) => {
           const hold = readHold(workspace, stateDir, teamId)
           const team = readTeam(workspace, stateDir, teamId)
+          // T-19: ONE pause surface naming BOTH mechanisms. `halted` comes from the adopted
+          // record (`agent_teams_halt`), `held` from this plugin's own hold sidecar; a team can
+          // carry both, so the union is reported and the ACTIVE one is named.
+          const halted = team?.halted === true
+          const pause =
+            halted && hold !== undefined
+              ? { active: "halted", mechanism: "both (agent_teams_halt + watchdog hold)", halted, held: true }
+              : halted
+                ? { active: "halted", mechanism: "agent_teams_halt", halted, held: false }
+                : hold !== undefined
+                  ? { active: "held", mechanism: "watchdog hold", halted, held: true }
+                  : { active: null, mechanism: null, halted, held: false }
           return {
             teamId,
             held: hold !== undefined,
             hold: hold ?? null,
             phase: team?.phase ?? null,
             halted: team?.halted ?? null,
+            halt: { halted, haltedAt: team?.haltedAt ?? null },
+            pause,
             heartbeatKeys: listHeartbeatKeys(workspace, stateDir),
             heartbeatTails: Object.fromEntries(
               listHeartbeatKeys(workspace, stateDir).map((key) => {

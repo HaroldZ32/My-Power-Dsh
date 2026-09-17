@@ -1,0 +1,24 @@
+[dump-config] COMPOSITION ONLY — rows composed, no plugin code executed.
+[dump-config] The flag COMPOSES rows (base / bundle / patch / preset layers) and NEVER executes plugin code,
+[dump-config] so it CANNOT witness a plugin load, an apply abort or a schema rejection.
+[dump-config] Measured (AGENTS.md §4): `dsh --profile mpd --dump-config` exited 0 with the mpd-workmate row
+[dump-config] present while the real boot of the same profile could not load the tree.
+[dump-config] profile: mpd-headless
+[dump-config] command: dsh --profile mpd-headless --dump-config
+[dump-config] For a LOAD proof run a mounting boot instead: `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`,
+[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.
+[dump-config] ---- the composed rows below are the child's own output ----
+file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:890
+		if (template === void 0) throw new Error(`${binName}: profile ${JSON.stringify(name)} does not exist; create it with 'dsh plugin --profile ${name} add <package>'`);
+		                               ^
+
+Error: dsh: profile "mpd-headless" does not exist; create it with 'dsh plugin --profile mpd-headless add <package>'
+    at loadProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:890:34)
+    at prepareProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:208:18)
+    at runDumpConfig (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/dump-config-lFgMwK8i.js:25:17)
+    at runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:162:4)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23
+
+Node.js v24.16.0
+[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).

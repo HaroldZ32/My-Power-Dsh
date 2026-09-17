@@ -1,0 +1,38 @@
+# CORRECTION of one explanatory number in ../result.json (t44).
+# claim under test: package-dir-form dists are '58-74 B SMALLER' than the canonical root-form builds.
+# method: rebuild BOTH forms into a temp dir; compare bytes with the committed dist; cwd=repo root for
+#         the root form, cwd=packages/<p> for the package-dir form. Captured 2026-09-17T03:08:44Z.
+
+pkg                        committedB     rootB   pkgdirB   delta root_eq_committed
+mpd-bootstrap-plugin           30352     30352     30286     +66 IDENTICAL
+mpd-boulder-plugin             48315     48315     48029    +286 IDENTICAL
+mpd-codegraph-plugin           21914     21914     21848     +66 IDENTICAL
+mpd-comment-checker-plugin     23877     23877     23799     +78 IDENTICAL
+mpd-hashline-plugin            55203     55203     54791    +412 IDENTICAL
+mpd-memory-plugin              30776     30776     30716     +60 IDENTICAL
+mpd-modelchain-plugin          23483     23483     23415     +68 IDENTICAL
+mpd-qa-roles-probe             23704     23704     23670     +34 IDENTICAL
+mpd-team-compact-plugin        33610     33610     33538     +72 IDENTICAL
+mpd-team-watchdog-plugin      153319    153319    152791    +528 IDENTICAL
+mpd-tools-plugin               19534     19534     19476     +58 IDENTICAL
+mpd-ulw-plugin                 37044     37044     36990     +54 IDENTICAL
+mpd-workmate-plugin            55875     55875     55811     +64 IDENTICAL
+
+## the three packages that inline relative imports (measured against the committed dist):
+mpd-ext-plugin             committed   152855 root   152855 pkgdir   152579 delta  +276  banner(pkgdir)=// ../mpd-dsh-adapter-plugin/src/index.ts
+mpd-team-watchdog-plugin   committed   153319 root   153319 pkgdir   152791 delta  +528  banner(pkgdir)=var __create = Object.create;
+mpd-tui-plugin             committed   149134 root   149134 pkgdir   148654 delta  +480  banner(pkgdir)=var __create = Object.create;
+
+## the t44 headline re-verified in the same pass: the binding gate reading NOW
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 484ms
+
+## §6 of AGENTS.md on disk NOW (the manual already names the canonical form + the trap + T-67):
+347:- **Build — from the REPO ROOT, with path-qualified args**: `bun build
+348-  packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js`
+349-  (a multi-entry package repeats it per entry, e.g. `packages/mpd-ext-plugin/src/sdk.ts` →
+350-  `packages/mpd-ext-plugin/dist/sdk.js`). This is the CANONICAL form: `bun build` writes the entry
+351-  path RELATIVE TO CWD into the artifact's first line, and `node scripts/verify-dist-fresh.mjs`
+352-  reproduces THESE bytes — so a package-directory build (the form the packages' own `build` scripts
+353-  use) is flagged STALE even though it looks sanctioned. Three packages still carry such a script
+354-  (`mpd-ext-plugin`, `mpd-team-watchdog-plugin`, `mpd-tui-plugin`); use the repo-root command above

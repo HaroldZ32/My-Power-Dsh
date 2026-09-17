@@ -1,0 +1,5 @@
+11ab1c6da2d34a49c79d52f61eae8ac2a7446d5c234b51d96a415c9cb624b3e9  packages/mpd-config-plugin/dist/index.js
+3d75e19378e312580cefb9606888dbe0429407c0848fddd9af06b5b82d833f30  packages/mpd-config-plugin/src/bridge.ts
+e89179338d47c5fbf41774506901c66258469ba441849f5905668c6ea65c49dc  packages/mpd-config-plugin/src/index.ts
+cf279efa82a90e171c13524c872ecd2d6e75ca4860997d5f5272948476ccd86b  packages/mpd-config-plugin/src/jsonc-edit.ts
+9fa991edd7181aca85bea2d935a2cccfd7820bb5e2001ff242bcc87866e96f5b  packages/mpd-config-plugin/src/settings-schema.ts

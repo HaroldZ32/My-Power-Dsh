@@ -1,0 +1,7 @@
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  DOC-PAIR - docs/user-guide.md shipped without its twin user-guide.zh-CN.md — a packed doc pair must never be half (EN + *.zh-CN.md ship together)
+  packer: /root/dshProj/my-power-dsh/scripts/pack-mpd.mjs
+  cli: /root/dshProj/my-power-dsh/scripts/mpd-ext.mjs
+  packages dir: /root/dshProj/my-power-dsh/packages
+  patch: /root/dshProj/my-power-dsh/packages/mpd-bundle/cordis.patch.yml
+  packed tree: /root/dshProj/my-power-dsh/evidence/pack-closure/review/20260917T030041Z/negative-control-copy (377 asset files)

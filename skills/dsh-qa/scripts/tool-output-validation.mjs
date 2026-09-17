@@ -14,6 +14,7 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 
@@ -74,7 +75,7 @@ async function runReal() {
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   if (!existsSync(creds)) { console.error("[tool-output-validation] missing credentials"); process.exit(1) }
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-tov-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
 // model chain is configured through gateway providers (llm-pi-ai), so without it the
 // sandbox falls back to the base `deepseek-official` route and the boot dies with
@@ -85,7 +86,7 @@ async function runReal() {
   if (existsSync(qaSettings)) cpSync(qaSettings, join(sandbox, "settings.yaml"))
   const ws = join(sandbox, "ws")
   mkdirSync(ws, { recursive: true })
-  const env = { ...process.env, DSH_HOME: sandbox }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
   const inst = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
   if (inst.status !== 0) { console.error("[tool-output-validation] FAIL: install-profile\n" + (inst.stdout || "") + (inst.stderr || "")); process.exit(1) }
   const argv = process.argv.slice(2)

@@ -1,0 +1,16 @@
+# t62 A3 arms, PRE-FIX run (expect arm A FAIL in both runtimes = the defect; B/C/D PASS) 2026-09-17T03:32:21Z
+[guard-arms] dist=packages/mpd-workmate-plugin/dist/index.js realHome=/root
+  FAIL node arm A: sandbox HOME + DSH_HOME (sanctioned recipe) expect=ALLOWED got=REFUSED
+  PASS node arm B: HOME unset + DSH_HOME                      expect=REFUSED got=REFUSED
+  PASS node arm C: real HOME + DSH_HOME                       expect=REFUSED got=REFUSED
+  PASS node arm D: sandbox HOME + override                    expect=ALLOWED got=ALLOWED
+  FAIL bun  arm A: sandbox HOME + DSH_HOME (sanctioned recipe) expect=ALLOWED got=REFUSED
+  PASS bun  arm B: HOME unset + DSH_HOME                      expect=REFUSED got=REFUSED
+  PASS bun  arm C: real HOME + DSH_HOME                       expect=REFUSED got=REFUSED
+  PASS bun  arm D: sandbox HOME + override                    expect=ALLOWED got=ALLOWED
+[guard-arms] ok=false (both sides × both runtimes must agree)
+exit=1
+
+# the instrument's own control: a one-sided arm table must be reported as hiding the defect
+[self-test] one-sided table hides the defect (A not present) => PASS: a both-sides table would report arm A as failing
+exit=0

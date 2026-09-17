@@ -1,0 +1,99 @@
+{
+  "task": "t15 — lane C1: manifest-driven QA runner that continues past an unavailable lane and prints a per-lane summary (T-32, T-59, T-60 loop half)",
+  "attempt": 4,
+  "attempt_id": "988c8ec1-6d01-4c83-8261-201ab2651873",
+  "agent": "platform-engineer (handover: the amended contract's fresh attempt; qa-lane-engineer authored the implementation and is busy with t17)",
+  "ATTRIBUTION": {
+    "authored_by_qa_lane_engineer": [
+      "scripts/run-qa-lanes.mjs (new runner)",
+      "skills/dsh-qa/cases.json (new manifest: 44 lanes + 6 gates)",
+      "package.json -> test:qa:all = `node scripts/run-qa-lanes.mjs`",
+      "skills/dsh-qa/SKILL.md (runner + reason-code documentation)",
+      "their evidence: evidence/dsh-qa/suite-runner/20260917T013759Z-t15/{result.json,output.log,arms-green,arms-unavailable} and the dated run dirs 2026-09-17T01-19-11.082Z / 2026-09-17T01-17-09.226Z / 20260917T013507Z-verify"
+    ],
+    "re_run_by_platform_engineer_on_the_current_tree": [
+      "all four declared checks (each exit 0)",
+      "the --only mount-assert,tui-admission real continue-past-unavailable run",
+      "the --only mount-assert,agent-teams-adopt real fail-then-continue run",
+      "bun run test:qa (the amended clause reading) + an independent recomputation of both tree-hash variants",
+      "the full-suite run (evidence/full-suite.log, referenced below)"
+    ],
+    "not_re_run_by_me": [
+      "the author's arms-green / arms-unavailable fixture arms (their result.json)",
+      "the 01:19Z and 01:17Z sweeps in their evidence"
+    ]
+  },
+  "declared_checks_on_the_current_tree": {
+    "node scripts/run-qa-lanes.mjs --self-test": {"exit": 0, "output": "[run-qa-lanes self-test] ok: classification (pass/unavailable/fail), continue-past-failure, per-lane logs, exit codes 0/1/2/3, drift detection and the timeout guard verified on fixtures"},
+    "node scripts/run-qa-lanes.mjs --list": {"exit": 0, "output": "per-lane registry + 'drift unlistedScripts (0): none' + 'drift missingScripts (0): none'"},
+    "node scripts/run-qa-lanes.mjs --check-drift": {"exit": 0, "output": "[run-qa-lanes] manifest and disk agree (50 entries)"},
+    "node scripts/run-qa-lanes.mjs --only mount-assert": {"exit": 0, "output": "PASS case=mount-assert … summary selected=1 pass=1 unavailable=0 fail=0 … exit 0"}
+  },
+  "real_runs_that_exercise_the_criteria": {
+    "continue_past_unavailable": {
+      "command": "node scripts/run-qa-lanes.mjs --only mount-assert,tui-admission",
+      "observed": "PASS mount-assert, then UNAVAILABLE tui-admission reason=absent-fixture exit=1 with its log path, summary selected=2 pass=1 unavailable=1 fail=0, runner-declared exit 2",
+      "verdict": "a lane that cannot run is reported unavailable WITH its reason and the run continues"
+    },
+    "fail_then_continue": {
+      "command": "node scripts/run-qa-lanes.mjs --only mount-assert,agent-teams-adopt",
+      "observed": "PASS mount-assert (501 ms) THEN FAIL agent-teams-adopt reason=unauthorized prereq=\"HTTP 401 / unauthorized route\" signature=(the lane's own stdout):11 also=absent-credentials exit=1 with evidence+log paths (128436 ms); summary selected=2 pass=1 unavailable=0 fail=1; runner-declared exit 1",
+      "verdict": "the second lane still ran after the first FAILED — the abort-on-first-failure behaviour is gone — and the failure reason is structured, not prose-only"
+    },
+    "full_suite": {
+      "command": "node scripts/run-qa-lanes.mjs (default suite, all lanes + gates)",
+      "log": "full-suite.log (this dir)",
+      "note": "started at 2026-09-17T01:55:30Z; 33 lanes selected. At 02:08:24Z it had produced lane 1 FAIL (agent-teams-adopt, 128961 ms, reason=unauthorized) and was still inside lane 2 (agent-teams-dispatch; its per-lane log 0 bytes after 11 minutes). The runner's per-lane default timeout is 30 minutes (DEFAULT_TIMEOUT_MS in scripts/run-qa-lanes.mjs), and several lanes are heavy live boots, so a COMPLETE 33-lane pass is an hours-scale unattended sweep, not a completion condition for this handover.",
+      "what_this_does_and_does_not_show": "it shows the suite starts, reports lane 1 in full structured detail and CONTINUES into lane 2 (the run did not abort at lane 1). It does NOT show the tail/summary of a complete 33-lane pass — that remains open and is the reviewer's (or t35's) call. The continuation+summary property itself is proven by the two real 2-lane runs above (each reaching its summary and a distinct exit code) and by the fixture self-test's continue-past-failure arm.",
+      "author_sweep_cross_reference": "the author's own sweep (evidence/dsh-qa/suite-runner/2026-09-17T01-19-11.082Z) shows the same shape: lane 1 FAIL and lanes 2..6 still running.",
+      "final_state_of_this_run": "TERMINATED BEFORE COMPLETION: at 02:12:59Z the log still held one verdict (lane 1), the lane-2 log was 0 bytes, and `pgrep -af \"[r]un-qa-lanes\"` returned 0 processes (the managed job was no longer tracked). The log is therefore a PARTIAL record — lane 1's structured verdict plus lane 2 entered — and must NOT be read as a live or completed sweep.",
+      "resource_note": "the run makes live model calls; it was started at the captain's request, entered a heavy live lane, and was reclaimed rather than finishing. A complete 33-lane sweep belongs in a budgeted window (t35's integration or a deliberate sweep), not in a handover completion condition."
+    }
+  },
+  "amended_clause_reading_test_qa": {
+    "verbatim": [
+      "[agent-teams-messaging] FAIL: VENDOR_LOCK skills asset is stale: lock=319/c0dab8641697 tree=320/3b41bda20d33 (re-pin in the same commit, AGENTS.md §9)",
+      "[test:qa] FAILED: skills/dsh-qa/scripts/agent-teams-messaging.mjs",
+      "error: script \"test:qa\" exited with code 1"
+    ],
+    "what_it_means": "bun run test:qa is the OLD inline for-loop and exits 1 at the FIRST failing glob entry (the third script) — exactly the abort-on-first-failure shape the runner replaces. It is RED on exactly ONE lane, the vendor fingerprint, which the captain's re-pin fixes at commit time; nothing else had a chance to run under the old loop.",
+    "tree_hash_recomputed_independently_by_me": {
+      "asset": "skills",
+      "on_disk_files": 320,
+      "lock_fileCount": 319,
+      "lock_treeSha_prefix": "c0dab8641697",
+      "normalized_recipe": "per sorted relpath, sha256(CRLF->LF-normalized bytes), then sha256 over '<relpath>\\n<filehash>\\n' (the verify-vendor.mjs recipe), skipping __pycache__/*.pyc/*.pyo",
+      "normalized_tree_sha256": "3b41bda20d333d6842661c670604c2cd51c3aff754391dcfc330f1c8a0dfc7b3",
+      "raw_bytes_tree_sha256": "b283f614fd952ea7b70fb46ce484be09634cba51a2d108d0dcf88cd9f23515b3",
+      "warning": "the RAW-bytes hash (b283f614…) is NOT what the gate compares — VENDOR_LOCK must be re-pinned from the LF-NORMALIZED hash (3b41bda20d333d684…); a raw-bytes re-pin would drift again and silently fail the gate",
+      "cross_check": "the _deps asset is unchanged (635/635 files, lock treeSha d1d106032b19 == recomputed normalized == recomputed raw)"
+    }
+  },
+  "on_disk_vs_author_evidence": {
+    "matches_exactly": {
+      "skills/dsh-qa/cases.json": "sha256 919656a8cac131c6fb3ecb4e47e5dc5f927f05d5536cc9b87c78604413adfd86 == the author's recorded hash, and the runner's own start line prints sha256=919656a8cac1",
+      "package.json": "test:qa:all = `node scripts/run-qa-lanes.mjs` (the 27-name inline for-loop is gone)"
+    },
+    "DISCREPANCY_runner_file_hash": {
+      "author_recorded": "scripts/run-qa-lanes.mjs sha256 d90dc10b5736e7025561f02f27c88840fda15ccefb04b636df6c856e70d374a3 (recorded 2026-09-17T01:38:00Z)",
+      "on_disk_now": "sha256 f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e, mtime 2026-09-17 01:49:38Z",
+      "what_i_did": "re-ran every declared check and both real continue-past runs on the CURRENT bytes — all green — and asked qa-lane-engineer in writing whether the 01:49 edit is theirs (a follow-up before moving to t17) or a foreign write; the file is untracked (`?? scripts/run-qa-lanes.mjs`), so git holds no older revision",
+      "outcome_alignment": "no re-run DISAGREES with the author's recorded results (self-test / list / check-drift / only mount-assert all exit 0; the structured-failure and unavailable behaviours reproduce), so the work is complete on the verified bytes; the provenance sentence is the only open item and is flagged for the reviewer",
+      "RESOLVED_2026-09-17T02:38Z": "qa-lane-engineer CONFIRMED the 01:49:38Z edit as their own author follow-up (single-author, untracked file) and fixed the stale `deliverables[]` line that had misled the check. WHAT CHANGED d90dc10b… -> f60ef2b5…: the runner-side prerequisite classification the captain required after the first sweep — new SIGNATURES/evidenceCandidates/collectEvidenceTexts/detectSignatures/lineOf; `classify()` now reads a marker-less lane's own stdout and the evidence dirs it printed; the lane record gains signature/alsoDetected/declaredPrereq and `printLaneLine` prints `prereq=<label>` + `signature=<file>:<line>`; semantics: missing key -> unavailable/absent-credentials, answered 401 -> fail/unauthorized, both -> the failure with alsoDetected=[absent-credentials]; `--self-test` gained fx-credential/fx-401/fx-both fixtures. Their record: `evidence/dsh-qa/suite-runner/20260917T013759Z-t15/result.json` under `postVerificationUpdate.runnerSha256Final`, `amendedContract.verifyChecksFresh.artifacts.runner` and the new `runnerHashHistory {firstVerifiedBuild, finalBuild, editedAt, editedBy, whatChanged}`. (An earlier pre-01:19 build differed only in CLI flag parsing — both `--flag=value` and `--flag value` — plus a self-test pin; no lane-execution or classification change.)",
+      "paste_ready_provenance_sentence": "scripts/run-qa-lanes.mjs sha256 f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e (author follow-up by qa-lane-engineer at 01:49:38Z: the runner-side prerequisite classification — 401 -> fail/unauthorized vs missing key -> unavailable/absent-credentials, with file:line; recorded in the t15 evidence under postVerificationUpdate + runnerHashHistory). The four declared checks were re-run on THESE bytes and pass (self-test 0; --list 50 entries; --check-drift 'manifest and disk agree (50 entries)'; --only mount-assert 0 PASS).",
+      "re_confirm_on_confirmed_bytes": "02:38:28Z: runner sha256 re-read = f60ef2b5… (unchanged); --self-test exit 0; --check-drift 'manifest and disk agree (50 entries)'; --only mount-assert PASS exit 0 (168 ms)"
+    }
+  },
+  "acceptance_mapping": [
+    {"criterion": "test:qa:all no longer aborts on the first failing lane", "status": "passed", "evidence": "real fail-then-continue run above (lane 2 ran after lane 1 FAILED) + the self-test's fixture arms"},
+    {"criterion": "the lane list is DATA and drift is detectable", "status": "passed", "evidence": "skills/dsh-qa/cases.json (44 lanes + 6 gates); --check-drift exits 0 with 'manifest and disk agree (50 entries)'; --list prints drift unlistedScripts/missingScripts = 0; the qa-lane-drift gate re-runs --check-drift inside the suite"},
+    {"criterion": "mount-assert is invoked in a passable form", "status": "passed", "evidence": "manifest entry args=['--expect=name: \\'@deepseek-ai/dsh-llm\\''] and `--only mount-assert` now PASSes (it exited 2 by construction before)"},
+    {"criterion": "per-lane summary + unavailable-with-reason", "status": "passed", "evidence": "every run ends with 'summary selected=… pass=… unavailable=… fail=…', an evidence dir, a per-lane log path and the exit-code legend; tui-admission printed UNAVAILABLE reason=absent-fixture with its remedy-bearing log"},
+    {"criterion": "exit codes distinguish the outcomes + a real run produces the summary", "status": "passed", "evidence": "measured on this host: exit 0 (--only mount-assert), exit 2 (--only mount-assert,tui-admission), exit 1 (--only mount-assert,agent-teams-adopt); the self-test pins 3 = runner error"},
+    {"criterion": "amended test:qa clause recorded verbatim with both hash variants", "status": "passed", "evidence": "see amended_clause_reading_test_qa above: the verbatim RED reading, the LF-normalized tree hash 3b41bda20d333d684… (independently recomputed), and the raw-bytes warning b283f614…; VENDOR_LOCK.json was NOT written"}
+  ],
+  "unverified": [
+    "the full-suite run's tail (see full-suite.log; the lanes themselves are the author's and other lanes' work, not this task's subject)",
+    "RESOLVED 2026-09-17T02:38Z: the provenance of the 01:49:38Z runner edit — qa-lane-engineer confirmed it as their author follow-up (runner-side prerequisite classification) and recorded it in their t15 evidence under postVerificationUpdate + runnerHashHistory; the four declared checks were re-run on those exact bytes and pass. No open provenance item remains."
+  ]
+}

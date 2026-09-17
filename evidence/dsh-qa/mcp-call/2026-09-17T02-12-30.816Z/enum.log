@@ -1,0 +1,58 @@
+[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/node_modules/.bun/@colbymchenry+codegraph@1.5.0/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/tmp/mpd-dsh-qa-FNqRsz/ws
+[mpd-bootstrap] skill corpus served from /root/dshProj/my-power-dsh/dist/mpd-package/skills (provider mpd-bundle, bundle 0.9.1)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[mpd-config] settings bridge: registered the "mpd" namespace with the file-derived base (applies:'restart', design §10.1)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+dsh: reasoning:
+The user wants me to list all available tool names starting with mcp__ prefix, one per line, without calling any tools.
+
+Let me look at the available tools in my function list:
+
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__context7__query-docs
+mcp__context7__resolve-library-id
+mcp__grep_app__searchGitHub
+mcp__lsp__diagnostics
+mcp__lsp__find_references
+mcp__lsp__goto_definition
+mcp__lsp__install_decision
+mcp__lsp__prepare_rename
+mcp__lsp__rename
+mcp__lsp__status
+mcp__lsp__symbols
+
+That's 15 tools. I should not call any tools. Just list them.
+
+Note there's also mcp__lsp__rename which is one of the write-capable names mentioned. Let me count carefully:
+
+ast_grep: rewrite, scan, search = 3
+codegraph: codegraph_explore = 1
+context7: query-docs, resolve-library-id = 2
+grep_app: searchGitHub = 1
+lsp: diagnostics, find_references, goto_definition, install_decision, prepare_rename, rename, status, symbols = 8
+
+Total = 3+1+2+1+8 = 15.
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__context7__query-docs
+mcp__context7__resolve-library-id
+mcp__grep_app__searchGitHub
+mcp__lsp__diagnostics
+mcp__lsp__find_references
+mcp__lsp__goto_definition
+mcp__lsp__install_decision
+mcp__lsp__prepare_rename
+mcp__lsp__rename
+mcp__lsp__status
+mcp__lsp__symbols
+
+15 tools total across 5 MCP servers (ast_grep: 3, codegraph: 1, context7: 2, grep_app: 1, lsp: 8). No tools were called.

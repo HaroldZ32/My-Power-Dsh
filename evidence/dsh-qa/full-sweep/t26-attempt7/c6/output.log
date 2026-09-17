@@ -1,0 +1,8 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=4 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c6
+[mpd-qa:(only)] PASS case=codegraph-smoke evidence=evidence/dsh-qa/codegraph/2026-09-17T04-39-05.759Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c6/lanes/codegraph-smoke.log ms=22454
+[mpd-qa:(only)] PASS case=memory-smoke evidence=evidence/plan-c/c6-memory/2026-09-17T04-39-05.859Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c6/lanes/memory-smoke.log ms=20539
+[mpd-qa:(only)] PASS case=team-route-rewire evidence=evidence/plan-e/e4-team-vendor/2026-09-17T04-39-26.580Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c6/lanes/team-route-rewire.log ms=60970
+[mpd-qa:(only)] PASS case=relocate-smoke evidence=evidence/plan-d/relocate/2026-09-17T04-40-27.341Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c6/lanes/relocate-smoke.log ms=14865
+[mpd-qa:(only)] summary selected=4 pass=4 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c6
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

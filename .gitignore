@@ -50,3 +50,11 @@ evidence/**/raw/scratch/
 # under evidence/mpd-bridge/dual-path/sandbox alone). The EVIDENCE is REPORT.md + raw/ beside it,
 # never this: committing a store snapshot would bloat the repository for no information.
 evidence/**/sandbox/
+
+# Packed-tree BUILD PRODUCTS that a lane regenerates on demand. The t70 packer harness writes a FULL
+# artifact (18 MB / 1190 files) under its own evidence dir to prove the closure gate against a fresh
+# pack without touching the canonical one; what stays committed is the file list + hashes beside it
+# (`scratch-artifact-*.files.txt`) and the pinned regeneration command. Same policy as the two rules
+# above — measured 2026-09-17.
+evidence/**/scratch-artifact*/
+evidence/**/scratch-control*/

@@ -1,0 +1,7 @@
+skills: IDENTICAL (diff -rq empty)
+presets: IDENTICAL (diff -rq empty)
+extensions: IDENTICAL (diff -rq empty)
+templates: IDENTICAL (diff -rq empty)
+docs: IDENTICAL (diff -rq empty)
+agent-references: DIFFERENCES:
+Files agent-references/troubleshooting.md and dist/mpd-package/agent-references/troubleshooting.md differ

@@ -1,0 +1,55 @@
+# t45 — canonical build form in the manual — evidence log
+# cwd = /root/dshProj/my-power-dsh for every command
+
+## 1. The two clauses + the residual sentence (before → after)
+
+### (a) §6's Build line — the canonical ROOT form (was lines 347-348)
+BEFORE:
+  - **Build**: `bun build src/index.ts --target node --format esm --outfile dist/index.js`;
+    zero runtime deps preferred (type-only imports).
+AFTER:
+  - **Build — from the REPO ROOT, with path-qualified args**: `bun build
+    packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js`
+    (a multi-entry package repeats it per entry, e.g. `packages/mpd-ext-plugin/src/sdk.ts` →
+    `packages/mpd-ext-plugin/dist/sdk.js`). This is the CANONICAL form: `bun build` writes the entry
+    path RELATIVE TO CWD into the artifact's first line, and `node scripts/verify-dist-fresh.mjs`
+    reproduces THESE bytes — so a package-directory build (the form the packages' own `build` scripts
+    use) is flagged STALE even though it looks sanctioned. Three packages still carry such a script
+    (`mpd-ext-plugin`, `mpd-team-watchdog-plugin`, `mpd-tui-plugin`); use the repo-root command above
+    until that script half lands (T-67, wave 2). Zero runtime deps preferred (type-only imports).
+
+### (b) §4's Dist-freshness row — the F3 pointer
+BEFORE (tail of the command cell): `…; `--self-test` seeds a mismatch)`
+AFTER  (tail of the command cell): `…; `--self-test` seeds a mismatch; the canonical REBUILD command —
+  repo root, path-qualified args — and the package-directory trap are named in §6's Build line)`
+=> an agent that reads the GATE ROW first now reaches the canonical command and the residual note.
+
+## 2. THE ROUND TRIP — proven FROM DISK, not asserted (temp outfiles only; no packages/** write)
+$ bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile <tmp>/index.js   # exit 0
+$ bun build packages/mpd-ext-plugin/src/sdk.ts   --target node --format esm --outfile <tmp>/sdk.js     # exit 0
+  committed  index.js : f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  152,855 B
+  round-trip index.js : f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  152,855 B   ← IDENTICAL
+  committed  sdk.js   : 4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195    1,708 B
+  round-trip sdk.js   : 4117a1d5d11dbbdaa77e50d028fba30e261c30612a348022775aa429c2578195    1,708 B   ← IDENTICAL
+CONTRAST (the trap, also to a temp outfile — the form the package's own build script uses):
+$ ( cd packages/mpd-ext-plugin && bun build src/index.ts … --outfile <tmp>/pkgdir.js )
+  package-dir build   : a7b843e19656dbe950131f9c597222436f671a15b35ee3c62776fd4f6f76864a  152,579 B
+  its first line      : `// ../mpd-dsh-adapter-plugin/src/index.ts`   (cwd-relative, hence byte-different)
+
+## 3. Gates AFTER the edits
+$ node scripts/verify-dist-fresh.mjs -> exit 0: "ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed"
+$ bun run verify:docs                -> exit 0: pairs=37 failed=0 violations=0 exempt=17 — PASS
+$ node scripts/verify-rows-parity.mjs -> exit 0: 25 row ids match the bundle patch insert list
+$ budget: AGENTS.md 48,354 B -> rendered 48,658 B against 65,536, truncated=false, GREEN (~16.9 KB headroom)
+
+## 4. Bounds / honesty
+- Only the two clauses + the residual sentence changed: §6's Build bullet and §4's Dist-freshness cell.
+  No `packages/**` or `scripts/**` byte was touched (the round trip wrote TEMP outfiles only; the
+  package-dir contrast too), and no heading, section number or other line moved.
+- The three package-local `build` scripts (`mpd-ext-plugin` with two entries, `mpd-team-watchdog-plugin`,
+  `mpd-tui-plugin`) still produce the package-dir form — that is T-67's script half, wave 2, deliberately
+  out of scope here; the manual now says so where the form is named.
+- The 20/20 reading is timestamped to this run (verify-dist-fresh.log); per the wave's rule a gate result
+  is only valid for the revision it measured.
+- The watchdog/tui delta SIZES are left OPEN for t46's review (only mpd-ext-plugin's −276 B / 152,579 B
+  package-dir form was measured here); the derived repo-root-vs-package-dir RULE is settled.

@@ -1,0 +1,28 @@
+# t66 measurement — 2026-09-17T03:41:13Z — temp outfiles only, no packages/** write
+# tmp=/tmp/tmp.4qoAL2qWCc
+
+$ bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile $TMP/root.js   (repo root)
+
+  root.js  152.86 KB  (entry point)
+
+[exit=0]
+$ (cd packages/mpd-ext-plugin && bun build src/index.ts --target node --format esm --outfile $TMP/pkg.js)
+
+  pkg.js  152.58 KB  (entry point)
+
+[exit=0]
+
+== the two comment lists ==
+root comment lines: 13
+pkg  comment lines: 13
+distinct module paths: root 11  pkg 11
+
+== comment-list diff (removed + added lines) ==
+diff lines: 26  (removed 13 + added 13)
+
+== full-file comparison ==
+f6097fd3383f2fa75bc54621c5082ccb5b3192f63c286debd2f96ed8f5428e0a  /tmp/tmp.4qoAL2qWCc/root.js
+a7b843e19656dbe950131f9c597222436f671a15b35ee3c62776fd4f6f76864a  /tmp/tmp.4qoAL2qWCc/pkg.js
+differing source lines: 13  all of them comments: True
+non-comment differences: 0
+bytes: root 152855 pkg 152579

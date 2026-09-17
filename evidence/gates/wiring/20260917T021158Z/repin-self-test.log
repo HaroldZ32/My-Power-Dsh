@@ -1,0 +1,21 @@
+[repin-vendor] SELF-TEST PASS - authority-shape: mirror still matches scripts/verify-vendor.mjs
+[repin-vendor]   mirror matches all 6 decisive token(s) of scripts/verify-vendor.mjs
+[repin-vendor] SELF-TEST PASS - hand-computed expectation: one-file tree fold (independent of fingerprint())
+[repin-vendor]   sha256("a.txt\n" + sha256("x\ny\n") + "\n") = 71c4ddcf49e96763e47ac8fd363b7dba2bffbe262ad33d68e097ea885aef8658
+[repin-vendor] SELF-TEST PASS - LF normalization: a CRLF file hashes exactly like its LF twin; a NUL file stays raw
+[repin-vendor]   CRLF twin == LF twin (33e2658703ec...), NUL file raw in both
+[repin-vendor] SELF-TEST PASS - (a) matching scrub fixture lock -> --check exits 0
+[repin-vendor]   exit 0; 4-file corpus in sync; non-treeSha assets reported NOT REPINNED
+[repin-vendor] SELF-TEST PASS - (b) drifted scratch lock -> --check exits 1 and prints the delta
+[repin-vendor]   exit 1; printed 000000000000... -> 05f39b5e2748...
+[repin-vendor] SELF-TEST PASS - (c) --write mutates ONLY the treeSha field, and --check then exits 0
+[repin-vendor]   1 line changed (417 -> 417 bytes, differingBytes=61); sha256+count-only assets untouched; --check GREEN after write
+[repin-vendor] SELF-TEST PASS - (d) default VENDOR_LOCK.json guard: --write refuses, real file byte-identical
+[repin-vendor]   exit 1, override flag named, real sha256 76d5914b8e337a9bd4d2671df1e772d5d648af89a6c140a73c6b356df55dfee7 unchanged; guard is path-scoped (a different path named VENDOR_LOCK.json is writable, exit 0)
+[repin-vendor] SELF-TEST PASS - (e) dry run mutates nothing
+[repin-vendor]   exit 0, sha256 f57f10656b36... unchanged, delta reported
+[repin-vendor] SELF-TEST PASS - (f) bad flag -> exit 1 + usage
+[repin-vendor]   unknown flag and --check/--write clash both exit 1 with usage
+[repin-vendor] SELF-TEST PASS - (g) negative control: a tampered authority makes the mirror guard REFUSE
+[repin-vendor]   tampered mirror token -> exit 1 with 'changed shape'; restored -> exit 0 (falsifiable guard; real authority sha unchanged)
+[repin-vendor] SELF-TEST PASS - 10/10 arm(s) passed

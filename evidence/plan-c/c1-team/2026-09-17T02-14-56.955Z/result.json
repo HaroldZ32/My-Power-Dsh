@@ -1,0 +1,124 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-c1-DGoPCK",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "bundleRow": {
+      "ok": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless"
+      ]
+    },
+    "override": {
+      "ok": true,
+      "hasPatch": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "teamState": {
+      "ok": false,
+      "teamIds": [
+        "c1qa"
+      ],
+      "inbox": [
+        []
+      ],
+      "teamJson": [
+        {
+          "name": "c1qa",
+          "id": "c1qa",
+          "description": "C1 adoption QA",
+          "captainSessionId": "session-ae490fba-3b39-49b4-9853-0a012436e943",
+          "createdAt": 1789611304918,
+          "members": [
+            {
+              "id": "21e079ea-4b0f-421f-8245-8e4eab74396e",
+              "name": "oracle",
+              "role": "verifier",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789611306737,
+              "status": "working"
+            },
+            {
+              "id": "9af9badc-3faa-4c6e-9578-c45b59fc3b7a",
+              "name": "librarian",
+              "role": "summarizer",
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "reasoningEffort": "max",
+              "joinedAt": 1789611306773,
+              "status": "idle"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "t1",
+              "subject": "Summarize the QA goal in one line",
+              "description": "Read the team goal (\"C1 adoption QA\" for team c1qa) and produce a single-line summary of the QA goal. Reply with exactly one line of text as the task output.",
+              "status": "completed",
+              "assignee": "librarian",
+              "dependencies": [],
+              "attempt": 1,
+              "createdAt": 1789611309732,
+              "updatedAt": 1789611317879,
+              "kind": "work",
+              "attemptId": "a37f7f70-972d-4ad2-9721-21cabee716db",
+              "reassigning": false,
+              "output": "C1 adoption QA: verify end-to-end that the C1 quality-gate workflow is correctly mounted, exercised, and passing in the workspace."
+            },
+            {
+              "id": "t2",
+              "subject": "Approve or reject the summary",
+              "description": "Read the one-line summary produced by task t1 (see t1's output). Judge whether it is an accurate and complete one-line summary of the team goal \"C1 adoption QA\". Record your verdict (approve or reject) plus one sentence of justification as the task output.",
+              "status": "claimed",
+              "assignee": "oracle",
+              "dependencies": [
+                "t1"
+              ],
+              "attempt": 1,
+              "createdAt": 1789611311845,
+              "updatedAt": 1789611317881,
+              "kind": "work",
+              "attemptId": "3fa36a6e-3438-48de-b5cc-4baa47069526",
+              "reassigning": false
+            }
+          ],
+          "taskSeq": 2
+        }
+      ]
+    },
+    "archive": {
+      "ok": false,
+      "archiveIds": []
+    },
+    "taskTerminal": {
+      "ok": true,
+      "tasks": 2,
+      "taskTerminal": true
+    },
+    "webInstaller": {
+      "ok": true,
+      "exit": 0
+    },
+    "webRoute": {
+      "ok": true,
+      "arm": "fence-refusal",
+      "status": 401,
+      "body": "{\"error\":\"unauthorized\"}",
+      "webLog": "/root/dshProj/my-power-dsh/evidence/plan-c/c1-team/2026-09-17T02-14-56.955Z/web.log"
+    }
+  },
+  "totalSteps": 10
+}

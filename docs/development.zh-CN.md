@@ -51,7 +51,10 @@ MCP 服务器由 `node scripts/build-mcp.mjs` 构建（从仓库内源码离线�
 **扩展资产不需要构建。** `packages/mpd-ext-plugin` 是一个普通插件包（改源码后与其他包一样重建
 `dist/`），而*使用*该接口的包以普通目录形式放在 `extensions/<id>/`（内含 `mpd-ext.json` 清单与
 各自的资产）—— 没有编译步骤，开发者 CLI 直接从 TypeScript 源码运行（`bun scripts/mpd-ext.mjs …`），
-因此它绝不会校验一份陈旧的规则副本。**新增** 的插件包还必须加入 `scripts/pack-mpd.mjs` 内的
+因此它绝不会校验一份陈旧的规则副本。在**打包**产物内没有源码，CLI 于是回退到打包器生成的已编译校验器
+入口（`packages/mpd-ext-plugin/dist/validator.js`）：`validate`、`scaffold`、`list`、`--self-test` 与
+`--validator` 都能从 `dist/mpd-package/` 运行（bun 或纯 node），其中 `--validator` 会打印本次运行实际
+加载了哪个入口（T-51）。**新增** 的插件包还必须加入 `scripts/pack-mpd.mjs` 内的
 `PLUGIN_PKGS` 允许列表，否则打包安装会缺少它，并在启动时报 `ERR_MODULE_NOT_FOUND`。
 
 **Harness 接缝（约束性规则，AGENTS.md §6）：** 插件行不得直接调用 `ctx.tools`、
@@ -144,7 +147,7 @@ shell 子进程没有 —— 在 case 命令里显式导出）。
 | QA self-tests | `bun run test:qa` + 每个 case `--self-test` |
 | QA 真实 case | `node skills/dsh-qa/scripts/<case>.mjs` |
 | 安装器 | `node scripts/install-profile.mjs --dry-run` / `--self-test` |
-| 启动检查（MOUNT） | 在隔离 `DSH_HOME` + 沙箱 `HOME` 中真正 apply 各行的启动：`bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`（host 行）/ `node skills/dsh-qa/scripts/preset-conformance.mjs`（`mpd` preset 的 standing 挂载）。`dsh --profile <p> --dump-config` 只组合行，**不是**该门禁（AGENTS.md §4） |
+| 启动检查（MOUNT） | 在隔离 `DSH_HOME` + 沙箱 `HOME` 中真正 apply 各行的启动：`bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`（host 行）/ `node skills/dsh-qa/scripts/preset-conformance.mjs`（`mpd` preset 的 standing 挂载）。`node scripts/dump-config.mjs --profile <p>`（仓库包装器，自身就会打印该警告）只组合行，**不是**该门禁（AGENTS.md §4） |
 | 扩展 CLI | `bun scripts/mpd-ext.mjs --self-test`（离线）+ `bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example`（退出码 0；故意写坏的扩展必须退出码 1 并逐条目报错） |
 
 门禁没有磁盘上的证据 = 变更不算完成。
@@ -163,8 +166,13 @@ shell 子进程没有 —— 在 case 命令里显式导出）。
    该改动落在**同一个提交**里。`skills/**` 每一波只有一个写入者，因此一波只有一次重新钉住 —— 请
    核对它确实存在，且没有任何 `skills/**` 改动是在缺少它的情况下提交的。
 5. 打包：`npm run pack`（`node scripts/pack-mpd.mjs`）组装可迁移的 `dist/mpd-package/`。请核对打包
-   产物确实包含每个插件的 dist、`extensions/` 资产以及 `scripts/mpd-ext.mjs`（漏掉一个
-   `PLUGIN_PKGS` 条目会以退出码 0 静默通过，却在启动时崩掉）。
+   产物确实包含每个插件的 dist、`extensions/` 资产、脚手架 `templates/`、`docs/` 文档配对
+   （`node scripts/verify-docs-parity.mjs --root dist/mpd-package`）以及 `scripts/mpd-ext.mjs`（漏掉一个
+   `PLUGIN_PKGS` 条目会以退出码 0 静默通过，却在启动时崩掉）。自 2026-09-17 的打包变更起，这些不再靠
+   肉眼看：`node scripts/verify-pack-closure.mjs` 会断言打包器的根资产表，并在产物存在时断言每个已声明
+   资产确实到达、`docs/`+`templates/`+`agent-references/` 与源目录逐文件一致、三个具名参考文件
+   （`index.md`、`troubleshooting.md`、`agent-teams-deltas.md`）都在、打包 manifest 的 `files`/`exports`
+   与磁盘内容相符、以及 CLI 的已编译校验器入口存在。
 6. 以 `--no-ff` 合并进 `master`，提交信息为 `release: vX.Y.Z …`，打附注标签
    （`git tag -a vX.Y.Z`），并推送 `master` + 标签（以及 `dev`）。
 

@@ -1,0 +1,30 @@
+diff --git a/EXTENSIONS-FOR-AGENTS.md b/EXTENSIONS-FOR-AGENTS.md
+index 4059701..ada0065 100644
+--- a/EXTENSIONS-FOR-AGENTS.md
++++ b/EXTENSIONS-FOR-AGENTS.md
+@@ -22,4 +22,7 @@ Inspection tools available in a session: `mpd_ext_list`, `mpd_ext_show`, `mpd_fl
+ `mpd_flow_show` — the four `safeRegisterTool({ name: … })` registrations in
+-`packages/mpd-ext-plugin/src/index.ts` (the wrapper at `:537`; the four `name:` lines at `:715`, `:807`,
+-`:930`, `:984`). The same four strings are the gated list (`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts:548`)
++`packages/mpd-ext-plugin/src/index.ts`: the wrapper `safeRegisterTool`, `packages/mpd-ext-plugin/src/index.ts:521`;
++the four registrations `mpd_ext_list`, `packages/mpd-ext-plugin/src/index.ts:699`; `mpd_ext_show`,
++`packages/mpd-ext-plugin/src/index.ts:791`; `mpd_flow_list`, `packages/mpd-ext-plugin/src/index.ts:914`;
++`mpd_flow_show`, `packages/mpd-ext-plugin/src/index.ts:968`.
++The same four strings are the gated list (`EXPECTED_TOOLS`, `packages/mpd-ext-plugin/src/index.ts:532`)
+ that the apply summary is checked against.
+@@ -221,6 +224,11 @@ stderr tail, and the remaining extensions and servers still activate.
+ 
+-The developer CLI (`validate` / `scaffold` / `--self-test`) does NOT work inside a PACKED artifact: the packer ships
+-`packages/<pkg>/dist` and no `src`, while the CLI imports its validator from `src` (measured: exit 1,
+-`Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'`; `evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json`)
+-— run it from a checkout. No reload (a restart is the reload: `"No reload"`, `docs/extensions.md:524`); stdio MCP only; JSON flows only; no
++The developer CLI (`validate` / `scaffold` / `--self-test` / `--validator`) works from a CHECKOUT (it imports
++the TypeScript validator sources) AND from a PACKED artifact: the packer ships `templates/`, the `docs/` pairs,
++`agent-references/` and `scripts/`, and emits the compiled `validator.js` entry — the one
++the CLI falls back to when the package's TypeScript sources are absent. Measured on a fresh `dist/mpd-package/`: every command exits 0
++under bun and under plain node, and `--validator` prints which entry a run loaded
++(`evidence/pack-closure/impl/20260917T011849Z/`). A SOURCE edit reaches the artifact only after a re-pack: the
++packed tree ships `packages/*/dist/` and no `packages/*/src/` (it does carry other `.ts` files, e.g. the adopted
++plugin's `lib/types/` declarations).
++No reload (a restart is the reload: `"No reload"`, `docs/extensions.md:524`); stdio MCP only; JSON flows only; no
+ MCP resources or prompts; no extension-contributed agent presets; extension roles never become

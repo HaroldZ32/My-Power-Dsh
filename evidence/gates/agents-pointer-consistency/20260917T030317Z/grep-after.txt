@@ -1,0 +1,2 @@
+38:| `agent-references/agent-teams-deltas.md` | the adopted agent-teams delta registry: the A1–D38 adaptation table, the registry mechanic
+295:  (open it on demand — it is not auto-injected): that file carries the authoritative A1–D38

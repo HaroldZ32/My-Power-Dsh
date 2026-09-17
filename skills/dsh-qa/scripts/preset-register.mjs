@@ -82,7 +82,7 @@ function runReal() {
   const creds = join(homedir(), ".dsh", ".credentials.yaml")
   if (!existsSync(creds)) { console.error("[preset-register] missing credentials"); process.exit(1) }
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-"))
-  cpSync(creds, join(sandbox, ".credentials.yaml"))
+  seedSandboxCredentials(sandbox, { credentialsFile: creds })
   // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
 // model chain is configured through gateway providers (llm-pi-ai), so without it the
 // sandbox falls back to the base `deepseek-official` route and the boot dies with
@@ -108,7 +108,7 @@ function runReal() {
   // SKILLS=24 BUNDLED=18 NON_BUNDLED=<6 machine skills> -> roles-probe FAIL).
   const userHome = join(sandbox, "userhome")
   mkdirSync(userHome, { recursive: true })
-  const env = { ...process.env, DSH_HOME: sandbox, HOME: userHome }
+  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: userHome  })
   if (env.DSH_HOME !== sandbox || env.HOME !== userHome) { console.error("[preset-register] isolation assertion failed"); process.exit(1) }
   const bundlePatch = join(sandbox, "bundle.dev.patch.yml")
   writeFileSync(bundlePatch, devPatch())
@@ -143,6 +143,7 @@ function runReal() {
 }
 
 import { spawnSync } from "node:child_process"
+import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 function runDsh(args, env, fd, cwd) {
   return spawnSync("dsh", args, { env, cwd, encoding: "utf8", timeout: 180000, stdio: ["ignore", fd, fd] })
 }

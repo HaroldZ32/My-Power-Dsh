@@ -1,0 +1,124 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=54585caba9a5 lanes=4 evidence=evidence/dsh-qa/full-sweep/t26-attempt7/c2
+[mpd-qa:(only)] PASS case=skill-catalog-probe evidence=evidence/plan-d/skill-catalog/2026-09-17T04-37-31.389Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/skill-catalog-probe.log ms=18380
+[mpd-qa:(only)] PASS case=tool-output-validation evidence=evidence/fix/boulder-status-planprogress/2026-09-17T04-38-03.030Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/tool-output-validation.log ms=24491
+[mpd-qa:(only)] PASS case=web-client-adapt evidence=evidence/plan-f/web-client-adapt/2026-09-17T04-38-14.301Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/web-client-adapt.log ms=29461
+[mpd-qa:(only)] PASS case=web-settings-bridge evidence=evidence/mpd-bridge/web-settings-bridge/20260917T043843Z log=evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/web-settings-bridge.log ms=104705
+[mpd-qa:(only)] summary selected=4 pass=4 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/dsh-qa/full-sweep/t26-attempt7/c2
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 4,
+  "startedAt": "2026-09-17T04:37:31.348Z",
+  "finishedAt": "2026-09-17T04:40:28.399Z",
+  "durationMs": 177051,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "skill-catalog-probe",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 18380,
+      "command": "bun skills/dsh-qa/scripts/skill-catalog-probe.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/skill-catalog-probe.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [
+        "absent-staged-pack"
+      ],
+      "evidencePath": "evidence/plan-d/skill-catalog/2026-09-17T04-37-31.389Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/skill-catalog-probe.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "tool-output-validation",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 24491,
+      "command": "bun skills/dsh-qa/scripts/tool-output-validation.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/tool-output-validation.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/fix/boulder-status-planprogress/2026-09-17T04-38-03.030Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/tool-output-validation.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "web-client-adapt",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 29461,
+      "command": "bun skills/dsh-qa/scripts/web-client-adapt.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/web-client-adapt.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/plan-f/web-client-adapt/2026-09-17T04-38-14.301Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/web-client-adapt.log",
+      "outputTail": [],
+      "suite": "(only)"
+    },
+    {
+      "case": "web-settings-bridge",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 104705,
+      "command": "bun skills/dsh-qa/scripts/web-settings-bridge.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/web-settings-bridge.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [
+        "absent-dsh-binary",
+        "absent-bundle-dist"
+      ],
+      "evidencePath": "evidence/mpd-bridge/web-settings-bridge/20260917T043843Z",
+      "logPath": "evidence/dsh-qa/full-sweep/t26-attempt7/c2/lanes/web-settings-bridge.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 4,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}
+[c2 exit=0] 2026-09-17T04:40:28Z

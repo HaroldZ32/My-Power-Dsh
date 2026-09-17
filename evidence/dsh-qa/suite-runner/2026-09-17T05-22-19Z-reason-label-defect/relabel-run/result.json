@@ -1,0 +1,50 @@
+{
+  "runner": "scripts/run-qa-lanes.mjs",
+  "root": "/root/dshProj/my-power-dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-09-17T05:30:02.277Z",
+  "finishedAt": "2026-09-17T05:31:19.930Z",
+  "durationMs": 77653,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [],
+    "missingScripts": []
+  },
+  "lanes": [
+    {
+      "case": "agent-teams-adopt",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 77649,
+      "command": "bun skills/dsh-qa/scripts/agent-teams-adopt.mjs --no-skip",
+      "script": "skills/dsh-qa/scripts/agent-teams-adopt.mjs",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/plan-c/c1-team/2026-09-17T05-30-02.318Z/web.log",
+      "logPath": "evidence/dsh-qa/suite-runner/2026-09-17T05-22-19Z-reason-label-defect/relabel-run/lanes/agent-teams-adopt.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}

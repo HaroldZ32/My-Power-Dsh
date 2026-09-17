@@ -1,0 +1,76 @@
+{
+  "task": "t52",
+  "kind": "repair",
+  "attemptId": "f66e27ec-e1b9-4959-93ba-975da9bd1311",
+  "repairOf": "F-2 from t28 (verification of lanes E+F)",
+  "started_at": "2026-09-17T03:03:50Z",
+  "finished_at": "2026-09-17T03:04:29.414Z",
+  "revision": {
+    "head": "646d8018a44bffb2d6e1c30afa090056f81b911e",
+    "file": "agent-references/troubleshooting.md",
+    "tracked": "NONE — the file is UNTRACKED at HEAD (new in this wave), so git diff is empty; the diff below is a byte reconstruction, which is strictly stronger"
+  },
+  "change": {
+    "target": "row 17 — the T-23 symptom row (nohup / bwrap --die-with-parent / the mpd-bg run+probe shape)",
+    "edit": "append ` (T-23)` before the row-final period, matching the sibling shape rows 15/29 use: `… (T-21). |`, `… (T-24). |`",
+    "exact": "(the child dies with the call's `bwrap` sandbox). |  ->  (the child dies with the call's `bwrap` sandbox) (T-23). |"
+  },
+  "readings": {
+    "before": {
+      "grep_c": 0,
+      "grep_n": "(no match)",
+      "sha256": "b4032f41a33ffea2c8ba0bccf468f75575129afa05c3a125db4b16774fadd689",
+      "bytes": 35534,
+      "lines": 69,
+      "note": "measured 2026-09-17T03:03:50Z, pre-edit; the 0 is the same reading t28 recorded while checking the lane-F notes"
+    },
+    "after": {
+      "grep_c": 1,
+      "grep_n_line": 17,
+      "sha256": "cfc98118f2b2e86d8fa5cf68fd3b504e7cc48270854ce8a12568706b4e28c219",
+      "bytes": 35541,
+      "lines": 69
+    },
+    "id_census_after": {
+      "T-21": 1,
+      "T-23": 1,
+      "T-24": 1,
+      "T-26": 1,
+      "T-43": 1,
+      "note": "all five harness-close rows are now greppable by their own id"
+    }
+  },
+  "proof_only_the_insert": "delete exactly the 7-byte substring ` (T-23)` on row 17 from the AFTER file -> reconstructed bytes hash to b4032f41…, i.e. BYTE-IDENTICAL to the recorded BEFORE revision. Therefore the sole delta is that insertion: +7 bytes (35534 -> 35541 = len(\" (T-23)\")), line count unchanged (69), no other row touched. reconstructed-before.md is on disk beside this file.",
+  "diff_quoted_in_full": [
+    "--- reconstructed-before.md",
+    "+++ agent-references/troubleshooting.md",
+    "@@ -17 +17 @@",
+    "-… (the child dies with the call's `bwrap` sandbox). |",
+    "+… (the child dies with the call's `bwrap` sandbox) (T-23). |"
+  ],
+  "gate": {
+    "command": "bun run verify:docs",
+    "exit": 0,
+    "line": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=37 failed=0 violations=0 exempt=17 — PASS",
+    "note": "pairs=37 failed=0 violations=0 exempt=17 — census unchanged; agent-references/** is deliberately outside the gate (AGENTS.md Reference Index), so NO zh-CN twin was added and nothing was renamed to README.md"
+  },
+  "scope": {
+    "changedPaths": [
+      "agent-references/troubleshooting.md"
+    ],
+    "untouched": [
+      "AGENTS.md",
+      "docs/**",
+      "packages/**",
+      "scripts/**",
+      "skills/**",
+      "EXTENSIONS-FOR-AGENTS.md"
+    ],
+    "inScopeFilesPresent": [
+      "agent-teams-deltas.md",
+      "index.md",
+      "troubleshooting.md"
+    ]
+  },
+  "bound": "the readings belong to HEAD 646d801 and this moment; the 5-line diff and the reconstructed-hash proof are the whole change."
+}

@@ -1,0 +1,8 @@
+== t21 final verification ==
+  ok   bun skills/dsh-qa/scripts/workmate-library.mjs --no-skip -> exit 0 (200380 ms)  [workmate-library] ok=true -> /root/dshProj/my-power-dsh/evidence/plan-f/workmate-library/2026-09-17T04-19-25.871Z | [workmate-library] PASS
+  ok   bun skills/dsh-qa/scripts/extension-template.mjs --self-test -> exit 0 (253 ms)  [extension-template self-test] ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots (ids, flow cross-reference, persona and MCP name pinned) + SKILL.md row present
+  ok   bun skills/dsh-qa/scripts/workmate-library.mjs --self-test -> exit 0 (49 ms)  [workmate-library self-test] ok: 19 checks
+  ok   node evidence/extensions/docs-claims/check-citations.mjs -> exit 0 (156 ms)  [docs-claims] 12/12 checks passed, 0 failed, 249 citation(s) resolved, 0 pending, 12 illustrative
+  guard predicate fixed: true | T-55 symbol-first form durable: false
+  wrote /root/dshProj/my-power-dsh/evidence/dsh-qa/lane-reverify/2026-09-17T04-19-25Z-postfix-final-verify/final/final-verify.json
+[final-verify] ALL FOUR GREEN — t21 can be completed with these raw logs

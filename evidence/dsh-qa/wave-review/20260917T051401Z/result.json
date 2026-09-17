@@ -1,0 +1,63 @@
+{
+  "task": "t32 (review of t21: lane C \u2014 the QA baseline and its plumbing)",
+  "attempt_id": "c33aadf7-a7aa-4952-97b6-35bbb13140b6",
+  "verdict": "pass",
+  "pinsAtClaimTime": {
+    "runner": "scripts/run-qa-lanes.mjs f60ef2b54ff7bb5dd776b99b9934261ec671ed2eeee40c46f712f907833e0f2e 38564 B mtime 2026-09-17 09:49:38 +0800 (=01:49:38Z)",
+    "manifest": "skills/dsh-qa/cases.json 54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e 14542 B mtime 2026-09-17 11:55:59 +0800 \u2014 identical to the pin t26's board carries",
+    "helper": "skills/dsh-qa/scripts/lib/immutable-output.mjs 5b94f4c998836612d60a042e06b1dbdfd12b416bd819126a36ccec8da4449976",
+    "credentialsLib": "skills/dsh-qa/scripts/lib/credentials.mjs f0ae6fbb407f8f7d9f66d8f7b9a675f31d8ed2843df73b5fb6da95f549b97639"
+  },
+  "runnerProvenance": {
+    "onDisk": "f60ef2b5\u2026 (38,564 B, mtime 01:49:38Z)",
+    "authorsRecorded": "d90dc10b\u2026",
+    "finding": "UNRECOVERABLE: `find . -name run-qa-lanes.mjs` (excluding node_modules/.git) returns exactly ONE copy \u2014 the on-disk f60ef2b5\u2026; there is no copy matching the author's record and the file is untracked, so the delta between the two revisions cannot be reconstructed. Bound: every run I made, and t26's 33-entry board, exercised the ON-DISK bytes; the file has not moved since 01:49:38Z."
+  },
+  "runnerOutcomes": {
+    "method": "the real runner, driven by ME with a fixture-root (my own copied manifest + four 5-line lane scripts implementing the documented marker protocol) plus one real lane and two live lanes. Fixtures live under evidence/dsh-qa/wave-review/<ts>/fixture-root/skills/dsh-qa/** so the repo's own manifest/scripts were never touched.",
+    "exit0": "`--only=extension-lifecycle --evidence-dir=\u2026` -> exit 0, summary selected=1 pass=1 unavailable=0 fail=0 (a REAL lane)",
+    "exit1_continuePast": "`--root=<fixture> --manifest=cases-ok.json --only=fixture-pass,fixture-fail,fixture-unavailable` -> exit 1 with summary selected=3 pass=1 unavailable=1 fail=1; the FAIL lane did NOT abort the run \u2014 the UNAVAILABLE lane ran AFTER it and is reported with `reason=absent-fixture`",
+    "exit2_unavailableOnly": "`--only=fixture-pass,fixture-unavailable` -> exit 2, summary selected=2 pass=1 unavailable=1 fail=0",
+    "exit3_configError": "`--only=no-such-lane` -> '[run-qa-lanes] --only names case(s) not in the manifest: no-such-lane' exit 3",
+    "note": "the runner's own --self-test also passes on my machine (classification, continue-past-failure, per-lane logs, exit codes 0/1/2/3, drift detection, timeout guard on fixtures), but every reading above is from MY OWN runs, not from it"
+  },
+  "credentials": {
+    "liveLanes": "`--only=mcp-call,memory-smoke` through the runner -> exit 0, summary pass=2; mcp-call PASS 34,618 ms (evidence/dsh-qa/mcp-call/2026-09-17T05-20-36.961Z), memory-smoke PASS 12,060 ms (evidence/plan-c/c6-memory/2026-09-17T05-20-37.026Z) \u2014 both real model calls, both seeded from the host credential",
+    "secretScan": "0 hits. I extracted the 2 long token-shaped values from the host `~/.dsh/.credentials.yaml` (never printed) and searched 325 files: my whole review dir + the two live lanes' own evidence trees. Also pattern-scanned for sk-\u2026, Bearer \u2026, api_key=\u2026 shapes: 0."
+  },
+  "manifestDrift": {
+    "realManifest": "`node scripts/run-qa-lanes.mjs --check-drift` -> exit 0, 'manifest and disk agree (51 entries)'",
+    "directionA_onDiskNotInManifest": "my fixture-root with `extra-unlisted.mjs` on disk and no entry -> exit 1, '[run-qa-lanes] drift: 1 lane script(s) on disk in no manifest entry: skills/dsh-qa/scripts/extra-unlisted.mjs'",
+    "directionB_entryScriptGone": "a copy whose entry names a `ghost` script -> exit 1, '[run-qa-lanes] drift: 1 manifest entry(ies) whose script is gone: ghost'",
+    "cleanControl": "the same fixture tree with every script listed -> exit 0, 'manifest and disk agree (4 entries)' \u2014 so both reddenings are caused by the seeded drift, not by the fixture shape"
+  },
+  "redLanesVsReadings": {
+    "board": "evidence/dsh-qa/full-sweep/t26-attempt7/board.json: counts {pass:31, unavailable:0, fail:3} \u00b7 selected 33 \u00b7 lanesRun 34 \u00b7 selectedEntriesCovered 33 \u00b7 additive ['team-watchdog-fault'] \u2014 read by me from the artifact, not from the summary",
+    "unavailableHidingADefect": "none among the real lanes: the board records 0 unavailable, so no real lane's verdict can be hiding a defect behind unavailability; my fixture demonstrates the mechanism (reason=absent-fixture, exit 2) and its reason is a genuine prerequisite absence",
+    "spotCheckOfRed1": "agent-teams-adopt: RED-CLASSIFICATION.md says the runner's `reason=unauthorized` is a SIGNATURE MIS-CLASSIFICATION (it matched the body of the lane's own expected 401 fence-refusal arm) while the real failing step is `archive:{ok:false}` \u2014 I verified the cited readings exist in the lane's own log (evidence/plan-c/c1-team/2026-09-17T04-49-06.038Z/output.log lines 870 and 958 carry the quoted transcript), so the classification is backed by its citations and the mis-labelling is kept separate, as the document claims"
+  },
+  "t53Immutability": {
+    "namedDriverRefuses": "`node evidence/extensions/docs-claims/check-citations.mjs --out=<dir>` twice into the SAME dir: first exit 0, second exit 3 with 'refusing to overwrite the existing run result: \u2026/run/result.json \u2014 evidence is immutable by default (T-53); pass an explicit new target' \u2014 the refusal T-53 promises, observed by me on the named driver",
+    "coverageObservation": "see finding O1: the helper is imported by 1 of 45 lane scripts"
+  },
+  "findings": [
+    {
+      "id": "O1",
+      "severity": "medium",
+      "file": "skills/dsh-qa/scripts",
+      "line": 0,
+      "problem": "T-53 is INSTRUMENT-SCOPED and the register's plain-language claim is broader than the adoption. Measured: of the 45 lane scripts, exactly ONE (`watchdog-redesign.mjs`) imports `immutable-output.mjs`; the checker does too (and I confirmed its refusal). A lane that was NOT migrated silently REPLACES its own artifact: running `skills/dsh-qa/scripts/team-watchdog-fault.mjs --out <dir>` twice into the same dir exits 0 both times and rewrites `result.json` (mtime/size changed on the second run, no refusal). t21's own acceptance criterion is narrower \u2014 it names 'the two named drivers' and both do refuse \u2014 so this is NOT a false claim by t21; it is a coverage gap against the wave's T-53 sentence ('a re-run cannot silently replace another task's artifact').",
+      "requiredFix": "Wave-2 row: migrate the remaining lane scripts to `immutable-output.mjs` (or state the bound in the register: immutable-by-default applies to the migrated drivers only), so the sentence and the adoption match.",
+      "resolved": false
+    },
+    {
+      "id": "O2",
+      "severity": "low",
+      "file": "scripts/run-qa-lanes.mjs",
+      "line": 0,
+      "problem": "The runner's stdout reason-matcher mis-labels one red: for `agent-teams-adopt` it reports `reason=unauthorized` because it matched the BODY of the lane's own expected 401 fence-refusal arm, while the lane's real failing step is `archive:{ok:false}`. Already disclosed and separated by t26 (RED-CLASSIFICATION.md \u00a71) and backed by the lane's own log, so this is a known labelling defect, not a concealed green \u2014 but the runner's `reason` field is what a futures reader sees first.",
+      "requiredFix": "Wave-2 (already routed as T-72-adjacent): have the matcher prefer the lane's structured FAIL marker over stdout bodies, or have the lane emit its expected-fence text in a form the matcher cannot mistake for a failure reason.",
+      "resolved": false
+    }
+  ]
+}

@@ -1,0 +1,381 @@
+{
+  "name": "MPD Default",
+  "id": "mpd-default",
+  "description": "Auto-routed by the complexity gate (sessionTeamPolicy.autoRoute; staged — the captain designs the roster/DAG, then the user reviews and approves the plan in the Web panel).",
+  "profile": {
+    "name": "mpd",
+    "description": "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan).",
+    "protocol": "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match.",
+    "taskPlanning": "captain",
+    "reviewPolicy": {
+      "requiredReviewers": []
+    }
+  },
+  "reviewPolicy": {
+    "requiredReviewers": []
+  },
+  "captainSessionId": "session-31a58943-b40b-463e-b60d-6d6b493bcff6",
+  "createdAt": 1789620524738,
+  "wave": {
+    "label": "w1",
+    "index": 1,
+    "openedAt": 1789620524738
+  },
+  "waveHistory": [],
+  "phase": "staged",
+  "planReviewState": "awaiting_review",
+  "members": [
+    {
+      "id": "",
+      "name": "Architect",
+      "role": "architecture review / deep debugging / self-review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620524738,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Researcher",
+      "role": "code / open-source evidence search",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620524738,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Planner",
+      "role": "planning / task decomposition",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620524738,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Explorer",
+      "role": "read-only codebase exploration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only explorer. Answer with evidence and absolute file paths; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620524738,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Reviewer",
+      "role": "correctness / risk review",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620524738,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Plan Reviewer",
+      "role": "work-plan QA review / UI-UX critique",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620524738,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Vision Analyst",
+      "role": "image / diagram analysis",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash-vision-exp",
+      "reasoningEffort": "high",
+      "executionPrompt": "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620524738,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Lead",
+      "role": "orchestration / integration",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620524738,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Deep Worker",
+      "role": "autonomous goal-driven implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620524738,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Senior Engineer",
+      "role": "primary implementation",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "executionPrompt": "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620524738,
+      "status": "idle"
+    },
+    {
+      "id": "",
+      "name": "Junior Engineer",
+      "role": "small mechanical changes",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "executionPrompt": "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny.",
+      "fallback": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "joinedAt": 1789620524738,
+      "status": "idle"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "subject": "Audit the bundle's orchestration surface and its upstream delta",
+      "description": "MEASURE ONLY. Targets are read-only: bundle = /root/dshProj/my-power-dsh (HEAD 646d801, working tree dirty: 103 files changed) whose plugin is packages/mpd-agent-teams-plugin (0.1.16-rc.3-mpd = adopted upstream 0.1.14 body + backported 0.1.16-rc.3 deltas + local mpd-delta regions); upstream = /root/dshProj/dsh-agent-teams at 502dd6c (git describe: v0.1.16-rc.3-1-g502dd6c).\n\nDeliver the audit through the task artifact channel at evidence/upstream-align/audit/orchestration-surface.md (this seat's write/edit/bash are denied; evidence/** through the artifact channel is the sanctioned path). Required content:\n1. Every orchestration/routing surface with file:line, each classified upstream-native vs mpd-delta region. State the delta mechanism you measured: `node scripts/patch-agent-teams-fixes.mjs --check` (captain measured 2026-09-17: 73 mpd delta regions across 9 adopted files, exit 0) and how scripts/patch-agent-teams-fixes.mjs + scripts/vendor-agent-teams.mjs define \"the bundle\" vs \"upstream\".\n2. Keep the DISTINCT referents of the word routing apart, at least: (a) session-start team routing — lib/session-start.js evaluateComplexityGate/consumeExplicitFlag/routeDecision/provisionSessionTeam plus the mpd-delta session-start-gate region; (b) member LLM provider/model route and its fallback route — lib/members.js selectFallbackRoute/updateFallbackState, lib/index.js fallbackRouteConfig, vs upstream src/members.ts + src/index.ts:69-113; (c) the vendor rewire that makes team mode served by the bundle instead of the npm dependency — skills/dsh-qa/scripts/team-route-rewire.mjs; (d) provider-chain routing — the modelchain key resolved by mpd_config_get/mpd_modelchain_resolve and the mpd-roles roster.\n3. Per referent: does upstream have a counterpart? Measured: upstream src/** contains NO sessionTeamPolicy / evaluateComplexityGate / complexity symbol (state the command you used to show that).\n4. Session constraints measured IN THIS SESSION: the workspace has no bundle checkout (only .codegraph/ and .mpd/); both repositories are read-only mounts (a write attempt returns 'Read-only file system'); and the prompt text is byte-identical to the frozen complex fixture in evidence/omo-parity-rate/raw/pinned/frozen-contract.json:89 (also skills/dsh-qa/scripts/lib/gate-probe.mjs:21 and skills/dsh-qa/scripts/session-start-team.mjs:34).\n\nNON-GOALS: no fixes, no recommendations, no edits to the bundle or upstream, no writes outside evidence/upstream-align/audit/**.",
+      "status": "pending",
+      "assignee": "Explorer",
+      "dependencies": [],
+      "attempt": 0,
+      "createdAt": 1789620701096,
+      "updatedAt": 1789620701096,
+      "kind": "requirements",
+      "round": 1,
+      "objective": "Produce a read-only, evidence-first inventory of every orchestration/routing surface in the bundle's adopted agent-teams plugin, classified against upstream, so that \"the routing change\" can be pinned by evidence instead of guessed.",
+      "inScope": [
+        "evidence/upstream-align/audit/**"
+      ],
+      "outOfScope": [
+        "packages/**",
+        ".mpd/**",
+        "/root/**"
+      ],
+      "acceptance": [
+        "evidence/upstream-align/audit/orchestration-surface.md exists and every claim carries file:line or a re-runnable command",
+        "each routing referent is listed separately with its upstream counterpart or an explicit 'no upstream counterpart'",
+        "the mpd-delta region inventory is a recorded command plus its exact output, never a paraphrase",
+        "the three session constraints (workspace has no bundle checkout, both repositories mount read-only, prompt byte-identical to the frozen complex fixture) are each recorded with the command that measured them"
+      ],
+      "deliverables": [
+        "evidence/upstream-align/audit/orchestration-surface.md"
+      ]
+    },
+    {
+      "id": "t2",
+      "subject": "Pin which routing change the alignment requires",
+      "description": "From t1's inventory, decide WHICH change \"the routing change\" is, and make the decision falsifiable. Build a candidate table over the routing referents t1 found (session-start team routing, member provider/model + fallback route, vendor rewire, provider chain), and per candidate give: the exact edit site(s) file:line, the upstream counterpart (or an explicit 'none'), what \"aligning with upstream\" would mean for it, the risk, and the exact command that would falsify the change. Then recommend EXACTLY ONE with rationale.\n\nThe bundle's alignment discipline is binding: local adaptations live ONLY in mpd-delta regions re-applied by scripts/patch-agent-teams-fixes.mjs; lib/mpd-deltas.js is never hand-edited (use --write-registry, then --check must be clean). A recommendation that cannot be re-materialized is not a recommendation.\n\nIf the repository evidence genuinely cannot pin one candidate, do not invent one: state that, give the SINGLE blocking question, and state what each answer would imply for the edit sites. Deliverable: evidence/upstream-align/decision/routing-change.md through the artifact channel (this seat writes nothing else).\n\nNON-GOALS: no edits anywhere, no patch, no code; this task produces a decision and its falsification command only.",
+      "status": "pending",
+      "assignee": "Architect",
+      "dependencies": [
+        "t1"
+      ],
+      "attempt": 0,
+      "createdAt": 1789620710713,
+      "updatedAt": 1789620710713,
+      "kind": "requirements",
+      "round": 1,
+      "objective": "Pin, from repository evidence alone, which routing change constitutes the alignment with upstream: name the exact edit sites, the upstream reference, and the command that falsifies the choice — or return the single blocking question.",
+      "inScope": [
+        "evidence/upstream-align/decision/**"
+      ],
+      "outOfScope": [
+        "packages/**",
+        ".mpd/**",
+        "/root/**"
+      ],
+      "acceptance": [
+        "a candidate table covers every routing referent t1 listed, each with file:line and its upstream counterpart or an explicit 'none'",
+        "exactly one recommendation is made, with the exact command that would falsify it and the reading that counts as refuted",
+        "the recommendation respects the bundle's alignment discipline: changes live in mpd-delta regions re-applied by scripts/patch-agent-teams-fixes.mjs; lib/mpd-deltas.js is never hand-edited; the registry route (--write-registry then --check) is named",
+        "if the repository evidence cannot pin one candidate, exactly ONE blocking question is named and the consequence of each answer is stated"
+      ],
+      "deliverables": [
+        "evidence/upstream-align/decision/routing-change.md"
+      ]
+    },
+    {
+      "id": "t3",
+      "subject": "Land the pinned routing change as an apply-ready patch",
+      "description": "Land the change t2 pinned, as an APPLY-READY PATCH, because the bundle is a read-only mount in this session (a write returns 'Read-only file system') and must stay untouched.\n\nSteps: (1) snapshot the bundle's state BEFORE any work: revision + `git -C /root/dshProj/my-power-dsh status --porcelain | sha256sum`; (2) copy the minimum tree needed to test into evidence/upstream-align/patch/tree-copy/ (packages/mpd-agent-teams-plugin plus the package.json/tsconfig it needs; node_modules may be symlinked from the read-only bundle) and keep the copy runnable so the third verify command below is a real reading; (3) write evidence/upstream-align/patch/routing-change.patch as a unified diff against the pinned revision, changing exactly the edit sites t2 pinned; (4) apply it to the COPY only and run the package's own suite there; (5) re-snapshot the bundle and record that it is unchanged.\n\nRecord in evidence/upstream-align/patch/evidence.md: the pinned revision, the patch sha256, the exact edit sites with file:line and the upstream line each aligns to, the exact test command, the pass/fail counts, and the before/after bundle snapshot hashes.\n\nHARD CONSTRAINT: never write under /root/** (denied and forbidden). If the pinned change turns out to be unexplainable by t2's decision, stop and report that instead of inventing a change.\n\nNON-GOALS: no in-place edit of the bundle; no second unrelated fix; no test-file changes beyond what the pinned change requires; no smoke-test scripts.",
+      "status": "pending",
+      "dependencies": [
+        "t2"
+      ],
+      "attempt": 0,
+      "createdAt": 1789620727372,
+      "updatedAt": 1789620739983,
+      "kind": "implementation",
+      "round": 1,
+      "objective": "Deliver the routing change that t2 pinned as a patch that applies cleanly to the pinned bundle revision, with the change proven by running the affected package's own test suite on a patched copy under the session workspace.",
+      "inScope": [
+        "evidence/upstream-align/patch/**"
+      ],
+      "outOfScope": [
+        "packages/**",
+        "skills/**",
+        "scripts/**",
+        ".mpd/**",
+        "/root/**"
+      ],
+      "acceptance": [
+        "the patch applies cleanly to the PINNED revision: `git -C /root/dshProj/my-power-dsh apply --check <patch>` exits 0, and the pinned revision hash is recorded in the evidence",
+        "the bundle stays byte-identical: the sha256 of `git -C /root/dshProj/my-power-dsh status --porcelain` and of every file the patch touches is unchanged after the work",
+        "the patched COPY's own suite runs green from the copy, with the exact command and the pass/fail counts recorded (never asserted from the bundle's tree, which is unpatched)",
+        "the patch implements exactly the edit sites t2 pinned and nothing adjacent; each site is named with file:line in the evidence",
+        "if the change needs an mpd-delta region, the registry route is used (--write-registry, then --check clean) and lib/mpd-deltas.js is never hand-edited"
+      ],
+      "verify": [
+        "git -C /root/dshProj/my-power-dsh apply --check /tmp/mpd-sst-5rp99U/side/complex/0/ws/evidence/upstream-align/patch/routing-change.patch",
+        "git -C /root/dshProj/my-power-dsh status --porcelain | sha256sum",
+        "bun test evidence/upstream-align/patch/tree-copy/packages/mpd-agent-teams-plugin"
+      ],
+      "deliverables": [
+        "evidence/upstream-align/patch/routing-change.patch",
+        "evidence/upstream-align/patch/evidence.md"
+      ],
+      "assignee": "Senior Engineer"
+    },
+    {
+      "id": "t4",
+      "subject": "Independently verify the audit, the decision and the patch",
+      "description": "Independently re-measure the audit, the decision and the patch — never by re-reading their summaries, and never by trusting their logs.\n\n(1) Re-run every re-runnable command t1 recorded (the delta-region inventory, the upstream symbol-absence check, the session-constraint measurements) and compare readings; (2) re-run `git -C /root/dshProj/my-power-dsh apply --check <patch>` yourself and record the exit code; (3) negative control: corrupt one hunk in a COPY of the patch and show the check REFUSES it — the control must fail loudly, so a vacuous check cannot pass this task; (4) prove the bundle was not written: `git -C /root/dshProj/my-power-dsh status --porcelain | sha256sum` plus the sha256 of every file the patch touches, before and after; (5) make your OWN fresh copy of the package under evidence/upstream-align/verify/, apply the patch there, and run its suite.\n\nDeliverable: evidence/upstream-align/verify/verification.md plus raw logs, stating per claim: command, output, verdict, and whether it was measured here or only read. Measurement only — do not repair anything you find broken; name it and let the repair route be decided.\n\nNON-GOALS: no fixes, no edits to t1/t2/t3 evidence, no writes outside evidence/upstream-align/verify/**.",
+      "status": "pending",
+      "dependencies": [
+        "t3"
+      ],
+      "attempt": 0,
+      "createdAt": 1789620737317,
+      "updatedAt": 1789620739983,
+      "kind": "verification",
+      "round": 1,
+      "objective": "Independently falsify or confirm every claim the audit, the decision and the patch rest on, with a negative control that proves each check can fail, and with proof that the read-only bundle was never written.",
+      "inScope": [
+        "evidence/upstream-align/verify/**"
+      ],
+      "outOfScope": [
+        "packages/**",
+        "skills/**",
+        "scripts/**",
+        ".mpd/**",
+        "/root/**"
+      ],
+      "acceptance": [
+        "every re-runnable command t1/t2/t3 recorded is re-run by this seat and compared against the recorded output, with raw output kept under evidence/upstream-align/verify/",
+        "NEGATIVE CONTROL: a deliberately corrupted copy of the patch is REFUSED by `git apply --check`, with the exit code and the refusal text recorded — a control that passes when the patch is broken voids this task",
+        "the bundle is proven untouched: the before/after sha256 of `git -C /root/dshProj/my-power-dsh status --porcelain` are equal, and the touched files' sha256 are unchanged",
+        "the patched-copy suite is re-run in a FRESH copy this seat makes itself under evidence/upstream-align/verify/, with counts — the engineer's log is never accepted as the measurement",
+        "any claim that could NOT be re-measured is listed as unverified with the reason, never reported as passed"
+      ],
+      "verify": [
+        "git -C /root/dshProj/my-power-dsh apply --check /tmp/mpd-sst-5rp99U/side/complex/0/ws/evidence/upstream-align/patch/routing-change.patch",
+        "git -C /root/dshProj/my-power-dsh status --porcelain | sha256sum"
+      ],
+      "deliverables": [
+        "evidence/upstream-align/verify/verification.md",
+        "evidence/upstream-align/verify/raw/"
+      ],
+      "assignee": "Deep Worker"
+    },
+    {
+      "id": "t5",
+      "subject": "Review the pinned routing change and the evidence behind it",
+      "description": "Independent correctness/risk gate over the pinned routing change and the evidence behind it. Judge the LATEST delivered patch and its measured evidence, not whether the loop can be made to fail.\n\nCheck: (a) does the patch actually implement the change t2 pinned, at the named edit sites, or something adjacent? (b) does it respect the bundle's alignment discipline — mpd-delta region + registry re-materialization, lib/mpd-deltas.js never hand-edited, `node scripts/patch-agent-teams-fixes.mjs --check` clean after a re-materialize? (c) is the audit's classification (upstream-native vs mpd-delta, and the 'no upstream counterpart' claims) correct on spot-checked rows? (d) are the residual risks named — read-only delivery, the unpatched bundle, the patch's dependence on a clean revision? (e) does the patch leave the tree in a state the bundle's own gates would accept?\n\nVerdict pass only if the change is executable and falsifiable as delivered; otherwise needs_revision with findings carrying file:line + the exact command + its reading + the hash pair. Do not implement and do not repair.\n\nDeliverable: evidence/upstream-align/review/verdict.md through the artifact channel; store the verdict through the task contract.\n\nNON-GOALS: no fixes, no re-running of t3's work as your own, no writes outside evidence/upstream-align/review/**.",
+      "status": "pending",
+      "dependencies": [
+        "t4",
+        "t3"
+      ],
+      "attempt": 0,
+      "createdAt": 1789620737327,
+      "updatedAt": 1789620739983,
+      "kind": "review",
+      "round": 1,
+      "objective": "Decide, with evidence, whether the delivered routing change is a correct and complete alignment with upstream as pinned by t2, and fail it loudly with re-runnable findings if it is not.",
+      "inScope": [
+        "evidence/upstream-align/review/**"
+      ],
+      "outOfScope": [
+        "packages/**",
+        "skills/**",
+        "scripts/**",
+        ".mpd/**",
+        "/root/**"
+      ],
+      "acceptance": [
+        "verdict is pass ONLY if the delivered patch implements exactly what t2 pinned, proven by this seat's own spot-check of the edit sites against both trees",
+        "the bundle's alignment discipline is checked against the registry mechanism (a re-materialized tree keeps --check clean), never asserted from the patch text",
+        "the audit's upstream-native vs mpd-delta classification is spot-checked on at least three rows against both repositories",
+        "the review states which claim it could NOT check and why — silence is not acceptance"
+      ],
+      "deliverables": [
+        "evidence/upstream-align/review/verdict.md"
+      ],
+      "reviewedTaskId": "t3",
+      "assignee": "Reviewer"
+    }
+  ],
+  "taskSeq": 5
+}

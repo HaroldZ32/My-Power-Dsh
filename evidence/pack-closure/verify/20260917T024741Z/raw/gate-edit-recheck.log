@@ -1,0 +1,7 @@
+=== scripts/verify-dist-fresh.mjs changed at 03:00:21Z — re-read the gate on the SETTLED version ===
+mtime: 2026-09-17 11:00:21.749476148 +0800  sha256: 04e7dc41ecade9189b7d92e52e1aebfd6aac1d89f354b1df951c0b81ca55b0c7
+(at my pass-2 pack the recorded fingerprint was b4aff7cc... for pack-mpd.mjs and the gate was read as 20/20; this file was NOT among the plan pins, so its hash is not in the pass-2 fingerprint set — stated as a gap, see the note)
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 906ms
+exit=0
+=== what did the edit change? (read-only diff, gate script only) ===

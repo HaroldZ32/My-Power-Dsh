@@ -1,0 +1,45 @@
+[
+  {
+    "session": "session-56e73586-e49a-46df-8107-128e51165a33",
+    "records": 51,
+    "headers": 1,
+    "advertised": 102,
+    "hasContractTool": true,
+    "hasApprove": true,
+    "hasBash": true,
+    "hasWrite": true,
+    "hasEdit": true,
+    "sample": [
+      "agent_teams_add_member",
+      "agent_teams_approve",
+      "agent_teams_claim_task",
+      "agent_teams_create",
+      "agent_teams_create_task",
+      "agent_teams_delete",
+      "agent_teams_edit_plan",
+      "agent_teams_interject_decide"
+    ]
+  },
+  {
+    "session": "c660aa9c-46ce-4b05-8ede-3e5acba2957f",
+    "records": 32,
+    "headers": 1,
+    "advertised": 84,
+    "hasContractTool": true,
+    "hasApprove": false,
+    "hasBash": false,
+    "hasWrite": false,
+    "hasEdit": false,
+    "sample": [
+      "agent_teams_claim_task",
+      "agent_teams_interject_decide",
+      "agent_teams_interject_request",
+      "agent_teams_mailbox_clear",
+      "agent_teams_path_owner",
+      "agent_teams_send_message",
+      "agent_teams_status",
+      "agent_teams_task_contract"
+    ]
+  }
+]
+[read-member-tool-list] read-only seat advertised=84 contractTool=true noWriteTools=true

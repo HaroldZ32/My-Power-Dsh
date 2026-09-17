@@ -4,19 +4,22 @@
 // injected `now`: the tick owns the clock, the machine owns the arithmetic.
 //
 //   OBSERVE (every tickIntervalMs)
-//     silence = now - newestStamp(owner, task)
-//     if a tool call for the owner's task is IN FLIGHT (r6) and younger than
-//     toolInFlightMaxMs:
-//         EXPLAINED: no WARN, no ESCALATE, streak reset
-//         past the bound: ONE `tool-expired` record, never a hold, never an escalate
-//     else if the owner has a turn expected in flight AND silence > warnSilenceMs:
-//         WARN(task, attemptId)   -> snapshot + notice
-//         streak[task] += 1
-//         if streak[task] >= warnStreakToEscalate:
-//             ESCALATE(task, attemptId) -> scene + HOLD(team) + notice
-//             the key is then DONE: no fourth WARN, no second ESCALATE
-//     else:
-//         streak[task] = 0
+//     THE CHANNEL PREDICATE DECIDES THE STATE (contract §1, T-48/D1). When the
+//     candidate carries a `channelState` from the `session/event` fold, that state is
+//     the ONE authority:
+//         PARKED / ALIVE  -> never a wedge, regardless of age; streak reset
+//         IN-FLIGHT       -> explained until `toolInFlightMaxMs` past the call start,
+//                            then exactly ONE `tool-expired` report (never a hold)
+//         OUTSTANDING     -> the ONLY warnable state: WARN once `warnSilenceMs` has
+//                            elapsed SINCE THE REQUEST BECAME OUTSTANDING, then
+//                            ESCALATE after `warnStreakToEscalate` consecutive
+//                            OUTSTANDING observations
+//     Without channel evidence the machine runs the heartbeat rule (§4 degradation)
+//     in REPORT-ONLY mode when the candidate says `heartbeatFallback`: it may WARN
+//     ONCE (cause `silence-heartbeat`) and may NEVER hold or escalate.
+//
+//     ESCALATE holds ONLY when `actionOnEscalate === "pause"` (§3: the default is
+//     `warn-only`, so a WARN is a report and nothing more).
 //
 // The silence candidate set is NOT "every non-terminal task": a task whose owner
 // is legitimately between turns is silent by design, and three WARNs against it
@@ -27,15 +30,26 @@
 import type { HeartbeatKind, HeartbeatStamp } from "./store.js"
 import { TERMINAL_STATUSES } from "./team.js"
 
+/**
+ * The four channel states of frozen contract §1.
+ *
+ * `null` (never this literal) means NO CHANNEL EVIDENCE for that member session —
+ * the caller then uses the heartbeat rule in report-only mode (§4).
+ */
+export type ChannelState = "OUTSTANDING" | "IN-FLIGHT" | "ALIVE" | "PARKED"
+
+/** Why a WARN/ESCALATE was recorded; the durable incident carries it verbatim. */
+export type WatchdogCause = "silence-channel" | "silence-heartbeat"
+
 /** The `mpd`-namespace watchdog knobs, resolved. */
 export interface WatchdogKnobs {
   /** The kill switch (AC-10); `MPD_DSH_TEAM_WATCHDOG=off` also forces it off. */
   enabled: boolean
-  /** Silence beyond this many ms is a WARN. */
+  /** How long a request may stay OUTSTANDING before the FIRST warn (§3). */
   warnSilenceMs: number
   /** Tick cadence; must be < warnSilenceMs for the streak arithmetic to hold. */
   tickIntervalMs: number
-  /** Consecutive WARNs for ONE task+attempt before ESCALATE. */
+  /** Consecutive OUTSTANDING observations for ONE task+attempt before ESCALATE. */
   warnStreakToEscalate: number
   /** What ESCALATE does: persist a hold (`pause`) or only record it (`warn-only`). */
   actionOnEscalate: "pause" | "warn-only"
@@ -47,19 +61,71 @@ export interface WatchdogKnobs {
    * also this feature's falsifier.
    */
   toolInFlightMaxMs: number
+  /**
+   * T-17's auto-release bound (§3, new knob): a hold a `pause` escalation persisted is
+   * released after this long, with a durable `hold-auto-released` incident. `0` = never
+   * expire. Read by the hold registry; the machine itself never holds a team by itself.
+   */
+  holdTtlMs: number
 }
 
-/** The frozen defaults (plan §2.1 / D2; r6 adds the in-flight bound). */
+/** The frozen defaults (frozen contract §3, T-48/D3). */
 export const WATCHDOG_DEFAULTS: WatchdogKnobs = {
   enabled: true,
-  warnSilenceMs: 90_000,
+  // 10 minutes of an OUTSTANDING (answered-nothing) request before the first WARN. The
+  // old 90 s inferred a wedge from wall-clock silence, which the channel predicate no
+  // longer does: a long ANSWER and a long TOOL CALL are both explained, so the bound
+  // only ever bounds a request nobody is answering.
+  warnSilenceMs: 600_000,
   tickIntervalMs: 15_000,
-  warnStreakToEscalate: 3,
-  actionOnEscalate: "pause",
-  // 10x the frozen 90 s threshold: long enough for any real build/boot/lane this
-  // workspace runs, short enough that a genuinely hung tool is reported inside a
-  // quarter of an hour. The knobs are live-tunable, so a slower workflow raises it.
+  // Six consecutive OUTSTANDING observations after the first WARN — a NARROWER ladder
+  // than the old three, because the surviving trigger (a genuinely unanswered request)
+  // is the expensive one to get wrong in either direction.
+  warnStreakToEscalate: 6,
+  // §3: ESCALATE records by default. A hold is an explicit opt-in (`pause`).
+  actionOnEscalate: "warn-only",
+  // 10x the warn bound: long enough for any real build/boot/lane this workspace runs,
+  // short enough that a genuinely hung tool is reported inside a quarter of an hour.
   toolInFlightMaxMs: 900_000,
+  // 15 minutes: a hold that nobody resumed releases itself and leaves a durable record.
+  holdTtlMs: 900_000,
+}
+
+/**
+ * §7.2's per-knob reading: what the process is RUNNING with, what the FILE says, and whether a
+ * restart is needed for the file value to take effect.
+ */
+export interface KnobReading {
+  knob: string
+  /** The value the running process resolved (the settings namespace + the row defaults). */
+  live: number | boolean | string
+  /** The value `.mpd/mpd.jsonc` carries, or undefined when that file states none. */
+  file: number | boolean | string | undefined
+  /** Whether the file states a DIFFERENT value, i.e. whether a restart would change anything. */
+  differs: boolean
+  restartRequired: boolean
+}
+
+/**
+ * Build the §7.2 readings: one per knob, LIVE value always, FILE value when the file states one.
+ *
+ * Pure by construction — the caller supplies the live knobs and the parsed file section — so the
+ * divergence rule is testable without a boot, a settings service or a file.
+ *
+ * @param live - the resolved knobs the process is running with.
+ * @param fileSection - the `watchdog` object parsed out of `.mpd/mpd.jsonc` (or anything else).
+ * @returns one reading per knob, in the frozen §3 order.
+ */
+export function knobReadings(live: WatchdogKnobs, fileSection: unknown): KnobReading[] {
+  const file = fileSection !== null && typeof fileSection === "object" ? (fileSection as Record<string, unknown>) : {}
+  const knobs: (keyof WatchdogKnobs)[] = ["warnSilenceMs", "tickIntervalMs", "warnStreakToEscalate", "actionOnEscalate", "toolInFlightMaxMs", "holdTtlMs", "enabled"]
+  return knobs.map((knob) => {
+    const liveValue = live[knob] as number | boolean | string
+    const raw = file[knob]
+    const fileValue = typeof raw === "number" || typeof raw === "boolean" || typeof raw === "string" ? raw : undefined
+    const differs = fileValue !== undefined && fileValue !== liveValue
+    return { knob: String(knob), live: liveValue, file: fileValue, differs, restartRequired: differs }
+  })
 }
 
 /** A knob that had to be rejected or clamped, with the reason. */
@@ -146,6 +212,9 @@ export function readKnobs(
   // floor is 0 rather than 1 — and it is read through the same guarded path as the rest.
   const toolInFlightMaxMs = number("toolInFlightMaxMs", 0)
 
+  // T-17's hold TTL (§3). 0 is likewise meaningful (`never expire`).
+  const holdTtlMs = number("holdTtlMs", 0)
+
   let enabled = defaults.enabled
   if (section.enabled !== undefined) {
     if (typeof section.enabled === "boolean") enabled = section.enabled
@@ -157,7 +226,7 @@ export function readKnobs(
     enabled = false
   }
 
-  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, issues }
+  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, holdTtlMs, issues }
 }
 
 /** One silence candidate: a live task whose owner is expected to be stepping. */
@@ -190,16 +259,47 @@ export interface SilenceCandidate {
    *
    * This is the whole point of r6: a member that spends 20 minutes inside ONE `bash` call
    * is WORKING, not wedged, and the POST-only stamp stream cannot tell the difference.
+   *
+   * Under the channel predicate the STATE comes from the fold and these stamps decide only
+   * the `tool-expired` BOUND (§1 rule 1); they remain the whole fallback source in §4.
    */
   inFlightSince: number | null
   /** The tool name of that in-flight call (diagnostics), or null. */
   inFlightTool: string | null
+  /**
+   * THE CHANNEL PREDICATE (contract §1, T-48/D1): the state the `session/event` fold
+   * concluded for this candidate's owner session, or `null`/absent when the fold has NO
+   * evidence for that member.
+   *
+   * Absent (`undefined`) means the caller supplied no channel view at all (a unit test
+   * driving the heartbeat rule directly); that is the same heartbeat path, without the
+   * report-only cap. `null` means the caller DID ask the fold and it had nothing — that
+   * is the §4 degradation case and it is reported, never silent (see `heartbeatFallback`).
+   */
+  channelState?: ChannelState | null
+  /** When the owner's open request became OUTSTANDING (ms epoch), from the fold. */
+  outstandingSince?: number | null
+  /**
+   * The open tool call's start as the FOLD saw it (ms epoch) — the bound's fallback clock
+   * when the heartbeat stamps carry no open call for this task (the PRE hook is absent, or
+   * the call was attributed to another task). Never used while a stamp clock exists: the
+   * stamps stay the bound's authority (§1 rule 1).
+   */
+  channelInFlightSince?: number | null
+  /** The open tool call's tool name as the fold saw it (diagnostics), or null. */
+  channelInFlightTool?: string | null
+  /**
+   * §4 DEGRADATION: this candidate has NO channel evidence, so the heartbeat rule runs in
+   * REPORT-ONLY mode — it may WARN ONCE (cause `silence-heartbeat`) and may NEVER hold or
+   * escalate. The engine sets it exactly when the fold cannot answer for the member.
+   */
+  heartbeatFallback?: boolean
 }
 
 /** What one observation concluded about one candidate. */
 export type Decision =
-  | { type: "warn"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; silenceMs: number; lastSeen: number; streak: number }
-  | { type: "escalate"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; silenceMs: number; lastSeen: number; streak: number }
+  | { type: "warn"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; silenceMs: number; lastSeen: number; streak: number; cause: WatchdogCause; state: ChannelState | null }
+  | { type: "escalate"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; silenceMs: number; lastSeen: number; streak: number; cause: WatchdogCause; state: ChannelState | null }
   | { type: "never-started"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string }
   /**
    * The in-flight entry outlived `toolInFlightMaxMs`: reported ONCE per task+attempt as a
@@ -240,6 +340,12 @@ export class WatchdogMachine {
   private readonly neverStarted = new Set<string>()
   /** Keys already reported `tool-expired` (one report per task+attempt generation). */
   private readonly toolExpired = new Set<string>()
+  /**
+   * §4 keys already reported through the REPORT-ONLY heartbeat fallback: the fallback
+   * may WARN once per generation and never escalates, so a degraded watchdog cannot
+   * turn into a per-tick incident stream.
+   */
+  private readonly reportedFallback = new Set<string>()
   /** How many observations the in-flight rule explained away (r6 evidence). */
   private inFlightSuppressed = 0
 
@@ -257,6 +363,41 @@ export class WatchdogMachine {
     for (const candidate of candidates) {
       const key = streakKey(candidate.teamId, candidate.taskId, candidate.attemptId)
       if (this.escalated.has(key)) continue
+
+      // ── THE CHANNEL PREDICATE (contract §1 / T-48 D1) ────────────────────────────
+      // When the fold has an answer for this member's session, that answer is the ONE
+      // authority: the heartbeat stamps below never override it (rule 1). Only
+      // OUTSTANDING can warn, and only after `warnSilenceMs` SINCE THE REQUEST BECAME
+      // OUTSTANDING — the fold's step start, never a wall-clock age of a stamp.
+      const channel = candidate.channelState
+      if (channel === "ALIVE" || channel === "PARKED") {
+        // ALIVE: a committed answer, a completed step/tool result or a turn that has not
+        // closed — a completed step is ALIVE forever (rule 2), no matter how long ago.
+        // PARKED: no open turn — between turns, blocked on dependencies, finished but not
+        // yet re-dispatched, staged plan, unclaimed task. Neither is ever a wedge.
+        this.streaks.delete(key)
+        continue
+      }
+      if (channel === "IN-FLIGHT") {
+        this.observeInFlight(candidate, key, now, knobs, decisions)
+        continue
+      }
+      if (channel === "OUTSTANDING") {
+        const since = typeof candidate.outstandingSince === "number" ? candidate.outstandingSince : candidate.lastSeen
+        // No clock at all: the fold cannot say when the request became outstanding, and
+        // inventing one is exactly the wall-clock inference this redesign removes.
+        if (since === null) {
+          this.streaks.delete(key)
+          continue
+        }
+        this.observeSilence(candidate, key, now - since, now, knobs, "silence-channel", "OUTSTANDING", false, decisions)
+        continue
+      }
+
+      // ── §4 DEGRADATION: the heartbeat rule ───────────────────────────────────────
+      // Reached only when the fold has no evidence for this member (`channelState` is
+      // null and the engine flagged it) or when a caller drives the machine without any
+      // channel view at all (the unit tests, and any pre-redesign embedder).
       // BETWEEN TURNS IS NOT A WEDGE (T69-ESCALATE-1). The newest stamp being a
       // `turn-end` means the member completed its turn and has simply not been
       // re-dispatched: escalating that would hold a healthy team ~120 s after every
@@ -296,55 +437,110 @@ export class WatchdogMachine {
       // stamps carried no start) is NOT an in-flight observation: the silence rule applies,
       // which is the fail-safe direction for a watchdog — better a WARN than a silent member.
       if (typeof candidate.inFlightSince === "number" && knobs.toolInFlightMaxMs > 0) {
-        const inFlightMs = now - candidate.inFlightSince
-        if (inFlightMs <= knobs.toolInFlightMaxMs) {
-          this.inFlightSuppressed += 1
-          this.streaks.delete(key)
-          continue
-        }
-        if (!this.toolExpired.has(key)) {
-          this.toolExpired.add(key)
-          decisions.push({
-            type: "tool-expired",
-            teamId: candidate.teamId,
-            taskId: candidate.taskId,
-            attemptId: candidate.attemptId,
-            assignee: candidate.assignee,
-            memberKey: candidate.memberKey,
-            inFlightMs,
-            since: candidate.inFlightSince,
-            tool: candidate.inFlightTool,
-          })
-        }
-        this.streaks.delete(key)
+        this.observeInFlight(candidate, key, now, knobs, decisions)
         continue
       }
-      const silenceMs = now - candidate.lastSeen
-      if (silenceMs <= knobs.warnSilenceMs) {
-        this.streaks.delete(key)
-        continue
-      }
-      const streak = (this.streaks.get(key) ?? 0) + 1
-      const base = {
-        teamId: candidate.teamId,
-        taskId: candidate.taskId,
-        attemptId: candidate.attemptId,
-        assignee: candidate.assignee,
-        memberKey: candidate.memberKey,
-        silenceMs,
-        lastSeen: candidate.lastSeen,
-        streak,
-      }
-      if (streak >= knobs.warnStreakToEscalate) {
-        this.escalated.add(key)
-        this.streaks.delete(key)
-        decisions.push({ type: "escalate", ...base })
-      } else {
-        this.streaks.set(key, streak)
-        decisions.push({ type: "warn", ...base })
-      }
+      this.observeSilence(candidate, key, now - candidate.lastSeen, now, knobs, "silence-heartbeat", null, candidate.heartbeatFallback === true, decisions)
     }
     return decisions
+  }
+
+  /**
+   * ONE `tool-expired` report for an open call past `toolInFlightMaxMs`, and nothing else.
+   *
+   * The bound's clock is the heartbeat `tool-start` stamp when there is one (the stamps are
+   * the bound's authority, §1 rule 1); the fold's own `tool/call` time is the fallback when
+   * the stamp stream carries no open call, because "a call is open" is already known and a
+   * missing clock must not turn into a silent watchdog. With no clock at all, and with the
+   * bound disabled (`0`), the entry is explained rather than reported: IN-FLIGHT is never a
+   * wedge by construction.
+   */
+  private observeInFlight(
+    candidate: SilenceCandidate,
+    key: string,
+    now: number,
+    knobs: WatchdogKnobs,
+    decisions: Decision[],
+  ): void {
+    this.streaks.delete(key)
+    const since =
+      typeof candidate.inFlightSince === "number"
+        ? candidate.inFlightSince
+        : typeof candidate.channelInFlightSince === "number"
+          ? candidate.channelInFlightSince
+          : null
+    if (since === null || knobs.toolInFlightMaxMs <= 0) {
+      this.inFlightSuppressed += 1
+      return
+    }
+    const inFlightMs = now - since
+    if (inFlightMs <= knobs.toolInFlightMaxMs) {
+      this.inFlightSuppressed += 1
+      return
+    }
+    if (this.toolExpired.has(key)) return
+    this.toolExpired.add(key)
+    decisions.push({
+      type: "tool-expired",
+      teamId: candidate.teamId,
+      taskId: candidate.taskId,
+      attemptId: candidate.attemptId,
+      assignee: candidate.assignee,
+      memberKey: candidate.memberKey,
+      inFlightMs,
+      since,
+      tool: candidate.inFlightTool ?? candidate.channelInFlightTool ?? null,
+    })
+  }
+
+  /**
+   * The §3 ladder for one silent observation: WARN, then ESCALATE after
+   * `warnStreakToEscalate` consecutive observations.
+   *
+   * `reportOnly` (§4) is the degradation cap: the heartbeat fallback may WARN ONCE per
+   * task+attempt generation with its own cause, and may NEVER escalate or hold — the
+   * streak keeps counting so the diagnostics still show the silence continuing.
+   */
+  private observeSilence(
+    candidate: SilenceCandidate,
+    key: string,
+    silenceMs: number,
+    now: number,
+    knobs: WatchdogKnobs,
+    cause: WatchdogCause,
+    state: ChannelState | null,
+    reportOnly: boolean,
+    decisions: Decision[],
+  ): void {
+    if (silenceMs <= knobs.warnSilenceMs) {
+      this.streaks.delete(key)
+      return
+    }
+    const streak = (this.streaks.get(key) ?? 0) + 1
+    this.streaks.set(key, streak)
+    const base = {
+      teamId: candidate.teamId,
+      taskId: candidate.taskId,
+      attemptId: candidate.attemptId,
+      assignee: candidate.assignee,
+      memberKey: candidate.memberKey,
+      silenceMs,
+      lastSeen: candidate.lastSeen ?? candidate.outstandingSince ?? now,
+      streak,
+      cause,
+      state,
+    }
+    if (streak >= knobs.warnStreakToEscalate && !reportOnly) {
+      this.escalated.add(key)
+      this.streaks.delete(key)
+      decisions.push({ type: "escalate", ...base })
+      return
+    }
+    if (reportOnly) {
+      if (this.reportedFallback.has(key)) return
+      this.reportedFallback.add(key)
+    }
+    decisions.push({ type: "warn", ...base })
   }
 
   /** A stamp arrived for a key: the streak resets and the key is not escalated. */
@@ -353,6 +549,7 @@ export class WatchdogMachine {
     this.streaks.delete(key)
     this.neverStarted.delete(key)
     this.toolExpired.delete(key)
+    this.reportedFallback.delete(key)
   }
 
   /** Whether a TEAM's task+attempt already escalated (the tick's idempotence check). */
@@ -411,12 +608,34 @@ export function inFlightFor(stamps: readonly HeartbeatStamp[]): { since: number;
   return { since: newest.at, tool: newest.tool ?? null }
 }
 
+/**
+ * The record's GENERATION FLOOR (T-16, contract §6): the newest of the team record's own
+ * `createdAt`/`approvedAt`, or `null` when the record carries neither.
+ *
+ * `null` is PERMISSIVE on purpose (§0/A3): a record that cannot say when it was created cannot
+ * bound a stamp's generation, and an absent `createdAt` must never turn a watchdog silent.
+ *
+ * @param team - the projected record (only the two timestamps are read).
+ * @returns the floor in ms epoch, or null when the record does not state one.
+ */
+export function generationFloorOf(team: { createdAt?: number | null; approvedAt?: number | null }): number | null {
+  const stamps = [team.createdAt, team.approvedAt].filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+  return stamps.length === 0 ? null : Math.max(...stamps)
+}
+
 /** A candidate's silence, derived from its heartbeat file (the tick's input). */
 export function candidateFor(
-  team: { id: string; tasks: readonly { id: string; status: string; assignee?: string; attemptId?: string }[] },
+  team: {
+    id: string
+    tasks: readonly { id: string; status: string; assignee?: string; attemptId?: string }[]
+    /** T-16's generation bound; absent/null leaves the slice PERMISSIVE (§0/A3). */
+    createdAt?: number | null
+    approvedAt?: number | null
+  },
   stampSource: (memberKey: string) => readonly HeartbeatStamp[],
   memberKeyOf: (assignee: string) => string,
 ): SilenceCandidate[] {
+  const generationFloor = generationFloorOf(team)
   const candidates: SilenceCandidate[] = []
   for (const task of team.tasks) {
     if (task.assignee === undefined || TERMINAL_STATUSES.includes(task.status)) continue
@@ -429,8 +648,22 @@ export function candidateFor(
     // not satisfy the precondition (it used to, so an old generation's stamp made a task with no
     // current stamp look "silent" instead of "never started").
     const taskAttempt = task.attemptId ?? ""
+    // ── T-16 / §6: THE SILENCE SLICE IS GENERATION-SCOPED ────────────────────────────────
+    // A stamp older than the record's own `createdAt`/`approvedAt` belongs to a PREVIOUS
+    // generation of the team and can never prove that THIS record's task is being worked on.
+    // Measured leak (2026-09-16): a hold took task `t12` whose only stamp (05:33:35Z) predated
+    // the record's `createdAt` (05:51:45Z) — silence was computed against a stamp from before
+    // the record existed, and 3 ticks later a healthy team was paused.
+    //
+    // The bound lands HERE, on the slice that answers "is the CURRENT generation silent", and
+    // NOT on the dispatch disjunction below (`dispatched`/`workedOn`), which stays permissive:
+    // an earlier-generation stamp still makes a task OBSERVABLE, it just cannot make it SILENT.
+    // That is what keeps the r7 pin green (`test/dispatch-precondition.test.ts:157-172`, §0/A3)
+    // while a pre-generation stamp can no longer escalate anything: the candidate is reported
+    // `never-started` instead, which never holds.
     const forTask = stamps.filter((stamp) => {
       if (stamp.taskId !== task.id) return false
+      if (generationFloor !== null && typeof stamp.at === "number" && stamp.at < generationFloor) return false
       // TEAM SCOPE (r2, the false-negative repair): the heartbeat FILE is keyed by MEMBER NAME
       // per workspace (`heartbeatPath`), and roster names repeat across teams, so two teams whose
       // members share a name append to ONE file. Without this test the other team's stamp

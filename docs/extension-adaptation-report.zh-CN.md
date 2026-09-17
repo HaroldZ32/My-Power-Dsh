@@ -96,7 +96,7 @@
 - **F8（低，本波刻意豁免）—— lifecycle lane 仍叙述修复前的预期。** `skills/dsh-qa/scripts/extension-lifecycle.mjs:35-42` 仍写着“This wave's expectation is a RED … THE FIX IS t11's”，其打包分支仍返回 `greenOwner: "t11"`（`:386`）。这是刻意豁免而非遗漏：技能语料库每波只有一个写入者，第二次改动 `skills/**` 会强制第二次 `VENDOR_LOCK.json` 重新钉版，而本波只保留一次（AGENTS.md §9/§11）——且这一次已经用在 mcp-bridge schema 分支的修正上（`evidence/extensions/t13-repair/20260916T045324Z/`）。此处记录，供下一波并入其唯一一次重新钉版。
 - **F9（低，同属豁免家族）—— 某一行引用的并不是该分支的判据。** `skills/dsh-qa/SKILL.md:77` 引用 `extension-lifecycle.mjs:385` 来支撑“the case exits 0”，但该分支的 `ok` 是 `packRun.status === 0 && hasRow && (hasPlugin && hasExtensions ? true : red)`（`extension-lifecycle.mjs:377`），在 GREEN 与 RED 两种状态下都为 TRUE——因此退出码 0 并不由打包树是否为 GREEN 决定。属一次单文件跟修 + 本波唯一一次重新钉版。
 - **F10（低）—— 子进程 stderr 片段这一条没有任何 lane 覆盖。** 没有 lane 断言桥的状态报告里的“截断后的子进程 stderr 片段”；两条 lane 里仅有的 `stderr` 引用是 fixture 自己的错误写出（`extension-mcp-bridge.mjs:121`）与 CLI 探针的尾部（`extension-lifecycle.mjs:135`、`:335`）。该条款目前只有代码与单元测试支撑。
-- **F11（低）—— R11 这一类断言没有测试套件归宿。** R11（`PLUGIN_PKGS` 遗漏类检查）只作为一条记录在 `.mpd/plans/dsh-tui-edition.md:179-183` 的命令存在；每次打包真正运行的守卫是打包器自身的正向闭包检查（`scripts/pack-mpd.mjs:213-219`）。见 §7 的 P2 建议。
+- **F11（低）—— R11 这一类断言没有测试套件归宿。** R11（`PLUGIN_PKGS` 遗漏类检查）只作为一条记录在 `.mpd/plans/dsh-tui-edition.md:179-183` 的命令存在；每次打包真正运行的守卫是打包器自身的正向闭包检查（`scripts/pack-mpd.mjs:260-269`，2026-09-17 重新定位）。见 §7 的 P2 建议。
 
 ## 7. 按优先级排序的建议
 
@@ -128,7 +128,7 @@
 - §4 的残留风险（可从磁盘读取凭据、作者声明的 `env` 机密、文件系统信任）是姿态评估，不是已执行的攻击验证。
 - 八个过期证据目录（F6）只做了清点，没有重跑；在有人重跑之前，它们对当前树而言仍未验证。
 - 插件模块热重载问题在设计上已经定论（v1 没有 reload——重启），但没有任何测试断言“被改动的扩展目录在项目面只在下次调用时重读”。
-- 打包布局对扩展仍然可用这一点，由打包器的正向闭包检查（`scripts/pack-mpd.mjs:213-219`）与 lane 的打包分支断言，而不是本波把 `dist/mpd-package/` 全新安装进干净 profile 验证的。
+- 打包布局对扩展仍然可用这一点，由打包器的正向闭包检查（`scripts/pack-mpd.mjs:260-269`）与 lane 的打包分支断言，而不是本波把 `dist/mpd-package/` 全新安装进干净 profile 验证的。
 
 ## 10. 附录 A —— 复现命令
 
@@ -177,7 +177,7 @@ node scripts/verify-docs-parity.mjs
 
 | 条目 | 状态 | 修复所在位置 | 证据 |
 |---|---|---|---|
-| F1 —— 适配器身份回退是静默的 | **已修复** | 规范注释（提示 `:58-92`）与（`resolveAdapter`, `packages/mpd-ext-plugin/src/index.ts:102`），并已进入重新构建的 `packages/mpd-ext-plugin/dist/index.js`；`mpd-roles-plugin` 交叉引用它 | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
+| F1 —— 适配器身份回退是静默的 | **已修复** | 规范注释（提示 `:59-100`）与（`dshAdapterIdentity`, `packages/mpd-ext-plugin/src/index.ts:497`），并已进入重新构建的 `packages/mpd-ext-plugin/dist/index.js`；`mpd-roles-plugin` 交叉引用它 | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
 | F5 —— 同一个隐患被写成两处半截注释 | **已修复** | （`"CANONICAL NOTE"`, `packages/mpd-ext-plugin/src/index.ts:59`）的唯一规范注释，`packages/mpd-roles-plugin/src/index.ts` 改为指向它而不是复述 | `evidence/extensions/f1-adapter-identity/20260916T061318Z/` |
 | F7 —— 一个证据检查器宣称过宽 | **已修复** | 修正后的探测器 `evidence/extensions/debranding-probe/20260916T061807Z/verify-debranding-full.mjs`（新目录；`evidence/mpd-ext-debranding/20260915T074904Z/` 按字节保持原样，作为那次窄探测的记录） | `evidence/extensions/debranding-probe/20260916T061807Z/` |
 | F11 —— R11 这类断言没有测试套件归属 | **已修复** | `scripts/verify-pack-closure.mjs`——单独运行、解析打包器真实的列表、并在临时夹具上重放红色——已接入 `package.json` 的 `test:qa:all` | `evidence/extensions/pack-closure-check/20260916T061527Z/` |
@@ -204,8 +204,9 @@ node scripts/verify-docs-parity.mjs
 ### 一处已测量的偏差：开发者在打包产物内是红的
 
 **本 wave 未修复**（记录为 `.mpd/TODO.md` T-51）。打包器只复制 `packages/<pkg>/dist`
-（`cpDist`, `scripts/pack-mpd.mjs:67-77`），从不复制 `src`；而开发者 CLI 从 `src` 导入其校验器
-（`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:35`）。因此在打包树内，每一个 CLI
+（`cpDist`, `scripts/pack-mpd.mjs:120-132`），从不复制 `src`；而开发者 CLI 从 `src` 导入其校验器
+（`"../packages/mpd-ext-plugin/src/registry.ts"`, `scripts/mpd-ext.mjs:49`；源码表为
+`SOURCE_VALIDATOR`, `scripts/mpd-ext.mjs:48-56`，已编译回退在 `:60`）。因此在打包树内，每一个 CLI
 入口都以 `Cannot find module '<packed>/packages/mpd-ext-plugin/src/registry.ts'` 退出 1。该结论在一棵由
 打包器自身产物构建的探针树上测得
 （`evidence/extensions/template-scaffold/20260916T063710Z/raw/packed-tree-probe.json`，分支 A 与 B）：
@@ -213,6 +214,15 @@ node scripts/verify-docs-parity.mjs
 而 `scaffold` 与 `--self-test` 仍失败，因为 `templates/` 也没有被打包。因此 AGENTS.md §4 的
 Extension-CLI gate 在 CHECKOUT 中成立（那里 `src` 与 `templates/` 都在），而在打包产物中是红的，
 直到打包器把它们一起交付。该限制在 agent 契约中的副本见 `EXTENSIONS-FOR-AGENTS.md` §9。
+
+**已修复 2026-09-17（friction wave，lane E —— `.mpd/TODO.md` T-35/T-36/T-45/T-51）。** 打包器现在交付
+`templates/` 与 `docs/` 文档集（用户决定：打包安装是面向作者的），并生成一个已编译校验器入口 <!-- citation-check: illustrative: a pack-time artifact emitted by the packer into the artifact, not a repo path -->
+`packages/mpd-ext-plugin/dist/validator.js`——即已交付的 bundle 加上一行 `export { … }`，插件模块本身
+不被改动——当 `src` 不存在时 `scripts/mpd-ext.mjs` 会回退到它。在刚打包出的 `dist/mpd-package/` 上实测：
+`validate`（示例与模板）、`scaffold`（拷进临时目录）与 `--self-test` 在 bun 与纯 `node` 下全部退出 0，
+且在人为抽掉资产时 `node scripts/verify-pack-closure.mjs` 会大声失败。证据：
+`evidence/pack-closure/impl/20260917T011849Z/result.json`。上面那段保留为撰写它的那一波所测得的记录——
+它记录的限制已经关闭。
 
 
 ### 证据说明：模板 lane 的三次留痕
