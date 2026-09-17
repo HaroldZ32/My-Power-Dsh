@@ -1,0 +1,74 @@
+{
+  "kind": "correction",
+  "correction_of": "evidence/dsh-qa/suite-runner/20260917T053605Z-t74-reason-ladder-verify/ADDENDUM-falsification-criterion.md",
+  "parent_bytes_untouched": true,
+  "author": "docs-gate-engineer",
+  "date": "2026-09-17T13:45Z",
+  "subject": "the parent addendum's mtime bullet is moment-bound and was invalidated by the captain's checkout; the parent's revision chain is disclosed",
+  "parent_revisions": [
+    {
+      "rev": 1,
+      "sha256": "b7bc32a7002ae5659c01471fc23ddea8cd22effbbcb37a4978e99a146cafd33d",
+      "bytes": 3653,
+      "state": "committed by captain in 684dd3f",
+      "at": "2026-09-17T13:42Z"
+    },
+    {
+      "rev": 2,
+      "sha256": "42dbf59a0b736f1349880a445d17cdb589adf7fae2ea1835845957d0dd5d1492",
+      "bytes": 4380,
+      "state": "working tree on disk (uncommitted)",
+      "at": "2026-09-17T13:43Z",
+      "delta_from_rev1": "clause-(a) replay line made byte-exact from the recorded logs (no hand-elided path prefix) + the two signature shapes stated (evidence file with line:null vs stdout line 11). No verdict, criterion or clause result changed.",
+      "reconstruction": {
+        "method": "git show HEAD:<parent> (rev 1) + the single known replacement, applied by script",
+        "reconstructed_sha256": "42dbf59a0b736f1349880a445d17cdb589adf7fae2ea1835845957d0dd5d1492",
+        "accepted_because_digest_matched": true
+      }
+    }
+  ],
+  "corrections": [
+    {
+      "id": "C1-mtime-not-durable",
+      "target_claim": "VENDOR_LOCK.json mtime 13:24:25 pre-dating the 13:29:36 runner edit, with `find skills VENDOR_LOCK.json -newermt 13:29:36` empty",
+      "was_true_when_taken_at": "~2026-09-17T13:41Z",
+      "now_false_because": "the captain's wave commit + merge checked the tree out at 13:42:47 (HEAD 684dd3f / merge 20a635e), rewriting mtimes across skills/** and on VENDOR_LOCK.json while every byte stayed identical",
+      "durable_form": "content digests, not mtimes",
+      "unchanged_digests": {
+        "scripts/run-qa-lanes.mjs": "6bea2b38de2a4ac76ddb672b25bdc5f226e870bdd45cafb9026ae9e3c9c9ded0",
+        "scripts/run-qa-lanes.mjs.bytes": 44774,
+        "VENDOR_LOCK.json": "6ca531d2b20afb19cdc336fa90fcbb7509d2237cfaea62adb2850325d6134992",
+        "skills/dsh-qa/cases.json": "54585caba9a571324be85daeae09373622c173dcb660c7d409a0a2d987eebf9e",
+        "skills treeSha (gate-canonical)": "68318157344aafecabb641b9d947d0f17ab6a4bce5c399b486f18790cc7e3a9c"
+      },
+      "warning_to_future_readers": "re-running `find skills VENDOR_LOCK.json -newermt 13:29:36` today returns file names; that is the checkout, not a reopened skills/** writer window"
+    },
+    {
+      "id": "C2-method-adhoc-treehash",
+      "target_claim": "implicit: that an ad-hoc recomputation can restate the corpus treeSha",
+      "finding": "an ad-hoc python recomputation produced 036cfc2ce19caf9a944e37ed304d3e7795a2a50a577e755a837c10828802c089 — a different serialization, NOT corpus drift",
+      "remedy": "the gate's own output is the reading with authority: `node scripts/verify-vendor.mjs` -> `asset OK: skills 323 files`, `PASS`, exit 0"
+    },
+    {
+      "id": "C3-transient-inline-rev3-retracted",
+      "finding": "a revision header plus this mtime correction were first written INTO the parent (~13:44Z, rev 3), which makes the record self-referential: pinning its own digest changes it",
+      "action": "rev 3 retracted; parent restored to byte-exact rev 2; both the revision table and the correction live in this nested file",
+      "rev3_state": "never committed, bytes not pinned, superseded within the same minute",
+      "disclosed": true
+    }
+  ],
+  "commands_run": [
+    {"command": "date -Is", "exit": 0, "evidence": "2026-09-17T13:43:33+08:00"},
+    {"command": "git log --oneline -2", "exit": 0, "evidence": "20a635e merge: wave 1 … into dev / 684dd3f fix(friction): close the P1 register …"},
+    {"command": "find skills VENDOR_LOCK.json -newermt '2026-09-17 13:29:36'", "exit": 0, "evidence": "returns skills/** names — the checkout, see C1"},
+    {"command": "stat -c '%n %y' VENDOR_LOCK.json", "exit": 0, "evidence": "VENDOR_LOCK.json 2026-09-17 13:42:47.104941417 +0800"},
+    {"command": "node scripts/verify-vendor.mjs", "exit": 0, "evidence": "asset OK: skills 323 files; PASS"},
+    {"command": "sha256sum scripts/run-qa-lanes.mjs", "exit": 0, "evidence": "6bea2b38… (44,774 B)"},
+    {"command": "python3 (apply the one known rev1->rev2 replacement; compare digest)", "exit": 0, "evidence": "reconstructed rev2 sha256 = 42dbf59a… == expected; RESTORED (byte-exact rev 2)"}
+  ],
+  "clause_results_unchanged": {
+    "a_independent_replay_labels_step_archive": "holds",
+    "b_fx-401_still_unauthorized_fx-expected-fence_still_step_archive": "holds"
+  },
+  "bound": "the digest claims are readings of 2026-09-17T13:43-13:46Z; a further checkout moves mtimes again (never the digests). The mtime bullet in the parent remains physically in the parent — this correction is the record of its invalidation, per the parent-untouched rule."
+}

@@ -58,3 +58,14 @@ evidence/**/sandbox/
 # above — measured 2026-09-17.
 evidence/**/scratch-artifact*/
 evidence/**/scratch-control*/
+
+# REGENERABLE copies of a BUILD PRODUCT inside a lane's evidence. A lane that proves the closure/pack gate
+# copies a whole packed tree under `raw/final/` to read it; the artifact itself is gitignored
+# (`dist/mpd-package/`), and the copy carries no information that the file list + hashes beside it do not.
+# Measured 2026-09-17: 2,410 tracked `raw/final/` paths = 10.68 MB of packed blob bytes, and the whole
+# `/raw/` set = 4,582 paths / 28.55 MB, inside a `.git` of 265 MB. Same policy as the three rules above.
+# FORWARD-ONLY and deliberate: wave 1 landed with those 2,410 paths ALREADY tracked and they STAY — removing
+# them post-merge would mutate the delivered record, and rewriting the commit would dangle the hashes its own
+# evidence cites by name (captain's ruling, 2026-09-17). A genuine non-regenerable record that must live at
+# this exact path: `git add -f <path>`.
+evidence/**/raw/final/

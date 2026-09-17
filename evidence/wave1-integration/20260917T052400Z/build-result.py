@@ -242,11 +242,11 @@ result = {
         "check_log": "register-partition-check.log",
         "check_json": "register-partition-check.json",
         "check_script": "reconcile-register.py",
-        "check_run": "python3 reconcile-register.py — exit 0 = reconciled; TWO directions: the internal partition of §8.2-§8.5 and the wave's own coverage list in .mpd/team/friction-p1-wave/team.json",
+        "check_run": "python3 reconcile-register.py — exit 0 = reconciled; THREE directions: the internal partition of §8.2-§8.5, the wave's own coverage list in .mpd/team/friction-p1-wave/team.json, and §8.1's prose vs the sections",
         **{k: partition_json[k] for k in ("todo_sha256_prefix", "fixed_section_rows", "already_fixed", "partial",
                                           "touched_originals", "untouched_originals_listed", "sum",
                                           "new_rows_appended", "direction_1_internal", "direction_2_coverage",
-                                          "disagreements")},
+                                          "direction_3_prose", "prose_matches_sections", "disagreements")},
         "section_5_non_original_ids": partition_json["section_5_non_original_ids"],
         "corrections_disclosed": [
             "draft 1: 31 fixed / 40 touched claimed against a 34-row §8.2 table, T-52 named nowhere, and the NEW row T-67 folded into the original-60 partition",
