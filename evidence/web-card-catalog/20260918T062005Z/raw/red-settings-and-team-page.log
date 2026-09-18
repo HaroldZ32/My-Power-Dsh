@@ -1,0 +1,176 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+(pass) client seam policy > declares only services this profile is guaranteed to mount [0.50ms]
+(pass) client seam policy > never declares the sidebar statically (that would park the whole entry) [0.25ms]
+(pass) client seam policy > waits for the sidebar through ctx.inject instead of a one-shot probe [0.06ms]
+(pass) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.28ms]
+(pass) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.03ms]
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.34ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered [0.04ms]
+(pass) workmate page > renders the library from the host routes [9.84ms]
+[mpd] AgentTeams sidebar file failed to load: Error: harness: unexpected require(@mpd-dsh/team-page)
+[mpd] settings card module failed to load: Error: harness: unexpected require(@mpd-dsh/settings-card)
+(pass) workmate page base picker (C3: the functional NAME is the only base key) > the base <option> value and label are the functional NAME, with no id suffix [9.17ms]
+(pass) workmate page base picker (C3: the functional NAME is the only base key) > the "type the base id" fallback copy is gone from BOTH dictionaries [0.54ms]
+(pass) workmate page dictionaries > registers the workmate namespace with both dictionaries [1.68ms]
+(pass) workmate page dictionaries > zh is the key-set source of truth and en matches it key for key (§L A7) [1.51ms]
+(pass) workmate page dictionaries > the mutation surface is localized in BOTH languages, not hardcoded English [1.53ms]
+(pass) workmate page dictionaries > the tab-strip label stays hardcoded English (contract §K, deliberate deferral) [1.50ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > every reason code maps to a distinct, readable message [0.78ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an in-use refusal names the blocking team and member (§E, user decision D2) [0.28ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an unknown failure falls back to the server text, never to a raw reason key [0.09ms]
+(pass) workmate page mutation controls > delete is an explicit two-step confirmation, never one destructive click (D1) [21.58ms]
+(pass) workmate page mutation controls > purge cannot be submitted without typing the exact name (§D confirm-required) [28.20ms]
+(pass) workmate page mutation controls > the archive confirmation posts that workmate and reports the archived outcome [16.43ms]
+(pass) workmate page mutation controls > a rename posts { name, new_name } and follows the new key (§H no stale selection) [16.59ms]
+(pass) workmate page mutation controls > an in-use refusal is shown with the blocking team/member, not a generic failure (§E) [16.74ms]
+(pass) workmate page mutation controls > a 409 collision is reported as taken, and an unknown key drops the stale selection [16.90ms]
+(pass) workmate page mutation controls > a same-key rename is refused locally and explains itself (t8 L1) [14.17ms]
+(pass) workmate page mutation controls > a purge never reports itself as a plain delete (t8 L2) [1.24ms]
+(pass) workmate page mutation controls > the zh reason strings are complete sentences without a stray gap (t8 L3) [0.70ms]
+(pass) workmate page mutation controls > a detail load that fails stops claiming to load (t8 L4) [11.07ms]
+(pass) without DSH-better-sidebar > registers no sidebar surface at all — there is no floating fallback [1.21ms]
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+(pass) AgentTeams sidebar tab descriptor > registers one single-instance tab with the pinned id and order [1.20ms]
+(pass) AgentTeams sidebar tab descriptor > createTab mints a clean tab so the auto-open seed never lands on it [0.86ms]
+(pass) AgentTeams sidebar tab descriptor > offers the auto-open switch as a plugin-owned setting [0.95ms]
+(pass) AgentTeams page rendering > renders the conversation's teams, members, tasks and archived section [8.49ms]
+(pass) AgentTeams page rendering > reproduces the floater's panel interior, class for class [5.83ms]
+(pass) AgentTeams page rendering > the head's collapse control closes the sidebar panel through the store [7.77ms]
+(pass) AgentTeams page rendering > a missing store still renders the same markup and never throws [6.31ms]
+(pass) AgentTeams page rendering > the head's busy dot follows live member activity [12.52ms]
+(pass) AgentTeams page rendering > renders the collapse glyph with the platform's own icon component [5.93ms]
+(pass) AgentTeams page rendering > falls back to the identical inline chevron when the platform icons are absent [6.86ms]
+(pass) AgentTeams page rendering > renders the archived section with the archived label [5.75ms]
+(pass) AgentTeams page rendering > filters by the tab's own conversation scope [5.73ms]
+(pass) AgentTeams page rendering > shows the floater's own empty hint inside the panel body [7.59ms]
+(pass) AgentTeams page rendering > a hidden tab renders no live view (the sidebar CSS-hides collapsed tabs) [5.67ms]
+(pass) AgentTeams page rendering > a failing host route degrades to the empty state instead of throwing [6.79ms]
+(pass) AgentTeams page rendering > a rejecting poll shows a readable error notice, not a crash [6.38ms]
+(pass) staged plan approval > passes a model directory to a staged team when the service provides one [6.46ms]
+(pass) staged plan approval > a PROBE-INVISIBLE modelDirectories still reaches a staged team through ctx.inject [7.45ms]
+(pass) staged plan approval > a throwing directoryFor degrades instead of crashing the page [6.19ms]
+383 |     });
+384 |     expect(client.ctx.get("modelDirectories")).toBeUndefined();
+385 |     const tree = await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
+386 |     const stagedElement = panelParts(tree).body[0];
+387 |     expect(stagedElement.props.team.phase).toBe("staged");
+388 |     expect(stagedElement.props.modelDirectory).toEqual(directory);
+                                                     ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "id": "dir",
+-   "models": [
+-     {
+-       "id": "og-model-1",
+-     },
+-   ],
+- }
++ undefined
+
+- Expected  - 8
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/team-page.test.mjs:388:48)
+(fail) staged plan approval > a CALLER-SCOPED modelDirectories reaches the staged team (the chain is declared at the call site) [7.66ms]
+(pass) staged plan approval > an UNSATISFIABLE caller chain degrades the staged card instead of throwing out of render [6.39ms]
+(pass) badge and polling > badge reports the cached live-team count for its session only [8.00ms]
+(pass) badge and polling > mounting the page twice keeps a single polling controller [8.17ms]
+(pass) auto-open policy > opens the tab once, with NO content seed, for a team that appears after the baseline [2709.77ms]
+(pass) auto-open policy > teams restored with the page never auto-open [2707.58ms]
+(pass) auto-open policy > the plugin switch turns auto-open off [2707.99ms]
+(pass) auto-open policy > a disabled tab type is never auto-opened [2707.92ms]
+(pass) boot safety > a missing page module degrades to one warning instead of throwing out of apply [2.04ms]
+(pass) boot safety > without better-sidebar nothing is registered and nothing is warned about [1.23ms]
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs:
+(pass) shipped bundle client after the AgentTeams sidebar migration > registers exactly the four loader modules: the sidebar page plus the isolated settings card [0.65ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > carries the mpd export bridge with every pinned export [0.52ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > no mpd client source registers a removed surface [0.74ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > the page module keeps the pinned tab id and order [0.78ms]
+
+packages/mpd-bundle-plugin/test/settings-card.test.mjs:
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the shipped client registers a settings.section with id 'mpd', an explicit order and a label [1.17ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the Plugins tab's keyed item registration is GONE from the built client (the user's request) [0.68ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > NEGATIVE CONTROL: the absence predicate reddens the moment the retired registration returns [0.34ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the mount is DEFERRED (ctx.inject) and the client still declares only the stable seams [0.63ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the disclosure copy is the same sentence the TUI states, and no stale claim survives [0.16ms]
+(pass) the registration only happens when the settings scope is served > no settingsScope -> no entry, one warning-free degrade, no throw out of apply [1.63ms]
+(pass) the registration only happens when the settings scope is served > settingsScope at apply -> one SECTION entry, and its descriptor passes the whole predicate [3.85ms]
+(pass) the registration only happens when the settings scope is served > NEGATIVE CONTROL: the descriptor predicate reddens on every mutant that matters [0.16ms]
+(pass) the registration only happens when the settings scope is served > a late-served settingsScope still mounts the section (provideService wakes the fiber) [1.59ms]
+(pass) the card's form behaviour > it renders what the namespace reports (values, overridden marker, disclosure) and nothing invented [9.02ms]
+(pass) the card's form behaviour > a save writes nested PATHS through scope.mutate with the revision fence [2.45ms]
+(pass) the card's form behaviour > resetField asks for the file value (unset), and an invalid draft refuses to save [1.77ms]
+(pass) the card's form behaviour > a read-only scope renders read-only with a reason and writes nothing [3.92ms]
+(pass) isolation and front-door parity > web-client.js is the ONLY source that requires the card module, and the card does no I/O [0.93ms]
+(pass) isolation and front-door parity > the card's twenty-two fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift) [1.05ms]
+(pass) isolation and front-door parity > NEGATIVE CONTROL: the parity pin reddens on a drifted label, a shortened path and a changed declared list [0.83ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the model control lists the catalog's provider/model pairs, GROUPED by provider [7.04ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the provider control lists the catalog's provider ids with their display names [3.59ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the effort control offers the SELECTED model's own efforts, and changing the model re-derives them [6.51ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > a model with no advertised efforts keeps the declared fallback list [4.23ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > NO slot field is ever a text input (a slot value is never typed) [3.80ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > DEGRADE: no catalog services -> the declared lists, and the section still renders [3.55ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > DEGRADE: an unbound session and a THROWING directoryFor keep the declared lists, no throw out of render [7.83ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > edits through the catalog-driven controls still write ONE mutate batch with the revision fence [1.17ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the disclosure sentences are unchanged and still rendered with the new rows [3.44ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-A: a PROBE-INVISIBLE catalog still feeds the pickers through ctx.inject (the defect) [4.07ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-B: a directory-store mutation reaches the card with NO re-mount (live read, live re-projection) [7.58ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-C: when inject never resolves the declared lists render AND the fallback state is VISIBLE [3.61ms]
+590 |     client.restore()
+591 |   })
+592 | 
+593 |   test("T-D: the SERVED client.js carries the inject acquisition and the fallback marker", () => {
+594 |     const injectBased = (bytes) => bytes.includes('ctx.inject(["modelDirectories", "sessions", "remote.session"]')
+595 |     expect(injectBased(ARTIFACT)).toBe(true)
+                                        ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:595:35)
+(fail) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-D: the SERVED client.js carries the inject acquisition and the fallback marker [0.37ms]
+656 |   test("T-E: the LIVE catalog is reached when — and only when — the caller-scoped chain is satisfied", async () => {
+657 |     const { calls, host } = callerScopedCatalog()
+658 |     const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), host)
+659 |     // The chain is declared at the CALL SITE: without `remote.session` the harness throws the
+660 |     // measured error and the method body never runs.
+661 |     expect(calls.directoryFor).toBe(1)
+                                     ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:661:32)
+(fail) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-E: the LIVE catalog is reached when — and only when — the caller-scoped chain is satisfied [3.68ms]
+687 |     expect(status["data-mpd-catalog-providers"]).toBe("0")
+688 |     expect(status["data-mpd-catalog-models"]).toBe("0")
+689 |     const text = textOf(tree)
+690 |     expect(text).toContain("declared fallback — live catalog unavailable")
+691 |     // NEVER SILENT: the rendered reason names the rejected seam (the cause the old bare catch hid)
+692 |     expect(text).toContain('cannot get property "testing.absent.seam" without inject')
+                       ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "cannot get property \"testing.absent.seam\" without inject"
+Received: "MPD bundle The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot  declared fallback — live catalog unavailable (the host resolved no model directory for this session) Inline diff limit mpd.jsonc hashline.maxDiffChars — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session  overridden ·  Reset to the file value Comment checker mpd.jsonc commentChecker.autoCheck — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Reset to the file value Ultrawork rounds mpd.jsonc ulw.maxRounds — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Reset to the file value Memory backend mpd.jsonc memory.vcs — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session — git svn  Reset to the file value Team state directory mpd.jsonc team.stateDir — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Reset to the file value Boulder directory mpd.jsonc boulder.dir — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Reset to the file value Watchdog enabled mpd.jsonc watchdog.enabled — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Reset to the file value Silence warning threshold (ms) mpd.jsonc watchdog.warnSilenceMs — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Reset to the file value Watchdog tick interval (ms) mpd.jsonc watchdog.tickIntervalMs — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Reset to the file value Warn streak before escalation mpd.jsonc watchdog.warnStreakToEscalate — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Reset to the file value Action on escalation mpd.jsonc watchdog.actionOnEscalate — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session — pause warn-only  Reset to the file value Tool-in-flight bound (ms, 0 = no bound) mpd.jsonc watchdog.toolInFlightMaxMs — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound   Reset to the file value Hold TTL (ms, 0 = no expiry) mpd.jsonc watchdog.holdTtlMs — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry   Reset to the file value Slot 1 provider mpd.jsonc teamModels.slot1.provider — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session — deepseek-official overridden ·  Reset to the file value Slot 1 model mpd.jsonc teamModels.slot1.model — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session — deepseek-v4-flash deepseek-v4-flash-vision-exp deepseek-v4-pro deepseek-flash overridden ·  Reset to the file value Slot 1 reasoning effort mpd.jsonc teamModels.slot1.reasoningEffort — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session — off low high max overridden ·  Reset to the file value Slot 2 provider mpd.jsonc teamModels.slot2.provider — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session — deepseek-official  Reset to the file value Slot 2 model mpd.jsonc teamModels.slot2.model — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session — deepseek-v4-flash deepseek-v4-flash-vision-exp deepseek-v4-pro deepseek-flash  Reset to the file value Slot 2 reasoning effort mpd.jsonc teamModels.slot2.reasoningEffort — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session — off low high max  Reset to the file value Slot 3 provider mpd.jsonc teamModels.slot3.provider — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session — deepseek-official  Reset to the file value Slot 3 model mpd.jsonc teamModels.slot3.model — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session — deepseek-v4-flash deepseek-v4-flash-vision-exp deepseek-v4-pro deepseek-flash  Reset to the file value Slot 3 reasoning effort mpd.jsonc teamModels.slot3.reasoningEffort — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session — off low high max  Reset to the file value Save Discard  a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime the file half is host-limited: a .mpd/mpd.jsonc edit is read once at plugin mount and stays fixed for the running process, so it applies at the next dsh boot and never mid-process; only a change made through this settings document can reach a running plugin, and only where the plugin subscribes to the host's settings-document update if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc "
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-bundle-plugin/test/settings-card.test.mjs:692:18)
+(fail) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-F: an UNSATISFIABLE caller chain degrades VISIBLY, naming the rejected seam [3.99ms]
+
+4 tests failed:
+(fail) staged plan approval > a CALLER-SCOPED modelDirectories reaches the staged team (the chain is declared at the call site) [7.66ms]
+(fail) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-D: the SERVED client.js carries the inject acquisition and the fallback marker [0.37ms]
+(fail) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-E: the LIVE catalog is reached when — and only when — the caller-scoped chain is satisfied [3.68ms]
+(fail) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-F: an UNSATISFIABLE caller chain degrades VISIBLY, naming the rejected seam [3.99ms]
+
+ 88 pass
+ 4 fail
+ 896 expect() calls
+Ran 92 tests across 4 files. [11.33s]

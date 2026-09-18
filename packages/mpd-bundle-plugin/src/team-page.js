@@ -317,10 +317,15 @@
   /** The auto-open policy lives in the descriptor's own plugin settings (no default there). */
   let autoOpenPolicyService = undefined;
   /**
-   * The model directory service, resolved through `ctx.inject(["modelDirectories"], …)`. It is
+   * The model directory service, resolved through
+   * `ctx.inject(["modelDirectories", "remote.session"], …)`. It is
    * provided by ANOTHER plugin's fiber, so a bare `ctx.get` probe answers undefined forever (the
    * measured rule in src/web-client.js) — which is exactly the defect that left every staged
-   * member's model picker on its declared list.
+   * member's model picker on its declared list. `remote.session` is in the list because cordis
+   * services are CALLER-scoped: the resolver reads `this.ctx.remote.session` on the ACCESSING ctx,
+   * so `directoryFor` throws without it (measured in a real browser, evidence/web-card-catalog/).
+   * `sessions` is deliberately NOT listed here: the settings card reads it for the bound session,
+   * this page never does.
    */
   let modelDirectoryService = undefined;
   function autoOpenEnabled() {
@@ -377,7 +382,8 @@
    * render — so it is resolved defensively and degrades to no editor, never to a crash.
    *
    * The service comes from `modelDirectoryService`, which `registerTeamSidebarTab` fills through
-   * `ctx.inject(["modelDirectories"], …)`. It is NEVER re-probed with `ctx.get` here: the service
+   * `ctx.inject(["modelDirectories", "remote.session"], …)`. It is NEVER re-probed with
+   * `ctx.get` here: the service
    * is provided by another plugin's fiber, so a bare probe answers undefined for the life of the
    * page and the picker would silently fall back to its declared list forever.
    */
@@ -798,10 +804,15 @@
       // The model directory is provided by ANOTHER plugin's fiber: resolve it with the dynamic
       // `ctx.inject` form (which waits for the provider and never parks this entry) and cache it
       // for `directoryForTeam`. A bare `ctx.get` probe here answers undefined forever.
+      // `remote.session` belongs in the list for the same measured reason as the settings card:
+      // cordis services are CALLER-scoped, so the resolver's own read of `this.ctx.remote.session`
+      // inside `directoryFor()` is rejected unless the CALLER declared that dotted seam — the
+      // picker then silently fell back to its declared list. Dynamic only (never declared): a
+      // declared-but-unregistered service parks the whole page.
       ctx.effect(() => {
         let catalogFiber;
         try {
-          catalogFiber = ctx.inject(["modelDirectories"], (catalogCtx) => {
+          catalogFiber = ctx.inject(["modelDirectories", "remote.session"], (catalogCtx) => {
             modelDirectoryService = probe(catalogCtx, "modelDirectories");
           });
         } catch (error) {

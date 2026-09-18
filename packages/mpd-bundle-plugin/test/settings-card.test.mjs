@@ -17,7 +17,7 @@
 import { describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
-import { loadMpdClient } from "./client-harness.mjs"
+import { callerScopedService, loadMpdClient } from "./client-harness.mjs"
 // The ONE shared knob declaration, imported at RUNTIME for the parity test: the card MIRRORS it
 // (it must not reference `SETTINGS_KNOBS`, which a QA gate pins against the built client), so the
 // test — not the client — compares the two declarations element by element.
@@ -332,11 +332,14 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     { id: "other-provider", name: "Other", models: [{ id: "x-1", name: "X1" }] },
   ]
 
-  /** The host's client seams: `sessions.list` for the bound session, `modelDirectories` for the catalog. */
+  /** The host's client seams: `sessions.list` for the bound session, `modelDirectories` for the
+   * catalog, and the `remote.session` seam the resolver READS on the accessing ctx (so the
+   * injection resolves at all — the live host mounts all three). */
   function catalogServices(groups = CATALOG, options = {}) {
     const sessionId = options.sessionId ?? "s1"
     return {
       sessions: { list: { getSnapshot: () => ({ current: options.unbound === true ? undefined : { sessionId } }) } },
+      "remote.session": {},
       modelDirectories: {
         directoryFor: (id) => {
           if (options.throwing === true) throw new Error(`ui-model-selection: session "${String(id)}" resolved no scope`)
@@ -524,6 +527,12 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
   }
 
   const SESSIONS = { list: { getSnapshot: () => ({ current: { sessionId: "s1" } }) } }
+  /**
+   * The host's `remote.session` seam. The card's dynamic injection WAITS for it (caller scoping), so
+   * every fixture that expects a LIVE catalog mounts it — the live host does (measured). Without it
+   * the injection never fires and the card degrades to its declared lists, which is T-C's arm.
+   */
+  const REMOTE_SESSION = { "remote.session": {} }
 
   /**
    * Mount the section with services that ONLY an injection can see. A bare `ctx.get` probe is
@@ -541,6 +550,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     const directory = mutableDirectory(CATALOG)
     const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
       sessions: SESSIONS,
+      ...REMOTE_SESSION,
       modelDirectories: { directoryFor: () => directory.directory },
     })
     // the defect's PREMISE, asserted: the probe the pre-fix card used answers undefined
@@ -559,6 +569,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     const directory = mutableDirectory(CATALOG)
     const { tree, client, registration, props } = await injectedTree(slotScope(SLOT_SECTION), {
       sessions: SESSIONS,
+      ...REMOTE_SESSION,
       modelDirectories: { directoryFor: () => directory.directory },
     })
     expect(optionValues(controlOf(tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official", "other-provider"])
@@ -591,16 +602,105 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
   })
 
   test("T-D: the SERVED client.js carries the inject acquisition and the fallback marker", () => {
-    const injectBased = (bytes) => bytes.includes('ctx.inject(["modelDirectories", "sessions"]')
+    const injectBased = (bytes) => bytes.includes('ctx.inject(["modelDirectories", "sessions", "remote.session"]')
     expect(injectBased(ARTIFACT)).toBe(true)
+    // The CALLER-SCOPED seam is what the live host's resolver reads on the ACCESSING ctx: without
+    // it `directoryFor` throws `cannot get property "remote.session" without inject`.
+    expect(ARTIFACT).toContain("remote.session")
     expect(ARTIFACT).toContain("declared fallback — live catalog unavailable")
     expect(ARTIFACT).toContain("data-mpd-catalog-state")
     expect(ARTIFACT).not.toContain("SETTINGS_KNOBS")
     // the retired bare probe is GONE from the served bytes (both card and team page)
     expect(ARTIFACT).not.toContain('ctx.get("modelDirectories")')
-    // NEGATIVE CONTROL: the inject predicate reddens on probe-only bytes
+    // NEGATIVE CONTROL: the inject predicate reddens on pro<redacted>
     const preFix = 'const directories = ctx && typeof ctx.get === "function" ? ctx.get("modelDirectories") : undefined'
     expect(injectBased(preFix)).toBe(false)
+    // NEGATIVE CONTROL for the caller-scoped half: the PRE-FIX inject list (no `remote.session`)
+    // is not accepted by the predicate — the defect shape cannot pass this assertion.
+    const callerBlind = 'ctx.inject(["modelDirectories", "sessions"], (scoped) => bind(scoped))'
+    expect(injectBased(callerBlind)).toBe(false)
     expect(preFix.includes("declared fallback — live catalog unavailable")).toBe(false)
+  })
+
+  // ── THE CALLER-SCOPED DEFECT (measured in a real browser, evidence/web-card-catalog/): the
+  // injection alone never reached the catalog because cordis services are CALLER-scoped — the
+  // host resolver reads `this.ctx.remote.session` on the ACCESSING ctx, so a caller that injected
+  // only `["modelDirectories","sessions"]` got `cannot get property "remote.session" without
+  // inject` and silently rendered its declared fallback while the browser carried TWO providers.
+  /** The host's live shape: 2 providers / 31 models (deepseek-official 4 + opencode-go 27). */
+  const LIVE_CATALOG = [
+    {
+      id: "deepseek-official",
+      name: "DeepSeek Official",
+      models: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"].map((id) => ({ id, name: id })),
+    },
+    {
+      id: "opencode-go",
+      name: "opencode-go",
+      models: Array.from({ length: 27 }, (_, index) => ({ id: "og-model-" + String(index + 1), name: "OpenCode " + String(index + 1) })),
+    },
+  ]
+
+  /**
+   * The host's model-directory resolver as a CALLER-SCOPED service: `directoryFor` reads the dotted
+   * `remote.session` seam, so the harness REJECTS the call unless the resolving ctx declared it —
+   * exactly the measured live failure. `reads` is overridable so a case can prove the degrade arm
+   * with a seam no inject list can satisfy.
+   */
+  function callerScopedCatalog(groups = LIVE_CATALOG, options = {}) {
+    const reads = options.reads ?? ["remote.session"]
+    const sessionId = options.sessionId ?? "s1"
+    const calls = { directoryFor: 0 }
+    const service = callerScopedService({
+      reads,
+      methods: {
+        directoryFor: (_callerCtx, id) => {
+          calls.directoryFor += 1
+          if (id !== sessionId) throw new Error("unknown session")
+          return { store: { getSnapshot: () => ({ status: "ready", groups }) }, load: async () => ({ groups }) }
+        },
+      },
+    })
+    return { service, calls, host: { sessions: SESSIONS, ...REMOTE_SESSION, modelDirectories: service } }
+  }
+
+  test("T-E: the LIVE catalog is reached when — and only when — the caller-scoped chain is satisfied", async () => {
+    const { calls, host } = callerScopedCatalog()
+    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), host)
+    // The chain is declared at the CALL SITE: without `remote.session` the harness throws the
+    // measured error and the method body never runs.
+    expect(calls.directoryFor).toBe(1)
+    const providerSelect = controlOf(tree, "teamModels.slot1.provider")
+    expect(optionValues(providerSelect)).toEqual(["deepseek-official", "opencode-go"])
+    const modelSelect = controlOf(tree, "teamModels.slot1.model")
+    expect(optgroupLabels(modelSelect)).toEqual(["DeepSeek Official", "opencode-go"])
+    expect(optionValues(modelSelect)).toHaveLength(31)
+    expect(optionValues(modelSelect)).toContain("og-model-27")
+    const status = catalogStatus(tree)
+    expect(status["data-mpd-catalog-state"]).toBe("live")
+    expect(status["data-mpd-catalog-providers"]).toBe("2")
+    expect(status["data-mpd-catalog-models"]).toBe("31")
+    expect(textOf(tree)).toContain("live catalog — 2 providers · 31 models")
+    client.restore()
+  })
+
+  test("T-F: an UNSATISFIABLE caller chain degrades VISIBLY, naming the rejected seam", async () => {
+    // `remote.session` IS satisfied by the fix; this extra seam is not, and cannot be — so any
+    // inject list at all is rejected and the card must still say so out loud instead of showing a
+    // bare fallback.
+    const { calls, host } = callerScopedCatalog(LIVE_CATALOG, { reads: ["remote.session", "testing.absent.seam"] })
+    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), host)
+    expect(calls.directoryFor).toBe(0) // rejected before the method body, exactly like the live host
+    expect(optionValues(controlOf(tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official"])
+    expect(optionValues(controlOf(tree, "teamModels.slot1.model"))).toHaveLength(4)
+    const status = catalogStatus(tree)
+    expect(status["data-mpd-catalog-state"]).toBe("fallback")
+    expect(status["data-mpd-catalog-providers"]).toBe("0")
+    expect(status["data-mpd-catalog-models"]).toBe("0")
+    const text = textOf(tree)
+    expect(text).toContain("declared fallback — live catalog unavailable")
+    // NEVER SILENT: the rendered reason names the rejected seam (the cause the old bare catch hid)
+    expect(text).toContain('cannot get property "testing.absent.seam" without inject')
+    client.restore()
   })
 })

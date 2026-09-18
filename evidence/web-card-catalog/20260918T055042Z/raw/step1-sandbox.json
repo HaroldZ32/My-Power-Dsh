@@ -1,0 +1,44 @@
+{
+  "step": "sandbox",
+  "evid": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T055042Z",
+  "sandbox": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T055042Z/sandbox",
+  "realHomeRead": "/root/.dsh",
+  "bundleResolvesTo": "/root/dshProj/my-power-dsh",
+  "ok": true,
+  "profile": {
+    "src": "/root/.dsh/profiles/web",
+    "dst": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T055042Z/sandbox/dsh-home/profiles/web",
+    "copyMs": 1580
+  },
+  "siblingNodeModulesCopied": true,
+  "healedSymlinks": [
+    {
+      "link": "dsh-home/profiles/web/node_modules/oh-my-opencode",
+      "was": "../../../../dshProj/oh-my-openagent",
+      "now": "/root/dshProj/oh-my-openagent"
+    },
+    {
+      "link": "dsh-home/profiles/web/node_modules/@mpd-dsh/mpd",
+      "was": "../../../../../dshProj/my-power-dsh",
+      "now": "/root/dshProj/my-power-dsh"
+    }
+  ],
+  "copies": {
+    "settingsYaml": true,
+    "credentialsYaml": true
+  },
+  "credentialBooleanOnly": {
+    "credentialsFileCopied": true,
+    "carriesOpencodeGoApiKeyRef": true,
+    "settingsYamlCarriesOpencodeGoProvider": true
+  },
+  "roots": {
+    "DSH_HOME": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T055042Z/sandbox/dsh-home",
+    "HOME": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T055042Z/sandbox/user-home",
+    "workspace": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T055042Z/sandbox/workspace"
+  },
+  "isolation": {
+    "allInsideSandbox": true,
+    "noneUnderRealHome": true
+  }
+}
