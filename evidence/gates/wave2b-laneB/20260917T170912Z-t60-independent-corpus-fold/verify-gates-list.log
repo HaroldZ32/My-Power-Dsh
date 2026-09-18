@@ -1,0 +1,7 @@
+[verify-gates] resolving 5 member gate(s) (declared table)
+[verify-gates] member vendor :: node ./scripts/verify-vendor.mjs
+[verify-gates] member dist-fresh :: node ./scripts/verify-dist-fresh.mjs
+[verify-gates] member rows-parity :: node ./scripts/verify-rows-parity.mjs
+[verify-gates] member docs-parity :: node ./scripts/verify-docs-parity.mjs
+[verify-gates] member preset-conformance :: node ./skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+[verify-gates] list OK: 5 member gate(s) resolved, 0 spawned

@@ -1,0 +1,17 @@
+RUNNER COVERS:
+  node ./scripts/verify-vendor.mjs
+  node ./scripts/verify-dist-fresh.mjs
+  node ./scripts/verify-rows-parity.mjs
+  node ./scripts/verify-docs-parity.mjs
+  node ./skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+
+NOT COVERED BY THE RUNNER:
+  node ./skills/dsh-qa/scripts/preset-conformance.mjs
+  bun ./skills/dsh-qa/scripts/bundle-lifecycle.mjs
+  bun ./scripts/mpd-ext.mjs --self-test
+  node ./scripts/verify-pack-closure.mjs
+  node ./scripts/verify-pack-closure.mjs --self-test
+  node ./scripts/verify-manual-paths.mjs
+  bun run typecheck
+  bun test ./packages
+  bun run test:qa
