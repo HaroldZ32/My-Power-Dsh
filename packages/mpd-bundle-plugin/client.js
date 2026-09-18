@@ -4737,20 +4737,94 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   const TEAM_MODEL_SLOT = "teamModels"
 
   /**
-   * The session the catalog binds to: `sessions.list.getSnapshot().current` is the shape
-   * `team-page.js` already reads. Guarded, so a missing sessions service, a missing list or an
-   * unbound session all answer undefined instead of throwing.
+   * The session the catalog binds to, read from the client's OWN list snapshot.
+   *
+   * MEASURED in a real browser against the live host (`evidence/web-card-catalog/20260918T073000Z/`):
+   * `sessions.list.getSnapshot()` is `{ ids, byId, current, phase, subagentsByParent, jobsBySession,
+   * currentAddress }`, and `current` is the session ID **STRING** — never an object. The host's own
+   * consumers prove it: `dsh-client-ui-session` hands it straight to `sessions.binding(current)`, and
+   * `dsh-api-session-controller`'s `followCurrent()` indexes `snapshot.byId[current]`.
+   *
+   * THE DEFECT THIS REPLACES: `current.sessionId ?? current.id` on a STRING is always `undefined`, so
+   * a card with a live current session rendered `no session is bound` — the exact sentence measured in
+   * the user's browser. The earlier acceptance missed it because its fixture INJECTED
+   * `{ current: { sessionId } }`, i.e. it asserted the ASSUMED shape instead of the real one.
+   *
+   * The object form is still accepted (last) so an existing caller that injects `{ sessionId }` keeps
+   * working. Guarded: a missing sessions service, a missing list or an unbound session answer
+   * undefined instead of throwing.
    */
   function currentSessionIdOf(sessions) {
     try {
-      const list = sessions ? sessions.list : undefined
-      const snapshot = list && typeof list.getSnapshot === "function" ? list.getSnapshot() : undefined
-      const current = snapshot ? snapshot.current : undefined
-      if (current === undefined || current === null) return undefined
-      return current.sessionId ?? current.id
+      const snapshot = listSnapshotOf(sessions)
+      if (snapshot === undefined || snapshot === null) return undefined
+      const current = snapshot.current
+      if (typeof current === "string") return current.length === 0 ? undefined : current
+      if (current !== null && typeof current === "object") {
+        const id = current.sessionId ?? current.id
+        return typeof id === "string" && id.length > 0 ? id : undefined
+      }
+      return undefined
     } catch {
       return undefined
     }
+  }
+
+  /** The client's session-list snapshot, or undefined when the service is absent or unreadable. */
+  function listSnapshotOf(sessions) {
+    const list = sessions ? sessions.list : undefined
+    return list && typeof list.getSnapshot === "function" ? list.getSnapshot() : undefined
+  }
+
+  /**
+   * Every session id the list snapshot carries, in the snapshot's own order. `ids` is the MEASURED
+   * field; `items` and `byId` are read too, so a snapshot from another host build still yields
+   * candidates.
+   */
+  function listedSessionIds(snapshot) {
+    const ids = []
+    const push = (id) => {
+      if (typeof id === "string" && id.length > 0 && !ids.includes(id)) ids.push(id)
+    }
+    if (Array.isArray(snapshot.ids)) for (const id of snapshot.ids) push(id)
+    if (Array.isArray(snapshot.items)) for (const item of snapshot.items) push(item === null || item === undefined ? undefined : (item.sessionId ?? item.id))
+    if (snapshot.byId !== null && snapshot.byId !== undefined && typeof snapshot.byId === "object") for (const id of Object.keys(snapshot.byId)) push(id)
+    return ids
+  }
+
+  /**
+   * The session a model directory can actually be resolved FOR. The session the app is SHOWING wins
+   * (`current`); when the app has no current session — measured: the settings dialog opens before any
+   * conversation — every LISTED session is tried and the first for which BOTH `scope(id)` and
+   * `binding(id)` resolve wins, because that pair is exactly the precondition the host's resolver
+   * documents (`… resolved no scope` / `… resolved no binding`). A non-`blank` session is tried
+   * first: a placeholder row is a poor thing to pin a catalog preview to.
+   *
+   * No `open()` is needed and none is performed: the host mints a listed session's scope lazily
+   * (`eligible(id) = current === id || ids.includes(id)`, measured resolving for every listed id).
+   */
+  function boundSessionIdOf(sessions) {
+    const current = currentSessionIdOf(sessions)
+    if (current !== undefined) return current
+    try {
+      if (sessions === null || sessions === undefined) return undefined
+      if (typeof sessions.scope !== "function" || typeof sessions.binding !== "function") return undefined
+      const snapshot = listSnapshotOf(sessions)
+      if (snapshot === undefined || snapshot === null) return undefined
+      const ids = listedSessionIds(snapshot)
+      const byId = snapshot.byId !== null && snapshot.byId !== undefined && typeof snapshot.byId === "object" ? snapshot.byId : {}
+      const ordered = [...ids.filter((id) => byId[id]?.blank !== true), ...ids.filter((id) => byId[id]?.blank === true)]
+      for (const id of ordered) {
+        try {
+          if (sessions.scope(id) !== undefined && sessions.binding(id) !== undefined) return id
+        } catch {
+          /* an unresolvable id is not a candidate */
+        }
+      }
+    } catch {
+      /* an unreadable list is not a candidate */
+    }
+    return undefined
   }
 
   /** Read one service from a context that has it IN SCOPE (never throws). */
@@ -4867,12 +4941,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
      * repeated while it stays one; re-armed when it returns to live and degrades again) and ONE
      * info when it becomes live. The sentence is `catalogNotice`'s — never a second wording.
      */
+    /**
+     * Announce a state change ONCE per transition. `pending` marks a fallback that is only the
+     * sessions list still ENUMERATING: the card starts with the plugin (measured — the injected
+     * callback fires during app BOOT, long before any conversation exists), so announcing that first
+     * "no session is bound" put a `[mpd]` WARNING into every healthy boot while nothing was wrong.
+     * The rendered state is unchanged (the visible fallback paragraph still says exactly this); only
+     * the CONSOLE announce waits for the list to settle, so a warning means a degrade again.
+     */
     let announcedMode
     function publish(nextGroups, nextInfo) {
       groups = nextGroups
       info = nextInfo
       const mode = info !== null && info !== undefined && info.mode === "live" ? "live" : "fallback"
-      if (mode !== announcedMode) {
+      const pending = info !== null && info !== undefined && info.pending === true
+      if (pending !== true && mode !== announcedMode) {
         announcedMode = mode
         const sentence = catalogNotice(info)
         if (mode === "live") console.info("[mpd] model catalog:", sentence)
@@ -4881,8 +4964,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       notify()
     }
 
-    function fallback(reason) {
-      publish([], { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason })
+    function fallback(reason, pending) {
+      publish([], { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason, pending: pending === true })
     }
 
     function releaseDirectory() {
@@ -4916,7 +4999,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     }
 
     function bindDirectory(directories, sessions, force) {
-      const sessionId = currentSessionIdOf(sessions)
+      const sessionId = boundSessionIdOf(sessions)
       // A session-list notification is not a reason to re-fetch an unchanged directory: only a
       // real SWITCH (or a provider remount, which passes force) rebinds and reloads.
       if (force !== true && sessionId !== undefined && sessionId === boundSessionId && directory !== undefined) return
@@ -4928,7 +5011,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           return
         }
         if (sessionId === undefined) {
-          fallback("no session is bound")
+          // "the list has not enumerated yet" is NOT the same state as "the list is ready and offers
+          // no bindable session": only the second is a degrade worth a console warning.
+          const snapshot = listSnapshotOf(sessions)
+          const enumerating = snapshot !== undefined && snapshot !== null && snapshot.phase !== "ready"
+          fallback("no session is bound", enumerating)
           return
         }
         const found = directories.directoryFor(sessionId)

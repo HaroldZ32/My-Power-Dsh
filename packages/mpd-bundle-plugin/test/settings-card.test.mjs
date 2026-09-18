@@ -332,13 +332,32 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     { id: "other-provider", name: "Other", models: [{ id: "x-1", name: "X1" }] },
   ]
 
-  /** The host's client seams: `sessions.list` for the bound session, `modelDirectories` for the
+  /**
+   * The host's client seams: `sessions.list` for the bound session, `modelDirectories` for the
    * catalog, and the `remote.session` seam the resolver READS on the accessing ctx (so the
-   * injection resolves at all — the live host mounts all three). */
+   * injection resolves at all — the live host mounts all three).
+   *
+   * The sessions fixture is the MEASURED snapshot shape (`evidence/web-card-catalog/20260918T073000Z/`):
+   * `{ ids, byId, current, phase, … }` with `current` the session ID **STRING**. The superseded
+   * fixture modelled `{ current: { sessionId } }` — the ASSUMED shape — which is exactly why a green
+   * suite never caught the real defect.
+   */
   function catalogServices(groups = CATALOG, options = {}) {
     const sessionId = options.sessionId ?? "s1"
+    const unbound = options.unbound === true
     return {
-      sessions: { list: { getSnapshot: () => ({ current: options.unbound === true ? undefined : { sessionId } }) } },
+      sessions: {
+        list: {
+          getSnapshot: () => ({
+            ids: unbound ? [] : [sessionId],
+            byId: unbound ? {} : { [sessionId]: { id: sessionId, blank: false } },
+            current: unbound ? undefined : sessionId,
+            phase: "ready",
+          }),
+        },
+        scope: (id) => (unbound ? undefined : { id }),
+        binding: (id) => (unbound ? undefined : { sessionId: id }),
+      },
       "remote.session": {},
       modelDirectories: {
         directoryFor: (id) => {
@@ -526,7 +545,15 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     }
   }
 
-  const SESSIONS = { list: { getSnapshot: () => ({ current: { sessionId: "s1" } }) } }
+  /**
+   * The MEASURED live list snapshot: `current` is the session ID STRING (the host's own
+   * `followCurrent()` indexes `snapshot.byId[current]`), never `{ sessionId }`.
+   */
+  const SESSIONS = {
+    list: { getSnapshot: () => ({ ids: ["s1"], byId: { s1: { id: "s1", blank: false } }, current: "s1", phase: "ready" }) },
+    scope: (id) => ({ id }),
+    binding: (id) => ({ sessionId: id }),
+  }
   /**
    * The host's `remote.session` seam. The card's dynamic injection WAITS for it (caller scoping), so
    * every fixture that expects a LIVE catalog mounts it — the live host does (measured). Without it
@@ -704,6 +731,129 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     client.restore()
   })
 
+  // ── THE REAL SNAPSHOT SHAPE (measured in a real browser against the live host,
+  // evidence/web-card-catalog/20260918T073000Z/): `current` is the session ID **STRING**.
+  // The superseded lane injected `{ current: { sessionId } }` through the app's own store, so its
+  // green proved that ITS OWN injection round-tripped — not that a real client populates `current`.
+  test("T-G: the MEASURED list shape (`current` is a session ID STRING) reaches the LIVE catalog", async () => {
+    const directory = mutableDirectory(LIVE_CATALOG)
+    const asked = []
+    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+      sessions: SESSIONS,
+      ...REMOTE_SESSION,
+      modelDirectories: { directoryFor: (id) => { asked.push(id); if (id !== "s1") throw new Error("unknown session"); return directory.directory } },
+    })
+    expect(asked).toContain("s1")
+    const status = catalogStatus(tree)
+    expect(status["data-mpd-catalog-state"]).toBe("live")
+    expect(status["data-mpd-catalog-providers"]).toBe("2")
+    expect(status["data-mpd-catalog-models"]).toBe("31")
+    expect(optionValues(controlOf(tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official", "opencode-go"])
+    expect(textOf(tree)).toContain("live catalog — 2 providers · 31 models")
+    client.restore()
+  })
+
+  test("T-G NEGATIVE CONTROL: the PRE-FIX object-only read answers undefined for the MEASURED shape", () => {
+    // The exact superseded expression, evaluated against the real snapshot: a STRING carries neither
+    // `.sessionId` nor `.id`, so it answered undefined and the card degraded with the very sentence
+    // the user saw — "no session is bound" — while a session WAS current. The second line is the
+    // ASSUMED shape the old fixture asserted, which is what made the old suite green.
+    const preFix = (snapshot) => {
+      const current = snapshot.current
+      if (current === undefined || current === null) return undefined
+      return current.sessionId ?? current.id
+    }
+    expect(preFix({ current: "s1" })).toBeUndefined()
+    expect(preFix({ current: { sessionId: "s1" } })).toBe("s1")
+    // and the fixed read answers the id for BOTH shapes
+    const fixed = (snapshot) => {
+      const current = snapshot.current
+      if (typeof current === "string") return current.length === 0 ? undefined : current
+      if (current !== null && typeof current === "object") return current.sessionId ?? current.id
+      return undefined
+    }
+    expect(fixed({ current: "s1" })).toBe("s1")
+    expect(fixed({ current: { sessionId: "s1" } })).toBe("s1")
+  })
+
+  test("T-H: with NO current session, a LISTED session that has BOTH scope and binding is bound", async () => {
+    // The measured case: the settings dialog opens BEFORE any conversation, so `current` is undefined
+    // while `ids` is populated. `eligible(id) = current === id || ids.includes(id)` mints a listed
+    // id's scope on demand, and `directoryFor` accepts it (measured: status "ready", 2 groups / 31).
+    const directory = mutableDirectory(LIVE_CATALOG)
+    const asked = []
+    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+      sessions: {
+        list: { getSnapshot: () => ({ ids: ["blank-1", "s2"], byId: { "blank-1": { id: "blank-1", blank: true }, s2: { id: "s2", blank: false } }, current: undefined, phase: "ready" }) },
+        scope: (id) => ({ id }),
+        binding: (id) => ({ sessionId: id }),
+      },
+      ...REMOTE_SESSION,
+      modelDirectories: { directoryFor: (id) => { asked.push(id); return directory.directory } },
+    })
+    // a NON-blank listed session is preferred over the placeholder row
+    expect([...new Set(asked)]).toEqual(["s2"])
+    expect(catalogStatus(tree)["data-mpd-catalog-state"]).toBe("live")
+    expect(catalogStatus(tree)["data-mpd-catalog-models"]).toBe("31")
+    client.restore()
+  })
+
+  test("T-H2: NO current session and NO resolvable listed session still NAMES the reason", async () => {
+    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+      sessions: {
+        list: { getSnapshot: () => ({ ids: ["s1"], byId: { s1: { id: "s1" } }, current: undefined, phase: "ready" }) },
+        scope: () => undefined,
+        binding: () => undefined,
+      },
+      ...REMOTE_SESSION,
+      modelDirectories: { directoryFor: () => { throw new Error("directoryFor must not be reached") } },
+    })
+    const status = catalogStatus(tree)
+    expect(status["data-mpd-catalog-state"]).toBe("fallback")
+    expect(textOf(tree)).toContain("declared fallback — live catalog unavailable (no session is bound)")
+    client.restore()
+  })
+
+  test("T-I: an ENUMERATING sessions list does not warn at boot; a READY list with no bindable session does", async () => {
+    // MEASURED: the card starts with the plugin, so its injected callback fires during app BOOT —
+    // before the session-list baseline arrives. Announcing that first "no session is bound" put a
+    // `[mpd]` WARNING into every healthy boot. The suppression must be narrow: the moment the list is
+    // READY and still offers no bindable session, the degrade is announced again.
+    let notified = null
+    let phase = "pending"
+    const sessions = {
+      list: {
+        getSnapshot: () => ({ ids: [], byId: {}, current: undefined, phase }),
+        subscribe: (listener) => { notified = listener; return () => { notified = null } },
+      },
+      scope: () => undefined,
+      binding: () => undefined,
+    }
+    const rec = recordConsole()
+    try {
+      const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+        sessions,
+        ...REMOTE_SESSION,
+        modelDirectories: { directoryFor: () => { throw new Error("directoryFor must not be reached") } },
+      })
+      // the BOOT transient: the visible fallback renders, the console stays silent
+      expect(catalogStatus(tree)["data-mpd-catalog-state"]).toBe("fallback")
+      expect(textOf(tree)).toContain("no session is bound")
+      expect(rec.lines).toHaveLength(0)
+      // the list settles and still offers no bindable session -> NOW it is a degrade, and it is said
+      phase = "ready"
+      expect(typeof notified).toBe("function")
+      notified()
+      const warned = rec.lines.filter((line) => line.level === "warn")
+      expect(warned).toHaveLength(1)
+      expect(warned[0].args[1]).toContain("no session is bound")
+      expect(rec.lines.filter((line) => line.level === "info")).toHaveLength(0)
+      client.restore()
+    } finally {
+      rec.restore()
+    }
+  })
+
   // ── A degraded read used to be missable: the card's own notice sat at the TOP of the section
   // while the three slot pickers sit at the BOTTOM, and the fallback path never reached the
   // console. Three surfaces are asserted here, one by one, plus the warn-once discipline.
@@ -746,7 +896,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
 
   test("D-1: a REJECTED read warns the console ONCE and the same sentence renders at the slot rows", async () => {
     let notified = null
-    const sessions = { list: { getSnapshot: () => ({ current: { sessionId: "s1" } }), subscribe: (listener) => { notified = listener; return () => { notified = null } } } }
+    const sessions = { list: { getSnapshot: () => ({ ids: ["s1"], byId: { s1: { id: "s1", blank: false } }, current: "s1", phase: "ready" }), subscribe: (listener) => { notified = listener; return () => { notified = null } } } }
     const rec = recordConsole()
     try {
       const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {

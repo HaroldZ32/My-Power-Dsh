@@ -1,0 +1,131 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs:
+(pass) client seam policy > declares only services this profile is guaranteed to mount [0.46ms]
+(pass) client seam policy > never declares the sidebar statically (that would park the whole entry) [0.23ms]
+(pass) client seam policy > waits for the sidebar through ctx.inject instead of a one-shot probe [0.05ms]
+(pass) with DSH-better-sidebar installed > registers the AgentTeams page and the workmate library, and no legacy floater [0.23ms]
+(pass) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.03ms]
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.32ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered [0.04ms]
+(pass) workmate page > renders the library from the host routes [8.99ms]
+[mpd] AgentTeams sidebar file failed to load: Error: harness: unexpected require(@mpd-dsh/team-page)
+[mpd] settings card module failed to load: Error: harness: unexpected require(@mpd-dsh/settings-card)
+(pass) workmate page base picker (C3: the functional NAME is the only base key) > the base <option> value and label are the functional NAME, with no id suffix [8.23ms]
+(pass) workmate page base picker (C3: the functional NAME is the only base key) > the "type the base id" fallback copy is gone from BOTH dictionaries [0.45ms]
+(pass) workmate page dictionaries > registers the workmate namespace with both dictionaries [1.41ms]
+(pass) workmate page dictionaries > zh is the key-set source of truth and en matches it key for key (§L A7) [1.34ms]
+(pass) workmate page dictionaries > the mutation surface is localized in BOTH languages, not hardcoded English [1.38ms]
+(pass) workmate page dictionaries > the tab-strip label stays hardcoded English (contract §K, deliberate deferral) [1.26ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > every reason code maps to a distinct, readable message [0.71ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an in-use refusal names the blocking team and member (§E, user decision D2) [0.28ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an unknown failure falls back to the server text, never to a raw reason key [0.08ms]
+(pass) workmate page mutation controls > delete is an explicit two-step confirmation, never one destructive click (D1) [20.16ms]
+(pass) workmate page mutation controls > purge cannot be submitted without typing the exact name (§D confirm-required) [27.42ms]
+(pass) workmate page mutation controls > the archive confirmation posts that workmate and reports the archived outcome [16.08ms]
+(pass) workmate page mutation controls > a rename posts { name, new_name } and follows the new key (§H no stale selection) [16.04ms]
+(pass) workmate page mutation controls > an in-use refusal is shown with the blocking team/member, not a generic failure (§E) [15.92ms]
+(pass) workmate page mutation controls > a 409 collision is reported as taken, and an unknown key drops the stale selection [15.44ms]
+(pass) workmate page mutation controls > a same-key rename is refused locally and explains itself (t8 L1) [13.44ms]
+(pass) workmate page mutation controls > a purge never reports itself as a plain delete (t8 L2) [0.86ms]
+(pass) workmate page mutation controls > the zh reason strings are complete sentences without a stray gap (t8 L3) [0.55ms]
+(pass) workmate page mutation controls > a detail load that fails stops claiming to load (t8 L4) [10.77ms]
+(pass) without DSH-better-sidebar > registers no sidebar surface at all — there is no floating fallback [1.15ms]
+
+packages/mpd-bundle-plugin/test/team-page.test.mjs:
+(pass) AgentTeams sidebar tab descriptor > registers one single-instance tab with the pinned id and order [1.08ms]
+(pass) AgentTeams sidebar tab descriptor > createTab mints a clean tab so the auto-open seed never lands on it [0.86ms]
+(pass) AgentTeams sidebar tab descriptor > offers the auto-open switch as a plugin-owned setting [0.98ms]
+(pass) AgentTeams page rendering > renders the conversation's teams, members, tasks and archived section [8.19ms]
+(pass) AgentTeams page rendering > reproduces the floater's panel interior, class for class [5.52ms]
+(pass) AgentTeams page rendering > the head's collapse control closes the sidebar panel through the store [6.69ms]
+(pass) AgentTeams page rendering > a missing store still renders the same markup and never throws [5.60ms]
+(pass) AgentTeams page rendering > the head's busy dot follows live member activity [11.46ms]
+(pass) AgentTeams page rendering > renders the collapse glyph with the platform's own icon component [5.50ms]
+(pass) AgentTeams page rendering > falls back to the identical inline chevron when the platform icons are absent [5.45ms]
+(pass) AgentTeams page rendering > renders the archived section with the archived label [6.38ms]
+(pass) AgentTeams page rendering > filters by the tab's own conversation scope [5.48ms]
+(pass) AgentTeams page rendering > shows the floater's own empty hint inside the panel body [5.52ms]
+(pass) AgentTeams page rendering > a hidden tab renders no live view (the sidebar CSS-hides collapsed tabs) [6.73ms]
+(pass) AgentTeams page rendering > a failing host route degrades to the empty state instead of throwing [5.79ms]
+(pass) AgentTeams page rendering > a rejecting poll shows a readable error notice, not a crash [6.84ms]
+(pass) staged plan approval > passes a model directory to a staged team when the service provides one [6.49ms]
+(pass) staged plan approval > a PROBE-INVISIBLE modelDirectories still reaches a staged team through ctx.inject [5.78ms]
+(pass) staged plan approval > a throwing directoryFor degrades instead of crashing the page [7.29ms]
+(pass) staged plan approval > a CALLER-SCOPED modelDirectories reaches the staged team (the chain is declared at the call site) [6.27ms]
+(pass) staged plan approval > an UNSATISFIABLE caller chain degrades the staged card instead of throwing out of render [6.83ms]
+(pass) badge and polling > badge reports the cached live-team count for its session only [6.09ms]
+(pass) badge and polling > mounting the page twice keeps a single polling controller [8.99ms]
+(pass) auto-open policy > opens the tab once, with NO content seed, for a team that appears after the baseline [2709.10ms]
+(pass) auto-open policy > teams restored with the page never auto-open [2706.89ms]
+(pass) auto-open policy > the plugin switch turns auto-open off [2707.97ms]
+(pass) auto-open policy > a disabled tab type is never auto-opened [2708.61ms]
+(pass) boot safety > a missing page module degrades to one warning instead of throwing out of apply [2.20ms]
+(pass) boot safety > without better-sidebar nothing is registered and nothing is warned about [1.30ms]
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.mjs:
+(pass) shipped bundle client after the AgentTeams sidebar migration > registers exactly the four loader modules: the sidebar page plus the isolated settings card [0.64ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > carries the mpd export bridge with every pinned export [0.53ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > no mpd client source registers a removed surface [0.75ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > the page module keeps the pinned tab id and order [0.79ms]
+
+packages/mpd-bundle-plugin/test/settings-card.test.mjs:
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the shipped client registers a settings.section with id 'mpd', an explicit order and a label [0.89ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the Plugins tab's keyed item registration is GONE from the built client (the user's request) [0.58ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > NEGATIVE CONTROL: the absence predicate reddens the moment the retired registration returns [0.27ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the mount is DEFERRED (ctx.inject) and the client still declares only the stable seams [0.48ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the disclosure copy is the same sentence the TUI states, and no stale claim survives [0.12ms]
+(pass) the registration only happens when the settings scope is served > no settingsScope -> no entry, one warning-free degrade, no throw out of apply [1.44ms]
+(pass) the registration only happens when the settings scope is served > settingsScope at apply -> one SECTION entry, and its descriptor passes the whole predicate [3.33ms]
+(pass) the registration only happens when the settings scope is served > NEGATIVE CONTROL: the descriptor predicate reddens on every mutant that matters [0.13ms]
+(pass) the registration only happens when the settings scope is served > a late-served settingsScope still mounts the section (provideService wakes the fiber) [1.49ms]
+(pass) the card's form behaviour > it renders what the namespace reports (values, overridden marker, disclosure) and nothing invented [7.47ms]
+(pass) the card's form behaviour > a save writes nested PATHS through scope.mutate with the revision fence [2.72ms]
+(pass) the card's form behaviour > resetField asks for the file value (unset), and an invalid draft refuses to save [1.93ms]
+(pass) the card's form behaviour > a read-only scope renders read-only with a reason and writes nothing [4.26ms]
+(pass) isolation and front-door parity > web-client.js is the ONLY source that requires the card module, and the card does no I/O [0.98ms]
+(pass) isolation and front-door parity > the card's twenty-two fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift) [1.09ms]
+(pass) isolation and front-door parity > NEGATIVE CONTROL: the parity pin reddens on a drifted label, a shortened path and a changed declared list [0.81ms]
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the model control lists the catalog's provider/model pairs, GROUPED by provider [7.55ms]
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the provider control lists the catalog's provider ids with their display names [4.02ms]
+[mpd] model catalog: live catalog — 2 providers · 3 models
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the effort control offers the SELECTED model's own efforts, and changing the model re-derives them [7.18ms]
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > a model with no advertised efforts keeps the declared fallback list [4.62ms]
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > NO slot field is ever a text input (a slot value is never typed) [4.11ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > DEGRADE: no catalog services -> the declared lists, and the section still renders [3.87ms]
+[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)
+[mpd] model catalog: declared fallback — live catalog unavailable (the host resolved no model directory for this session: ui-model-selection: session "s1" resolved no scope)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > DEGRADE: an unbound session and a THROWING directoryFor keep the declared lists, no throw out of render [8.48ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > edits through the catalog-driven controls still write ONE mutate batch with the revision fence [1.10ms]
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the disclosure sentences are unchanged and still rendered with the new rows [3.53ms]
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-A: a PROBE-INVISIBLE catalog still feeds the pickers through ctx.inject (the defect) [3.98ms]
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-B: a directory-store mutation reaches the card with NO re-mount (live read, live re-projection) [7.53ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-C: when inject never resolves the declared lists render AND the fallback state is VISIBLE [3.64ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-D: the SERVED client.js carries the inject acquisition and the fallback marker [1.06ms]
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-E: the LIVE catalog is reached when — and only when — the caller-scoped chain is satisfied [4.27ms]
+[mpd] model catalog: declared fallback — live catalog unavailable (the host resolved no model directory for this session: cannot get property "testing.absent.seam" without inject)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-F: an UNSATISFIABLE caller chain degrades VISIBLY, naming the rejected seam [3.67ms]
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-G: the MEASURED list shape (`current` is a session ID STRING) reaches the LIVE catalog [4.96ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-G NEGATIVE CONTROL: the PRE-FIX object-only read answers undefined for the MEASURED shape [0.18ms]
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-H: with NO current session, a LISTED session that has BOTH scope and binding is bound [3.72ms]
+[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-H2: NO current session and NO resolvable listed session still NAMES the reason [3.48ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-1: a REJECTED read warns the console ONCE and the same sentence renders at the slot rows [5.86ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-2: a RESOLVED catalog emits the LIVE sentence once and leaves the slot hints untouched [3.93ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-3: warn-once survives repeated publishes and RE-ARMS only after a return to live [4.06ms]
+
+ 99 pass
+ 0 fail
+ 976 expect() calls
+Ran 99 tests across 4 files. [11.33s]
