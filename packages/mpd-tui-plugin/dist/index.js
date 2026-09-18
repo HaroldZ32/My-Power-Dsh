@@ -2367,14 +2367,37 @@ var SettingsSchema = import_schemastery.default.object({
 var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
 function knobHint(key, semantics) {
-  return `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}${semantics === undefined ? "" : " " + semantics}`;
+  const disclosure = `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
+  return semantics === undefined || semantics.length === 0 ? disclosure : `${semantics} ${disclosure}`;
 }
-var TEAM_MODEL_SLOT_SEMANTICS = {
-  slot1: "slot 1 is the default route of the slot-1 members (Architect, Planner, Reviewer, Lead, Senior Engineer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort",
-  slot2: "slot 2 is the default route of the slot-2 analysts (Researcher, Explorer, Plan Reviewer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort, while Vision Analyst keeps its own explicit vision route",
-  slot3: "slot 3 is the default route of the slot-3 executors (Deep Worker, Junior Engineer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort"
+var TEAM_MODEL_SLOT_GROUPS = {
+  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
+  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
+  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] }
 };
-var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot, index) => {
+var TEAM_MODEL_LEAF_TEMPLATES = {
+  provider: {
+    en: "The provider half of this slot. The three slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst belongs to no slot: it keeps its own fixed vision route.",
+    zh: "这一档的提供商。三档合起来是 team 成员的默认模型路由：建队时，{group}（{members}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 不属任何档位，它固定使用自己的视觉模型路由。"
+  },
+  model: {
+    en: "This slot's model. Together with the provider above, it decides the model the {group} ({members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.",
+    zh: "这一档的模型。与上面的提供商共同决定 {group}（{members}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。"
+  },
+  reasoningEffort: {
+    en: "This slot's reasoning effort (off / low / high / max). It sets how much the {group} ({members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
+    zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。"
+  }
+};
+function teamModelMembers(slot, lang) {
+  return TEAM_MODEL_SLOT_GROUPS[slot].members.join(lang === "zh" ? "、" : ", ");
+}
+function teamModelLeafSentence(slot, leaf, lang) {
+  return TEAM_MODEL_LEAF_TEMPLATES[leaf][lang].split("{group}").join(TEAM_MODEL_SLOT_GROUPS[slot][lang]).split("{members}").join(teamModelMembers(slot, lang));
+}
+var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {
+  const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1;
+  const group = TEAM_MODEL_SLOT_GROUPS[slot];
   const leaves = [
     { leaf: "provider", label: "provider", zh: "提供商" },
     { leaf: "model", label: "model", zh: "模型" },
@@ -2382,11 +2405,13 @@ var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot, index) => {
   ];
   return leaves.map(({ leaf, label, zh }) => ({
     path: ["teamModels", slot, leaf],
-    label: `Slot ${index + 1} ${label}`,
-    zh: `槽位 ${index + 1} ${zh}`,
+    label: `Slot ${index} ${label} (${group.en})`,
+    zh: `槽位 ${index} ${zh}（${group.zh}）`,
     kind: "select",
     options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
-    hint: knobHint(`teamModels.${slot}.${leaf}`, TEAM_MODEL_SLOT_SEMANTICS[slot])
+    semantics: teamModelLeafSentence(slot, leaf, "en"),
+    semanticsZh: teamModelLeafSentence(slot, leaf, "zh"),
+    hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en"))
   }));
 });
 var SETTINGS_KNOBS = [
@@ -2407,8 +2432,9 @@ var SETTINGS_KNOBS = [
 ];
 
 // packages/mpd-tui-plugin/src/settings.ts
-function knobHint2(key) {
-  return `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
+function knobHint2(key, semantics) {
+  const disclosure = `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
+  return semantics === undefined || semantics.length === 0 ? disclosure : `${semantics} ${disclosure}`;
 }
 var TEAM_MODEL_LEAVES = ["provider", "model", "reasoningEffort"];
 function dedupeOptions(pairs) {
@@ -2497,7 +2523,7 @@ function declaredField(knob) {
     path: [...knob.path],
     label: knob.label,
     descriptions: { zh: knob.zh },
-    hint: knobHint2(knob.path.join(".")),
+    hint: knobHint2(knob.path.join("."), knob.semantics),
     kind: knob.kind,
     ...knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }
   };

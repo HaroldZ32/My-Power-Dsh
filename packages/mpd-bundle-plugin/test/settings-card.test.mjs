@@ -21,7 +21,7 @@ import { callerScopedService, loadMpdClient } from "./client-harness.mjs"
 // The ONE shared knob declaration, imported at RUNTIME for the parity test: the card MIRRORS it
 // (it must not reference `SETTINGS_KNOBS`, which a QA gate pins against the built client), so the
 // test — not the client — compares the two declarations element by element.
-import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SETTINGS_KNOBS } from "../../mpd-config-plugin/src/settings-schema"
+import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SETTINGS_KNOBS, TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOT_IMPACT, teamModelLeafSentence, teamModelMembers, teamModelSlotHeading } from "../../mpd-config-plugin/src/settings-schema"
 
 const REPO = join(import.meta.dir, "..", "..", "..")
 const PKG = join(REPO, "packages", "mpd-bundle-plugin")
@@ -30,6 +30,9 @@ const CARD_SOURCE = readFileSync(join(PKG, "src", "settings-card.js"), "utf8")
 /** The card module itself, plus the EN dictionary it renders rows through. */
 const CARD = (0, eval)("(" + CARD_SOURCE + ")")((name) => ({ react: {}, locales: {} })[name] ?? {})
 const EN = CARD.dictionaries().en
+const ZH = CARD.dictionaries().zh
+/** The nine slot rows of the card's mirrored declaration, in declaration order. */
+const SLOT_ROW_FIELDS = CARD.FIELDS.filter((field) => field.path[0] === "teamModels")
 
 /** A settings scope with the host's measured surface, recording every write. */
 function fakeScope(snapshot, calls = []) {
@@ -284,7 +287,18 @@ describe("isolation and front-door parity", () => {
       // the DECLARED fallback options are the parity surface (§1.3); the LIVE lists differ by design
       expect(field.options ?? []).toEqual([...(knob.options ?? [])])
       // w16: a knob that carries a semantics sentence must carry the SAME one as the shared hint
-      if (field.semantics !== undefined) expect(knob.hint).toContain(field.semantics)
+      if (field.semantics !== undefined) {
+        expect(knob.hint).toContain(field.semantics)
+        // ...and for the nine slot leaves the human sentence is DECLARED on the knob in BOTH
+        // locales (the card mirrors it); the two watchdog rows keep their raw sentence AS the
+        // knob's hint, which is the shape they have always had.
+        if (knob.semantics !== undefined) {
+          expect(field.semantics).toBe(knob.semantics)
+          expect(field.semanticsZh).toBe(knob.semanticsZh)
+        } else {
+          expect(knob.hint).toBe(field.semantics)
+        }
+      }
     }
     const slotRows = FIELDS.filter((field) => field.path[0] === "teamModels")
     expect(slotRows).toHaveLength(9)
@@ -315,6 +329,61 @@ describe("isolation and front-door parity", () => {
     expect(compare(drift(last, { label: "Slot 3 reasoning effort (drifted)" }))[last][1]).toBe(false)
     expect(compare(drift(last, { path: ["teamModels", "slot3"] }))[last][0]).toBe(false)
     expect(compare(drift(last, { options: ["high"] }))[last][2]).toBe(false)
+  })
+
+  test("every slot row LEADS with its group's human sentence, in BOTH locales, before the key + disclosure", () => {
+    expect(SLOT_ROW_FIELDS).toHaveLength(9)
+    for (const field of SLOT_ROW_FIELDS) {
+      const slot = field.path[1]
+      const leaf = field.path[2]
+      const index = Number(String(slot).slice(4))
+      const group = TEAM_MODEL_SLOT_GROUPS[slot]
+      // the label names the group in the language it is written in
+      expect(field.label).toBe(`Slot ${index} ${String(leaf).replace("reasoningEffort", "reasoning effort")} (${group.en})`)
+      expect(field.zh).toBe(`槽位 ${index} ${leaf === "reasoningEffort" ? "推理强度" : leaf === "provider" ? "提供商" : "模型"}（${group.zh}）`)
+      // the sentence is the DECLARED one for THIS slot and leaf, naming the group's own members
+      expect(field.semantics).toBe(teamModelLeafSentence(slot, leaf, "en"))
+      expect(field.semanticsZh).toBe(teamModelLeafSentence(slot, leaf, "zh"))
+      expect(field.semantics).toContain(`the ${group.en} (${teamModelMembers(slot, "en")})`)
+      expect(field.semanticsZh).toContain(`${group.zh}（${teamModelMembers(slot, "zh")}）`)
+      // the COMPOSED hint of each locale starts with that sentence and only then states the key
+      const key = field.path.join(".")
+      for (const [dictionary, sentence] of [[EN, field.semantics], [ZH, field.semanticsZh]]) {
+        const hint = dictionary[key + ".hint"]
+        expect(hint.startsWith(sentence)).toBe(true)
+        expect(hint.indexOf("mpd.jsonc " + key)).toBe(sentence.length + 1)
+        expect(hint).toContain(BRIDGE_DISCLOSURE)
+        expect(hint).toContain(BRIDGE_NOT_LOST)
+      }
+    }
+    // a slot's sentence is GROUP-SPECIFIC: slot 2 speaks about its own members, never slot 1's.
+    const slot2Provider = SLOT_ROW_FIELDS.find((field) => field.path.join(".") === "teamModels.slot2.provider")
+    expect(slot2Provider.semantics).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
+    expect(slot2Provider.semantics).not.toContain("Architect")
+    expect(slot2Provider.semantics).toContain("Vision Analyst") // keeps its own fixed vision route
+    // the scalar rows keep their declared shape: a row with a human sentence leads with it, and a
+    // row without one keeps the disclosure-only hint it always had (no invented copy).
+    for (const field of CARD.FIELDS.filter((row) => row.path[0] !== "teamModels")) {
+      const key = field.path.join(".")
+      const hint = EN[key + ".hint"]
+      if (field.semantics === undefined) expect(hint.startsWith("mpd.jsonc " + key)).toBe(true)
+      else expect(hint.startsWith(field.semantics)).toBe(true)
+      expect(hint).toContain("mpd.jsonc " + key)
+      expect(hint).toContain(BRIDGE_DISCLOSURE)
+      expect(hint).toContain(BRIDGE_NOT_LOST)
+    }
+  })
+
+  test("each slot's group heading and one-line impact are DECLARED, above the slot's own rows", () => {
+    for (const slot of ["slot1", "slot2", "slot3"]) {
+      const index = Number(slot.slice(4))
+      expect(EN[`teamModels.${slot}.heading`]).toBe(teamModelSlotHeading(slot, "en"))
+      expect(ZH[`teamModels.${slot}.heading`]).toBe(teamModelSlotHeading(slot, "zh"))
+      expect(EN[`teamModels.${slot}.heading`]).toBe(`Slot ${index} — ${TEAM_MODEL_SLOT_GROUPS[slot].en} (${teamModelMembers(slot, "en")})`)
+      expect(ZH[`teamModels.${slot}.heading`]).toBe(`槽位 ${index} —— ${TEAM_MODEL_SLOT_GROUPS[slot].zh}（${teamModelMembers(slot, "zh")}）`)
+      expect(EN[`teamModels.${slot}.impact`]).toBe(TEAM_MODEL_SLOT_IMPACT.en)
+      expect(ZH[`teamModels.${slot}.impact`]).toBe(TEAM_MODEL_SLOT_IMPACT.zh)
+    }
   })
 })
 
@@ -512,6 +581,68 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     expect(text).toContain("the file half is host-limited")
     expect(text).toContain(BRIDGE_NOT_LOST)
     expect(text).toContain("if no session is live, the save stays in settings")
+    client.restore()
+  })
+
+  // ── The nine slot rows sat in one undifferentiated block: nothing on screen said WHICH members a
+  // slot routes, and each row's hint opened with the boilerplate disclosure, so the one sentence a
+  // reader needs was the LAST thing in a 400-char line. Both are asserted on the rendered tree here.
+  test("G-1: each slot renders its group heading + impact ABOVE its three rows, human sentence FIRST", async () => {
+    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const children = tree.props.children
+    for (const slot of ["slot1", "slot2", "slot3"]) {
+      const heading = children.find((child) => child?.props?.["data-mpd-slot-group"] === slot)
+      const impact = children.find((child) => child?.props?.["data-mpd-slot-impact"] === slot)
+      expect(heading).toBeDefined()
+      expect(impact).toBeDefined()
+      const headingIndex = children.indexOf(heading)
+      const impactIndex = children.indexOf(impact)
+      const firstRow = children.findIndex((child) => child?.key === `teamModels.${slot}.provider`)
+      const lastRow = children.findIndex((child) => child?.key === `teamModels.${slot}.reasoningEffort`)
+      // the heading is above ALL THREE rows of ITS OWN slot, with the impact line under it
+      expect(headingIndex).toBeLessThan(impactIndex)
+      expect(impactIndex).toBeLessThan(firstRow)
+      expect(impactIndex).toBeLessThan(lastRow)
+      expect(textOf(heading)).toBe(EN[`teamModels.${slot}.heading`])
+      expect(textOf(impact)).toBe(EN[`teamModels.${slot}.impact`])
+      expect(textOf(heading)).toContain(TEAM_MODEL_SLOT_GROUPS[slot].en)
+    }
+    // and the headings/impacts do NOT disturb the catalog-status lines (both still data-attributed)
+    expect(elementsOf(tree, "p").filter((element) => element.props?.["data-mpd-catalog-state"] !== undefined)).toHaveLength(2)
+    client.restore()
+  })
+
+  test("G-2: the human sentence renders FIRST at readable size/opacity, the disclosure dimmer beneath", async () => {
+    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const row = rowOf(tree, "teamModels.slot2.provider")
+    expect(row).toBeDefined()
+    const field = SLOT_ROW_FIELDS.find((candidate) => candidate.path.join(".") === "teamModels.slot2.provider")
+    const hintBlock = row.props.children[1]
+    const [human, disclosure] = hintBlock.props.children
+    expect(human.props["data-mpd-row-human"]).toBe("teamModels.slot2.provider")
+    expect(disclosure.props["data-mpd-row-disclosure"]).toBe("teamModels.slot2.provider")
+    expect(textOf(human)).toBe(field.semantics)
+    expect(textOf(human)).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
+    expect(textOf(disclosure)).toContain("mpd.jsonc teamModels.slot2.provider")
+    expect(textOf(disclosure)).toContain(BRIDGE_DISCLOSURE)
+    // readable above, dimmer below — asserted on the styles, not on a screenshot
+    expect(human.props.style.fontSize).toBeGreaterThan(disclosure.props.style.fontSize)
+    expect(human.props.style.opacity).toBeGreaterThan(disclosure.props.style.opacity)
+    // BOTH still reach the row's text, so the pre-existing hint assertions keep their subject
+    expect(hintOfRow(tree, "teamModels.slot2.provider")).toContain(field.semantics)
+    expect(hintOfRow(tree, "teamModels.slot2.provider")).toContain("mpd.jsonc teamModels.slot2.provider")
+    // a disclosure-only scalar row keeps the SINGLE dim span it always had (no restyle, no copy)
+    const scalarHint = rowOf(tree, "hashline.maxDiffChars").props.children[1]
+    expect(Array.isArray(scalarHint.props.children)).toBe(false)
+    expect(textOf(scalarHint).startsWith("mpd.jsonc hashline.maxDiffChars")).toBe(true)
+    client.restore()
+  })
+
+  test("NEGATIVE CONTROL: the heading/impact lookup is falsifiable (a wrong slot attr finds nothing)", async () => {
+    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const children = tree.props.children
+    expect(children.find((child) => child?.props?.["data-mpd-slot-group"] === "slot4")).toBeUndefined()
+    expect(children.find((child) => child?.props?.["data-mpd-slot-impact"] === "slot3")).toBeDefined()
     client.restore()
   })
 

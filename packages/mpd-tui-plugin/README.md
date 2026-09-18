@@ -168,10 +168,13 @@ only when no logger exists to `stderr`, with `debug` gated behind
    config layer applies it to every workspace immediately. **The plugin
    BEHAVIOUR change needs a restart** for every knob in this section, because the
    mpd consumers capture their config at `apply()` — stated in the same words on
-   screen: every field hint reads `mpd.jsonc <key> — a save writes
+   screen: every field hint names its mpd.jsonc key and carries `a save writes
    <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect
    for the mpd plugins after a restart (this knob is read at plugin mount)`,
-   followed by the clause that a settings-only save is never a lost save. The
+   followed by the clause that a settings-only save is never a lost save. The nine
+   team-model slot hints LEAD with the knob's own human sentence — the group the
+   slot routes (`槽位 2 提供商（分析型成员）` / `Slot 2 provider (analysis members)`)
+   and what configuring it does — and only then state the key and that disclosure. The
    write-back **refuses** (loudly, writing no file) when the target is ambiguous
    — no live session (`no-live-session`), several live workspaces
    (`ambiguous-multi-root`, every candidate named), a read-only/unparsable/
