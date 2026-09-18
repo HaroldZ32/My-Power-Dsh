@@ -4780,6 +4780,19 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     return CATALOG_FALLBACK_NOTICE + reason
   }
 
+  /**
+   * The short trailing marker a SLOT row's hint carries while the catalog is in fallback: the third
+   * surface of the same state, on the rows the user is actually looking at. Live renders nothing
+   * here — the hint is not part of the front-door parity contract (the parity pin compares the
+   * declaration), so the suffix is a render-time addition only.
+   */
+  function slotFallbackMarker(info) {
+    const state = info ?? FALLBACK_CATALOG
+    if (state.mode === "live") return ""
+    const reason = typeof state.reason === "string" && state.reason.length > 0 ? state.reason : ""
+    return reason === "" ? " — declared fallback" : " — declared fallback: " + reason
+  }
+
   /** The provider/model counts of one group list. */
   function catalogCounts(groups) {
     let models = 0
@@ -4846,9 +4859,25 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       }
     }
 
+    /**
+     * The CONSOLE SIGNAL: a degraded read used to be visible ONLY in the card's own paragraph at
+     * the TOP of the section, which a user looking at the three slot pickers at the BOTTOM never
+     * sees — and the fallback path was console-silent, which is how a dead catalog read survived a
+     * whole verification wave. Exactly ONE warning when the state BECOMES a fallback (never
+     * repeated while it stays one; re-armed when it returns to live and degrades again) and ONE
+     * info when it becomes live. The sentence is `catalogNotice`'s — never a second wording.
+     */
+    let announcedMode
     function publish(nextGroups, nextInfo) {
       groups = nextGroups
       info = nextInfo
+      const mode = info !== null && info !== undefined && info.mode === "live" ? "live" : "fallback"
+      if (mode !== announcedMode) {
+        announcedMode = mode
+        const sentence = catalogNotice(info)
+        if (mode === "live") console.info("[mpd] model catalog:", sentence)
+        else console.warn("[mpd] model catalog:", sentence)
+      }
       notify()
     }
 
@@ -5262,7 +5291,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         const key = fieldKey(field)
         const control = state.controls[key] ?? { text: "" }
         const label = t(key)
-        const hint = t(key + ".hint")
+        // The nine slot rows carry the fallback marker; the thirteen scalar rows are untouched.
+        const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
         const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
         const input = field.kind === "select" && options.length > 0
           ? createElement(
@@ -5291,6 +5321,18 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           ),
         )
       })
+      // VISIBLE AT THE CONTROL: the three team-model pickers sit at the BOTTOM of the 22 rows,
+      // where the section's top notice is off-screen — so the SAME sentence renders again
+      // immediately above the first slot row (between the 13 scalar rows and the nine slot rows),
+      // in BOTH states. It carries its own `data-mpd-catalog-state`; the top notice keeps its own.
+      const slotStart = fields.findIndex((field) => field.path[0] === TEAM_MODEL_SLOT)
+      const scalarRows = slotStart < 0 ? rows : rows.slice(0, slotStart)
+      const slotRows = slotStart < 0 ? [] : rows.slice(slotStart)
+      const slotLine = createElement(
+        "p",
+        { style: { margin: "12px 0 4px", fontSize: 12, opacity: 0.75 }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
+        catalogNotice(catalog),
+      )
       return createElement(
         "div",
         { style: { border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: 12 } },
@@ -5309,7 +5351,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           },
           catalogNotice(catalog),
         ),
-        ...rows,
+        ...scalarRows,
+        slotLine,
+        ...slotRows,
         createElement(
           "div",
           { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 10 } },
