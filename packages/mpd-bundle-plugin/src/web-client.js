@@ -147,7 +147,7 @@
     "panel.loading": "加载中…",
     "panel.empty": "暂无 workmate — 请在下方初始化一个。",
     "panel.baseLabel": "Base（专家模板）",
-    "panel.basePlaceholder": "base（例如 hephaestus）",
+    "panel.basePlaceholder": "base（例如 Deep Worker）",
     "panel.nameLabel": "名称（可选）",
     "panel.namePlaceholder": "名称（可选）",
     "panel.noteLabel": "备注（可选）",
@@ -166,7 +166,7 @@
     "panel.created": "创建",
     "panel.updated": "更新",
     "panel.model": "模型",
-    "panel.rosterUnavailable": "roster 不可用，请手填 base id",
+    "panel.rosterUnavailable": "roster 不可用，请手填 base 名称",
     "mutate.renameTitle": "重命名",
     "mutate.renameLabel": "新名称（仅限 [a-z0-9_-]）",
     "mutate.renamePlaceholder": "新名称",
@@ -202,7 +202,7 @@
     "panel.loading": "Loading…",
     "panel.empty": "No workmates yet — initialize one below.",
     "panel.baseLabel": "Base (roster template)",
-    "panel.basePlaceholder": "base (e.g. hephaestus)",
+    "panel.basePlaceholder": "base (e.g. Deep Worker)",
     "panel.nameLabel": "Name (optional)",
     "panel.namePlaceholder": "name (optional)",
     "panel.noteLabel": "Note (optional)",
@@ -221,7 +221,7 @@
     "panel.created": "Created",
     "panel.updated": "Updated",
     "panel.model": "Model",
-    "panel.rosterUnavailable": "roster unavailable — type the base id",
+    "panel.rosterUnavailable": "roster unavailable — type the base name",
     "mutate.renameTitle": "Rename",
     "mutate.renameLabel": "New name ([a-z0-9_-] only)",
     "mutate.renamePlaceholder": "new name",
@@ -387,7 +387,7 @@
         .then((data) => { setWorkmates(data.workmates ?? []); setError(null); })
         .catch((e) => { setError(String(e?.message ?? e)); setWorkmates([]); });
       request(ROSTER_URL)
-        .then((data) => { setBases(data.bases ?? []); setBase((prev) => prev || String((data.bases ?? [])[0]?.id ?? "")); })
+        .then((data) => { setBases(data.bases ?? []); setBase((prev) => prev || String((data.bases ?? [])[0]?.name ?? "")); })
         .catch(() => setBases([]));
     }, []);
     react.useEffect(() => { refresh(); }, [refresh]);
@@ -575,7 +575,7 @@
             : react.createElement("div", { role: "alert", style: { color: "#c33", fontSize: 12 } }, String(error)))
           : react.createElement("div", { style: { overflowY: "auto" } },
           react.createElement("div", { style: MUTED },
-            String(d.baseName ?? d.baseId ?? ""),
+            String(d.baseName ?? ""),
             d.readonly ? " · " + t("panel.readonly") : "",
             d.uses !== undefined ? " · " + t("panel.uses", { count: d.uses }) : "",
           ),
@@ -625,7 +625,7 @@
           react.createElement("span", null, t("panel.baseLabel")),
           (bases ?? []).length > 0
             ? react.createElement("select", { value: base, onChange: (e) => setBase(e.target.value), style: INPUT_STYLE, "aria-label": t("panel.baseLabel") },
-                (bases ?? []).map((b) => react.createElement("option", { key: b.id, value: b.id }, b.name + " (" + b.id + ")" + (b.readonly ? " · " + t("panel.readonly") : ""))))
+                (bases ?? []).map((b) => react.createElement("option", { key: b.name, value: b.name }, b.name + (b.readonly ? " · " + t("panel.readonly") : ""))))
             : react.createElement("input", { placeholder: t("panel.basePlaceholder"), value: base, onChange: (e) => setBase(e.target.value), style: INPUT_STYLE }),
         ),
         bases !== null && (bases ?? []).length === 0 ? react.createElement("div", { style: { ...MUTED, fontSize: 11 } }, t("panel.rosterUnavailable")) : null,

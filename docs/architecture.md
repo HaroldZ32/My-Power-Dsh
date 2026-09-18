@@ -130,7 +130,11 @@ mechanism — the plugin never touches API keys**.
 ### Roster → workmate → team
 - `mpd_workmate_init` (base + optional name) copies a roster base into
   `~/.mpd/workmate/<name>/` (meta/persona/memory/note, capped 8/8/1.5 KiB) — the base
-  stays pristine.
+  stays pristine. The base is addressed by its **functional NAME only** (a roster id is
+  refused with a names-only error, and `/roster` never serves an id either); omitting
+  `name` auto-generates it from that functional name (`Deep Worker` → `deep-worker-1`).
+  `meta.json` keeps the internal `baseId` as provenance, while every tool output, route
+  and GUI strips it.
 - After work, `mpd_workmate_reflect` appends a bounded memory entry (oldest evicted),
   merges a persona revision, regenerates the note (specialty kept + latest task), bumps
   `uses`.

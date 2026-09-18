@@ -42,13 +42,15 @@ advertises an upstream alias: a role is described by what it does.
 *Compatibility (internal, undocumented on any surface):* the roster also still accepts
 its stable internal keys — the chain keys used by `mpd-modelchain-plugin` and by
 `personas/<key>.md` (`oracle`, `sisyphus-junior`, …), the camelCase spellings
-(`sisyphusJunior`) and the legacy `mpd-<key>` form — so existing chains, workmate
-records (`meta.baseId`) and callers keep working. They are never returned, listed or
-required.
+(`sisyphusJunior`) and the legacy `mpd-<key>` form — so existing chains and callers keep
+working. They are never returned, listed or required. The **workmate library does not
+resolve a base this way**: `mpd_workmate_init` matches the functional NAME only (a stable
+id is refused with a names-only error), and `meta.baseId` is kept purely as internal
+provenance that no tool output, route or GUI exposes.
 
-The same resolution is what `ctx.get("mpdRoles").get(key)` uses, so the workmate
-library (`mpd_workmate_init base=...`), `mpd_modelchain_resolve` and the roster tools
-all address a role the same way.
+`ctx.get("mpdRoles").get(key)` uses that same resolution, which is how
+`mpd_modelchain_resolve` and the roster tools address a role; the workmate library
+(`mpd_workmate_init base=...`) instead addresses it by functional NAME.
 
 ## Extension-contributed roles
 

@@ -1,7 +1,7 @@
 // mpd-dsh-adapter unit tests: every wrapped harness seam is normalized and
 // feature-detected, so a harness build that lacks a seam degrades with an
 // actionable error instead of crashing the plugin tree.
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 import { spawnSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 
@@ -57,6 +57,20 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
       return dispose
     },
   }
+  // The live model registry the llmCatalog seam projects. Host contract, measured in
+  // dsh-llm/lib/types/index.d.ts: `listProviders(): LlmProviderInfo[]` (SYNC),
+  // `listModels(provider): Promise<LlmModelInfo[]>`,
+  // `resolveModelInfo(provider, model): Promise<LlmResolvedModelInfo>`.
+  const llm = {
+    listProviders: () => [{ id: "deepseek-official", name: "DeepSeek Official" }],
+    listModels: async (providerId: string) => [{ provider: providerId, id: "deepseek-v4-flash", name: "DeepSeek V4 Flash" }],
+    resolveModelInfo: async (providerId: string, modelId: string) => ({
+      provider: providerId,
+      id: modelId,
+      name: modelId,
+      reasoning: { efforts: [{ id: "high", name: "High" }], defaultEffort: "high" },
+    }),
+  }
   // The sample agent carries its OWN scoped ctx: on a real harness the agent-scoped compaction
   // service is a different object from the host-plane one, so capabilities() reports two seams.
   const submitted: any[] = []
@@ -68,7 +82,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
   }
   const agents = { list: () => [sampleAgent], get: (id: string) => (id === sampleAgent.id ? sampleAgent : undefined) }
   const ctx = {
-    get: (serviceName: string) => ({ tools, subagents, skills, agentPresets, agents, compaction, commands } as Record<string, unknown>)[serviceName],
+    get: (serviceName: string) => ({ tools, subagents, skills, agentPresets, agents, compaction, commands, llm } as Record<string, unknown>)[serviceName],
     on: (event: string, listener: any) => {
       if (event === "tools/post-execute") listeners.push(listener)
       if (event === "tools/pre-execute") preListeners.push(listener)
@@ -94,6 +108,147 @@ describe("capabilities", () => {
     expect(caps.subagentsSpawn).toBe(false)
     expect(caps.skillsProvider).toBe(false)
     expect(caps.agentPresets).toBe(false)
+    expect(caps.llmCatalog).toBe(false)
+  })
+})
+
+describe("llm catalog plane", () => {
+  // A ctx whose ONLY service is the model registry (the seam reads nothing else).
+  const llmOnlyCtx = (llm: unknown) => ({ get: (name: string) => (name === "llm" ? llm : undefined) })
+
+  test("projects providers, models and reasoning from the live registry", async () => {
+    const llm = {
+      listProviders: () => [
+        { id: "deepseek-official", name: "DeepSeek Official" },
+        { id: "pi-ai", name: "pi-ai" },
+      ],
+      listModels: async (providerId: string) => (providerId === "deepseek-official"
+        ? [
+            { provider: providerId, id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", description: "fast" },
+            { provider: providerId, id: "deepseek-v4-pro", name: "DeepSeek V4 Pro" },
+          ]
+        : []),
+      resolveModelInfo: async (providerId: string, modelId: string) => (modelId === "deepseek-v4-flash"
+        ? {
+            provider: providerId,
+            id: modelId,
+            name: modelId,
+            reasoning: { efforts: [{ id: "high", name: "High" }, { id: "max", name: "Max", description: "deepest" }], defaultEffort: "high" },
+          }
+        : { provider: providerId, id: modelId, name: modelId }),
+    }
+    const catalog = await createDshAdapter(llmOnlyCtx(llm)).llmCatalog()
+    expect(catalog).toEqual({
+      providers: [
+        {
+          id: "deepseek-official",
+          name: "DeepSeek Official",
+          models: [
+            {
+              id: "deepseek-v4-flash",
+              name: "DeepSeek V4 Flash",
+              description: "fast",
+              efforts: [{ id: "high", name: "High" }, { id: "max", name: "Max", description: "deepest" }],
+              defaultEffort: "high",
+            },
+            // No reasoning block: the model still appears, with an EMPTY efforts array
+            // and no defaultEffort key at all.
+            { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", efforts: [] },
+          ],
+        },
+        { id: "pi-ai", name: "pi-ai", models: [] },
+      ],
+      degraded: false,
+    })
+    expect(Object.hasOwn(catalog.providers[0].models[1], "defaultEffort")).toBe(false)
+  })
+
+  test("the fake full harness satisfies the seam", async () => {
+    const { ctx } = fakeHarness()
+    const adapter = createDshAdapter(ctx)
+    expect(adapter.capabilities().llmCatalog).toBe(true)
+    const catalog = await adapter.llmCatalog()
+    expect(catalog.degraded).toBe(false)
+    expect(catalog.providers[0].models[0].defaultEffort).toBe("high")
+  })
+
+  test("a missing llm service degrades and warns exactly once", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const adapter = createDshAdapter({ get: () => undefined })
+      expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
+      // Second read: same degrade, but the warn-once line is NOT repeated.
+      expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(String(warn.mock.calls[0]?.[0])).toMatch(/llmCatalog degraded/)
+      expect(String(warn.mock.calls[0]?.[0])).toMatch(/llm service is unavailable/)
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  test("a partial seam degrades, names the missing method, and reports capabilities false", async () => {
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const partial = { listProviders: () => [], listModels: async () => [] }
+      const adapter = createDshAdapter(llmOnlyCtx(partial))
+      expect(adapter.capabilities().llmCatalog).toBe(false)
+      expect(await adapter.llmCatalog()).toEqual({ providers: [], degraded: true })
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(String(warn.mock.calls[0]?.[0])).toContain("resolveModelInfo")
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  test("a rejecting provider is skipped and the rest of the catalog survives", async () => {
+    const llm = {
+      listProviders: () => [{ id: "broken", name: "Broken" }, { id: "ok", name: "OK" }],
+      listModels: async (providerId: string) => {
+        if (providerId === "broken") throw new Error("provider exploded")
+        return [{ provider: providerId, id: "m1", name: "M1" }]
+      },
+      resolveModelInfo: async (providerId: string, modelId: string) => ({ provider: providerId, id: modelId, name: modelId }),
+    }
+    const catalog = await createDshAdapter(llmOnlyCtx(llm)).llmCatalog()
+    expect(catalog.degraded).toBe(true)
+    expect(catalog.providers).toEqual([{ id: "ok", name: "OK", models: [{ id: "m1", name: "M1", efforts: [] }] }])
+  })
+
+  test("a model whose resolveModelInfo rejects is skipped, not fatal", async () => {
+    const llm = {
+      listProviders: () => [{ id: "p", name: "P" }],
+      listModels: async () => [{ id: "bad", name: "Bad" }, { id: "good", name: "Good" }],
+      resolveModelInfo: async (_providerId: string, modelId: string) => {
+        if (modelId === "bad") throw new Error("nope")
+        return { id: modelId, name: modelId }
+      },
+    }
+    const catalog = await createDshAdapter(llmOnlyCtx(llm)).llmCatalog()
+    expect(catalog.degraded).toBe(true)
+    expect(catalog.providers).toEqual([{ id: "p", name: "P", models: [{ id: "good", name: "Good", efforts: [] }] }])
+  })
+
+  test("a throwing listProviders degrades instead of rejecting", async () => {
+    const llm = {
+      listProviders: () => { throw new Error("registry down") },
+      listModels: async () => [],
+      resolveModelInfo: async () => ({}),
+    }
+    await expect(createDshAdapter(llmOnlyCtx(llm)).llmCatalog()).resolves.toEqual({ providers: [], degraded: true })
+  })
+
+  test("a non-array listProviders answer degrades instead of throwing", async () => {
+    const llm = { listProviders: () => undefined, listModels: async () => [], resolveModelInfo: async () => ({}) }
+    await expect(createDshAdapter(llmOnlyCtx(llm)).llmCatalog()).resolves.toEqual({ providers: [], degraded: true })
+  })
+
+  test("the lazy facade proxies the seam to the mounted adapter", async () => {
+    const { ctx } = fakeHarness()
+    const lazy = createLazyDshAdapter(ctx, { label: "mpd-test", warn: () => {} })
+    const catalog = await lazy.llmCatalog()
+    expect(catalog.degraded).toBe(false)
+    expect(catalog.providers).toHaveLength(1)
   })
 })
 

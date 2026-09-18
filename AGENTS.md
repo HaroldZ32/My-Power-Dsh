@@ -68,7 +68,11 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   Plan Reviewer (plan review), Vision Analyst (image analysis), Junior Engineer (fast,
   scoped execution). The stable `id` (chain key,
   `personas/<id>.md`, workmate `meta.baseId`) is INTERNAL: accepted for compatibility and
-  never advertised — no description, render or result lists or returns one. One-shot
+  never advertised — no description, render or result lists or returns one. A workmate
+  BASE therefore resolves by functional NAME only (a roster id such as `hephaestus` is
+  refused, names-only), auto-generated workmate names derive from that functional name
+  (`Deep Worker` → `deep-worker-1`), and `baseId` is stored as internal provenance in
+  `meta.json` but is exposed by NO tool output, web route or GUI. One-shot
   consult via `mpd-roles-plugin`
   (`mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`, `mpdRoles` service
   consumed by `mpd_modelchain_resolve`). Team work uses the adopted
@@ -88,7 +92,16 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   `mpd_workmate_delete` (ARCHIVE-FIRST into `.archive/<key>-<stamp>/`; permanent removal only
   with `purge: true` + `confirm === name`, and recovery is a manual `mv` back — there is no
   in-product restore). Both mutations are refused while the workmate is in use (see §12) and
-  names are ASCII-only `[a-z0-9_-]` before any filesystem call. The ONLY
+  names are ASCII-only `[a-z0-9_-]` before any filesystem call. The profile's members do not
+  carry literal models: each resolves its DEFAULT route from the three configurable
+  **team-model slots** (`teamModels.slot{1,2,3}.{provider,model,reasoningEffort}` in
+  `mpd.jsonc` / the `mpd` settings namespace, defaulting to `deepseek-official` /
+  `deepseek-v4-flash` at `max`/`high`/`high`) — slot 1 = Architect/Planner/Reviewer/Lead/
+  Senior Engineer, slot 2 = Researcher/Explorer/Plan Reviewer, slot 3 = Deep Worker/Junior
+  Engineer. A member may declare an explicit `route` instead (Vision Analyst does, to keep
+  its vision model), and a slot that cannot be resolved — missing service, missing or
+  incomplete slot, unknown model, unsupported effort — fails team creation LOUDLY naming the
+  member and the slot, writes no team state, and NEVER clamps an effort. The ONLY
   shipped preset is `mpd` — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md`
   (falling back to `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
@@ -632,6 +645,14 @@ in `evidence/platform/harness-close/`.
   registration, and `dsh --dump-config` composes rows without mounting them). Do not filter
   the list with `dsh.hasTool` either: it reads the global tool view, where `write`/`edit`/`bash`
   answer false, so filtering would silently DROP the entries that are the guarantee.
+- team-model slot: one of the three configurable default model routes of the agent-teams
+  members — `teamModels.slot{1,2,3}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the
+  `mpd` settings namespace, whose defaults are `deepseek-official` / `deepseek-v4-flash` at
+  `max`/`high`/`high`. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2
+  Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer; a member may declare
+  an explicit `route` instead (Vision Analyst does, keeping its vision model). A slot that
+  cannot be resolved fails team creation LOUDLY naming the member and the slot, writes no team
+  state, and never clamps an effort.
 - workmate: a durable, evolving agent instance in `~/.mpd/workmate/` created by
   `mpd-workmate-plugin` (`mpd_workmate_*`) from a roster BASE template with an
   independent name; it self-summarizes after each work (persona + independent memory,
@@ -643,6 +664,9 @@ in `evidence/platform/harness-close/`.
   a directory move and an interrupted one harmless. `delete` is archive-first
   (`~/.mpd/workmate/.archive/<key>-<stamp>/`, no in-product restore — recover by hand with
   `mv`), permanent only with `purge: true` + `confirm === name`; both mutations are refused
-  while the workmate is in use and names are ASCII-only `[a-z0-9_-]`.
+  while the workmate is in use and names are ASCII-only `[a-z0-9_-]`. A base is addressed by
+  its functional NAME only (a roster id is refused with a names-only error), an auto-generated
+  name derives from that functional name (`Deep Worker` → `deep-worker-1`), and `baseId` is
+  internal provenance in `meta.json` that no tool output, web route or GUI ever exposes.
 - mpd: our naming prefix (my-power-dsh).
 - golden: graded benchmark task set in `tests/golden`.

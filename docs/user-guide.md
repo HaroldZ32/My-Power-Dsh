@@ -163,13 +163,18 @@ instantiate it as a *workmate* — a durable copy under `~/.mpd/workmate/` (your
 cross-project) with an independent name.
 
 ```text
-mpd_workmate_init   { base: <roster name>, name?: <independent name>, note? }
+mpd_workmate_init   { base: <functional name>, name?: <independent name>, note? }
   → creates ~/.mpd/workmate/<name>/{meta.json, persona.md, memory.md, note.md}
 ```
 
+`base` is the specialist's **functional name** (`Deep Worker`, not a roster id — ids are internal
+and are refused). Omit `name` and the instance is auto-named from that functional name
+(`Deep Worker` → `deep-worker-1`). `meta.json` records the internal `baseId` as provenance, but no
+tool output, route or GUI ever exposes it.
+
 | Tool | Use |
 |---|---|
-| `mpd_workmate_list` | list instances (name, base, uses, updatedAt, note) |
+| `mpd_workmate_list` | list instances (name, baseName, uses, updatedAt, note) |
 | `mpd_workmate_spawn { name, task, context? }` | one-shot reuse: the workmate runs with its evolved persona + independent memory + note on its own model route; it is instructed to call `mpd_workmate_reflect` before its final report |
 | `mpd_workmate_reflect { name, task, outcome, persona_delta?, note? }` | self-evolve after work: bounded memory append (oldest evicted), persona revision merge, note regenerate, `uses++` |
 | `mpd_workmate_match { task }` | rank notes against a task; below threshold → `matched: false` and the suggestion is to **initialize a NEW workmate** — never force a weak match |
@@ -278,8 +283,10 @@ transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.
 
 ### 7.2 The `/settings` screen and the `mpd.jsonc` bridge
 
-`/settings` edits the six real `mpd.jsonc` knobs — `hashline.maxDiffChars`,
-`commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir` — under the
+`/settings` edits the real `mpd.jsonc` knobs — 22 in all (the original 13 plus the nine
+`teamModels` slot leaves, which are selection-only fields whose options come from the live model
+catalog, with the declared lists as fallback), among them `hashline.maxDiffChars`,
+`commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir` — under the
 harness settings namespace `mpd`. That namespace is served by `packages/mpd-config-plugin`, whose base
 is the workspace FILE value, so the screen opens on your file rather than on a schema default; a save
 **writes `<workspace>/.mpd/mpd.jsonc`** for the live session workspace, preserving comments, key order
@@ -359,6 +366,7 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | provider/model chains per roster role |
 | `team.stateDir` | agent-teams | where team state lives (defaults to `.mpd/team`) |
+| `teamModels.slot{1,2,3}.*` | agent-teams (via mpd-config) | the three **team-model slots**: `{provider, model, reasoningEffort}` per slot, defaulting to `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high`. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer; Vision Analyst keeps its own explicit vision route. A slot that cannot be resolved fails team creation **loudly** (the member and the slot are named, nothing is written) and an effort is never silently clamped. Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section; a saved change reaches the file immediately and the plugins after a restart. |
 
 `mpd-codegraph` is deliberately absent from this table: it takes `autoInit`, `initTimeoutMs`,
 `cooldownMs` and `binary` from its **bundle-patch row** options (read at apply time), and no plugin

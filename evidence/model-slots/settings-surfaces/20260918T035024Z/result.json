@@ -1,0 +1,114 @@
+{
+  "case": "t9-settings-surfaces (verification, wave w1)",
+  "objective": "independently verify the SETTINGS half: the three team-model slots in the resolved config, both front doors, on a real mount",
+  "measuredAt": "2026-09-18T03:54Z",
+  "settleBeforeYouMeasure": {
+    "pinnedBeforeFirstMeasurement": true,
+    "files": [
+      "packages/mpd-tui-plugin/dist/index.js",
+      "packages/mpd-bundle-plugin/client.js",
+      "packages/mpd-config-plugin/src/index.ts",
+      "packages/mpd-config-plugin/src/settings-schema.ts",
+      "packages/mpd-tui-plugin/src/settings.ts",
+      "packages/mpd-dsh-adapter-plugin/dist/index.js",
+      "packages/mpd-bundle/cordis.patch.yml",
+      "packages/mpd-config-plugin/dist/index.js"
+    ],
+    "stableAcrossSettleWindow": true,
+    "note": "hashes-pinned.txt vs hashes-after-settle.txt vs hashes-final.txt are identical for all 8 inputs; every measurement below is anchored to those hashes."
+  },
+  "artifactSha256": {
+    "packages/mpd-tui-plugin/dist/index.js": "73159e0470dc80cd78eb81e4026ace6aac025c73405759296a4b2e4f734ee51e",
+    "packages/mpd-bundle-plugin/client.js": "0ee5da800c1dc18bdbb640ef31eb0e3b1dc2049f8fd9fa65caf1747d30c044e5",
+    "packages/mpd-config-plugin/src/index.ts": "28fa64d4db831922e442ec476f27d849625aaba07f230d3cac59d76809496e72",
+    "packages/mpd-config-plugin/src/settings-schema.ts": "bd64ac48b51071a1358edaa73837af35cd7454aff09fe6433ab6f51bdee9ce41",
+    "packages/mpd-tui-plugin/src/settings.ts": "3393e54427a31eeb847cabc3a48e2b9c7880205cc37893ed083079e7fce3b384",
+    "packages/mpd-dsh-adapter-plugin/dist/index.js": "7dffbdf454a800a4f4292f976393912dac367a11cd99f3ffd572dcaccc0a281b",
+    "packages/mpd-bundle/cordis.patch.yml": "ead4a80f3b0fc540838342bafbd7b7ea45201d1305d48dea7689b163139d604f",
+    "packages/mpd-config-plugin/dist/index.js": "4b142e9b27617a21b15ca74343c59ef2f70c14eb81cd83cec4906af60435cadf"
+  },
+  "isolation": {
+    "dshHome": "/tmp/mpd-t9-i68SL6/home",
+    "home": "/tmp/mpd-t9-i68SL6/userhome",
+    "workspace": "/tmp/mpd-t9-i68SL6/ws",
+    "sessionsSandboxed": "ok: no session store key for the real checkout",
+    "note": "DSH_HOME + HOME + cwd are all inside the sandbox"
+  },
+  "acceptance": {
+    "A1_built_artifacts_carry_the_new_surface": {
+      "status": "passed",
+      "evidence": "byte-level reads in bytes.txt. TUI dist (161524 B): `var TEAM_MODEL_SLOTS = [\"slot1\", \"slot2\", \"slot3\"]` + `teamModelSlotSchema`(4 hits)+`TEAM_MODEL_SLOT_DEFAULTS`(4)+`TEAM_MODEL_FALLBACK_OPTIONS`(3) + the three leaf names (provider/model/reasoningEffort, 3 hits each) + the catalog-derived wiring (`teamModelOptionLists` 3, `llmCatalog` 9, the branch marker `slot options: provider=` 1, `catalog=` 1). The nine dot-paths are COMPOSED at runtime from that literal, which is why a literal-path grep returns 0 \u2014 and the runtime half of the proof is tui-arm.json: the section the BUILT dist registers carries exactly paths teamModels.slot1.provider \u2026 teamModels.slot3.reasoningEffort (9/9). client.js (310367 B): exactly NINE `{ path: [\"teamModels\", \"slotN\", \"leaf\"] \u2026 }` entries (counted 9, one each), each `kind: \"select\"` with declared options, plus the dependent-picker wiring (optionsFor 4, optgroup 3, optionElements 3, modelDirectories 8, reasoningEffort 21). The path composition in the built bytes (bytes.txt ADDENDUM): `teamModels: import_schemastery.default.object({\u2026})`, `path: [\"teamModels\", slot, leaf]` and `hint: knobHint(`teamModels.${slot}.${leaf}`, TEAM_MODEL_SLOT_SEMANTICS[slot])` \u2014 i.e. the nine dotted keys and their hints are BUILT from the slot list \u00d7 the leaf list inside the artifact, and the artifact's own runtime output (tui-arm.json) shows the resulting nine paths."
+    },
+    "A2_real_mount_no_abort_and_namespace_has_the_nine_knobs": {
+      "status": "passed",
+      "evidence": "driver/t9-web-mount.mjs booted `dsh --profile w --patch <probe overlay> --no-open` in DSH_HOME=/tmp/\u2026/home + HOME=/tmp/\u2026/userhome + sandbox workspace, with the QA probe row inserted by the overlay. mount-checks.json M1: zero apply-crash signatures and zero loader aborts ('failed to apply loader entry' absent). M2: the mpd-config and mpd-tui rows are composed (recorded as COMPOSITION ONLY). M3: the adapter seam answered inside the boot. M4/M4b: the SERVED `mpd` namespace descriptor (revision 0, applies=restart) reports exactly the NINE new slot knobs. Boot log additionally carries `[mpd-dsh-adapter] mpdDsh provided` and `[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base`. Note on the mpd-tui row: the web profile has no tuiSettingsSections service and no stdout sink for its diagnostics, so no [mpd-tui] stdout line appears; the row's APPLY is evidenced by the absence of the harness's 'failed to apply loader entry' marker (the tree came up far enough for the last patch layer's probe to read the adapter and the config namespace)."
+    },
+    "A3_settings_round_trip_on_the_intended_read_surfaces": {
+      "status": "passed",
+      "evidence": "mount-checks.json M5/M6/M7 (defaults): keyed service reads get(\"teamModels.slot1|2|3\") = deepseek-official/deepseek-v4-flash at max/high/high; mpd_config_get({key:\"teamModels\"}).payload.value and mpd_config_get({}).payload.config.teamModels carry the same three defaults. M8 NEGATIVE CONTROL: the parameterless get() is the RAW merged view (keys [] in a fresh sandbox) and does NOT materialise teamModels \u2014 the documented asymmetry, recorded as the negative control rather than as a defect. M9: settingsMutate(\"mpd\", set teamModels.slot1.{provider,model,reasoningEffort}) = {ok:true}. M10: after the write the TOOL surface resolves slot1 = {provider:t9-probe-provider, model:t9-probe-model, reasoningEffort:low}. M11: the keyed service read AND the namespace descriptor agree on the same values. M12: the untouched slots kept their defaults. M13: after an `unset` the schema default is back on the tool surface (max)."
+    },
+    "A4_tui_half_measured_both_branch_and_non_empty_options": {
+      "status": "passed",
+      "evidence": "tui-arm.json \u2014 the BUILT dist applied through its real apply() against a stub host, with the REAL adapter build as mpdDsh, in THREE arms so the branch is measured, not assumed. LIVE: 'settings section mpd slot options: provider=live(2) model=live(2) reasoningEffort=live(2) catalog=live' and the registered section's 9 slot fields each carry 2 options. DEGRADED (catalog answered {providers:[],degraded:true}): 'declared(1)/declared(4)/declared(4) catalog=degraded', 9 fields non-empty. UNAVAILABLE (mounted adapter without the llmCatalog seam): 'declared(1)/declared(4)/declared(4) catalog=unavailable', 9 fields non-empty. In all three arms the section carried 22 fields and the nine slot fields were exactly the teamModels.* paths, kind=select, non-empty. LIMITATION stated in the artifact: this is a stub-host registration against the built bytes, NOT a dsh-tui process boot (a TUI profile needs a network install of @deepseek-harness-tui/dsh-tui@0.10.1 + tmux), so no in-process TUI boot is claimed; the real bundled-boot half is A2."
+    },
+    "A5_every_claim_backed_by_a_real_command_with_exit_code": {
+      "status": "passed",
+      "evidence": "commands[] below carries the four contract commands with exit codes and observed output; the mount claim rests on a boot that MOUNTS the rows plus a tool result (mpd_config_get) read through the harness tool registry \u2014 never on --dump-config. The dump-config.txt in this directory is explicitly labelled composition-only in mount-result.json's boot.rowsComposed.note and is cited for nothing else."
+    },
+    "A6_evidence_convention_and_isolation": {
+      "status": "passed",
+      "evidence": "evidence/model-slots/settings-surfaces/20260918T035024Z/{result.json,output.log} plus the raw artifacts (mount-result.json, mount-checks.json, tui-arm.json, bytes.txt, hashes-*.txt, dsh-boot.log, dump-config.txt, package-tests.log, preset-conformance-run.log) and driver/ + probe/ sources. Isolation: DSH_HOME=/tmp/mpd-t9-*/home, HOME=/tmp/mpd-t9-*/userhome, cwd=sandbox workspace; mount-result.json isolation.sessionsSandboxed = 'ok: no session store key for the real checkout'; the real ~/.dsh is only READ to seed sandbox credentials, never written. The two QA cases invoked write their OWN evidence under their own conventions (evidence/dsh-qa/preset-conformance/<ts>/), which is that case's path, not a lane edit."
+    },
+    "A7_unprovable_items_reported_as_failures": {
+      "status": "passed",
+      "evidence": "No acceptance item was found unprovable. The one measurement that could NOT be made in this environment is stated as a limitation rather than a claim: the in-process dsh-tui boot (A4) \u2014 no dsh-tui profile was installed. Nothing here is downgraded to a claim."
+    }
+  },
+  "commands": [
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "exitCode": 0,
+      "observed": "ok=true; conformance {ok:true,checked:31,parity 31/31,problems:[]}; auth ok; sessionCreate 200 with agentPreset mpd; bootLog {ok:true,signatures:[]}; negativeControl {ok:true,code:agent-preset/invalid}; PASS",
+      "log": "preset-conformance-run.log"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs --self-test",
+      "exitCode": 0,
+      "observed": "ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31",
+      "log": "package-tests.log"
+    },
+    {
+      "command": "bun test packages/mpd-config-plugin",
+      "exitCode": 0,
+      "observed": "81 pass, 0 fail, 466 expect() calls",
+      "log": "package-tests.log"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin",
+      "exitCode": 0,
+      "observed": "105 pass, 0 fail, 808 expect() calls",
+      "log": "package-tests.log"
+    },
+    {
+      "command": "bun evidence/model-slots/settings-surfaces/20260918T035024Z/driver/t9-web-mount.mjs",
+      "exitCode": 0,
+      "observed": "verdict ok=true, 17/17 mount checks passed (M1..M14, M4b)",
+      "log": "mount-checks.json + dsh-boot.log"
+    },
+    {
+      "command": "bun evidence/model-slots/settings-surfaces/20260918T035024Z/driver/t9-tui-arm.mjs",
+      "exitCode": 0,
+      "observed": "verdict ok=true across live/degraded/unavailable arms (12/12 checks)",
+      "log": "tui-arm.json"
+    }
+  ],
+  "verdict": {
+    "ok": true,
+    "failed": []
+  },
+  "limitations": [
+    "A4's TUI arm is a stub-host registration measurement against the BUILT dist, not a dsh-tui process boot (no dsh-tui profile was installed; tmux and the dsh-tui binary exist, but the profile needs a network install of @deepseek-harness-tui/dsh-tui@0.10.1).",
+    "The mpd-tui row's own diagnostic line is not on stdout in a web composition (ctx.logger has no stdout sink there), so its apply is evidenced by the absence of the loader's apply-failure marker plus the tree coming up, not by a row-specific log line."
+  ],
+  "runHistory": "The driver's first two runs reported M6/M7/M10/M13 as red; both were assertion-PATH bugs in my own driver (the adapter returns the tool's OUTPUT payload, so the keyed form nests under .value and the no-key form under .config). The measured product data was already correct and unchanged; the checks were fixed and the driver re-run. No lane artifact was edited during this task."
+}

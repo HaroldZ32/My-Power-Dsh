@@ -17,7 +17,7 @@
 ~/.mpd/workmate/
   index.json                    # fast library index
   <name>/
-    meta.json                   # name, base, provider/model, readonly, uses, lastTask, renamedFrom
+    meta.json                   # name, baseId + baseName（内部溯源）, provider/model, readonly, uses, lastTask, renamedFrom
     persona.md                  # evolving persona (seeded from base)
     memory.md                   # independent memory (append + evict)
     note.md                     # short searchable note card
@@ -31,11 +31,29 @@
 
 库根目录刻意放在用户的 HOME（跨项目），这是对工作区作用域状态规则（AGENTS.md §6）的、经用户批准的例外。QA 以 `HOME=<sandbox>` 启动，因此测试绝不会触碰真实 home。
 
+## base 解析与自动命名（仅按功能名）
+
+`mpd_workmate_init` 的 `base` 是专家的**功能名** —— 即 `mpd_roles_list` /
+`mpd_role_persona` 使用的名称，例如 `Deep Worker`。匹配对大小写/空白/分隔符不敏感
+（`Deep Worker`、`deep worker`、`deep-worker`、`DEEP WORKER` 是同一个 base），未知键会被
+拒绝，并给出**只列名称**的消息（列出所有有效名称）。名册 **id**（`hephaestus`、
+`sisyphus-junior` …）属于内部溯源，**不是** base 键：它会像其他未知键一样被拒绝，且拒绝消息
+刻意不回显被拒的键。
+
+省略 `name` 时，实例名由功能名派生：`Deep Worker` 初始化为 `deep-worker-1`，对同一 base 再次
+初始化则得到 `deep-worker-2`（计数器会跳过库中已被占用的名称）。
+
+**`baseId` 属于内部信息，永不对外暴露。** 它保留在 `meta.json`（以及库索引）中，作为既有实例的
+溯源 —— 不做也不需要迁移 —— 而所有公开投影都会剥离它：`mpd_workmate_list` /
+`mpd_workmate_match` 的载荷与 schema、`mpdWorkmate` 服务的 `list` / `get` / `read`、
+`GET /plugins/mpd-workmate/{list,roster,get}` 的响应体（`/roster` 路由还会去掉名册 `id`）
+以及 Workmates 侧边栏 Tab。因此消费方只能通过功能名得知 base。
+
 ## 工具
 
 | Tool | Purpose |
 |---|---|
-| `mpd_workmate_list` | list instances (name, base, uses, updatedAt, note summary) |
+| `mpd_workmate_list` | list instances (name, baseName, uses, updatedAt, note summary) |
 | `mpd_workmate_init` | instantiate a base specialist into an independently-named workmate |
 | `mpd_workmate_spawn` | one-shot reuse: subagent with the workmate's persona+memory+note on its own model route (readonly bases deny write tools) |
 | `mpd_workmate_reflect` | self-evolve after work: memory append/evict, persona revision merge, note regen |

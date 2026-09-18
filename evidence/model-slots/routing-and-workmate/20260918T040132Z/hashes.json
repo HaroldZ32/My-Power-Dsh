@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "t0At": "2026-09-18T04:09:04.452Z",
+  "t1At": "2026-09-18T04:09:54.491Z",
+  "settleMs": 50000,
+  "changed": [],
+  "t0": {
+    "packages/mpd-agent-teams-plugin/lib/tools.js": "553bb1f849c2339e8c096edbb58a840941d01a65e1e09be87a51cb38aa7955e9",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8",
+    "packages/mpd-agent-teams-plugin/lib/command.js": "6c29cd65fcdc7be81e8cb6107fbcfad51a45b1ad600a1aefa5bf85b60fb8398f",
+    "packages/mpd-agent-teams-plugin/lib/profiles.js": "39fa53045d124346e45e81e96fa0afd525242879bda6a9219788c764bf37ea77",
+    "packages/mpd-agent-teams-plugin/lib/members.js": "b1b1ac53cc41f2265fcf5b4e0e4892ee24c617f0ae004ccdd4d8f28ce5289681",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "6edc7b15ba9533ea145f3528900601f806ec591b3e5119054fe21c21f2b4f4ff",
+    "packages/mpd-workmate-plugin/src/index.ts": "c5be3c1cfd174bcc9c086d27f35e64aa643b8bb972ce9c1ee2cb0e2041bfd0a5",
+    "packages/mpd-workmate-plugin/dist/index.js": "23817a9b2c8035c978c05a127afb1cc2b899cd8d77fffb72f66633058d20759a",
+    "packages/mpd-bundle/cordis.patch.yml": "ead4a80f3b0fc540838342bafbd7b7ea45201d1305d48dea7689b163139d604f",
+    "packages/mpd-bundle-plugin/client.js": "0ee5da800c1dc18bdbb640ef31eb0e3b1dc2049f8fd9fa65caf1747d30c044e5",
+    "packages/mpd-config-plugin/src/settings-schema.ts": "bd64ac48b51071a1358edaa73837af35cd7454aff09fe6433ab6f51bdee9ce41",
+    "packages/mpd-config-plugin/src/index.ts": "28fa64d4db831922e442ec476f27d849625aaba07f230d3cac59d76809496e72"
+  },
+  "t1": {
+    "packages/mpd-agent-teams-plugin/lib/tools.js": "553bb1f849c2339e8c096edbb58a840941d01a65e1e09be87a51cb38aa7955e9",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8",
+    "packages/mpd-agent-teams-plugin/lib/command.js": "6c29cd65fcdc7be81e8cb6107fbcfad51a45b1ad600a1aefa5bf85b60fb8398f",
+    "packages/mpd-agent-teams-plugin/lib/profiles.js": "39fa53045d124346e45e81e96fa0afd525242879bda6a9219788c764bf37ea77",
+    "packages/mpd-agent-teams-plugin/lib/members.js": "b1b1ac53cc41f2265fcf5b4e0e4892ee24c617f0ae004ccdd4d8f28ce5289681",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "6edc7b15ba9533ea145f3528900601f806ec591b3e5119054fe21c21f2b4f4ff",
+    "packages/mpd-workmate-plugin/src/index.ts": "c5be3c1cfd174bcc9c086d27f35e64aa643b8bb972ce9c1ee2cb0e2041bfd0a5",
+    "packages/mpd-workmate-plugin/dist/index.js": "23817a9b2c8035c978c05a127afb1cc2b899cd8d77fffb72f66633058d20759a",
+    "packages/mpd-bundle/cordis.patch.yml": "ead4a80f3b0fc540838342bafbd7b7ea45201d1305d48dea7689b163139d604f",
+    "packages/mpd-bundle-plugin/client.js": "0ee5da800c1dc18bdbb640ef31eb0e3b1dc2049f8fd9fa65caf1747d30c044e5",
+    "packages/mpd-config-plugin/src/settings-schema.ts": "bd64ac48b51071a1358edaa73837af35cd7454aff09fe6433ab6f51bdee9ce41",
+    "packages/mpd-config-plugin/src/index.ts": "28fa64d4db831922e442ec476f27d849625aaba07f230d3cac59d76809496e72"
+  }
+}

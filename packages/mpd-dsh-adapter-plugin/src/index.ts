@@ -10,6 +10,7 @@
 //   agentPresets.resolve
 //   agents.list (session cwds)                    -> workspaceRoot / workspaceRootsAll
 //   commands.register (slash commands)            -> registerCommand
+//   llm.listProviders / listModels / resolveModelInfo -> llmCatalog
 //   user-role message construction (injection)    -> userMessage
 //
 // Consumers use `createDshAdapter(ctx)` directly (works standalone, e.g. in
@@ -245,6 +246,12 @@ export interface DshCapabilities {
   compactionForAgent: boolean
   /** The harness event seam (`ctx.on`) — used to observe status edges. */
   events: boolean
+  /**
+   * The model-catalog seam: `ctx.get("llm")` exposes ALL THREE methods
+   * {@link DshAdapter.llmCatalog} reads (`listProviders`, `listModels`,
+   * `resolveModelInfo`). Callers degrade to their declared option lists when false.
+   */
+  llmCatalog: boolean
 }
 
 /**
@@ -261,6 +268,57 @@ export interface DshLiveAgent {
   session?: unknown
   ctx?: unknown
   runMaintenance?: unknown
+}
+
+/**
+ * One selectable reasoning effort of one model (see {@link DshLlmCatalog}).
+ */
+export interface DshLlmCatalogEffort {
+  /** Opaque value accepted as `reasoningEffort` (host `LlmReasoningEffortInfo.id`). */
+  id: string
+  /** Human-readable effort name for selectors. */
+  name: string
+  description?: string
+}
+
+/** One model of one provider, with its reasoning metadata FLATTENED onto it. */
+export interface DshLlmCatalogModel {
+  id: string
+  name: string
+  description?: string
+  /** Always an array: `[]` when the model declares no reasoning block. */
+  efforts: DshLlmCatalogEffort[]
+  /** The adapter-configured default effort, absent when the host declares none. */
+  defaultEffort?: string
+}
+
+/** One provider route and every model it currently advertises. */
+export interface DshLlmCatalogProvider {
+  id: string
+  name: string
+  models: DshLlmCatalogModel[]
+}
+
+/**
+ * The host's live model catalog, projected for a SERVER-side picker (see
+ * {@link DshAdapter.llmCatalog}).
+ *
+ * The host builds its own browser catalog in
+ * `@deepseek-ai/dsh-api-session-controller` (`buildModelCatalog(ctx)`); this seam is that
+ * same read performed HERE, so a plugin never touches `ctx.llm` (AGENTS.md §6).
+ * Two shape differences are deliberate:
+ *   1. the host nests `reasoning: {efforts, defaultEffort}`; this projection FLATTENS it
+ *      onto the model (`efforts`/`defaultEffort`), because a settings knob addresses the
+ *      effort as one leaf of the model;
+ *   2. `efforts` is ALWAYS present (`[]` for a model with no reasoning block) so a
+ *      consumer can iterate without a guard.
+ * Absent providers/models are simply not listed; `degraded` says whether anything was
+ * dropped or unreadable.
+ */
+export interface DshLlmCatalog {
+  providers: DshLlmCatalogProvider[]
+  /** True when any part of the catalog could not be read (missing seam, rejecting provider/model). */
+  degraded: boolean
 }
 
 /**
@@ -313,6 +371,18 @@ export interface DshAdapter {
   compactionEngineForAgent(agentId: string): unknown
   /** Subscribe to a harness event; returns a disposer, or undefined when unavailable. */
   onEvent(event: string, handler: (...args: unknown[]) => unknown): (() => void) | undefined
+  /**
+   * The host's live model catalog, read ONLY through `ctx.llm`
+   * (`listProviders` / `listModels` / `resolveModelInfo`) and projected as
+   * {@link DshLlmCatalog} for a server-side picker.
+   *
+   * NEVER throws and never rejects. A missing `llm` service, or one lacking any one
+   * of the three methods, resolves to `{ providers: [], degraded: true }` and logs ONE
+   * warn-once line naming the missing seam. A provider whose `listModels` rejects, or a
+   * model whose `resolveModelInfo` rejects, is SKIPPED — it no longer takes the whole
+   * catalog down — and the returned catalog carries `degraded: true`.
+   */
+  llmCatalog(): Promise<DshLlmCatalog>
   /** Reader for one settings namespace, or undefined when the service is absent. */
   settingsReader(namespace: string): DshSettingsReader | undefined
   /**
@@ -688,6 +758,101 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     }
   }
 
+  // ── llm plane: the model catalog, read ONLY here (AGENTS.md §6) ───────────
+  // The projection mirrors the host's own buildModelCatalog
+  // (dsh-api-session-controller/lib/types/catalog.js) so a picker fed from here sees
+  // the same providers/models the host's own surfaces do.
+  const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"] as const
+  let llmCatalogWarned = false
+  /** ONE warn-once line per adapter instance, naming the seam that degraded the catalog. */
+  function warnLlmCatalogOnce(detail: string): void {
+    if (llmCatalogWarned) return
+    llmCatalogWarned = true
+    // A replaced/hostile console must never take a read down (the never-throw contract).
+    try { console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail) } catch { /* seam absent: nothing to report */ }
+  }
+
+  /** `name` with the id as fallback, so a caller never renders `undefined`. */
+  function catalogLabel(value: unknown, id: string): string {
+    return typeof value === "string" && value.length > 0 ? value : id
+  }
+
+  async function llmCatalog(): Promise<DshLlmCatalog> {
+    const llm = service("llm")
+    if (llm === undefined || llm === null) {
+      warnLlmCatalogOnce("the harness llm service is unavailable")
+      return { providers: [], degraded: true }
+    }
+    const missing = LLM_CATALOG_METHODS.filter((method) => typeof llm?.[method] !== "function")
+    if (missing.length > 0) {
+      warnLlmCatalogOnce("the harness llm service lacks " + missing.join(", "))
+      return { providers: [], degraded: true }
+    }
+    let providers: unknown
+    try {
+      // `await` keeps this correct for the host's SYNC listProviders() as well as a
+      // remote variant that answers a promise (dsh-llm/lib/typert.remote-client).
+      providers = await llm.listProviders()
+    } catch (error) {
+      warnLlmCatalogOnce("listProviders() failed: " + message(error))
+      return { providers: [], degraded: true }
+    }
+    if (!Array.isArray(providers)) {
+      warnLlmCatalogOnce("listProviders() did not return an array")
+      return { providers: [], degraded: true }
+    }
+    // `degraded` is sticky: ONE skipped provider or model marks the whole read degraded.
+    let degraded = false
+    const catalog: DshLlmCatalogProvider[] = []
+    for (const rawProvider of providers as any[]) {
+      const providerId = typeof rawProvider?.id === "string" ? rawProvider.id : undefined
+      if (providerId === undefined) { degraded = true; continue }
+      try {
+        const models = await llm.listModels(providerId)
+        if (!Array.isArray(models)) throw new Error("listModels(" + providerId + ") did not return an array")
+        const entries: DshLlmCatalogModel[] = []
+        for (const rawModel of models as any[]) {
+          const modelId = typeof rawModel?.id === "string" ? rawModel.id : undefined
+          if (modelId === undefined) { degraded = true; continue }
+          let resolved: any
+          try {
+            resolved = await llm.resolveModelInfo(providerId, modelId)
+          } catch {
+            // One unresolvable model is skipped, never fatal for the catalog.
+            degraded = true
+            continue
+          }
+          const reasoning = resolved?.reasoning
+          const efforts: DshLlmCatalogEffort[] = []
+          const rawEfforts = Array.isArray(reasoning?.efforts) ? reasoning.efforts : []
+          for (const rawEffort of rawEfforts as any[]) {
+            const effortId = typeof rawEffort?.id === "string" ? rawEffort.id : undefined
+            if (effortId === undefined) continue
+            efforts.push({
+              id: effortId,
+              name: catalogLabel(rawEffort?.name, effortId),
+              ...(typeof rawEffort?.description === "string" ? { description: rawEffort.description } : {}),
+            })
+          }
+          const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined
+          entries.push({
+            id: modelId,
+            name: catalogLabel(rawModel?.name, modelId),
+            ...(typeof rawModel?.description === "string" ? { description: rawModel.description } : {}),
+            // A model with NO reasoning block still appears: empty efforts, no defaultEffort.
+            efforts,
+            ...(defaultEffort === undefined ? {} : { defaultEffort }),
+          })
+        }
+        catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries })
+      } catch {
+        degraded = true
+        continue
+      }
+    }
+    return { providers: catalog, degraded }
+  }
+
   function timeoutSignal(timeoutMs: number): AbortSignal | undefined {
     try {
       if (typeof AbortSignal !== "undefined" && typeof (AbortSignal as any).timeout === "function") return (AbortSignal as any).timeout(timeoutMs)
@@ -733,6 +898,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         compaction: typeof compaction?.compactNow === "function",
         compactionForAgent: scopedCompaction,
         events: typeof ctx?.on === "function",
+        // The catalog seam needs the WHOLE trio: a service exposing only part of it
+        // cannot satisfy llmCatalog's projection, so it reports false.
+        llmCatalog: LLM_CATALOG_METHODS.every((method) => typeof (service("llm") as any)?.[method] === "function"),
       }
     },
 
@@ -745,6 +913,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     liveAgent,
     compactionEngineForAgent,
     onEvent,
+    llmCatalog,
 
     // ── tool plane ──────────────────────────────────────────────────────────
     registerTool(definition: DshToolDef): () => void {

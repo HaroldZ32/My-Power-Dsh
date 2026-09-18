@@ -3332,20 +3332,144 @@ export function seedTaskDrafts(templates, seedToActual, now) {
     }));
 }
 //#endregion mpd-delta seed-task-drafts
+//#region mpd-delta team-model-slot-route-helpers (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/** How many `teamModels.slot<N>` slots the bundle configures; the config plugin owns the same count. */
+const MAX_TEAM_MODEL_TIER = 3;
+/**
+ * Resolve ONE member template to the route the staging loop calls `resolveMemberLlmSelection` with.
+ * Precedence, by design: an explicit `route` is VERBATIM; else a `tier` reads the configured slot
+ * through the EXISTING mpdConfig service (`get("teamModels.slot<N>")`, whose read path materialises
+ * the three schema defaults on a fresh workspace); else the member's own literals, i.e. today's
+ * captain-derived behaviour unchanged. An unusable slot is a LOUD failure naming the member, the
+ * slot and the fix — it never falls back to another route, to the schema default, or to the member's
+ * literals. `slot` is carried only so a later failure can name the slot; it is not part of a route.
+ * @param ctx - the plugin context (only `ctx.get` is touched).
+ * @param template - one normalized profile member template.
+ * @returns `{ provider, model, reasoningEffort, slot? }` — leaves may be undefined for the literal path.
+ */
+function resolveMemberTemplateRoute(ctx, template) {
+    if (template.route !== undefined) {
+        return { provider: template.route.provider, model: template.route.model, reasoningEffort: template.route.reasoningEffort };
+    }
+    if (template.tier !== undefined) {
+        const slot = `slot${template.tier}`;
+        if (template.tier > MAX_TEAM_MODEL_TIER) {
+            throw new Error(`member "${template.name}" declares tier ${template.tier}, but this bundle configures teamModels.slot1..slot${MAX_TEAM_MODEL_TIER} — use a tier in that range or give the member an explicit route`);
+        }
+        const service = typeof ctx.get === 'function' ? ctx.get('mpdConfig') : undefined;
+        if (service === undefined || typeof service.get !== 'function') {
+            throw new Error(`member "${template.name}" is routed by teamModels.${slot} but the mpdConfig service is not available in this composition — enable the mpd-config row, or give the member an explicit route`);
+        }
+        const resolved = service.get(`teamModels.${slot}`);
+        if (resolved === undefined || resolved === null) {
+            throw new Error(`member "${template.name}" is routed by teamModels.${slot}, which is NOT configured — declare teamModels.${slot}.{provider,model,reasoningEffort} in .mpd/mpd.jsonc (or remove the member's tier to keep the captain-derived default)`);
+        }
+        // An empty or whitespace-only leaf is INCOMPLETE, never replaced by the schema default
+        // (a file layer can carry "" past a deep merge), and the effort is REQUIRED here because a
+        // resolved slot always carries one — an empty effort would otherwise be silently dropped.
+        const missing = ['provider', 'model', 'reasoningEffort'].filter((leaf) => typeof resolved[leaf] !== 'string' || resolved[leaf].trim() === '');
+        if (missing.length > 0) {
+            throw new Error(`member "${template.name}" is routed by teamModels.${slot}, which is INCOMPLETE (missing ${missing.join(', ')}) — set teamModels.${slot}.{provider,model,reasoningEffort} in .mpd/mpd.jsonc`);
+        }
+        return { provider: resolved.provider.trim(), model: resolved.model.trim(), reasoningEffort: resolved.reasoningEffort.trim(), slot };
+    }
+    return { provider: template.provider, model: template.model, reasoningEffort: template.reasoningEffort };
+}
+/**
+ * Name the member and the slot on a failure raised while resolving a TIER-routed member's route, so
+ * a broken slot reports WHICH slot is wrong while the underlying dsh-llm text (unknown model, the
+ * available-model list, `UNSUPPORTED_REASONING_EFFORT`) is preserved verbatim in the message. A
+ * member whose route does not come from a slot (explicit `route`, or today's literals) is returned
+ * UNCHANGED — its errors keep their existing wording byte-for-byte.
+ * @param template - the member template being resolved.
+ * @param route - the route returned by {@link resolveMemberTemplateRoute}.
+ * @param error - the caught failure.
+ * @returns the error to throw (the original one for a non-slot route).
+ */
+function memberRouteFailure(template, route, error) {
+    if (route === undefined || route.slot === undefined) {
+        return error;
+    }
+    const detail = error instanceof Error ? error.message : String(error);
+    const wrapped = new Error(`member "${template.name}" route from teamModels.${route.slot} failed: ${detail} (fix teamModels.${route.slot}.{provider,model,reasoningEffort} in .mpd/mpd.jsonc)`);
+    if (error instanceof Error) {
+        wrapped.cause = error;
+    }
+    return wrapped;
+}
+/**
+ * Attribute a FAILED batch catalog sweep to the member whose route is at fault. The catalog sweep
+ * itself stays the one batch call it always was (one catalog read per distinct provider on the happy
+ * path); only a failure re-runs it per member, which is what lets the error name the member and the
+ * slot. An abort is never attributed — the cancellation error is rethrown as-is.
+ * @param ctx - the plugin context.
+ * @param templates - the profile's member templates, in selection order.
+ * @param routes - the resolved routes, index-aligned with `templates`.
+ * @param selections - the resolved selections, index-aligned with `templates`.
+ * @param error - the batch failure.
+ * @param signal - the staging cancellation signal.
+ * @returns the error to throw: the attributed one, or `error` unchanged.
+ */
+async function attributeMemberSelectionFailure(ctx, templates, routes, selections, error, signal) {
+    if (signal?.aborted === true) {
+        return error;
+    }
+    for (let index = 0; index < selections.length; index += 1) {
+        try {
+            await validateMemberLlmSelections(ctx, [selections[index]], signal);
+        }
+        catch (single) {
+            return memberRouteFailure(templates[index], routes[index], single);
+        }
+    }
+    return error;
+}
+//#endregion mpd-delta team-model-slot-route-helpers
 export async function initializeProfileTeam(input) {
     const profile = resolveTeamProfile(input.config.profiles, input.profileName, input.config.maxMembers);
+//#region mpd-delta team-model-slot-routes (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // The three configured `teamModels` slots are the DEFAULT route of this roster: a member that
+    // declares `tier: N` takes provider/model/reasoningEffort from
+    // `ctx.get("mpdConfig").get("teamModels.slot<N>")`, a member that declares `route` is used
+    // VERBATIM, and a member with NEITHER keeps today's captain-derived behaviour unchanged (F7).
+    // A slot that cannot be resolved FAILS staging loudly, naming the member, the slot and the fix,
+    // and leaves NO team state behind; nothing silently falls back to another route and no effort is
+    // ever clamped, aliased or replaced (B5/F1-F5). The catalog sweep stays the single batch call it
+    // always was, so the happy path reads each provider's catalog once; only a FAILING batch is
+    // re-run per member, to name the offender's member and slot without touching the happy path.
+    const templates = profile.members;
+    const routes = templates.map((template) => resolveMemberTemplateRoute(input.ctx, template));
     const selections = [];
-    for (const template of profile.members) {
-        selections.push(await resolveMemberLlmSelection(input.ctx, input.captain, {
-            provider: template.provider,
-            model: template.model,
-            defaultModel: input.config.memberModel,
-            reasoningEffort: template.reasoningEffort,
-            fallback: template.fallback ?? profile.fallback ?? input.config.fallback,
-        }, input.exec.signal));
+    for (let index = 0; index < templates.length; index += 1) {
+        const template = templates[index];
+        const route = routes[index];
+        try {
+            selections.push(await resolveMemberLlmSelection(input.ctx, input.captain, {
+                provider: route.provider,
+                model: route.model,
+                defaultModel: input.config.memberModel,
+                reasoningEffort: route.reasoningEffort,
+                fallback: template.fallback ?? profile.fallback ?? input.config.fallback,
+            }, input.exec.signal));
+        }
+        catch (error) {
+            throw memberRouteFailure(template, route, error);
+        }
     }
-    await validateMemberLlmSelections(input.ctx, selections, input.exec.signal);
+    try {
+        await validateMemberLlmSelections(input.ctx, selections, input.exec.signal);
+    }
+    catch (error) {
+        throw await attributeMemberSelectionFailure(input.ctx, templates, routes, selections, error, input.exec.signal);
+    }
+    // `const now` is absorbed into this region so its END sits FLUSH against the NEXT region
+    // (`plan-file-seeds-dag`): the applier computes every context window on the region-stripped
+    // skeleton, so a seam that sits between two lines of a LATER region's before-window breaks that
+    // region's heal (MEASURED: with this seam one line short of the next region, the t2 strip-heal
+    // suite refused `plan-file-seeds-dag` — "the lines before its afterContext window do not match
+    // the registered beforeContext"). Absorbing the single statement keeps the pair stable.
     const now = Date.now();
+//#endregion mpd-delta team-model-slot-routes
     //#region mpd-delta plan-file-seeds-dag (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
     // T-42 (wave 2b, lane A): a PLAN ARTIFACT can seed the DAG. The seed items are then the plan's own
     // items, read by the session-start reader (`readPlanSeedSet`) — the same ids, the same subjects, and

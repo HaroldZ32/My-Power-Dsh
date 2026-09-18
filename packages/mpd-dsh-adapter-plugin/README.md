@@ -19,7 +19,26 @@ instead of across every plugin.
 | `ctx.subagents.start("spawn", …)` | `spawnAgent(spec)` | string prompt → content blocks, flat `provider`/`model` or `agentOptions`, `run.result` awaited whether it is a promise or an object, normalized `{output, structured, stopReason}` |
 | `ctx.skills.registerProvider` / `list` / `get` | `registerSkillProvider`, `listSkills`, `loadSkill` | disposer pass-through, default options |
 | `ctx.agentPresets.resolve` | `resolvePreset(id)` | normalized `{id, path, trust, broken}` |
+| `ctx.llm.listProviders` / `listModels` / `resolveModelInfo` | `llmCatalog()` | the host's live model catalog projected as `{ providers: [{ id, name, models: [{ id, name, description?, efforts: [{ id, name, description? }], defaultEffort? }] }], degraded }` — the reasoning block FLATTENED onto the model, `efforts` always an array; read-only and never throwing |
 | capability probing | `capabilities()` | one boolean per seam, so a caller can degrade instead of crashing |
+
+## The model-catalog seam (`llmCatalog`)
+
+`packages/mpd-tui-plugin` reads this seam AT REGISTRATION for the nine `teamModels` slot
+knobs, because the host renders `select` by cycling a deep-frozen option list (there is no
+pick-list dialog). The read is TOTAL:
+
+- a missing `ctx.llm`, or one lacking ANY of the three methods, resolves to
+  `{ providers: [], degraded: true }` and logs **ONE** warn-once line naming the missing
+  seam — never a throw, never a rejected promise;
+- a provider whose `listModels` rejects, or a model whose `resolveModelInfo` rejects, is
+  **skipped** (the catalog survives, `degraded: true`);
+- a model whose resolved info carries no reasoning block still appears, with
+  `efforts: []` and no `defaultEffort`;
+- `capabilities().llmCatalog` reports the seam (true only when all three methods exist),
+  which is the flag a caller branches on.
+
+The seam is built from those three calls and nothing else — no new runtime dependency.
 
 ## Why it exists
 

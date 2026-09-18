@@ -11,9 +11,39 @@ Plan C / C7 —— 极简的 `mpd.jsonc` 运行时配置层。
 ## 已知 key
 
 - `memory.vcs`：`git | svn | both`（Plan C / C6 memory 引擎）。
+- `teamModels.slot{1,2,3}.{provider,model,reasoningEffort}`：三个团队模型槽位 ——
+  agent-teams 成员类别的默认路由（见下）。
 - `team.stateDir`、`hashline.enabled/guardEditTools`、
   `commentChecker.autoCheck/bin`、`modelchain.<role>`、`boulder.dir`、
   `ulw.maxRounds`。
+
+## 团队模型槽位（`teamModels`）
+
+**agent-teams 成员的默认模型路由**，每个成员类别一个槽位。三个槽位、九个叶子：
+
+| 槽位 | 路径 | 默认值 | 成员类别（agent-teams `tier`） |
+|---|---|---|---|
+| 1 | `teamModels.slot1.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `max` | Architect、Planner、Reviewer、Lead、Senior Engineer（`tier: 1`） |
+| 2 | `teamModels.slot2.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `high` | Researcher、Explorer、Plan Reviewer（`tier: 2`） |
+| 3 | `teamModels.slot3.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `high` | Deep Worker、Junior Engineer（`tier: 3`） |
+
+- **默认值只有一处字面声明**（`TEAM_MODEL_SLOT_DEFAULTS`），因此 schema 默认值与解析出的配置
+  不可能漂移。
+- **读取路径会物化默认值：** 一个完全没有 `.mpd/mpd.jsonc` 的工作区同样能解析出全部九个叶子 ——
+  `get("teamModels.slot2")`（以及不带 key 的 `mpd_config_get`）即返回默认值。物化结果是**新对象**：
+  原始合并后的文件配置永不被改写，默认值也不会泄漏进 settings 文档的回写。
+- **Vision Analyst 刻意不属于任何槽位：** 它保留显式路由（`deepseek-official` /
+  `deepseek-v4-flash-vision-exp` / `high`），因此编辑槽位永远不会让它失去视觉模型。
+- **重启语义：** 与本层其他 knob 完全一致 —— 通过 settings 文档保存的值会立即落到
+  `<workspace>/.mpd/mpd.jsonc` 并由配置层应用到每个工作区，而**正在运行**的 mpd 插件仍使用它
+  在 `apply()` 时读到的配置；行为变更需要重启。
+- **两个前端：** 这九个叶子是唯一 22 行声明（`SETTINGS_KNOBS`：原有 13 个 knob 加这 9 个）中的
+  `select` 项，出现在 TUI 的 `/settings` 区块与 Web 界面卡片中。它们的选项列表来自实时模型目录
+  （服务端走适配器的 `llmCatalog()`，Web 侧走宿主自身的客户端目录），目录不可用或降级时回退到
+  `TEAM_MODEL_FALLBACK_OPTIONS` —— 因此槽位永远是选择，不是自由输入。
+- **槽位损坏会大声失败：** 走槽位解析失败的成员（服务缺失、槽位缺失或不完整、模型未知、推理强度
+  不受支持）会让创建团队直接失败，并指名成员与槽位，且不写入任何团队状态；推理强度**永远不会**
+  被悄悄钳制。
 
 ## 服务 / 工具
 
@@ -26,7 +56,7 @@ Plan C / C7 —— 极简的 `mpd.jsonc` 运行时配置层。
 本包承担 harness settings 打通中的**回写**一半：TUI 的 `/settings` 区块与 Web 界面
 卡片编辑 `mpd` 设置命名空间，保存的编辑会被投影到工作区的 `<workspace>/.mpd/mpd.jsonc`。
 
-- **命名空间 base（由本包拥有）：** `baseForNamespace()`（`src/index.ts:511`）按数量规则推导
+- **命名空间 base（由本包拥有）：** `baseForNamespace()` 按数量规则推导
   base —— 一个活动根 ⇒ 该工作区的 `<workspace>/.mpd/mpd.jsonc`；零个根 ⇒ 挂载时（无 exec）的根
   （`DSH_WORKSPACE_ROOT` 或进程 cwd），那里文件缺失即得到空 base（schema 默认值）——这是常规启动
   路径；多于一个根 ⇒ **不虚构任何文件 base**（`base: undefined`、原因 `ambiguous-multi-root`，

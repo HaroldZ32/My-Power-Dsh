@@ -1,0 +1,201 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-t10-weNzFr",
+  "steps": {
+    "s1Baseline": {
+      "ok": true,
+      "problems": [],
+      "teamId": "mpd-default",
+      "routes": {
+        "Architect": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "status": "idle"
+        },
+        "Researcher": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Planner": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "status": "idle"
+        },
+        "Explorer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Reviewer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "status": "idle"
+        },
+        "Plan Reviewer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Vision Analyst": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash-vision-exp",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Lead": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "status": "idle"
+        },
+        "Deep Worker": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Senior Engineer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "status": "idle"
+        },
+        "Junior Engineer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "high",
+          "status": "idle"
+        }
+      },
+      "exit": 1,
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-t10-weNzFr-s1-baseline-ws--"
+        ]
+      }
+    },
+    "s2Overridden": {
+      "ok": true,
+      "problems": [],
+      "teamId": "mpd-default",
+      "routes": {
+        "Architect": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-pro",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Researcher": {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash",
+          "reasoningEffort": "low",
+          "status": "idle"
+        },
+        "Planner": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-pro",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Explorer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash",
+          "reasoningEffort": "low",
+          "status": "idle"
+        },
+        "Reviewer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-pro",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Plan Reviewer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash",
+          "reasoningEffort": "low",
+          "status": "idle"
+        },
+        "Vision Analyst": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash-vision-exp",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Lead": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-pro",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Deep Worker": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-pro",
+          "reasoningEffort": "max",
+          "status": "idle"
+        },
+        "Senior Engineer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-pro",
+          "reasoningEffort": "high",
+          "status": "idle"
+        },
+        "Junior Engineer": {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-pro",
+          "reasoningEffort": "max",
+          "status": "idle"
+        }
+      },
+      "exit": 1,
+      "mpdJsonc": "// t10 S2: the three slots overridden in the project layer\n{\n  \"teamModels\": {\n    \"slot1\": { \"provider\": \"deepseek-official\", \"model\": \"deepseek-v4-pro\", \"reasoningEffort\": \"high\" },\n    \"slot2\": { \"provider\": \"deepseek-official\", \"model\": \"deepseek-flash\", \"reasoningEffort\": \"low\" },\n    \"slot3\": { \"provider\": \"deepseek-official\", \"model\": \"deepseek-v4-pro\", \"reasoningEffort\": \"max\" }\n  }\n}\n",
+      "negativeHalf": false,
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-t10-weNzFr-s2-overridden-ws--"
+        ]
+      }
+    },
+    "s3BrokenSlot": {
+      "ok": true,
+      "problems": [],
+      "teamIds": [],
+      "otherTeamDirEntries": [
+        "watchdog"
+      ],
+      "exit": 1,
+      "provisioningWarnVisibleInBootArtifacts": false,
+      "loudFailureEvidence": "see the LIVE tool call (L2) in tool-live-result.json — the recorded agent_teams_create error names the member and teamModels.slot1",
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-t10-weNzFr-s3-broken-slot1-ws--"
+        ]
+      }
+    },
+    "sameResolutionFunction": {
+      "ok": true,
+      "agentTeamsCreateCallsInitializeProfileTeam": true,
+      "sessionStartProvisioningCallsInitializeProfileTeam": true,
+      "toolBlockChars": 10050,
+      "note": "the tool path and the session-start provisioning path are the only callers of the t6 resolution region (lib/tools.js initializeProfileTeam)"
+    },
+    "realHomeUntouched": {
+      "ok": true,
+      "realWm": "/root/.mpd/workmate",
+      "before": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer",
+      "after": ".archive,agent-teams-engineer,citation-checker-engineer,code-reviewer,docs-gate-engineer,docs-parity-engineer,index.json,packaging-engineer,platform-engineer,qa-lane-engineer,watchdog-engineer"
+    }
+  }
+}

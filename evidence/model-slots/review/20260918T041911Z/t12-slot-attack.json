@@ -1,0 +1,98 @@
+{
+  "task": "t12",
+  "driver": "t12-slot-attack.mjs",
+  "verifiedAt": "2026-09-18T04:19:38.363Z",
+  "checks": [
+    {
+      "id": "B3-tier-mapping",
+      "ok": true,
+      "detail": "[{\"name\":\"Architect\",\"tier\":1,\"literals\":[]},{\"name\":\"Researcher\",\"tier\":2,\"literals\":[]},{\"name\":\"Planner\",\"tier\":1,\"literals\":[]},{\"name\":\"Explorer\",\"tier\":2,\"literals\":[]},{\"name\":\"Reviewer\",\"tier\":1,\"literals\":[]},{\"name\":\"Plan Reviewer\",\"tier\":2,\"literals\":[]},{\"name\":\"Vision Analyst\",\"route\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash-vision-exp\",\"reasoningEffort\":\"high\"},\"literals\":[]},{\"name\":\"Lead\",\"tier\":1,\"literals\":[]},{\"name\":\"Deep Worker\",\"tier\":3,\"literals\":[]},{\"name\":\"Senior Engineer\",\"tier\":1,\"literals\":[]},{\"name\":\"Junior Engineer\",\"tier\":3,\"literals\":[]}]"
+    },
+    {
+      "id": "B3-vision-explicit-route",
+      "ok": true,
+      "detail": "{\"name\":\"Vision Analyst\",\"route\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash-vision-exp\",\"reasoningEffort\":\"high\"},\"literals\":[]}"
+    },
+    {
+      "id": "A2-fresh-defaults-materialised",
+      "ok": true,
+      "detail": "{\"slot1\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"max\"},\"slot2\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"high\"},\"slot3\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"high\"}}"
+    },
+    {
+      "id": "A2-read-path-does-not-mutate-input",
+      "ok": true,
+      "detail": "{}"
+    },
+    {
+      "id": "A2-partial-slot-merge",
+      "ok": true,
+      "detail": "{\"slot1\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"max\"},\"slot2\":{\"provider\":\"deepseek-official\",\"model\":\"only-the-model\",\"reasoningEffort\":\"high\"},\"slot3\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"high\"}}"
+    },
+    {
+      "id": "B4-staged-routes-from-slots",
+      "ok": true,
+      "detail": "{\"Architect\":\"deepseek-official/deepseek-v4-flash@max\",\"Researcher\":\"deepseek-official/deepseek-v4-flash@high\",\"Planner\":\"deepseek-official/deepseek-v4-flash@max\",\"Explorer\":\"deepseek-official/deepseek-v4-flash@high\",\"Reviewer\":\"deepseek-official/deepseek-v4-flash@max\",\"Plan Reviewer\":\"deepseek-official/deepseek-v4-flash@high\",\"Vision Analyst\":\"deepseek-official/deepseek-v4-flash-vision-exp@high\",\"Lead\":\"deepseek-official/deepseek-v4-flash@max\",\"Deep Worker\":\"deepseek-official/deepseek-v4-flash@high\",\"Senior Engineer\":\"deepseek-official/deepseek-v4-flash@max\",\"Junior Engineer\":\"deepseek-official/deepseek-v4-flash@high\"}"
+    },
+    {
+      "id": "F4-unknown-model-names-member-and-slot",
+      "ok": true,
+      "detail": "member \"Researcher\" route from teamModels.slot2 failed: unknown member model \"ghost-model\" for provider \"deepseek-official\" (available: deepseek-v4-flash) (fix teamModels.slot2.{provider,model,reasoningEffort} in .mpd/mpd.jsonc)"
+    },
+    {
+      "id": "F4-no-team-state",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "id": "F5-effort-reaches-adapter-verbatim",
+      "ok": true,
+      "detail": "{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"reasoningEffort\":\"ultra\"}"
+    },
+    {
+      "id": "F5-unsupported-effort-names-member-and-slot",
+      "ok": true,
+      "detail": "member \"Architect\" route from teamModels.slot1 failed: provider \"deepseek-official\" model \"deepseek-v4-flash\" does not support reasoning effort \"ultra\" (fix teamModels.slot1.{provider,model,reasoningEffort} in .mpd/mpd.jsonc)"
+    },
+    {
+      "id": "F5-no-team-state",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "id": "F1-service-absent-names-member-and-slot",
+      "ok": true,
+      "detail": "member \"Deep Worker\" is routed by teamModels.slot3 but the mpdConfig service is not available in this composition — enable the mpd-config row, or give the member an explicit route"
+    },
+    {
+      "id": "F1-no-team-state",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "id": "F2-empty-slot-answered-undefined",
+      "ok": true,
+      "detail": "member \"Deep Worker\" is routed by teamModels.slot3, which is NOT configured — declare teamModels.slot3.{provider,model,reasoningEffort} in .mpd/mpd.jsonc (or remove the member's tier to keep the captain-derived default)"
+    },
+    {
+      "id": "F3-blank-leaf-is-incomplete-not-defaulted",
+      "ok": true,
+      "detail": "member \"Deep Worker\" is routed by teamModels.slot3, which is INCOMPLETE (missing provider) — set teamModels.slot3.{provider,model,reasoningEffort} in .mpd/mpd.jsonc"
+    },
+    {
+      "id": "F2/F3-no-team-state",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "id": "F7-no-slot-source-keeps-captain-route",
+      "ok": true,
+      "detail": "[\"deepseek-official\",\"deepseek-v4-flash\",\"high\"]"
+    },
+    {
+      "id": "B2-both-tier-and-route-refused",
+      "ok": true,
+      "detail": "member \"Architect\" declares both \"tier\" and \"route\"; declare exactly one route source"
+    }
+  ],
+  "failed": []
+}

@@ -10,14 +10,25 @@
 //     so a test can prove the plugin does not mistake one for a registration.
 import { describe, expect, test } from "bun:test"
 import * as mod from "../src/index"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import { Context, Service } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
+import { TEAM_MODEL_FALLBACK_OPTIONS } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
-import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, SETTINGS_FIELDS } from "../src/settings"
+import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SETTINGS_FIELDS, teamModelOptionLists } from "../src/settings"
+import { createLog } from "../src/log"
 import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
 import { SHORTCUT_BINDINGS } from "../src/shortcuts"
 import { STATUS_KEY } from "../src/status"
 import { DECISION_EVENTS } from "../src/decisions"
 
 type Disposer = () => void | undefined
+
+/**
+ * Let the section's detached catalog-read → register chain finish. The nine slot knobs take
+ * their options from the live catalog, which the host freezes at register time, so the
+ * registration is one microtask chain behind `apply` by design.
+ */
+const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
 
 interface Double {
   ctx: Record<string, any>
@@ -269,7 +280,7 @@ describe("T4-INERT-1: activation requires the inject form", () => {
 })
 
 describe("full composition (every service injected)", () => {
-  test("every seam activates through ctx.inject and reports an honest outcome", () => {
+  test("every seam activates through ctx.inject and reports an honest outcome", async () => {
     const { services, calls } = allServices()
     const host = hostDouble(services)
     const report = mod.apply(host.ctx as never, { statusIntervalMs: 0 })
@@ -293,17 +304,31 @@ describe("full composition (every service injected)", () => {
     expect(calls.renderers.map((entry) => entry.type)).toEqual([...TRANSCRIPT_TYPES])
     expect(outcomeOf(report, "tuiRenderers").state).toBe("requested")
 
-    // tuiSettingsSections: the mpd.jsonc section, with the on-screen disclosure.
+    // tuiSettingsSections: the mpd.jsonc section, with the on-screen disclosure. The section
+    // registers one microtask behind apply: the nine team-model slot knobs take their option
+    // lists from the live model catalog the adapter reports, and the host DEEP-FREEZES the
+    // options at register time (it renders `select` by cycling that frozen list).
+    await settle()
     expect(calls.sections).toHaveLength(1)
     expect(calls.sections[0].ns).toBe("mpd")
-    // 13 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin), which
-    // gained `watchdog.holdTtlMs` in the T-18 redesign (the count pin follows the shared list; the
-    // per-field assertions below are the other half of the no-drift pair).
-    expect(calls.sections[0].fields).toHaveLength(13)
+    // 22 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
+    // thirteen original mpd knobs plus the nine team-model slot leaves (3 slots x provider /
+    // model / reasoningEffort). The per-field assertions below are the other half of the
+    // no-drift pair.
+    expect(calls.sections[0].fields).toHaveLength(22)
     for (const field of calls.sections[0].fields) {
       expect(field.hint).toContain("mpd.jsonc")
       expect(field.hint).toContain(BRIDGE_DISCLOSURE)
       expect(field.hint).toContain(BRIDGE_NOT_LOST)
+    }
+    // This double composes no `llm`, so every slot knob is on the DECLARED fallback branch —
+    // and none of them may ever carry an empty option list (a slot must never need typing).
+    const slotFields = calls.sections[0].fields.filter((field: any) => field.path[0] === "teamModels")
+    expect(slotFields).toHaveLength(9)
+    for (const field of slotFields) {
+      expect(field.kind).toBe("select")
+      expect(field.options.length).toBeGreaterThan(0)
+      expect(field.options).toEqual(TEAM_MODEL_FALLBACK_OPTIONS[field.path[2]].map((value: string) => ({ value, label: value })))
     }
 
     // tuiScenes: the board scene.
@@ -366,6 +391,198 @@ describe("full composition (every service injected)", () => {
     expect(calls.maps).toHaveLength(0)
     expect(calls.commands).toHaveLength(0)
     expect(calls.decisions).toHaveLength(0)
+  })
+})
+
+/**
+ * The two-provider catalog the A4 tests project: provider labels are the catalog's provider
+ * NAMES, model/effort labels their own names, and every value is the raw id the settings
+ * document stores (so `deepseek-official` / `deepseek-v4-flash` / `max` stay the vocabulary).
+ */
+const TWO_PROVIDER_CATALOG = {
+  providers: [
+    {
+      id: "deepseek-official",
+      name: "DeepSeek Official",
+      models: [
+        {
+          id: "deepseek-v4-flash",
+          name: "DeepSeek V4 Flash",
+          efforts: [{ id: "max", name: "Max" }, { id: "high", name: "High" }],
+          defaultEffort: "max",
+        },
+      ],
+    },
+    {
+      id: "pi-ai",
+      name: "pi-ai",
+      models: [{ id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", efforts: [{ id: "high", name: "High" }] }],
+    },
+  ],
+  degraded: false,
+} as const
+
+/** Apply the row against a host whose MOUNTED adapter answers `llmCatalog()`. */
+async function applyWithAdapter(llmCatalog: () => Promise<unknown>): Promise<{ calls: Record<string, any[]>; host: Double }> {
+  const { services, calls } = allServices()
+  const host = hostDouble(services)
+  host.ctx.get = (name: string) => (name === "mpdDsh" ? { llmCatalog } : undefined)
+  mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+  await settle()
+  return { calls, host }
+}
+
+describe("A4: the nine team-model slot knobs select from the live catalog", () => {
+  const fieldAt = (section: any, path: string): any => {
+    const found = section.fields.find((candidate: any) => candidate.path.join(".") === path)
+    if (found === undefined) throw new Error(`no field at ${path}`)
+    return found
+  }
+  const slotFields = (section: any): any[] => section.fields.filter((field: any) => field.path[0] === "teamModels")
+
+  test("derives provider / model / effort options from a two-provider catalog", async () => {
+    const { calls, host } = await applyWithAdapter(async () => TWO_PROVIDER_CATALOG)
+    const section = calls.sections[0]
+    expect(fieldAt(section, "teamModels.slot1.provider").options).toEqual([
+      { value: "deepseek-official", label: "DeepSeek Official" },
+      { value: "pi-ai", label: "pi-ai" },
+    ])
+    // the UNION of the catalog's model ids, in catalog order, first label per id
+    expect(fieldAt(section, "teamModels.slot2.model").options).toEqual([
+      { value: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+      { value: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+    ])
+    // the UNION of every model's effort ids (deduped: `high` is declared twice)
+    expect(fieldAt(section, "teamModels.slot3.reasoningEffort").options).toEqual([
+      { value: "max", label: "Max" },
+      { value: "high", label: "High" },
+    ])
+    // all nine: `select` with a NON-EMPTY list — no slot is ever a text input
+    expect(slotFields(section)).toHaveLength(9)
+    for (const field of slotFields(section)) {
+      expect(field.kind).toBe("select")
+      expect(field.options.length).toBeGreaterThan(0)
+    }
+    // the other thirteen keep their declared metadata byte-for-byte
+    expect(section.fields.slice(0, 13).map((field: any) => [field.path.join("."), field.kind, field.label]))
+      .toEqual(SETTINGS_FIELDS.slice(0, 13).map((field) => [field.path.join("."), field.kind, field.label]))
+    // the branch is RECORDED (A4's measurement requirement: non-empty alone is not enough)
+    const line = host.infos.find((entry) => entry.includes("slot options: provider=")) ?? ""
+    expect(line).toContain("provider=live(2)")
+    expect(line).toContain("model=live(2)")
+    expect(line).toContain("reasoningEffort=live(2)")
+    expect(line).toContain("catalog=live")
+  })
+
+  test("a degraded catalog falls back to the declared option lists", async () => {
+    const { calls, host } = await applyWithAdapter(async () => ({ providers: [], degraded: true }))
+    const section = calls.sections[0]
+    for (const field of slotFields(section)) {
+      expect(field.kind).toBe("select")
+      expect(field.options).toEqual((TEAM_MODEL_FALLBACK_OPTIONS as Record<string, readonly string[]>)[field.path[2]].map((value) => ({ value, label: value })))
+    }
+    const line = host.infos.find((entry) => entry.includes("slot options: provider=")) ?? ""
+    expect(line).toContain("provider=declared(1)")
+    expect(line).toContain("model=declared(4)")
+    expect(line).toContain("reasoningEffort=declared(4)")
+    expect(line).toContain("catalog=degraded")
+  })
+
+  test("a mounted adapter WITHOUT the seam (an older build) degrades to the declared lists", async () => {
+    const { services, calls } = allServices()
+    const host = hostDouble(services)
+    host.ctx.get = (name: string) => (name === "mpdDsh" ? {} : undefined)
+    mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    await settle()
+    expect(calls.sections).toHaveLength(1)
+    expect(fieldAt(calls.sections[0], "teamModels.slot1.provider").options)
+      .toEqual(TEAM_MODEL_FALLBACK_OPTIONS.provider.map((value) => ({ value, label: value })))
+  })
+
+  test("the REAL adapter seam (t2) feeds the same projection end to end", async () => {
+    // A real createDshAdapter over a fake host `llm` service — the llmCatalog projection
+    // itself, not a hand-rolled stub — so this proves the wiring A4 depends on.
+    const llm = {
+      listProviders: () => [{ id: "deepseek-official", name: "DeepSeek Official" }],
+      listModels: async () => [{ id: "deepseek-v4-flash", name: "DeepSeek V4 Flash" }],
+      resolveModelInfo: async () => ({ reasoning: { efforts: [{ id: "max", name: "Max" }], defaultEffort: "max" } }),
+    }
+    const { services, calls } = allServices()
+    const host = hostDouble(services)
+    const adapter = createDshAdapter({ get: (name: string) => (name === "llm" ? llm : undefined) })
+    host.ctx.get = (name: string) => (name === "mpdDsh" ? adapter : undefined)
+    mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    await settle()
+    expect(fieldAt(calls.sections[0], "teamModels.slot1.model").options)
+      .toEqual([{ value: "deepseek-v4-flash", label: "DeepSeek V4 Flash" }])
+    expect(fieldAt(calls.sections[0], "teamModels.slot1.reasoningEffort").options)
+      .toEqual([{ value: "max", label: "Max" }])
+  })
+
+  test("the section registers EXACTLY once per ns, even when the activation fires twice", async () => {
+    const registered: unknown[] = []
+    const service = { register: (section: unknown) => { registered.push(section); return () => {} } }
+    const scoped = { get: (name: string) => (name === "tuiSettingsSections" ? service : undefined) }
+    const ctx: Record<string, any> = {
+      get: () => undefined,
+      inject: (_deps: readonly string[], callback: (scope: unknown) => void) => { callback(scoped); callback(scoped); return {} },
+      logger: { info: () => {}, warn: () => {}, debug: () => {} },
+    }
+    registerSettingsSection(ctx as never, createLog(ctx.logger, "mpd-tui"), { llmCatalog: async () => TWO_PROVIDER_CATALOG })
+    await settle()
+    expect(registered).toHaveLength(1)
+  })
+
+  test("a DEFERRED register through the injected scope keeps a live non-root caller (the cordis binding late registration relies on)", async () => {
+    // Code-path proof of the ONE risky step in this design: the deferred `register()` runs
+    // after the inject callback returned, so the caller must still resolve to the INJECTED
+    // scope — the host's registry rejects a root or absent caller ("requires a live non-root
+    // calling activation"). A MOUNTING boot is the real-host evidence and belongs to t9.
+    const root = new Context()
+    const callers: unknown[] = []
+    class Sections extends Service {
+      constructor(ctx: any) { super(ctx, "tuiSettingsSections") }
+      register(_section: unknown): () => void {
+        callers.push(this.ctx)
+        return () => {}
+      }
+    }
+    root.plugin({ name: "a4-sections", apply(inner: any) { new Sections(inner) } } as any)
+    const consumer = root.plugin({
+      name: "a4-consumer",
+      inject: ["tuiSettingsSections"],
+      apply(scoped: any) {
+        const viaGet = scoped.get("tuiSettingsSections", false)
+        const viaProperty = scoped.tuiSettingsSections
+        setTimeout(() => {
+          viaGet.register({ ns: "a", title: "a", fields: [] })
+          viaProperty.register({ ns: "b", title: "b", fields: [] })
+        }, 0)
+      },
+    } as any)
+    await (consumer as any)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(callers).toHaveLength(2)
+    for (const caller of callers) {
+      expect(Context.is(caller)).toBe(true)
+      expect(caller === root).toBe(false)
+    }
+  })
+
+  test("the projection is TOTAL: no catalog, a degraded catalog or a malformed one never yields an empty list", () => {
+    const declared = (leaf: "provider" | "model" | "reasoningEffort") =>
+      (TEAM_MODEL_FALLBACK_OPTIONS as Record<string, readonly string[]>)[leaf].map((value) => ({ value, label: value }))
+    expect(teamModelOptionLists(undefined).source).toEqual({ provider: "declared", model: "declared", reasoningEffort: "declared" })
+    expect(teamModelOptionLists(undefined).provider).toEqual(declared("provider"))
+    // a DEGRADED read is treated as no read, even when it still carries a provider
+    const partial = teamModelOptionLists({ providers: [{ id: "p", name: "P", models: [] }], degraded: true } as never)
+    expect(partial.provider).toEqual(declared("provider"))
+    expect(partial.source.provider).toBe("declared")
+    // a malformed catalog object cannot throw and cannot empty a list
+    const junk = teamModelOptionLists({ providers: "nope", degraded: false } as never)
+    expect(junk.provider.length).toBeGreaterThan(0)
+    expect(junk.model).toEqual(declared("model"))
+    expect(junk.source.model).toBe("declared")
   })
 })
 

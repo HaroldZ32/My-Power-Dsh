@@ -143,6 +143,97 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
+  const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
+  let llmCatalogWarned = false;
+  function warnLlmCatalogOnce(detail) {
+    if (llmCatalogWarned)
+      return;
+    llmCatalogWarned = true;
+    try {
+      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+    } catch {}
+  }
+  function catalogLabel(value, id) {
+    return typeof value === "string" && value.length > 0 ? value : id;
+  }
+  async function llmCatalog() {
+    const llm = service("llm");
+    if (llm === undefined || llm === null) {
+      warnLlmCatalogOnce("the harness llm service is unavailable");
+      return { providers: [], degraded: true };
+    }
+    const missing = LLM_CATALOG_METHODS.filter((method) => typeof llm?.[method] !== "function");
+    if (missing.length > 0) {
+      warnLlmCatalogOnce("the harness llm service lacks " + missing.join(", "));
+      return { providers: [], degraded: true };
+    }
+    let providers;
+    try {
+      providers = await llm.listProviders();
+    } catch (error) {
+      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      return { providers: [], degraded: true };
+    }
+    if (!Array.isArray(providers)) {
+      warnLlmCatalogOnce("listProviders() did not return an array");
+      return { providers: [], degraded: true };
+    }
+    let degraded = false;
+    const catalog = [];
+    for (const rawProvider of providers) {
+      const providerId = typeof rawProvider?.id === "string" ? rawProvider.id : undefined;
+      if (providerId === undefined) {
+        degraded = true;
+        continue;
+      }
+      try {
+        const models = await llm.listModels(providerId);
+        if (!Array.isArray(models))
+          throw new Error("listModels(" + providerId + ") did not return an array");
+        const entries = [];
+        for (const rawModel of models) {
+          const modelId = typeof rawModel?.id === "string" ? rawModel.id : undefined;
+          if (modelId === undefined) {
+            degraded = true;
+            continue;
+          }
+          let resolved;
+          try {
+            resolved = await llm.resolveModelInfo(providerId, modelId);
+          } catch {
+            degraded = true;
+            continue;
+          }
+          const reasoning = resolved?.reasoning;
+          const efforts = [];
+          const rawEfforts = Array.isArray(reasoning?.efforts) ? reasoning.efforts : [];
+          for (const rawEffort of rawEfforts) {
+            const effortId = typeof rawEffort?.id === "string" ? rawEffort.id : undefined;
+            if (effortId === undefined)
+              continue;
+            efforts.push({
+              id: effortId,
+              name: catalogLabel(rawEffort?.name, effortId),
+              ...typeof rawEffort?.description === "string" ? { description: rawEffort.description } : {}
+            });
+          }
+          const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined;
+          entries.push({
+            id: modelId,
+            name: catalogLabel(rawModel?.name, modelId),
+            ...typeof rawModel?.description === "string" ? { description: rawModel.description } : {},
+            efforts,
+            ...defaultEffort === undefined ? {} : { defaultEffort }
+          });
+        }
+        catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries });
+      } catch {
+        degraded = true;
+        continue;
+      }
+    }
+    return { providers: catalog, degraded };
+  }
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -186,7 +277,8 @@ function createDshAdapter(ctx, config = {}) {
         agents: agents !== undefined && typeof agents?.list === "function",
         compaction: typeof compaction?.compactNow === "function",
         compactionForAgent: scopedCompaction,
-        events: typeof ctx?.on === "function"
+        events: typeof ctx?.on === "function",
+        llmCatalog: LLM_CATALOG_METHODS.every((method) => typeof service("llm")?.[method] === "function")
       };
     },
     workspaceRoot,
@@ -195,6 +287,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     compactionEngineForAgent,
     onEvent,
+    llmCatalog,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")

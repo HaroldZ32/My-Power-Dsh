@@ -1,0 +1,84 @@
+{
+  "task": "t12",
+  "driver": "t12-workmate-attack.mjs",
+  "verifiedAt": "2026-09-18T04:20:57.826Z",
+  "sandbox": "/tmp/t12-workmate-e0HvuB",
+  "checks": [
+    {
+      "id": "C1-seven-workmate-tools",
+      "ok": true,
+      "detail": "[\"mpd_workmate_delete\",\"mpd_workmate_init\",\"mpd_workmate_list\",\"mpd_workmate_match\",\"mpd_workmate_reflect\",\"mpd_workmate_rename\",\"mpd_workmate_spawn\"]"
+    },
+    {
+      "id": "C2-auto-name-from-functional-name",
+      "ok": true,
+      "detail": "{\"name\":\"deep-worker-1\",\"baseName\":\"Deep Worker\"}"
+    },
+    {
+      "id": "C3-init-result-carries-no-baseId",
+      "ok": true,
+      "detail": "{\"name\":\"deep-worker-1\",\"baseName\":\"Deep Worker\",\"readonly\":false,\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\",\"path\":\"/tmp/t12-workmate-e0HvuB/.mpd/workmate/deep-worker-1\",\"note\":\"t12 attack\"}"
+    },
+    {
+      "id": "C2-second-instance-increments",
+      "ok": true,
+      "detail": "deep-worker-2"
+    },
+    {
+      "id": "C1-case/space/hyphen spellings resolve to the same base",
+      "ok": true,
+      "detail": "[[\"DEEP WORKER\",\"Deep Worker\"],[\"deep-worker\",\"Deep Worker\"],[\"  Deep Worker  \",\"Deep Worker\"]]"
+    },
+    {
+      "id": "C1-every-roster-id-is-REFUSED",
+      "ok": true,
+      "detail": "[\"oracle\",\"librarian\",\"prometheus\",\"hephaestus\",\"sisyphus\",\"atlas\",\"explore\",\"metis\",\"momus\",\"multimodal-looker\",\"sisyphus-junior\"]"
+    },
+    {
+      "id": "C1-refusal-message-lists-NAMES-only-no-id",
+      "ok": true,
+      "detail": "mpd_workmate: unknown base — use a functional NAME from mpd_roles_list (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer)"
+    },
+    {
+      "id": "C3-no-tool-surface-exposes-baseId-or-an-id",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "id": "C3-grep-contract-command-returns-internal-plumbing-only",
+      "ok": true,
+      "detail": "roots=\"packages/mpd-workmate-plugin/src packages/mpd-bundle-plugin/src\" pattern=\"baseId\" hits=8 (all in the workmate plugin's type/reader/projection/index/write sites); outside=[]"
+    },
+    {
+      "id": "C4-meta.json-keeps-baseId",
+      "ok": true,
+      "detail": "{\"baseId\":\"hephaestus\",\"baseName\":\"Deep Worker\"}"
+    },
+    {
+      "id": "C3-service-list/get/read-strip-baseId",
+      "ok": true,
+      "detail": "{\"list\":5,\"getKeys\":[\"name\",\"baseName\",\"description\",\"provider\",\"model\",\"readonly\"]}"
+    },
+    {
+      "id": "C3-list-route-has-no-baseId",
+      "ok": true,
+      "detail": "[[\"name\",\"baseName\",\"readonly\",\"provider\",\"model\",\"uses\",\"updatedAt\",\"lastTask\",\"renamedFrom\",\"note\"],[\"name\",\"baseName\",\"readonly\",\"provider\",\"model\",\"uses\",\"updatedAt\",\"lastTask\",\"renamedFrom\",\"note\"],[\"name\",\"baseName\",\"readonly\",\"provider\",\"model\",\"uses\",\"updatedAt\",\"lastTask\",\"renamedFrom\",\"note\"],[\"name\",\"baseName\",\"readonly\",\"provider\",\"model\",\"uses\",\"updatedAt\",\"lastTask\",\"renamedFrom\",\"note\"],[\"name\",\"baseName\",\"readonly\",\"provider\",\"model\",\"uses\",\"updatedAt\",\"lastTask\",\"renamedFrom\",\"note\"]]"
+    },
+    {
+      "id": "C3-roster-route-has-no-id",
+      "ok": true,
+      "detail": "[{\"name\":\"Architect\",\"description\":\"Strategic technical advisor: architecture review, deep debugging, self-review.\",\"readonly\":true},{\"name\":\"Researcher\",\"description\":\"Evidence-based code/open-source search (AST/LSP/web evidence collection).\",\"readonly\":true}]"
+    },
+    {
+      "id": "C3-get-route-has-no-baseId",
+      "ok": true,
+      "detail": "[\"name\",\"baseName\",\"description\",\"provider\",\"model\",\"readonly\",\"createdAt\",\"updatedAt\",\"uses\",\"lastTask\",\"renamedFrom\",\"persona\",\"memory\",\"note\"]"
+    },
+    {
+      "id": "C5-reflect-and-match-still-work-and-stay-clean",
+      "ok": true,
+      "detail": "{\"uses\":1,\"matches\":5,\"matched\":true}"
+    }
+  ],
+  "failed": []
+}

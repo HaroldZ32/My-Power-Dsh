@@ -79,28 +79,34 @@ test("init → list → reflect → match lifecycle with a sandbox HOME", async 
   // unknown base
   await expect(byName("mpd_workmate_init").execute({ base: "nope" }, exec)).rejects.toThrow(/unknown base/)
 
-  // init by id
-  const init = await byName("mpd_workmate_init").execute({ base: "hephaestus", name: "alice", note: "Counter specialist" }, exec)
+  // init by FUNCTIONAL NAME (C1) — spelled with a space, and the name key is insensitive
+  const init = await byName("mpd_workmate_init").execute({ base: "deep worker", name: "alice", note: "Counter specialist" }, exec)
   expect(init.name).toBe("alice")
   expect(init.baseName).toBe("Deep Worker")
   expect(init.model).toBe("deepseek-v4-flash")
+  expect(init.baseId).toBeUndefined()
   expect(existsSync(join(home, ".mpd", "workmate", "alice", "meta.json"))).toBe(true)
   expect(existsSync(join(home, ".mpd", "workmate", "alice", "persona.md"))).toBe(true)
   expect(readFileSync(join(home, ".mpd", "workmate", "alice", "persona.md"), "utf8")).toContain("Deep Worker")
+  // C4 negative control: the internal provenance key still lands on disk.
+  expect(JSON.parse(readFileSync(join(home, ".mpd", "workmate", "alice", "meta.json"), "utf8")).baseId).toBe("hephaestus")
 
   // duplicate init rejected
-  await expect(byName("mpd_workmate_init").execute({ base: "hephaestus", name: "alice" }, exec)).rejects.toThrow(/already exists/)
+  await expect(byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "alice" }, exec)).rejects.toThrow(/already exists/)
 
-  // init by normal name (auto name)
-  const init2 = await byName("mpd_workmate_init").execute({ base: "Researcher" }, exec)
-  expect(init2.name).toBe("librarian-1")
+  // init by an alternate spelling (hyphen) with an auto name (C2)
+  const init2 = await byName("mpd_workmate_init").execute({ base: "researcher" }, exec)
+  expect(init2.name).toBe("researcher-1")
   expect(init2.readonly).toBe(true)
+  expect(init2.baseId).toBeUndefined()
 
   // list
   const list = await byName("mpd_workmate_list").execute({}, exec)
   expect(list.count).toBe(2)
-  expect(list.workmates.map((w: any) => w.name).sort()).toEqual(["alice", "librarian-1"])
+  expect(list.workmates.map((w: any) => w.name).sort()).toEqual(["alice", "researcher-1"])
   expect(list.workmates.find((w: any) => w.name === "alice").note).toContain("Counter")
+  // C3: no baseId key on any list row
+  for (const w of list.workmates) expect(Object.hasOwn(w, "baseId")).toBe(false)
 
   // reflect: append memory, bump uses, regenerate note, cap memory
   const big = "x".repeat(MEMORY_CAP + 500)
@@ -120,21 +126,60 @@ test("init → list → reflect → match lifecycle with a sandbox HOME", async 
   const m1 = await byName("mpd_workmate_match").execute({ task: "implement a verilog counter and verify it" }, exec)
   expect(m1.matched).toBe(true)
   expect(m1.matches[0].name).toBe("alice")
+  for (const m of m1.matches) expect(Object.hasOwn(m, "baseId")).toBe(false)
   const m2 = await byName("mpd_workmate_match").execute({ task: "paint a watercolor landscape" }, exec)
   expect(m2.matched).toBe(false)
   expect(m2.suggestion).toContain("NEW workmate")
 
-  // service exposes list/get/read
-  expect(provided.mpdWorkmate.list().length).toBe(2)
+  // service exposes list/get/read — and none of them leaks the internal baseId
+  const svcList = provided.mpdWorkmate.list()
+  expect(svcList.length).toBe(2)
+  for (const w of svcList) expect(Object.hasOwn(w, "baseId")).toBe(false)
   expect(provided.mpdWorkmate.get("alice").note).toContain("Deep Worker")
+  expect(Object.hasOwn(provided.mpdWorkmate.get("alice"), "baseId")).toBe(false)
   expect(provided.mpdWorkmate.read("alice").memory).toContain("implement verilog counter")
+  expect(Object.hasOwn(provided.mpdWorkmate.read("alice"), "baseId")).toBe(false)
   expect(provided.mpdWorkmate.get("missing")).toBeNull()
+})
+
+// ── C1/C2/C3: the omo alias is gone from the workmate place ─────────────────────────────────────
+test("an omo roster id is refused as a base even when roles.get(id) resolves it, and the refusal names NAMES only", async () => {
+  sandboxHome()
+  const { byName, exec } = makePlugin()
+  const OMO_IDS = ["hephaestus", "sisyphus", "oracle", "librarian", "explore", "metis", "momus", "multimodal-looker", "sisyphus-junior"]
+  for (const id of OMO_IDS) {
+    const err = await byName("mpd_workmate_init").execute({ base: id, name: "ghost-" + id }, exec).then(() => null, (e: any) => e)
+    expect(err).not.toBeNull()
+    expect(String(err.message)).toContain("unknown base")
+    // the valid functional names ARE listed...
+    expect(String(err.message)).toContain("Deep Worker")
+    expect(String(err.message)).toContain("Researcher")
+    // ...and no id appears anywhere in the message
+    for (const other of OMO_IDS) expect(String(err.message)).not.toContain(other)
+  }
+  // no ghost instance was created by any refusal
+  const list = await byName("mpd_workmate_list").execute({}, exec)
+  expect(list.count).toBe(0)
+})
+
+test("the base key is case/space/hyphen insensitive and the auto name derives from the functional name (C1/C2)", async () => {
+  const home = sandboxHome()
+  const { byName, exec } = makePlugin()
+  for (const spelling of ["Deep Worker", "deep worker", "deep-worker", "DEEP WORKER"]) {
+    const out = await byName("mpd_workmate_init").execute({ base: spelling }, exec)
+    expect(out.baseName).toBe("Deep Worker")
+    expect(out.name).toMatch(/^deep-worker-\d+$/)
+  }
+  const names = readdirSync(join(home, ".mpd", "workmate"), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort()
+  expect(names).toEqual(["deep-worker-1", "deep-worker-2", "deep-worker-3", "deep-worker-4"])
+  // never the internal id
+  expect(names.some((n) => n.startsWith("hephaestus"))).toBe(false)
 })
 
 test("spawn carries persona+memory+note, reflect instruction, readonly deny, own route", async () => {
   sandboxHome()
   const { byName, spawned, exec } = makePlugin()
-  await byName("mpd_workmate_init").execute({ base: "hephaestus", name: "alice" }, exec)
+  await byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "alice" }, exec)
   await byName("mpd_workmate_reflect").execute({ name: "alice", task: "verify counter", outcome: "verified" }, exec)
   const out = await byName("mpd_workmate_spawn").execute({ name: "alice", task: "add a reset", context: "module is cnt8" }, exec)
   expect(out.status).toBe("complete")
@@ -152,7 +197,7 @@ test("spawn carries persona+memory+note, reflect instruction, readonly deny, own
   expect(opts.label).toBe("alice")
 
   // readonly base → deny write tools
-  await byName("mpd_workmate_init").execute({ base: "librarian", name: "bob" }, exec)
+  await byName("mpd_workmate_init").execute({ base: "Researcher", name: "bob" }, exec)
   const readonlyOut = await byName("mpd_workmate_spawn").execute({ name: "bob", task: "search evidence" }, exec)
   expect(readonlyOut.status).toBe("complete")
   expect(spawned[1].toolFilter).toEqual({ deny: expect.arrayContaining(["write", "edit"]) })
@@ -162,10 +207,28 @@ test("spawn carries persona+memory+note, reflect instruction, readonly deny, own
 test("workmate library root is under HOME and not in cwd", () => {
   const home = sandboxHome()
   const { byName, exec } = makePlugin()
-  void byName("mpd_workmate_init").execute({ base: "hephaestus", name: "zed" }, exec)
+  void byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "zed" }, exec)
   const root = join(home, ".mpd", "workmate")
   expect(existsSync(root)).toBe(true)
   expect(readdirSync(root)).toContain("zed")
   expect(process.env.HOME).toBe(home)
   expect(PERSONA_CAP).toBeGreaterThan(0)
+})
+
+// ── C3: no tool output schema, result or advertising string carries the internal baseId ─────────
+test("no workmate tool advertises or returns baseId", async () => {
+  sandboxHome()
+  const { tools, byName, exec } = makePlugin()
+  for (const t of tools) {
+    expect(JSON.stringify(t.output?.schema ?? {})).not.toContain("baseId")
+    expect(JSON.stringify(t.parameters ?? {})).not.toContain("baseId")
+    expect(String(t.description ?? "")).not.toMatch(/roster id|normal name/i)
+    expect(JSON.stringify(t.parameters ?? {})).not.toMatch(/roster id|hephaestus/i)
+  }
+  // the init parameter advertises the functional NAME, not an id
+  const baseParam = byName("mpd_workmate_init").parameters.properties.base
+  expect(baseParam.description).toContain("functional name")
+  expect(baseParam.description).not.toMatch(/roster id|hephaestus/)
+  const out = await byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "probe" }, exec)
+  expect(Object.hasOwn(out, "baseId")).toBe(false)
 })

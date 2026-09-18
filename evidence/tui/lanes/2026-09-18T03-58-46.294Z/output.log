@@ -1,0 +1,7 @@
+seeded workmate library at evidence/model-slots/tui-host-boot/20260918T035827Z/sandbox/home/.mpd/workmate/qa-tui-probe
+tmux: the TUI did not reach the chat screen within 90000ms (readiness pattern /❯|esc to interrupt|按 Esc/)
+model-echo check: checked=0 offenders=0 (must be 0)
+harness command records THIS run: []
+surfaces: tuiStatus=MISSING tuiCommandTrees=MISSING commands=MISSING tuiScenes=MISSING tuiRenderers=MISSING tuiSettingsSections=MISSING tuiDialogs=rendered
+negative control ok=false (must be false)
+board-opened events in the sandbox store=0 scene-reported transcript rows=undefined

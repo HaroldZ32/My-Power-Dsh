@@ -118,7 +118,9 @@ key**。
 ### Roster → workmate → team
 - `mpd_workmate_init`（base + 可选 name）把 roster base 复制到
   `~/.mpd/workmate/<name>/`（meta/persona/memory/note，上限 8/8/1.5 KiB）—— base
-  保持原样。
+  保持原样。base 只按**功能名**寻址（名册 id 会被拒绝，并给出只列名称的错误；`/roster`
+  同样不再返回 id）；省略 `name` 时由该功能名自动生成（`Deep Worker` → `deep-worker-1`）。
+  `meta.json` 保留内部 `baseId` 作为溯源，而所有工具输出、路由与界面都会剥离它。
 - 工作后 `mpd_workmate_reflect` 追加有界 memory 条目（最旧淘汰）、合并 persona 修订、
   重生成 note（保留特长 + 最新任务）、`uses` 加一。
 - `mpd_workmate_spawn` 一次性复用实例：persona + memory + note + 任务，走实例自身路由；

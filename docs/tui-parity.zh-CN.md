@@ -64,9 +64,9 @@
 | `plan-route HTTP semantics (405/409/404, no-store)` | `lib/index.js:325-332,364-370` | not-applicable | — | — | TUI 不走 HTTP；等价的拒绝是场景内错误行（§4.5）与「captain 未接入」拒绝（§6.2） |
 | `activity-panel/stop-team`（halt） | `lib/index.js:276`（halt 路由）；`lib/client.js:292,2360` | absent | — | — | 实测：任何 TUI 场景都不存在停止控件；TUI 的变更集冻结为批准/丢弃（§3.2、§4），且 §7.2 禁止写入 |
 | `team-watchdog/banner`（hold、未读事件、确认） | `packages/mpd-bundle-plugin/src/watchdog-web.ts:26-27`；`src/team-page.js:558-584` | present（hold 行 + 重放对话框） | `mpd-tui-board`：`team-hold held (…)` 行（`src/state.ts:306`）以及重放事件时的确认对话框（`src/watchdog.ts:24-30,93`） | E3、E4（`02-mpd-status.pane.txt`） | 实测：当 `mpdWatchdog` 缺席时该行被省略——绝不渲染成「未 hold」（§7.8） |
-| `workmate-library/tab`（列表） | `packages/mpd-bundle-plugin/src/web-client.js:123,135,655-657` | present（缩减为只列清单） | `/mpd workmates`（`src/commands.ts:108`、`src/index.ts:391`） | E4（`14-workmate-dialog.pane.txt`） | 实测：TUI 的全部界面就是这份清单（`state.workmates.count/names`） |
-| `workmate-library/mutations`（初始化/改名/删除/归档） | `src/web-client.js:124-130` | absent | — | — | 实测：TUI 不暴露任何写入库的路径，而该库位于用户 HOME（`~/.mpd/workmate`，AGENTS.md §6 State 例外）；Web 标签页是唯一的变更入口 |
-| `settings-section`（设置 → MPD，十二个旋钮） | `packages/mpd-bundle-plugin/src/settings-card.js:41-62,386-393` | present | `/settings` —— 通过 `tuiSettingsSections` 接缝渲染的 mpd 区块（`src/settings.ts`） | E3、E4（`15-settings.pane.txt`） | 实测：该区块在界面内披露了到 `<workspace>/.mpd/mpd.jsonc` 的桥接与重启注意事项（docs/tui.md §6.2） |
+| `workmate-library/tab`（列表） | `packages/mpd-bundle-plugin/src/web-client.js`（workmate Tab factory） | present（缩减为只列清单） | `/mpd workmates`（`src/commands.ts` 中的 `/mpd` 命令处理） | E4（`14-workmate-dialog.pane.txt`） | 实测：TUI 的全部界面就是这份清单（`state.workmates.count/names`） |
+| `workmate-library/mutations`（初始化/改名/删除/归档） | `src/web-client.js`（同一个 factory） | absent | — | — | 实测：TUI 不暴露任何写入库的路径，而该库位于用户 HOME（`~/.mpd/workmate`，AGENTS.md §6 State 例外）；Web 标签页是唯一的变更入口 |
+| `settings-section`（设置 → MPD，22 个旋钮） | `packages/mpd-bundle-plugin/src/settings-card.js`（`FIELDS` / `readCatalog` / `optionsFor` / `optionElements`） | present | `/settings` —— 通过 `tuiSettingsSections` 接缝渲染的 mpd 区块（`src/settings.ts`） | E3、E4（`15-settings.pane.txt`） | 实测：该区块在界面内披露了到 `<workspace>/.mpd/mpd.jsonc` 的桥接与重启注意事项（docs/tui.md §6.2）；九个 `teamModels` 叶子是由目录驱动的选择项，回退到声明列表 |
 
 ## 3. 为什么每一行 `absent` 或 `not-applicable` 都保留
 

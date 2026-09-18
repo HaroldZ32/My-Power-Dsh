@@ -4558,8 +4558,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd AgentTe
 window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd settings section — the browser half of the `mpd` settings namespace (t35; moved to its own
 // top-level section by w14/t83 at the user's request: "web的设置栏请单开一栏MPD设置，别混在插件栏里").
 //
-// WHERE THIS MOUNTS: its OWN top-level `MPD` section of the Web settings dialog. The same thirteen
-// mpd.jsonc knobs used to ride the Plugins tab's keyed per-namespace item slot; this file no longer
+// WHERE THIS MOUNTS: its OWN top-level `MPD` section of the Web settings dialog. The same
+// mpd.jsonc knobs (thirteen scalar knobs plus the nine team-model slot leaves) used to ride the
+// Plugins tab's keyed per-namespace item slot; this file no longer
 // registers anything there, so the Plugins tab shows no mpd card.
 //
 // THE PATTERN IS THE HOST'S OWN, MEASURED in the host's settings-models section
@@ -4622,9 +4623,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session"
 
   /**
-   * The thirteen knobs — the SAME fields the TUI `/settings` section declares. `hint` is the knob's
-   * mpd.jsonc key + the shared disclosure, exactly as the TUI builds it; a knob whose effect is
-   * not self-evident from its label also carries a `semantics` sentence the row renders (w16).
+   * The twenty-two knobs — the SAME fields the TUI `/settings` section declares (the thirteen
+   * scalar knobs, then the nine team-model slot leaves). `hint` is the knob's mpd.jsonc key + the
+   * shared disclosure, exactly as the TUI builds it; a knob whose effect is not self-evident from
+   * its label also carries a `semantics` sentence the row renders (w16). The slot leaves take
+   * their option lists from the live catalog at render time instead.
    */
   const FIELDS = [
     { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
@@ -4640,9 +4643,26 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
     { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", semantics: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
     { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", semantics: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
+    // The three team-model slots (nine leaves, mirrors of the ONE knob declaration in
+    // packages/mpd-config-plugin/src/settings-schema.ts). Every slot leaf is a `select`: the
+    // options come from the live catalog at render time (see optionsFor) and fall back to the
+    // declared lists below, so no slot value is ever typed. The DECLARED lists are the parity
+    // surface with the TUI; the LIVE lists are a different source by construction.
+    { path: ["teamModels", "slot1", "provider"], label: "Slot 1 provider", zh: "槽位 1 提供商", kind: "select", options: ["deepseek-official"] },
+    { path: ["teamModels", "slot1", "model"], label: "Slot 1 model", zh: "槽位 1 模型", kind: "select", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
+    { path: ["teamModels", "slot1", "reasoningEffort"], label: "Slot 1 reasoning effort", zh: "槽位 1 推理强度", kind: "select", options: ["off", "low", "high", "max"] },
+    { path: ["teamModels", "slot2", "provider"], label: "Slot 2 provider", zh: "槽位 2 提供商", kind: "select", options: ["deepseek-official"] },
+    { path: ["teamModels", "slot2", "model"], label: "Slot 2 model", zh: "槽位 2 模型", kind: "select", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
+    { path: ["teamModels", "slot2", "reasoningEffort"], label: "Slot 2 reasoning effort", zh: "槽位 2 推理强度", kind: "select", options: ["off", "low", "high", "max"] },
+    { path: ["teamModels", "slot3", "provider"], label: "Slot 3 provider", zh: "槽位 3 提供商", kind: "select", options: ["deepseek-official"] },
+    { path: ["teamModels", "slot3", "model"], label: "Slot 3 model", zh: "槽位 3 模型", kind: "select", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
+    { path: ["teamModels", "slot3", "reasoningEffort"], label: "Slot 3 reasoning effort", zh: "槽位 3 推理强度", kind: "select", options: ["off", "low", "high", "max"] },
   ]
 
-  const hintOf = (field) => `mpd.jsonc ${field.path.join(".")} — ${BRIDGE_DISCLOSURE}${field.semantics === undefined ? "" : " — " + field.semantics}`
+  // The per-row hint: the real mpd.jsonc key, the bridge disclosure, the not-lost clause and (for
+  // a knob whose effect is not self-evident) its semantics sentence — byte-identical to the hint
+  // the TUI section builds for the same knob, so the two front doors state the same thing.
+  const hintOf = (field) => `mpd.jsonc ${field.path.join(".")} — ${BRIDGE_DISCLOSURE} ${NOT_LOST}${field.semantics === undefined ? "" : " " + field.semantics}`
   const fieldKey = (field) => field.path.join(".")
   const leafOf = (value, path) => path.reduce((acc, part) => (acc === null || acc === undefined ? undefined : acc[part]), value)
 
@@ -4663,6 +4683,131 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   }
 
   const format = (kind, value) => (value === undefined || value === null ? "" : String(value))
+
+  /**
+   * The namespace sub-tree that renders as a DEPENDENT picker: for each slot the provider, the
+   * model (grouped by provider) and the reasoning effort (the SELECTED model's own efforts) are
+   * all selections, so no slot value is ever typed. The card MIRRORS this declaration instead of
+   * importing the TypeScript plugin's knob list: the web client must not reference that symbol (a
+   * QA gate pins it), and the parity test compares the mirror with the real one.
+   */
+  const TEAM_MODEL_SLOT = "teamModels"
+
+  /**
+   * The session the catalog probe binds to: `sessions.list.getSnapshot().current` is the shape
+   * `team-page.js` already reads. Guarded, so a missing sessions service, a missing list or an
+   * unbound session all answer undefined instead of throwing.
+   */
+  function currentSessionId(ctx) {
+    try {
+      const sessions = ctx && typeof ctx.get === "function" ? ctx.get("sessions") : undefined
+      const list = sessions ? sessions.list : undefined
+      const snapshot = list && typeof list.getSnapshot === "function" ? list.getSnapshot() : undefined
+      const current = snapshot ? snapshot.current : undefined
+      if (current === undefined || current === null) return undefined
+      return current.sessionId ?? current.id
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * The live model catalog: the host client's own provider groups
+   * (`{ id, name, models: [{ id, name, reasoning?: { efforts: [{ id, name }] } }] }`), reached
+   * exactly the way `team-page.js` reaches a model directory — guarded probes of
+   * `ctx.get("sessions")` + `ctx.get("modelDirectories")`, never a declared inject (a
+   * declared-but-absent service is fatal to the whole page). `directoryFor` THROWS for a session
+   * the host does not know, so every step is wrapped: any absence or throw answers [] and the
+   * slot controls fall back to their declared option lists.
+   */
+  function readCatalog(ctx) {
+    try {
+      const directories = ctx && typeof ctx.get === "function" ? ctx.get("modelDirectories") : undefined
+      if (directories === undefined || directories === null || typeof directories.directoryFor !== "function") return []
+      const sessionId = currentSessionId(ctx)
+      if (sessionId === undefined) return []
+      const directory = directories.directoryFor(sessionId)
+      if (directory === undefined || directory === null) return []
+      const store = directory.store
+      const snapshot = store && typeof store.getSnapshot === "function" ? store.getSnapshot() : undefined
+      const groups = snapshot && Array.isArray(snapshot.groups) ? snapshot.groups : []
+      return groups.filter((group) => group !== null && typeof group === "object" && typeof group.id === "string" && Array.isArray(group.models))
+    } catch {
+      return []
+    }
+  }
+
+  /** The declared fallback options of one knob, in the { value, label } shape the card renders. */
+  function declaredOptions(field) {
+    return (Array.isArray(field.options) ? field.options : []).map((value) => ({ value, label: value }))
+  }
+
+  /** The catalog entry of one exact provider/model pair (the provider leaf picks the group). */
+  function findModel(groups, providerId, modelId) {
+    const preferred = groups.filter((group) => group.id === providerId)
+    for (const group of [...preferred, ...groups.filter((group) => group.id !== providerId)]) {
+      for (const model of group.models) if (model && model.id === modelId) return model
+    }
+    return undefined
+  }
+
+  /**
+   * The options ONE field renders. Non-slot knobs keep their declared list. Slot leaves derive
+   * theirs from the catalog and fall back to the declared list whenever the catalog is empty or
+   * lacks the requested entry — a missing catalog degrades the OPTIONS, never the section:
+   *   provider          -> the catalog's provider ids (label = the provider's display name)
+   *   model             -> every provider's models, GROUPED by provider (optgroup label)
+   *   reasoningEffort   -> the SELECTED model's own efforts, so changing the model re-derives them
+   */
+  function optionsFor(field, groups, controls) {
+    const declared = declaredOptions(field)
+    if (field.path[0] !== TEAM_MODEL_SLOT || groups.length === 0) return declared
+    const slot = field.path[1]
+    const leaf = field.path[2]
+    if (leaf === "provider") return groups.map((group) => ({ value: group.id, label: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id }))
+    if (leaf === "model") {
+      const options = []
+      for (const group of groups) {
+        for (const model of group.models) if (model && typeof model.id === "string") options.push({ value: model.id, label: typeof model.name === "string" && model.name.length > 0 ? model.name : model.id, group: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id })
+      }
+      return options.length > 0 ? options : declared
+    }
+    const textOf = (path) => {
+      const control = controls ? controls[path.join(".")] : undefined
+      return control ? control.text : undefined
+    }
+    const model = findModel(groups, textOf([TEAM_MODEL_SLOT, slot, "provider"]), textOf([TEAM_MODEL_SLOT, slot, "model"]))
+    const efforts = model && model.reasoning && Array.isArray(model.reasoning.efforts) ? model.reasoning.efforts : []
+    const derived = efforts.filter((effort) => effort && typeof effort.id === "string").map((effort) => ({ value: effort.id, label: typeof effort.name === "string" && effort.name.length > 0 ? effort.name : effort.id }))
+    return derived.length > 0 ? derived : declared
+  }
+
+  /**
+   * The option children of one select: `optgroup`s keyed by provider when the options carry a
+   * group (the model control, where the provider is shown as a group), a flat list otherwise.
+   */
+  function optionElements(createElement, options) {
+    if (!options.some((option) => typeof option.group === "string")) {
+      return options.map((option) => createElement("option", { key: option.value, value: option.value }, option.label))
+    }
+    const labels = []
+    const byGroup = new Map()
+    for (const option of options) {
+      const label = typeof option.group === "string" ? option.group : ""
+      if (!byGroup.has(label)) {
+        byGroup.set(label, [])
+        labels.push(label)
+      }
+      byGroup.get(label).push(option)
+    }
+    return labels.map((label) =>
+      createElement(
+        "optgroup",
+        { key: label, label },
+        ...byGroup.get(label).map((option) => createElement("option", { key: option.value, value: option.value }, option.label)),
+      ),
+    )
+  }
 
   /** A minimal snapshot store (the host's own is private): subscribe + getSnapshot, stable refs. */
   function createStore(initial) {
@@ -4826,23 +4971,31 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   }
 
   /** The card component: self-contained markup, no private host components. */
-  function createCardComponent(react, fields = FIELDS) {
+  function createCardComponent(react, fields = FIELDS, readGroups = () => []) {
     const { createElement } = react
     return function MpdSettingsCard(props) {
       const state = props.useMpdCard((snapshot) => snapshot)
       const t = typeof props.t === "function" ? props.t : (key) => key
       const disabled = !state.writable
+      let groups = []
+      try {
+        const probed = readGroups()
+        if (Array.isArray(probed)) groups = probed
+      } catch {
+        /* a broken catalog probe degrades the OPTIONS, never the section */
+      }
       const rows = fields.map((field) => {
         const key = fieldKey(field)
         const control = state.controls[key] ?? { text: "" }
         const label = t(key)
         const hint = t(key + ".hint")
-        const input = field.kind === "select" && Array.isArray(field.options)
+        const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
+        const input = field.kind === "select" && options.length > 0
           ? createElement(
               "select",
               { value: control.text, disabled, onChange: (event) => props.edit(key, event.target.value), style: { width: "100%" } },
               createElement("option", { value: "" }, "—"),
-              ...field.options.map((option) => createElement("option", { key: option, value: option }, option)),
+              ...optionElements(createElement, options),
             )
           : createElement("input", {
               value: control.text,
@@ -4954,7 +5107,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
             }
             const scope = service.bind({ namespace: NS })
             const controller = createMpdCardController(scope, fields)
-            const Section = createCardComponent(require("react"), fields)
+            // The slot leaves render their option lists from the LIVE catalog, probed through the
+            // guarded client seams on every render (never a declared inject — see readCatalog).
+            const Section = createCardComponent(require("react"), fields, () => readCatalog(ctx))
             // The host's descriptor: id + explicit order + a label resolved through this
             // registration's locale dictionaries. `children` is omitted because this section
             // renders no nested slot of its own.
@@ -4988,6 +5143,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     createMpdCardController,
     createCardComponent,
     dictionaries,
+    readCatalog,
+    optionsFor,
+    optionElements,
     FIELDS,
     SETTINGS_NS: NS,
     LOCALE_NS,
@@ -5150,7 +5308,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "panel.loading": "加载中…",
     "panel.empty": "暂无 workmate — 请在下方初始化一个。",
     "panel.baseLabel": "Base（专家模板）",
-    "panel.basePlaceholder": "base（例如 hephaestus）",
+    "panel.basePlaceholder": "base（例如 Deep Worker）",
     "panel.nameLabel": "名称（可选）",
     "panel.namePlaceholder": "名称（可选）",
     "panel.noteLabel": "备注（可选）",
@@ -5169,7 +5327,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "panel.created": "创建",
     "panel.updated": "更新",
     "panel.model": "模型",
-    "panel.rosterUnavailable": "roster 不可用，请手填 base id",
+    "panel.rosterUnavailable": "roster 不可用，请手填 base 名称",
     "mutate.renameTitle": "重命名",
     "mutate.renameLabel": "新名称（仅限 [a-z0-9_-]）",
     "mutate.renamePlaceholder": "新名称",
@@ -5205,7 +5363,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "panel.loading": "Loading…",
     "panel.empty": "No workmates yet — initialize one below.",
     "panel.baseLabel": "Base (roster template)",
-    "panel.basePlaceholder": "base (e.g. hephaestus)",
+    "panel.basePlaceholder": "base (e.g. Deep Worker)",
     "panel.nameLabel": "Name (optional)",
     "panel.namePlaceholder": "name (optional)",
     "panel.noteLabel": "Note (optional)",
@@ -5224,7 +5382,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "panel.created": "Created",
     "panel.updated": "Updated",
     "panel.model": "Model",
-    "panel.rosterUnavailable": "roster unavailable — type the base id",
+    "panel.rosterUnavailable": "roster unavailable — type the base name",
     "mutate.renameTitle": "Rename",
     "mutate.renameLabel": "New name ([a-z0-9_-] only)",
     "mutate.renamePlaceholder": "new name",
@@ -5390,7 +5548,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         .then((data) => { setWorkmates(data.workmates ?? []); setError(null); })
         .catch((e) => { setError(String(e?.message ?? e)); setWorkmates([]); });
       request(ROSTER_URL)
-        .then((data) => { setBases(data.bases ?? []); setBase((prev) => prev || String((data.bases ?? [])[0]?.id ?? "")); })
+        .then((data) => { setBases(data.bases ?? []); setBase((prev) => prev || String((data.bases ?? [])[0]?.name ?? "")); })
         .catch(() => setBases([]));
     }, []);
     react.useEffect(() => { refresh(); }, [refresh]);
@@ -5578,7 +5736,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             : react.createElement("div", { role: "alert", style: { color: "#c33", fontSize: 12 } }, String(error)))
           : react.createElement("div", { style: { overflowY: "auto" } },
           react.createElement("div", { style: MUTED },
-            String(d.baseName ?? d.baseId ?? ""),
+            String(d.baseName ?? ""),
             d.readonly ? " · " + t("panel.readonly") : "",
             d.uses !== undefined ? " · " + t("panel.uses", { count: d.uses }) : "",
           ),
@@ -5628,7 +5786,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           react.createElement("span", null, t("panel.baseLabel")),
           (bases ?? []).length > 0
             ? react.createElement("select", { value: base, onChange: (e) => setBase(e.target.value), style: INPUT_STYLE, "aria-label": t("panel.baseLabel") },
-                (bases ?? []).map((b) => react.createElement("option", { key: b.id, value: b.id }, b.name + " (" + b.id + ")" + (b.readonly ? " · " + t("panel.readonly") : ""))))
+                (bases ?? []).map((b) => react.createElement("option", { key: b.name, value: b.name }, b.name + (b.readonly ? " · " + t("panel.readonly") : ""))))
             : react.createElement("input", { placeholder: t("panel.basePlaceholder"), value: base, onChange: (e) => setBase(e.target.value), style: INPUT_STYLE }),
         ),
         bases !== null && (bases ?? []).length === 0 ? react.createElement("div", { style: { ...MUTED, fontSize: 11 } }, t("panel.rosterUnavailable")) : null,

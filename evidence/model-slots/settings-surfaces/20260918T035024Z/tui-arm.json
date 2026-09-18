@@ -1,0 +1,387 @@
+{
+  "case": "t9-settings-surfaces-tui-arm",
+  "measuredAt": "2026-09-18T03:53:57.004Z",
+  "artifact": {
+    "tuiDist": "/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/dist/index.js",
+    "adapterDist": "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js",
+    "tuiDistSha256": "73159e0470dc80cd78eb81e4026ace6aac025c73405759296a4b2e4f734ee51e"
+  },
+  "limitation": "stub-host registration against the built bytes; NO dsh-tui process boot was run (a TUI profile needs a network install of @deepseek-harness-tui/dsh-tui@0.10.1 + tmux) — the real bundled boot evidence is ../mount-checks.json (mpd-tui row applied inert under the web profile, no crash signature)",
+  "live": {
+    "arm": "live",
+    "threw": null,
+    "sectionFound": true,
+    "slots": [
+      {
+        "path": "teamModels.slot1.provider",
+        "kind": "select",
+        "options": [
+          "deepseek-official",
+          "pi-ai"
+        ],
+        "optionCount": 2
+      },
+      {
+        "path": "teamModels.slot1.model",
+        "kind": "select",
+        "options": [
+          "deepseek-v4-flash",
+          "deepseek-v4-pro"
+        ],
+        "optionCount": 2
+      },
+      {
+        "path": "teamModels.slot1.reasoningEffort",
+        "kind": "select",
+        "options": [
+          "max",
+          "high"
+        ],
+        "optionCount": 2
+      },
+      {
+        "path": "teamModels.slot2.provider",
+        "kind": "select",
+        "options": [
+          "deepseek-official",
+          "pi-ai"
+        ],
+        "optionCount": 2
+      },
+      {
+        "path": "teamModels.slot2.model",
+        "kind": "select",
+        "options": [
+          "deepseek-v4-flash",
+          "deepseek-v4-pro"
+        ],
+        "optionCount": 2
+      },
+      {
+        "path": "teamModels.slot2.reasoningEffort",
+        "kind": "select",
+        "options": [
+          "max",
+          "high"
+        ],
+        "optionCount": 2
+      },
+      {
+        "path": "teamModels.slot3.provider",
+        "kind": "select",
+        "options": [
+          "deepseek-official",
+          "pi-ai"
+        ],
+        "optionCount": 2
+      },
+      {
+        "path": "teamModels.slot3.model",
+        "kind": "select",
+        "options": [
+          "deepseek-v4-flash",
+          "deepseek-v4-pro"
+        ],
+        "optionCount": 2
+      },
+      {
+        "path": "teamModels.slot3.reasoningEffort",
+        "kind": "select",
+        "options": [
+          "max",
+          "high"
+        ],
+        "optionCount": 2
+      }
+    ],
+    "branchLine": "[mpd-tui] settings section mpd slot options: provider=live(2) model=live(2) reasoningEffort=live(2) catalog=live",
+    "degradedLine": null,
+    "totalFields": 22
+  },
+  "degraded": {
+    "arm": "degraded",
+    "threw": null,
+    "sectionFound": true,
+    "slots": [
+      {
+        "path": "teamModels.slot1.provider",
+        "kind": "select",
+        "options": [
+          "deepseek-official"
+        ],
+        "optionCount": 1
+      },
+      {
+        "path": "teamModels.slot1.model",
+        "kind": "select",
+        "options": [
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "deepseek-flash"
+        ],
+        "optionCount": 4
+      },
+      {
+        "path": "teamModels.slot1.reasoningEffort",
+        "kind": "select",
+        "options": [
+          "off",
+          "low",
+          "high",
+          "max"
+        ],
+        "optionCount": 4
+      },
+      {
+        "path": "teamModels.slot2.provider",
+        "kind": "select",
+        "options": [
+          "deepseek-official"
+        ],
+        "optionCount": 1
+      },
+      {
+        "path": "teamModels.slot2.model",
+        "kind": "select",
+        "options": [
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "deepseek-flash"
+        ],
+        "optionCount": 4
+      },
+      {
+        "path": "teamModels.slot2.reasoningEffort",
+        "kind": "select",
+        "options": [
+          "off",
+          "low",
+          "high",
+          "max"
+        ],
+        "optionCount": 4
+      },
+      {
+        "path": "teamModels.slot3.provider",
+        "kind": "select",
+        "options": [
+          "deepseek-official"
+        ],
+        "optionCount": 1
+      },
+      {
+        "path": "teamModels.slot3.model",
+        "kind": "select",
+        "options": [
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "deepseek-flash"
+        ],
+        "optionCount": 4
+      },
+      {
+        "path": "teamModels.slot3.reasoningEffort",
+        "kind": "select",
+        "options": [
+          "off",
+          "low",
+          "high",
+          "max"
+        ],
+        "optionCount": 4
+      }
+    ],
+    "branchLine": "[mpd-tui] settings section mpd slot options: provider=declared(1) model=declared(4) reasoningEffort=declared(4) catalog=degraded",
+    "degradedLine": null,
+    "totalFields": 22
+  },
+  "fallback": {
+    "arm": "unavailable",
+    "threw": null,
+    "sectionFound": true,
+    "slots": [
+      {
+        "path": "teamModels.slot1.provider",
+        "kind": "select",
+        "options": [
+          "deepseek-official"
+        ],
+        "optionCount": 1
+      },
+      {
+        "path": "teamModels.slot1.model",
+        "kind": "select",
+        "options": [
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "deepseek-flash"
+        ],
+        "optionCount": 4
+      },
+      {
+        "path": "teamModels.slot1.reasoningEffort",
+        "kind": "select",
+        "options": [
+          "off",
+          "low",
+          "high",
+          "max"
+        ],
+        "optionCount": 4
+      },
+      {
+        "path": "teamModels.slot2.provider",
+        "kind": "select",
+        "options": [
+          "deepseek-official"
+        ],
+        "optionCount": 1
+      },
+      {
+        "path": "teamModels.slot2.model",
+        "kind": "select",
+        "options": [
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "deepseek-flash"
+        ],
+        "optionCount": 4
+      },
+      {
+        "path": "teamModels.slot2.reasoningEffort",
+        "kind": "select",
+        "options": [
+          "off",
+          "low",
+          "high",
+          "max"
+        ],
+        "optionCount": 4
+      },
+      {
+        "path": "teamModels.slot3.provider",
+        "kind": "select",
+        "options": [
+          "deepseek-official"
+        ],
+        "optionCount": 1
+      },
+      {
+        "path": "teamModels.slot3.model",
+        "kind": "select",
+        "options": [
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "deepseek-flash"
+        ],
+        "optionCount": 4
+      },
+      {
+        "path": "teamModels.slot3.reasoningEffort",
+        "kind": "select",
+        "options": [
+          "off",
+          "low",
+          "high",
+          "max"
+        ],
+        "optionCount": 4
+      }
+    ],
+    "branchLine": "[mpd-tui] settings section mpd slot options: provider=declared(1) model=declared(4) reasoningEffort=declared(4) catalog=unavailable",
+    "degradedLine": null,
+    "totalFields": 22
+  },
+  "checks": [
+    {
+      "id": "T.LIVE.1",
+      "ok": true,
+      "detail": "the built dist applied against the stub host and registered ONE section (threw: null, fields: 22)"
+    },
+    {
+      "id": "T.LIVE.2",
+      "ok": true,
+      "detail": "the registered section carries exactly the NINE slot fields: [\"teamModels.slot1.model\",\"teamModels.slot1.provider\",\"teamModels.slot1.reasoningEffort\",\"teamModels.slot2.model\",\"teamModels.slot2.provider\",\"teamModels.slot2.reasoningEffort\",\"teamModels.slot3.model\",\"teamModels.slot3.provider\",\"teamModels.slot3.reasoningEffort\"]"
+    },
+    {
+      "id": "T.LIVE.3",
+      "ok": true,
+      "detail": "every slot field is `select` with a NON-EMPTY options array: [\"teamModels.slot1.provider=2\",\"teamModels.slot1.model=2\",\"teamModels.slot1.reasoningEffort=2\",\"teamModels.slot2.provider=2\",\"teamModels.slot2.model=2\",\"teamModels.slot2.reasoningEffort=2\",\"teamModels.slot3.provider=2\",\"teamModels.slot3.model=2\",\"teamModels.slot3.reasoningEffort=2\"]"
+    },
+    {
+      "id": "T.LIVE.4",
+      "ok": true,
+      "detail": "the built code logged the branch it took: [mpd-tui] settings section mpd slot options: provider=live(2) model=live(2) reasoningEffort=live(2) catalog=live"
+    },
+    {
+      "id": "T.DEGRADED.1",
+      "ok": true,
+      "detail": "the built dist applied against the stub host and registered ONE section (threw: null, fields: 22)"
+    },
+    {
+      "id": "T.DEGRADED.2",
+      "ok": true,
+      "detail": "the registered section carries exactly the NINE slot fields: [\"teamModels.slot1.model\",\"teamModels.slot1.provider\",\"teamModels.slot1.reasoningEffort\",\"teamModels.slot2.model\",\"teamModels.slot2.provider\",\"teamModels.slot2.reasoningEffort\",\"teamModels.slot3.model\",\"teamModels.slot3.provider\",\"teamModels.slot3.reasoningEffort\"]"
+    },
+    {
+      "id": "T.DEGRADED.3",
+      "ok": true,
+      "detail": "every slot field is `select` with a NON-EMPTY options array: [\"teamModels.slot1.provider=1\",\"teamModels.slot1.model=4\",\"teamModels.slot1.reasoningEffort=4\",\"teamModels.slot2.provider=1\",\"teamModels.slot2.model=4\",\"teamModels.slot2.reasoningEffort=4\",\"teamModels.slot3.provider=1\",\"teamModels.slot3.model=4\",\"teamModels.slot3.reasoningEffort=4\"]"
+    },
+    {
+      "id": "T.DEGRADED.4",
+      "ok": true,
+      "detail": "the built code logged the branch it took: [mpd-tui] settings section mpd slot options: provider=declared(1) model=declared(4) reasoningEffort=declared(4) catalog=degraded"
+    },
+    {
+      "id": "T.UNAVAILABLE.1",
+      "ok": true,
+      "detail": "the built dist applied against the stub host and registered ONE section (threw: null, fields: 22)"
+    },
+    {
+      "id": "T.UNAVAILABLE.2",
+      "ok": true,
+      "detail": "the registered section carries exactly the NINE slot fields: [\"teamModels.slot1.model\",\"teamModels.slot1.provider\",\"teamModels.slot1.reasoningEffort\",\"teamModels.slot2.model\",\"teamModels.slot2.provider\",\"teamModels.slot2.reasoningEffort\",\"teamModels.slot3.model\",\"teamModels.slot3.provider\",\"teamModels.slot3.reasoningEffort\"]"
+    },
+    {
+      "id": "T.UNAVAILABLE.3",
+      "ok": true,
+      "detail": "every slot field is `select` with a NON-EMPTY options array: [\"teamModels.slot1.provider=1\",\"teamModels.slot1.model=4\",\"teamModels.slot1.reasoningEffort=4\",\"teamModels.slot2.provider=1\",\"teamModels.slot2.model=4\",\"teamModels.slot2.reasoningEffort=4\",\"teamModels.slot3.provider=1\",\"teamModels.slot3.model=4\",\"teamModels.slot3.reasoningEffort=4\"]"
+    },
+    {
+      "id": "T.UNAVAILABLE.4",
+      "ok": true,
+      "detail": "the built code logged the branch it took: [mpd-tui] settings section mpd slot options: provider=declared(1) model=declared(4) reasoningEffort=declared(4) catalog=unavailable"
+    },
+    {
+      "id": "T.BRANCH.live",
+      "ok": true,
+      "detail": "LIVE arm: the catalog (2 providers, 2 models, union of efforts) drove the options — [mpd-tui] settings section mpd slot options: provider=live(2) model=live(2) reasoningEffort=live(2) catalog=live"
+    },
+    {
+      "id": "T.BRANCH.degraded",
+      "ok": true,
+      "detail": "DEGRADED arm: a catalog that answered {providers:[],degraded:true} registered on the DECLARED non-empty lists — [mpd-tui] settings section mpd slot options: provider=declared(1) model=declared(4) reasoningEffort=declared(4) catalog=degraded"
+    },
+    {
+      "id": "T.BRANCH.unavailable",
+      "ok": true,
+      "detail": "UNAVAILABLE arm: a mounted adapter WITHOUT the llmCatalog seam registered on the DECLARED non-empty lists — [mpd-tui] settings section mpd slot options: provider=declared(1) model=declared(4) reasoningEffort=declared(4) catalog=unavailable"
+    },
+    {
+      "id": "T.CATALOGREAL",
+      "ok": true,
+      "detail": "the REAL adapter build projected the host llm catalog for the live arm: {\"degraded\":false,\"providers\":2}"
+    }
+  ],
+  "verdict": {
+    "ok": true,
+    "failed": []
+  }
+}

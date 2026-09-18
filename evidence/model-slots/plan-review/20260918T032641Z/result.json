@@ -1,0 +1,136 @@
+{
+  "task": "t11",
+  "kind": "review",
+  "round": 1,
+  "attemptId": "be78543f-f2fb-4b22-ac5c-0dea6e613c8a",
+  "reviewer": "Plan Reviewer",
+  "reviewedTask": "t1",
+  "attempt": 1,
+  "verdict": "pass",
+  "verdictRationale": "No true execution blocker. Every command named by the frozen contract exists and parses; every cited package/source/test path exists today; every acceptance item A1-A6/B1-B7/C1-C5/D1-D6 carries a decidable Check line; all three user clauses are traceable to satisfying AND verifying lanes; and the one blocker-class hazard the contract itself raised (H1, the client.js derived-surface ordering) is RESOLVED in the staged graph by H1's own ALTERNATIVE: t5 is now at contract revision 2 with dependencies t1,t3,t7 and packages/mpd-bundle-plugin/client.js in its inScope, so the authoritative client build happens strictly after t7's web-client.js edit. The findings below are correctness/accuracy defects in the frozen contract and in the staged graph that should be corrected before the affected lanes run; none of them prevents the wave from being executed end-to-end.",
+  "inputs": {
+    "frozenContract": "evidence/model-slots/requirements/CONTRACT.md (564 lines, read in full)",
+    "planOfRecord": ".mpd/plans/model-slots-and-workmate-aliases.md (150 lines, read in full)",
+    "graph": "agent_teams_task_contract(t2,t3,t4,t5,t6,t7,t8,t9,t10,t12,t13) + agent_teams_status",
+    "treeState": "git status at review time: M packages/mpd-bundle-plugin/src/web-client.js, M packages/mpd-dsh-adapter-plugin/src/index.ts(+test), M packages/mpd-workmate-plugin/src/index.ts, ?? evidence/model-slots/ (t2/t7 in flight, t3/t6 claimed)"
+  },
+  "checks": [
+    {
+      "criterion": "every command it names exists",
+      "result": "passed",
+      "evidence": "node --check OK for scripts/dump-config.mjs, scripts/build-mpd-client.mjs, scripts/patch-agent-teams-fixes.mjs, scripts/verify-dist-fresh.mjs, scripts/install-profile.mjs, scripts/verify-docs-parity.mjs, skills/dsh-qa/scripts/web-settings-bridge.mjs, skills/dsh-qa/scripts/tui-settings-bridge.mjs, skills/dsh-qa/scripts/tui-mount.mjs, skills/dsh-qa/scripts/preset-conformance.mjs; package.json defines typecheck, test:qa, verify:rows, verify:docs, verify:gates; bun 1.3.14 present; `node scripts/patch-agent-teams-fixes.mjs --check` ran and exited 0 ('already applied: 120 mpd delta region(s) across 10 adopted file(s)'), matching the region count t6 quotes; `node scripts/verify-docs-parity.mjs` ran and exited 0 (pairs=38 failed=0 violations=0)."
+    },
+    {
+      "criterion": "every package path it cites exists today",
+      "result": "passed",
+      "evidence": "All 31 paths referenced by CONTRACT.md exist: settings-schema.ts, mpd-config-plugin/src/index.ts (mpdConfig.get dot-path reduce at the provide site; mpd_config_get / mpd_config_reload tools), mpd-tui-plugin/src/settings.ts (SETTINGS_FIELDS, knobHint), mpd-bundle-plugin/src/settings-card.js, src/web-client.js, src/team-page.js, mpd-workmate-plugin/src/index.ts (routes /plugins/mpd-workmate/{list,roster,get,init,rename,delete}; ctx.provide('mpdWorkmate', workmateLibrary) with list/get/read), mpd-agent-teams-plugin/lib/{members,profiles,tools,mpd-deltas}.js, mpd-bundle/cordis.patch.yml, client.js (tracked), scripts/*, skills/dsh-qa/scripts/*, and the four cited test files."
+    },
+    {
+      "criterion": "contract counts/pins match the tree",
+      "result": "passed",
+      "evidence": "SETTINGS_KNOBS has exactly 13 entries; packages/mpd-bundle-plugin/test/settings-card.test.mjs:267 and packages/mpd-tui-plugin/test/plugin.test.ts:302 both pin 13; the stale 'eleven fields' comment is at settings-card.test.mjs:10 — exactly as A6 states; effort ids off/low/high/max are documented in packages/mpd-bundle/cordis.patch.yml (member comment near the reasoning_effort literal); `grep -rn SETTINGS_KNOBS packages/mpd-bundle-plugin/src packages/mpd-bundle-plugin/client.js` returns nothing (A6 baseline); verify:docs does NOT police agent-references/** (it reports it as a DERIVED note, D1's claim is true)."
+    },
+    {
+      "criterion": "every artifact path is writable by the lane it names",
+      "result": "passed",
+      "evidence": "t2 adapter src+test; t3 config src+test; t4 tui settings.ts+plugin.test.ts; t5 settings-card.js+settings-card.test.mjs+client.js (inScope, revision 2); t6 lib/**+test/**+cordis.patch.yml (lib/mpd-deltas.js is the --write-registry target, inside lib/**); t7 workmate src+test + web-client.js + sidebar-tab.test.mjs; t8 packages/*/README*.md + docs/** + AGENTS.md + agent-references/**; t9 settings-surfaces/**; t10 routing-and-workmate/**; t12 review/**; t13 packages/*/dist/** + integration/** + .mpd/plans/**. No lane is required to write outside its declared inScope once F1's stale wording is corrected."
+    },
+    {
+      "criterion": "every acceptance item is decidable",
+      "result": "passed",
+      "evidence": "A1-A6, B1-B7, C1-C5, D1-D6 each carry an explicit Check line naming a command or an observable artifact. Findings F6/F7/F9 name the three items whose Check line is decidable only after a small text fix (B7 baseline, D3 settle window, D1 content clauses); no item is undecidable in principle."
+    },
+    {
+      "criterion": "plan-of-record assignments and dependency claims vs the staged graph",
+      "result": "passed",
+      "evidence": "Lane table maps 1:1 (r1=t1, rv2=t11, a=t2, b=t3, c=t4, d=t5, e=t6, f=t7, g=t8, v1=t9, v2=t10, rv1=t12, i1=t13). Plan deps a->c, b->d, b->e, r1->{a..f}, {a,b,c,d}->v1, {e,f}->v2, {v1,v2,g}->rv1, {r1}->rv2, {rv1,rv2}->i1 all hold in the graph. Divergences (graph has MORE edges than the plan records: t5->t7, t10->t5, t12->t6, t8->t2..t7) are conservative and do not break any plan claim; they are reported as F3 because the plan's own dependency line and client.js risk note now misstate who rebuilds client.js."
+    },
+    {
+      "criterion": "each user clause traceable to a verifying item",
+      "result": "passed",
+      "evidence": "Clause 1 (three selectable slots on both front doors + max/high/high defaults) -> A1-A6, verified by t9 (real mount, mpd_config_get, byte reads, tui-settings-bridge/web-settings-bridge). Clause 2 (slots are the default member route, class mapping) -> B1-B7 + section 1.2, verified by t10 (real profile staging read from persisted state) and t12. Clause 3 (workmate omo alias gone: base resolution, auto-naming, every exposed surface) -> C1-C5, verified by t10 (real tool calls, sandboxed HOME) and t12 (quoted search pattern + roots). Clause D (docs/derived/gates/process) -> D1-D6, verified by t12/t13. No clause lacks a verifying lane."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "file": "evidence/model-slots/requirements/CONTRACT.md",
+      "problem": "The contract text still demands the H1 t13 inScope amendment even though the staged graph resolved H1 by H1's own ALTERNATIVE. At fault: section 9 H1 'REQUIRED FIX (recommended): amend t13's inScope to add packages/mpd-bundle-plugin/client.js, and make the post-all-lanes rebuild THERE the authoritative one' and section 7 t13 'Runs the canonical dist builds, the authoritative client.js rebuild (per section 9 H1's amendment)'. Measured graph: t13 revision 1 inScope = packages/*/dist/**, evidence/model-slots/integration/**, .mpd/plans/** — packages/*/dist/** does NOT match packages/mpd-bundle-plugin/client.js; t5 revision 2 inScope DOES contain client.js and its dependencies are t1,t3,t7. A t13 lane reading section 7 literally could attempt an out-of-scope write and be refused.",
+      "requiredFix": "Rewrite section 9 H1, section D2 and section 7 t13 to record the resolution actually taken: t5 (revision 2, deps t1,t3,t7, client.js in inScope) performs the authoritative rebuild after t7's web-client.js edit, and t13's re-run of scripts/build-mpd-client.mjs is the byte-identity STALENESS DETECTOR (a byte difference is a reportable failure, not a t13 repair). Delete the sentence claiming t13 owns the authoritative rebuild."
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "file": "task t10 contract (acceptance item 1)",
+      "problem": "t10's acceptance contradicts the frozen contract's Vision Analyst decision and would fail a correct implementation. At fault: 'Architect, Planner, Reviewer, Lead and Senior Engineer carry slot1's route, Researcher, Explorer, Plan Reviewer and Vision Analyst carry slot2's, Deep Worker and Junior Engineer carry slot3's, and Vision Analyst keeps deepseek-v4-flash-vision-exp.' CONTRACT.md section 1.2 and B3 freeze the opposite: Vision Analyst is NOT wired as tier 2, its route is the explicit vision route, and 'changing slot2 must NOT change Vision Analyst's route, and a lane that wires Vision Analyst as tier 2 FAILS item B3'. The two halves of t10's own sentence are mutually exclusive.",
+      "requiredFix": "Amend t10's acceptance item 1 (and its matching phrasing anywhere else) to: 'Researcher, Explorer and Plan Reviewer carry slot2's route; Vision Analyst belongs to slot2's CLASS but carries the explicit route deepseek-official/deepseek-v4-flash-vision-exp at effort high, unchanged by any slot edit — per CONTRACT.md section 1.2/B3, which is authoritative for this verification lane.' This must land before t10 runs."
+    },
+    {
+      "id": "F3",
+      "severity": "medium",
+      "file": ".mpd/plans/model-slots-and-workmate-aliases.md",
+      "problem": "The plan of record no longer matches the staged dependency graph or its own client.js risk note. At fault: section 4 'Dependencies are genuine only: a->c (TUI consumes the seam), b->d (the card mirrors the knobs), b->e ...' (t5 now also depends on t7) and section 7 risk 'client.js byte-freshness is checked by nothing: node scripts/build-mpd-client.mjs is both the build and the proof (i1 runs it and shows the rebuilt bytes)' — i1/t13's inScope cannot include client.js, so that expectation is unsatisfiable as written.",
+      "requiredFix": "Update section 4's dependency line to record d->f (t5 after t7) and v2->d (t10 after t5), and update the section 7 client.js risk line to record that t5/second lane rebuilds client.js last and t13 re-runs the build only as a byte-identity staleness check. The plan is inside t13's inScope (.mpd/plans/**), so t13 can land this correction."
+    },
+    {
+      "id": "F4",
+      "severity": "medium",
+      "file": "evidence/model-slots/requirements/CONTRACT.md",
+      "problem": "A6's parity set silently narrows a plan requirement without recording the narrowing. Plan section 5.2 requires the two front doors to 'declare identical labels/zh/hints', while CONTRACT.md section 1.3/A6 compares only path/label/zh/kind/options and excludes hint. The exclusion is not cosmetic: the hints differ TODAY by construction — packages/mpd-tui-plugin/src/settings.ts knobHint() emits `mpd.jsonc <key> — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`, while packages/mpd-bundle-plugin/src/settings-card.js hintOf() emits `mpd.jsonc <path> — ${BRIDGE_DISCLOSURE}[ — semantics]` with no not-lost clause. t12 is charged with a 'front-door parity attack' against A6 and could either miss real hint drift or raise a false finding.",
+      "requiredFix": "Add one sentence to CONTRACT.md section 1.3/A6 stating that plan section 5.2's hint clause is SUPERSEDED: hint strings are deliberately not a parity surface (the two doors build them from different sources and already differ), that A3's hint-content requirement binds SETTINGS_KNOBS only, and that t9's byte read of the TUI section is what decides A3's hint contents. Alternatively amend plan section 5.2 the same way."
+    },
+    {
+      "id": "F5",
+      "severity": "low",
+      "file": "evidence/model-slots/requirements/CONTRACT.md",
+      "problem": "D4 asserts 'Writer scopes for evidence/** exist only on t9 ..., t10 ..., t12 ... and t13 ...'. This is false: t11 (this plan-gate review) holds evidence/model-slots/plan-review/**, and section 8's evidence tree omits it. A reader relying on D4 to decide who may write evidence would mis-attribute this review's artifact.",
+      "requiredFix": "Add t11 to D4's writer list (evidence/model-slots/plan-review/**) and add that directory to the section 8 evidence tree."
+    },
+    {
+      "id": "F6",
+      "severity": "low",
+      "file": "evidence/model-slots/requirements/CONTRACT.md",
+      "problem": "B7's check names no baseline and no procedure: 'grep -rn \"register(\" packages/*/src/index.ts review + node scripts/dump-config.mjs --profile mpd row set unchanged vs. the pre-wave row set'. Nothing in the wave captures a pre-wave row set, and nothing is committed yet, so 'the pre-wave row set' is not an identifiable artifact.",
+      "requiredFix": "Name the baseline and the comparison: derive the baseline row set from git show HEAD:packages/mpd-bundle/cordis.patch.yml (or a dump-config run against a HEAD copy) and state that the comparison is on composed ROW IDs, not on member blocks."
+    },
+    {
+      "id": "F7",
+      "severity": "low",
+      "file": "evidence/model-slots/requirements/CONTRACT.md",
+      "problem": "D3 requires every verdict to be 're-checked after a short settle window' — 'short' is not falsifiable, so the item cannot be judged met/not met as written.",
+      "requiredFix": "Pin the window (AGENTS.md section 7 records 50 s for wave 2) or drop the requirement and keep only the hash anchoring."
+    },
+    {
+      "id": "F8",
+      "severity": "low",
+      "file": "task t7 contract (acceptance item 2)",
+      "problem": "t7's acceptance enumerates a tool that does not exist in this profile: 'baseId appears in NO tool output and NO output schema: mpd_workmate_init, mpd_workmate_list, mpd_workmate_get/read, mpd_workmate_match and mpd_workmate_spawn results'. The registered workmate tool surface is exactly seven tools (list, init, spawn, reflect, match, rename, delete); get/read are mpdWorkmate SERVICE methods, which CONTRACT.md C3 lists correctly. A verifier looking for mpd_workmate_get would find nothing and could mis-report the item as unverifiable.",
+      "requiredFix": "Reword t7's acceptance item 2 to '... mpd_workmate_init/list/match/spawn results and output schemas; and the mpdWorkmate list/get/read SERVICE payloads' so the phantom tool names disappear."
+    },
+    {
+      "id": "F9",
+      "severity": "low",
+      "file": "evidence/model-slots/requirements/CONTRACT.md",
+      "problem": "D1's Check line cannot decide the content clauses D1 states. At fault: 'Check: bun run verify:docs; node scripts/verify-docs-parity.mjs must not discover agent-references/**'. Measured: verify:docs PASSes and does not police agent-references (correct, D1's second half is true), but it only checks pair existence, the switch link, the heading tree and CJK content — it never inspects AGENTS.md content and never judges whether a README 'carries the new truth'. D1's clauses about AGENTS.md and agent-teams-deltas.md content are therefore only decidable by t12's review, which the Check line does not name.",
+      "requiredFix": "Extend D1's Check to name the deciding evidence for the content clauses: the exact greps for the two new facts in AGENTS.md and for the regenerated region count in agent-references/agent-teams-deltas.md, plus 't12 judges statement correctness (file+symbol)'. Keep verify:docs as the pair/language gate only."
+    },
+    {
+      "id": "F10",
+      "severity": "low",
+      "file": "evidence/model-slots/requirements/CONTRACT.md",
+      "problem": "D2 covers two of the three embedded inputs of packages/mpd-bundle-plugin/client.js. scripts/build-mpd-client.mjs also reads packages/mpd-agent-teams-plugin/lib/client.js verbatim, and that file lies inside t6's lib/** inScope while t5 depends only on t1,t3,t7 — so if any lane ever rewrites lib/client.js, the authoritative client build could predate it and nothing detects the staleness (verify-dist-fresh does not cover client.js).",
+      "requiredFix": "Add to D2: 'packages/mpd-agent-teams-plugin/lib/client.js is the third embedded input; no lane in this wave modifies it (t6's objective/deliverables exclude it), so t5's build remains authoritative' — or make t5 depend on t6 if that changes."
+    }
+  ],
+  "blockers": 0,
+  "commandsRun": [
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "already applied: 120 mpd delta region(s) across 10 adopted file(s) — matches t6's quoted 120/10" },
+    { "command": "node scripts/verify-docs-parity.mjs", "status": "passed", "exitCode": 0, "evidence": "pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS; agent-references reported as a DERIVED note only" },
+    { "command": "node --check <10 named scripts>", "status": "passed", "exitCode": 0, "evidence": "all parse" },
+    { "command": "grep -rn SETTINGS_KNOBS packages/mpd-bundle-plugin/src packages/mpd-bundle-plugin/client.js", "status": "passed", "exitCode": 1, "evidence": "no matches (A6 baseline holds)" },
+    { "command": "grep -c 'path:' packages/mpd-config-plugin/src/settings-schema.ts after SETTINGS_KNOBS", "status": "passed", "evidence": "13 knob entries; both test pins are 13" }
+  ],
+  "gitWrites": "none (read-only review; INV-2 respected)",
+  "inScope": "evidence/model-slots/plan-review/**"
+}

@@ -152,13 +152,17 @@ node scripts/install-profile.mjs            # --dry-run 只打印计划，不写
 `~/.mpd/workmate/` 下的一份持久副本（在你的 HOME 中，跨项目），拥有独立名字。
 
 ```text
-mpd_workmate_init   { base: <名册名字>, name?: <独立名字>, note? }
+mpd_workmate_init   { base: <功能名>, name?: <独立名字>, note? }
   → 创建 ~/.mpd/workmate/<name>/{meta.json, persona.md, memory.md, note.md}
 ```
 
+`base` 是专家的**功能名**（如 `Deep Worker`，而不是名册 id —— id 属于内部信息，会被拒绝）。
+省略 `name` 时，实例名由该功能名自动派生（`Deep Worker` → `deep-worker-1`）。`meta.json` 会把
+内部 `baseId` 记为溯源信息，但任何工具输出、路由或界面都不会暴露它。
+
 | 工具 | 用途 |
 |---|---|
-| `mpd_workmate_list` | 列出实例（name、base、uses、updatedAt、note） |
+| `mpd_workmate_list` | 列出实例（name、baseName、uses、updatedAt、note） |
 | `mpd_workmate_spawn { name, task, context? }` | 一次性复用：workmate 以其演化后的人设 + 独立记忆 + 说明卡，在自己的模型路由上运行；它被要求在最终汇报前调用 `mpd_workmate_reflect` |
 | `mpd_workmate_reflect { name, task, outcome, persona_delta?, note? }` | 工作后自我演化：有上限的记忆追加（最旧的被淘汰）、人设修订合并、说明卡重生成、`uses++` |
 | `mpd_workmate_match { task }` | 针对任务给说明卡打分；低于阈值时返回 `matched: false`，并建议 **新建一个 workmate** —— 绝不强推弱匹配 |
@@ -254,8 +258,9 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 
 ### 7.2 `/settings` 界面与 `mpd.jsonc` 桥接
 
-`/settings` 编辑六个真实的 `mpd.jsonc` 旋钮 —— `hashline.maxDiffChars`、`commentChecker.autoCheck`、
-`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 它们位于 harness settings 命名空间
+`/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 共 22 个（原有 13 个加九个 `teamModels` 槽位叶子，
+后者是只可选择字段，选项来自实时模型目录，回退到声明列表），其中包括 `hashline.maxDiffChars`、
+`commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 它们位于 harness settings 命名空间
 `mpd` 之下。该命名空间由 `packages/mpd-config-plugin` 提供，其 base 是工作区**文件**里的值，所以界面
 打开时显示的是你的文件值而不是 schema 默认值；保存会**写入 `<workspace>/.mpd/mpd.jsonc`**（针对当时
 存活的会话工作区），并保留注释、键顺序与尾随逗号 —— 与 Web GUI 卡片触发的是同一条回写路径（
@@ -324,6 +329,7 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
 | `team.stateDir` | agent-teams | 团队状态位置（默认 `.mpd/team`） |
+| `teamModels.slot{1,2,3}.*` | agent-teams（经 mpd-config） | 三个**团队模型槽位**：每个槽位是 `{provider, model, reasoningEffort}`，默认 `deepseek-official` / `deepseek-v4-flash`，推理强度依次为 `max`/`high`/`high`。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer；Vision Analyst 保留自己的显式视觉路由。槽位解析失败会让创建团队**大声失败**（指名成员与槽位，不写入任何内容），且推理强度**永远不会**被悄悄钳制。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑；保存后立即落到文件，插件在重启后生效。 |
 
 `mpd-codegraph` 刻意不在上表中：它的 `autoInit`、`initTimeoutMs`、`cooldownMs` 与 `binary` 来自
 它的 **bundle-patch 行** 配置（在 apply 时读取），没有任何插件通过 `mpd.jsonc` 读取

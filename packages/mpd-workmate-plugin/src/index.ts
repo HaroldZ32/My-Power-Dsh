@@ -191,6 +191,15 @@ function readMeta(dir: string): Meta | null {
   } catch { return null }
 }
 
+/** Public projection of an instance's metadata (C3): the roster `baseId` is INTERNAL provenance.
+ * It stays on disk (meta.json / index.json) and is never returned by a tool, an output schema, a
+ * web route or a GUI surface — so a consumer can only know the base by its functional name. */
+function publicMeta(meta: Meta): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...meta }
+  delete out.baseId
+  return out
+}
+
 function writeJson(path: string, value: unknown): void {
   mkdirSync(join(path, ".."), { recursive: true })
   writeFileSync(path, JSON.stringify(value, null, 2) + "\n")
@@ -561,16 +570,30 @@ export function apply(ctx: Ctx): void {
     return ctx.get ? ctx.get("mpdRoles") : undefined
   }
 
+  /** Normalize a base KEY: case/space/hyphen insensitive, so "Deep Worker", "deep worker" and
+   * "deep-worker" all name the same specialist. */
+  function normalizeBaseKey(s: string): string {
+    return String(s ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "")
+  }
+
   function resolveBase(key: string): { id: string; name: string; description: string; readonly: boolean; provider: string; model: string; persona: string } {
     const roles = rolesService()
     if (!roles) throw new Error("mpd_workmate: mpdRoles service unavailable (mpd-roles-plugin not mounted)")
     const k = String(key ?? "").trim()
-    if (!k) throw new Error("mpd_workmate: base required (roster id or normal name)")
-    const direct = roles.get(k)
-    if (direct) return { id: direct.id, name: direct.name, description: direct.description, readonly: Boolean(direct.readonly), provider: direct.chain?.[0]?.provider ?? "deepseek-official", model: direct.chain?.[0]?.model ?? "", persona: String(direct.persona ?? "") }
-    const byName = roles.list().find((r: any) => String(r.name).toLowerCase() === k.toLowerCase())
-    if (byName) return { id: byName.id, name: byName.name, description: byName.description, readonly: Boolean(byName.readonly), provider: byName.chain?.[0]?.provider ?? "deepseek-official", model: byName.chain?.[0]?.model ?? "", persona: String(byName.persona ?? "") }
-    throw new Error(`mpd_workmate: unknown base "${k}" — run mpd_roles_list (ids or normal names like "Deep Worker")`)
+    if (!k) throw new Error('mpd_workmate: base required (the specialist\'s functional name, e.g. "Deep Worker")')
+    // The functional NAME is the ONLY base key. The roster's stable `id` is INTERNAL provenance:
+    // it is never accepted here, so an omo/legacy roster id is refused exactly like any other
+    // unknown key — and the refusal lists the valid NAMES, never an id.
+    const all: any[] = typeof roles.list === "function" ? roles.list() : []
+    const wanted = normalizeBaseKey(k)
+    const base = all.find((r: any) => normalizeBaseKey(String(r?.name ?? "")) === wanted)
+    if (!base) {
+      // NAMES only: the offending key is deliberately NOT echoed, so a rejected omo id can never
+      // reappear inside the refusal (the criterion is that no id appears in the message at all).
+      const names = all.map((r: any) => String(r?.name ?? "")).filter((n) => n !== "")
+      throw new Error(`mpd_workmate: unknown base — use a functional NAME from mpd_roles_list (${names.join(", ")})`)
+    }
+    return { id: String(base.id), name: String(base.name), description: String(base.description ?? ""), readonly: Boolean(base.readonly), provider: base.chain?.[0]?.provider ?? "deepseek-official", model: base.chain?.[0]?.model ?? "", persona: String(base.persona ?? "") }
   }
 
   function initWorkmate(baseKey: string, nameArg: string, noteArg: string) {
@@ -579,8 +602,13 @@ export function apply(ctx: Ctx): void {
     const given = sanitizeName(nameArg)
     let name = given
     if (!name) {
-      const n = listInstances().filter((i) => i.meta.baseId === base.id).length + 1
-      name = `${base.id}-${n}`
+      // An auto-generated name derives from the base's FUNCTIONAL name (Deep Worker →
+      // deep-worker-1), never from its internal roster id.
+      const slug = sanitizeName(base.name) || "workmate"
+      const existing = listInstances()
+      let n = existing.filter((i) => i.meta.baseId === base.id).length + 1
+      while (existing.some((i) => i.name === `${slug}-${n}`)) n += 1
+      name = `${slug}-${n}`
     }
     const dir = wmDir(name)
     if (existsSync(dir)) throw new Error(`mpd_workmate: "${name}" already exists — pick another name or reuse it via mpd_workmate_spawn`)
@@ -592,18 +620,18 @@ export function apply(ctx: Ctx): void {
     const note = capText(String(noteArg ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP)
     writeFileSync(join(dir, "note.md"), note + "\n")
     writeIndexEntry(name, meta)
-    return { name, baseId: base.id, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note }
+    return { name, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note }
   }
 
   const workmateLibrary = {
-    list: () => listInstances().map(({ name, meta, note }) => ({ name, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, renamedFrom: meta.renamedFrom, note })),
+    list: () => listInstances().map(({ name, meta, note }) => ({ name, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, renamedFrom: meta.renamedFrom, note })),
     get: (name: string) => {
-      try { const { meta, key } = ensureInstance(name); return { ...meta, name: key, note: readNote(key) } } catch { return null }
+      try { const { meta, key } = ensureInstance(name); return { ...publicMeta(meta), name: key, note: readNote(key) } } catch { return null }
     },
     read: (name: string) => {
       try {
         const { meta, key } = ensureInstance(name)
-        return { ...meta, name: key, persona: readPersona(key), memory: readMemory(key), note: readNote(key) }
+        return { ...publicMeta(meta), name: key, persona: readPersona(key), memory: readMemory(key), note: readNote(key) }
       } catch { return null }
     },
     // `rename` / `delete` are the service half of the mutation surface (§C). `delete` MUST be an
@@ -622,16 +650,16 @@ export function apply(ctx: Ctx): void {
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { workmates: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["workmates", "count"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmates (" + v.count + "):\n" + (v.workmates as any[]).map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " :: " + String(w.note).slice(0, 140)).join("\n") || "(empty)") },
     execute: async () => {
-      const list = listInstances().map(({ name, meta, note }) => ({ name, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }))
+      const list = listInstances().map(({ name, meta, note }) => ({ name, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }))
       return { workmates: list, count: list.length }
     }
   })
 
   dsh.registerTool({
     name: "mpd_workmate_init",
-    description: "Instantiate a roster BASE specialist into a durable, evolving workmate copy under ~/.mpd/workmate/<name>/ (independent name). base = roster id or normal name (mpd_roles_list). The base template stays pristine; the workmate gets its own persona.md, memory.md and a short note.md. Use when creating a team or pulling up a specialist you will reuse across sessions.",
-    parameters: { type: "object", properties: { base: { type: "string", description: "roster id or normal name (e.g. hephaestus or \"Deep Worker\")" }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { name: { type: "string" }, baseId: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + ")\nnote: " + v.note) },
+    description: "Instantiate a roster BASE specialist into a durable, evolving workmate copy under ~/.mpd/workmate/<name>/ (independent name). base = the specialist's functional NAME (mpd_roles_list), e.g. \"Deep Worker\". The base template stays pristine; the workmate gets its own persona.md, memory.md and a short note.md. Use when creating a team or pulling up a specialist you will reuse across sessions.",
+    parameters: { type: "object", properties: { base: { type: "string", description: "the specialist's functional name (e.g. \"Deep Worker\")" }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated from the functional name if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { name: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + ")\nnote: " + v.note) },
     execute: async (args: any) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""))
   })
 
@@ -723,7 +751,7 @@ export function apply(ctx: Ctx): void {
       const matches = listInstances().map(({ name, meta, note }) => {
         const memoryTail = readMemory(name, 600)
         const score = scoreMatch(task, { note, baseName: meta.baseName, description: meta.description, memoryTail })
-        return { name, score: Math.round(score * 100) / 100, baseName: meta.baseName, baseId: meta.baseId, readonly: meta.readonly, uses: meta.uses, note }
+        return { name, score: Math.round(score * 100) / 100, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, note }
       }).sort((a, b) => b.score - a.score)
       const best = matches[0]
       const matched = !!best && best.score >= MATCH_THRESHOLD
@@ -794,13 +822,14 @@ export function apply(ctx: Ctx): void {
       kind: "exact",
       path: "/plugins/mpd-workmate/list",
       handler: async (_req: any, res: any) => {
-        const list = listInstances().map(({ name, meta, note }) => ({ name, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }))
+        const list = listInstances().map(({ name, meta, note }) => ({ name, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }))
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" })
         res.end(JSON.stringify({ workmates: list }))
       }
     }) as any, "mpd-workmate: list route")
     // Roster route: the sidebar tab's base picker reads the same roster the tools
-    // use, so the GUI never asks the user to type a base id from memory.
+    // use, so the GUI never asks the user to type a base name from memory. The roster's
+    // internal `id` is deliberately NOT carried: the functional NAME is the only base key.
     ctx.effect(() => webServer.register({
       kind: "exact",
       path: "/plugins/mpd-workmate/roster",
@@ -808,7 +837,7 @@ export function apply(ctx: Ctx): void {
         const roles = (ctx.get ? ctx.get("mpdRoles") : undefined) as any
         let bases: any[] = []
         try {
-          bases = (typeof roles?.list === "function" ? roles.list() : []).map((r: any) => ({ id: String(r.id), name: String(r.name), description: String(r.description ?? ""), readonly: Boolean(r.readonly) }))
+          bases = (typeof roles?.list === "function" ? roles.list() : []).map((r: any) => ({ name: String(r.name), description: String(r.description ?? ""), readonly: Boolean(r.readonly) }))
         } catch (e: any) {
           res.writeHead(500, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" })
           res.end(JSON.stringify({ error: String(e?.message ?? e) }))

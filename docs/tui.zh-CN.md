@@ -71,7 +71,8 @@ profile 组合）；**1 个（`tuiPrompt`）宿主不提供，完全不声明**�
 
 ### 3.1 Web 界面的设置界面（设置 → MPD）
 
-同样的十二个可调项也能在 Web 界面里编辑：**设置 → MPD**，即设置对话框中独立的一栏——它不再位于"插件"
+同样的 22 个可调项 —— 原有 13 个加九个 `teamModels` 槽位叶子，后者渲染为联动的模型 + 推理强度
+选择器 —— 也能在 Web 界面里编辑：**设置 → MPD**，即设置对话框中独立的一栏——它不再位于"插件"
 标签页内。该栏按宿主自有栏目（section）的注册方式注册（`ctx.slots.inject("settings.section", …)` →
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`，
 形状取自 `dsh-client-ui-settings-models/lib/client.js:2936` 的实测）：设置外壳收集该列表槽位、按 `order`
@@ -90,7 +91,8 @@ revision 驱动 scope 写入、拒绝非法草稿、带原因渲染为只读—�
 
 **证据级别——本环境未见证：** **真实浏览器渲染**（宿主在真实页面中分发该 key）与**点击驱动的保存**。
 本环境没有浏览器可执行文件；通道以 `cardClaim.W3.witnessed === false` 记录这一点及原因，本页重复该结论，
-绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → MPD**，应看到带十二个可调项的
+绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → MPD**，应看到带 22 个可调项（九个
+团队模型槽位提供由目录驱动的选择）的
 `mpd` 栏，编辑一项并保存——恰好一个活动会话时，工作区的 `<workspace>/.mpd/mpd.jsonc` 会在保留注释的
 前提下改变；否则打通功能会大声拒绝（`no-live-session` / `ambiguous-multi-root`）并说明取值并未丢失。
 
@@ -204,12 +206,13 @@ profile 安装的插件无法注册 `tui.dsh/v1alpha1#DecisionEvents`：在宿�
 ### 6.2 `/settings` 区块**已**与 `<workspace>/.mpd/mpd.jsonc` 打通——附带一次重启与两种具名跳过情形
 
 该区块在宿主 settings 命名空间 `mpd` 下声明的就是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、
-`commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`），而该命名空间
+`commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` 以及九个
+`teamModels.slot{1,2,3}.{provider,model,reasoningEffort}` 叶子），而该命名空间
 由 `packages/mpd-config-plugin` **提供**（本包只是纯消费者，只在没有配置插件参与组合时才注册一个带守卫的
 兜底）。如今一次保存会发生什么：
 
 **`base` 是一条规则，不是一次查表。** 提供该命名空间的包自行推导 base（`baseForNamespace()`，
-`packages/mpd-config-plugin/src/index.ts:511`，经适配器注册），规则按活动根的数量分档：
+经适配器注册），规则按活动根的数量分档：
 
 | 活动会话根 | 命名空间 base |
 |---|---|

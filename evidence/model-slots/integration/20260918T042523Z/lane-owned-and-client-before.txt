@@ -1,0 +1,5 @@
+0ee5da800c1dc18bdbb640ef31eb0e3b1dc2049f8fd9fa65caf1747d30c044e5  packages/mpd-bundle-plugin/client.js
+4b142e9b27617a21b15ca74343c59ef2f70c14eb81cd83cec4906af60435cadf  packages/mpd-config-plugin/dist/index.js
+7dffbdf454a800a4f4292f976393912dac367a11cd99f3ffd572dcaccc0a281b  packages/mpd-dsh-adapter-plugin/dist/index.js
+73159e0470dc80cd78eb81e4026ace6aac025c73405759296a4b2e4f734ee51e  packages/mpd-tui-plugin/dist/index.js
+23817a9b2c8035c978c05a127afb1cc2b899cd8d77fffb72f66633058d20759a  packages/mpd-workmate-plugin/dist/index.js
