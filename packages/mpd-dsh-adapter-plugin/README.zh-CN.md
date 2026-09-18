@@ -16,7 +16,24 @@
 | `ctx.subagents.start("spawn", …)` | `spawnAgent(spec)` | 字符串 prompt → 内容块；扁平 `provider`/`model` 或 `agentOptions`；`run.result` 无论是 Promise 还是对象都会 await；归一化 `{output, structured, stopReason}` |
 | `ctx.skills.registerProvider` / `list` / `get` | `registerSkillProvider`、`listSkills`、`loadSkill` | disposer 透传、缺省参数 |
 | `ctx.agentPresets.resolve` | `resolvePreset(id)` | 归一化 `{id, path, trust, broken}` |
+| `ctx.llm.listProviders` / `listModels` / `resolveModelInfo` | `llmCatalog()` | 把宿主的实时模型目录投影为 `{ providers: [{ id, name, models: [{ id, name, description?, efforts: [{ id, name, description? }], defaultEffort? }] }], degraded }` —— reasoning 块被**摊平**到模型上，`efforts` 始终是数组；只读且从不抛错 |
 | 能力探测 | `capabilities()` | 每个接缝一个布尔值，调用方据此降级而不是崩溃 |
+
+## 模型目录接缝（`llmCatalog`）
+
+`packages/mpd-tui-plugin` 在**注册时**读取该接缝，为九个 `teamModels` 槽位 knob 生成选项 ——
+因为宿主渲染 `select` 的方式是循环遍历一份被深度冻结的选项列表（没有选择对话框）。该读取是
+**全量兜底**的：
+
+- `ctx.llm` 缺失，或缺少三个方法中的**任意一个**，解析为 `{ providers: [], degraded: true }`，
+  并只记录**一条** warn-once 日志指名缺失的接缝 —— 绝不抛错，绝不 reject；
+- 某个 provider 的 `listModels` reject，或某个模型的 `resolveModelInfo` reject，会被**跳过**
+  （目录仍然存活，`degraded: true`）；
+- 解析信息里没有 reasoning 块的模型依然出现，`efforts: []` 且没有 `defaultEffort`；
+- `capabilities().llmCatalog` 报告该接缝（三个方法都存在时才为 true），这正是调用方分支所依
+  赖的标志。
+
+该接缝仅由这三个调用构成，别无其他 —— 没有新增运行时依赖。
 
 ## 为什么存在
 

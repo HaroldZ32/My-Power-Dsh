@@ -1270,6 +1270,97 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
+  const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
+  let llmCatalogWarned = false;
+  function warnLlmCatalogOnce(detail) {
+    if (llmCatalogWarned)
+      return;
+    llmCatalogWarned = true;
+    try {
+      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+    } catch {}
+  }
+  function catalogLabel(value, id) {
+    return typeof value === "string" && value.length > 0 ? value : id;
+  }
+  async function llmCatalog() {
+    const llm = service("llm");
+    if (llm === undefined || llm === null) {
+      warnLlmCatalogOnce("the harness llm service is unavailable");
+      return { providers: [], degraded: true };
+    }
+    const missing = LLM_CATALOG_METHODS.filter((method) => typeof llm?.[method] !== "function");
+    if (missing.length > 0) {
+      warnLlmCatalogOnce("the harness llm service lacks " + missing.join(", "));
+      return { providers: [], degraded: true };
+    }
+    let providers;
+    try {
+      providers = await llm.listProviders();
+    } catch (error) {
+      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      return { providers: [], degraded: true };
+    }
+    if (!Array.isArray(providers)) {
+      warnLlmCatalogOnce("listProviders() did not return an array");
+      return { providers: [], degraded: true };
+    }
+    let degraded = false;
+    const catalog = [];
+    for (const rawProvider of providers) {
+      const providerId = typeof rawProvider?.id === "string" ? rawProvider.id : undefined;
+      if (providerId === undefined) {
+        degraded = true;
+        continue;
+      }
+      try {
+        const models = await llm.listModels(providerId);
+        if (!Array.isArray(models))
+          throw new Error("listModels(" + providerId + ") did not return an array");
+        const entries = [];
+        for (const rawModel of models) {
+          const modelId = typeof rawModel?.id === "string" ? rawModel.id : undefined;
+          if (modelId === undefined) {
+            degraded = true;
+            continue;
+          }
+          let resolved;
+          try {
+            resolved = await llm.resolveModelInfo(providerId, modelId);
+          } catch {
+            degraded = true;
+            continue;
+          }
+          const reasoning = resolved?.reasoning;
+          const efforts = [];
+          const rawEfforts = Array.isArray(reasoning?.efforts) ? reasoning.efforts : [];
+          for (const rawEffort of rawEfforts) {
+            const effortId = typeof rawEffort?.id === "string" ? rawEffort.id : undefined;
+            if (effortId === undefined)
+              continue;
+            efforts.push({
+              id: effortId,
+              name: catalogLabel(rawEffort?.name, effortId),
+              ...typeof rawEffort?.description === "string" ? { description: rawEffort.description } : {}
+            });
+          }
+          const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined;
+          entries.push({
+            id: modelId,
+            name: catalogLabel(rawModel?.name, modelId),
+            ...typeof rawModel?.description === "string" ? { description: rawModel.description } : {},
+            efforts,
+            ...defaultEffort === undefined ? {} : { defaultEffort }
+          });
+        }
+        catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries });
+      } catch {
+        degraded = true;
+        continue;
+      }
+    }
+    return { providers: catalog, degraded };
+  }
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -1313,7 +1404,8 @@ function createDshAdapter(ctx, config = {}) {
         agents: agents !== undefined && typeof agents?.list === "function",
         compaction: typeof compaction?.compactNow === "function",
         compactionForAgent: scopedCompaction,
-        events: typeof ctx?.on === "function"
+        events: typeof ctx?.on === "function",
+        llmCatalog: LLM_CATALOG_METHODS.every((method) => typeof service("llm")?.[method] === "function")
       };
     },
     workspaceRoot,
@@ -1322,6 +1414,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     compactionEngineForAgent,
     onEvent,
+    llmCatalog,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -1628,6 +1721,24 @@ function createDshAdapter(ctx, config = {}) {
 // packages/mpd-config-plugin/src/settings-schema.ts
 var import_schemastery = __toESM(require_lib(), 1);
 var SETTINGS_NS = "mpd";
+var TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3"];
+var TEAM_MODEL_SLOT_DEFAULTS = {
+  slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
+  slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
+  slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }
+};
+var TEAM_MODEL_FALLBACK_OPTIONS = {
+  provider: ["deepseek-official"],
+  model: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"],
+  reasoningEffort: ["off", "low", "high", "max"]
+};
+function teamModelSlotSchema(slot) {
+  return import_schemastery.default.object({
+    provider: import_schemastery.default.string().default(slot.provider),
+    model: import_schemastery.default.string().default(slot.model),
+    reasoningEffort: import_schemastery.default.string().default(slot.reasoningEffort)
+  });
+}
 var SettingsSchema = import_schemastery.default.object({
   hashline: import_schemastery.default.object({ maxDiffChars: import_schemastery.default.number().default(20000) }),
   commentChecker: import_schemastery.default.object({ autoCheck: import_schemastery.default.boolean().default(true) }),
@@ -1635,6 +1746,11 @@ var SettingsSchema = import_schemastery.default.object({
   memory: import_schemastery.default.object({ vcs: import_schemastery.default.union([import_schemastery.default.const("git"), import_schemastery.default.const("svn")]).default("git") }),
   team: import_schemastery.default.object({ stateDir: import_schemastery.default.string().default(".mpd/team") }),
   boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().default(".mpd") }),
+  teamModels: import_schemastery.default.object({
+    slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
+    slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
+    slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3)
+  }),
   watchdog: import_schemastery.default.object({
     enabled: import_schemastery.default.boolean().default(true),
     warnSilenceMs: import_schemastery.default.number().default(600000),
@@ -1645,6 +1761,47 @@ var SettingsSchema = import_schemastery.default.object({
     holdTtlMs: import_schemastery.default.number().default(900000)
   })
 });
+var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
+var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
+function knobHint(key, semantics) {
+  return `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}${semantics === undefined ? "" : " " + semantics}`;
+}
+var TEAM_MODEL_SLOT_SEMANTICS = {
+  slot1: "slot 1 is the default route of the slot-1 members (Architect, Planner, Reviewer, Lead, Senior Engineer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort",
+  slot2: "slot 2 is the default route of the slot-2 analysts (Researcher, Explorer, Plan Reviewer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort, while Vision Analyst keeps its own explicit vision route",
+  slot3: "slot 3 is the default route of the slot-3 executors (Deep Worker, Junior Engineer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort"
+};
+var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot, index) => {
+  const leaves = [
+    { leaf: "provider", label: "provider", zh: "提供商" },
+    { leaf: "model", label: "model", zh: "模型" },
+    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
+  ];
+  return leaves.map(({ leaf, label, zh }) => ({
+    path: ["teamModels", slot, leaf],
+    label: `Slot ${index + 1} ${label}`,
+    zh: `槽位 ${index + 1} ${zh}`,
+    kind: "select",
+    options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
+    hint: knobHint(`teamModels.${slot}.${leaf}`, TEAM_MODEL_SLOT_SEMANTICS[slot])
+  }));
+});
+var SETTINGS_KNOBS = [
+  { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
+  { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
+  { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
+  { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
+  { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
+  { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
+  { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },
+  { path: ["watchdog", "warnSilenceMs"], label: "Silence warning threshold (ms)", zh: "静默告警阈值（毫秒）", kind: "number" },
+  { path: ["watchdog", "tickIntervalMs"], label: "Watchdog tick interval (ms)", zh: "看门狗轮询间隔（毫秒）", kind: "number" },
+  { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
+  { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
+  { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
+  { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
+  ...TEAM_MODEL_KNOBS
+];
 
 // packages/mpd-config-plugin/src/bridge.ts
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
@@ -2401,6 +2558,15 @@ function loadConfig(config, root, settingsSection) {
     merged = deepMerge(merged, section);
   return { config: merged, files: files.filter((f) => existsSync2(f)), errors, settingsApplied };
 }
+function withTeamModelsDefaults(config) {
+  const raw = isPlainObject2(config) ? config : {};
+  const declared = isPlainObject2(raw.teamModels) ? raw.teamModels : {};
+  const teamModels = {};
+  for (const slot of TEAM_MODEL_SLOTS) {
+    teamModels[slot] = { ...TEAM_MODEL_SLOT_DEFAULTS[slot], ...isPlainObject2(declared[slot]) ? declared[slot] : {} };
+  }
+  return { ...raw, teamModels };
+}
 function apply(ctx, config = {}) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
   const warn = (message2) => {
@@ -2715,7 +2881,7 @@ function apply(ctx, config = {}) {
     get: (key) => {
       if (key === undefined)
         return state.config;
-      return key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], state.config);
+      return key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], withTeamModelsDefaults(state.config));
     },
     reload,
     states: () => ({
@@ -2730,14 +2896,15 @@ function apply(ctx, config = {}) {
   });
   dsh.registerTool({
     name: "mpd_config_get",
-    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews.",
+    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, teamModels.slot1|slot2|slot3.provider/model/reasoningEffort.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a, v) => textBlock2(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args, exec) => {
       reload(exec);
+      const resolved = withTeamModelsDefaults(state.config);
       const key = args?.key ? String(args.key) : undefined;
-      const value = key ? key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], state.config) ?? null : null;
-      return key === undefined ? { config: state.config } : { config: state.config, key, value };
+      const value = key ? key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], resolved) ?? null : null;
+      return key === undefined ? { config: resolved } : { config: resolved, key, value };
     }
   });
   dsh.registerTool({
@@ -2752,6 +2919,7 @@ function apply(ctx, config = {}) {
   });
 }
 export {
+  withTeamModelsDefaults,
   stripJsonc,
   parseJsonc,
   name,

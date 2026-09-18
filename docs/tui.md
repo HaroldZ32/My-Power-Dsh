@@ -76,7 +76,8 @@ recorded as NOT-CLAIMED #10.
 
 ### 3.1 The Web GUI settings UI (Settings → MPD)
 
-The same twelve knobs are editable in the Web GUI: **Settings → MPD**, its own top-level section of
+The same 22 knobs — the original 13 plus the nine `teamModels` slot leaves, the latter rendered as
+dependent model + effort pickers — are editable in the Web GUI: **Settings → MPD**, its own top-level section of
 the settings dialog — it no longer lives inside the Plugins tab. The section registers the way the
 host's own sections do (`ctx.slots.inject("settings.section", …)` →
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`,
@@ -103,7 +104,8 @@ authenticated settings API (`web-settings-bridge.mjs` W1–W13).
 live page) and a **click-driven save**. No browser binary exists in this environment; the lane records
 `cardClaim.W3.witnessed === false` with the reason, and this page repeats that instead of implying
 otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → MPD**, expect the
-`mpd` section with the twelve knobs, edit one and Save — with exactly one live
+`mpd` section with the 22 knobs (the nine team-model slots offer catalog-derived selections), change
+one and Save — with exactly one live
 session the workspace's `<workspace>/.mpd/mpd.jsonc` changes with comments intact; otherwise the bridge
 refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the value is not lost.
 
@@ -244,13 +246,14 @@ SHA-256 digest proves byte identity only — never publisher identity.
 ### 6.2 The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc` — with a restart and two named skip cases
 
 The section declares the real mpd.jsonc knobs (`hashline.maxDiffChars`, `commentChecker.autoCheck`,
-`ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir`) under the harness settings namespace
+`ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir` and the nine
+`teamModels.slot{1,2,3}.{provider,model,reasoningEffort}` leaves) under the harness settings namespace
 `mpd`, and that namespace is **served by `packages/mpd-config-plugin`** (this package is a pure
 consumer and registers only a guarded fallback when no config plugin is composed). What a save does
 today:
 
 **The base is a rule, not a lookup.** The serving package derives the namespace base itself
-(`baseForNamespace()`, `packages/mpd-config-plugin/src/index.ts:511`, registered through the adapter)
+(`baseForNamespace()`, registered through the adapter)
 under a cardinality rule:
 
 | Live session roots | The namespace base |

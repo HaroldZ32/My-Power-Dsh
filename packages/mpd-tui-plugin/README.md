@@ -20,7 +20,7 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 |---|---|---|
 | Status line | `ctx.tuiStatus` | one keyed `mpd` contribution above the prompt: `mpd: team … · boulder … · plans … · workmates …` |
 | Transcript renderers | `ctx.tuiRenderers` | the bundle's log-only session events (`agent-teams/*`, `mpd-tui/board-opened`) as plain text rows, live and on replay |
-| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs declared as editable `/settings` fields — **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin behaviour needs a restart); every field hint says so on screen (see NOT CLAIMED #2) |
+| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13 plus the nine `teamModels` slot leaves (22 in all), the slot leaves rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin behaviour needs a restart); every field hint says so on screen (see NOT CLAIMED #2) |
 | Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library; two extra rows for a routed team: `team-plan …` (staged only) and `team-hold held (…)` (only while a watchdog hold lasts) |
 | Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
 | Plan-approval scene | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`, or `a` inside the team workflow: type `approve <teamId>` EXACTLY (the id shown on the surface), then `Ctrl+X`; `Ctrl+D` twice inside the 10-second window discards; `Esc` never mutates; `Ctrl+R` re-reads |
@@ -32,6 +32,31 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 Supporting surfaces (not one of the seven seams): the `/mpd` command on the
 harness command registry, the `mpd` settings namespace registration, and the
 log-only `mpd-tui/board-opened` session record.
+
+### Team-model slot fields are catalog-driven selections
+
+The nine `teamModels` leaves (`slot{1,2,3}.{provider,model,reasoningEffort}`) are
+declared `select` fields. The host renders a `select` by CYCLING a **frozen** option
+list (there is no pick-list dialog), so their options are computed **at registration**
+from the model catalog the adapter reports — `mpdDsh.llmCatalog()`, the additive seam
+documented by `packages/mpd-dsh-adapter-plugin`:
+
+- **provider** options = the catalog's provider ids (label = the provider name);
+- **model** options = the union of every provider's model ids (labels = model names);
+- **reasoning effort** options = the union of every model's effort ids (labels = effort
+  names).
+
+Every value is the raw id the settings document stores (so `deepseek-official` /
+`deepseek-v4-flash` / `max` stay the vocabulary the config layer reads). When the
+catalog is unavailable or **degraded** (`{ providers: [], degraded: true }` — also the
+shape an adapter build without the seam produces), each field falls back to the
+declared `TEAM_MODEL_FALLBACK_OPTIONS` of the shared schema: a slot field is therefore
+never registered with an empty list and never requires typing. Because the catalog read
+is async and the host freezes the list at register time, the section registration is
+deferred by one microtask chain while the catalog is read (the host registry's own
+late-registration seam); a reader without the seam registers synchronously with the
+declared lists. The branch that produced the options is logged on every registration:
+`settings section mpd slot options: provider=live(N)|declared(N) model=… reasoningEffort=… catalog=live|degraded|unavailable`.
 
 The board is the TUI-native equivalent of the web-only surfaces (agent-teams
 sidebar, workmate tab, bundle floater). It reads state — it never writes:

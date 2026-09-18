@@ -1,0 +1,177 @@
+{
+  "ok": true,
+  "taskId": "t10",
+  "attemptId": "d8043074-c470-49c5-a239-26ce30eb829c",
+  "generatedAt": "2026-09-18T04:11:24.702Z",
+  "repoRoot": "/root/dshProj/my-power-dsh",
+  "acceptance": [
+    {
+      "criterion": "A REAL profile team creation (agent_teams_create with profile \"mpd\", staged, no approval) ... routes read back from the persisted team state ... Vision Analyst keeps its own explicit route",
+      "verdict": "passed",
+      "evidence": "LIVE tool call: the harness session log records one agent_teams_create call with arguments \"{\\\"name\\\": \\\"t10-live\\\", \\\"profile\\\": \\\"mpd\\\", \\\"approval\\\": \\\"required\\\"}\" -> tool succeeded; team t10-live persisted in phase staged and its staged member records carry exactly slot1 (deepseek-official/deepseek-v4-flash/max for Architect, Planner, Reviewer, Lead, Senior Engineer), slot2 (…/deepseek-v4-flash/high for Researcher, Explorer, Plan Reviewer) and slot3 (…/deepseek-v4-flash/high for Deep Worker, Junior Engineer) with status idle (staged, nothing spawned); Vision Analyst carries deepseek-official/deepseek-v4-flash-vision-exp/high. Independently reproduced without any model through the plugin's own provisioning entry point (S1: routing-result.json steps.s1Baseline.ok=true), and both entry points are proven to call the same initializeProfileTeam (steps.sameResolutionFunction=true)."
+    },
+    {
+      "criterion": "Changing a slot in the resolved config and repeating the staging CHANGES the staged member routes accordingly ... changing slot2 must NOT move Vision Analyst's route",
+      "verdict": "passed",
+      "evidence": "S2 booted the same staging with .mpd/mpd.jsonc overriding the three slots {slot1: deepseek-v4-pro/high, slot2: deepseek-flash/low, slot3: deepseek-v4-pro/max}; every slot1 member moved to …/deepseek-v4-pro/high, every slot2 member to …/deepseek-flash/low and every slot3 member to …/deepseek-v4-pro/max, while Vision Analyst stayed at deepseek-official/deepseek-v4-flash-vision-exp/high (negative half: it declares an explicit all-or-nothing route). Full route table in routing-result.json steps.s2Overridden.routes."
+    },
+    {
+      "criterion": "A deliberately broken slot ... makes the staging FAIL loudly with the member and the slot named in the error, and no team state is created",
+      "verdict": "passed",
+      "evidence": "L2 (live tool): the recorded agent_teams_create RESULT is an error — 'member \"Architect\" route from teamModels.slot1 failed: unknown member model \"no-such-model-xyz\" for provider \"deepseek-official\" (available: deepseek-flash, deepseek-v4-flash, deepseek-v4-pro, deepseek-v4-flash-vision-exp) (fix teamModels.slot1.{provider,model,reasoningEffort} in .mpd/mpd.jsonc)' — and NO team record was written (teamIds=[]). S3 (no-model boot) reproduces it: staging failed and .mpd/team holds no team record at all (only the watchdog's own state dir)."
+    },
+    {
+      "criterion": "The workmate half is proven by real tool calls in a sandboxed HOME: init base \"Deep Worker\" succeeds, base \"hephaestus\" is refused with a name-only error, omitted name produces deep-worker-1; the suites are the SEVEN registered tools",
+      "verdict": "passed",
+      "evidence": "The seven registered tools are exactly [mpd_workmate_delete, mpd_workmate_init, mpd_workmate_list, mpd_workmate_match, mpd_workmate_reflect, mpd_workmate_rename, mpd_workmate_spawn] (no mpd_workmate_get, no mpd_workmate_read; the detail view is the /get route). init {base:'Deep Worker'} (name omitted) answered {name:'deep-worker-1', baseName:'Deep Worker', provider:'deepseek-official', model:'deepseek-v4-flash'} and wrote memory/meta/note/persona under the sandbox HOME; the case-insensitive spelling 'deep worker' resolved to the same functional name (t2b=true). init {base:'hephaestus'} threw 'mpd_workmate: unknown base — use a functional NAME from mpd_roles_list (Architect, …)' with the rejected key NOT echoed and no instance created (t3=true). All seven tools were EXECUTED (list, match, spawn, reflect, rename, delete included)."
+    },
+    {
+      "criterion": "The exposed-surface claim is measured, not read: tool outputs contain NO baseId, the /roster, /list and /get route payloads carry no id/baseId, and the built web client bytes carry no baseId in the workmate tab path",
+      "verdict": "passed",
+      "evidence": "Deep scans: the seven tool outputs AND their output schemas carry zero baseId keys (t4=true); the three route handlers answer 200 with no id/baseId anywhere in the payloads — /roster's entries are exactly {name, description, readonly} (t5=true); the BUILT client.js artifact (sha256 0ee5da800c1dc18bdbb640ef31eb0e3b1dc2049f8fd9fa65caf1747d30c044e5, 310367 bytes, mtime 2026-09-18T03:45:31.669Z) contains 0 occurrences of baseId and no 'type the base id' copy, and does read baseName (t6=true)."
+    },
+    {
+      "criterion": "Every claim is backed by a real command or tool result with its exit code, isolation discipline honoured, hashes pinned and re-checked after ~50 s",
+      "verdict": "passed",
+      "evidence": "Verify commands: bun test packages/mpd-agent-teams-plugin -> exit 0; bun test packages/mpd-workmate-plugin -> exit 0; node scripts/patch-agent-teams-fixes.mjs --check -> exit 0. Isolation: every boot used a fresh DSH_HOME + sandbox HOME + sandbox workspace (per-scenario assertSessionsSandboxed passed); the live case's credential was resolved by the repo's own resolver ({\"provider\":\"deepseek\",\"keyName\":\"DEEPSEEK_API_KEY\",\"present\":true,\"source\":\"shell-profile\",\"file\":\"/root/.bashrc\",\"line\":129,\"length\":35,\"reason\":null,\"tried\":[{\"tier\":\"environment\",\"detail\":\"DEEPSEEK_API_KEY\",\"outcome\":\"unset\"},{\"tier\":\"credentials-file\",\"detail\":\"/root/.dsh/.credentials.yaml\",\"outcome\":\"present but carries no DEEPSEEK_API_KEY entry\"},{\"tier\":\"shell-profile\",\"detail\":\"/root/.bashrc:129\",\"outcome\":\"hit\"}]}) and seeded ONLY into the ephemeral sandbox store; the real ~/.mpd/workmate listing is byte-identical before/after in all three drivers. Settle: 2026-09-18T04:09:04.452Z -> 2026-09-18T04:09:54.491Z (50 s), changed=[] (hashes.json)."
+    },
+    {
+      "criterion": "Evidence is written under evidence/model-slots/routing-and-workmate/<timestamp>/{result.json,output.log}",
+      "verdict": "passed",
+      "evidence": "This directory (/root/dshProj/my-power-dsh/evidence/model-slots/routing-and-workmate/20260918T040132Z) carries result.json + output.log plus the raw sub-results (routing-result.json, routing-output.log, tool-live-result.json, tool-live-output.log, workmate-result.json, workmate-output.log, hashes.json, s3-probe-stdout.log, s3-probe-files.txt, s3-failure-text.txt) and the four drivers that produced them."
+    },
+    {
+      "criterion": "Any item that cannot be proven is reported as a FAILURE with the missing piece named — never downgraded to a claim",
+      "verdict": "passed",
+      "evidence": "No acceptance item is downgraded. One MEASURED BOUND is recorded instead of glossed: the no-credential headless boot's own artifacts (stdout/stderr + the session store) do NOT carry the provisioning error text — the plugin surfaces it through the harness logger and through the TOOL error, so the loud-failure TEXT is proven by the LIVE tool call (L2) while S3 proves the no-state half; the /{list,roster,get} payloads were read by invoking the handlers the plugin itself registered with a response double (no HTTP socket), and the tool calls were executed through the adapter's registered execute (the same call shape a harness tool call uses) rather than through a model turn for the non-live scenarios."
+    }
+  ],
+  "commands": [
+    {
+      "command": "bun test packages/mpd-agent-teams-plugin",
+      "exit": 0,
+      "tail": "packages/mpd-agent-teams-plugin/test/s1-s4-semantics.test.mjs:\n\n 320 pass\n 0 fail\n 3005 expect() calls\nRan 320 tests across 3969 files. [23.21s]"
+    },
+    {
+      "command": "bun test packages/mpd-workmate-plugin",
+      "exit": 0,
+      "tail": "packages/mpd-workmate-plugin/test/rename-delete.test.ts:\n\n 43 pass\n 0 fail\n 536 expect() calls\nRan 43 tests across 243 files. [7.88s]"
+    },
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exit": 0,
+      "tail": "[patch-agent-teams-fixes] already applied: 123 mpd delta region(s) across 10 adopted file(s)"
+    }
+  ],
+  "subResults": {
+    "routing": {
+      "ok": true,
+      "steps": {
+        "s1Baseline": {
+          "ok": true,
+          "problems": []
+        },
+        "s2Overridden": {
+          "ok": true,
+          "problems": []
+        },
+        "s3BrokenSlot": {
+          "ok": true,
+          "problems": []
+        },
+        "sameResolutionFunction": {
+          "ok": true,
+          "problems": []
+        },
+        "realHomeUntouched": {
+          "ok": true,
+          "problems": []
+        }
+      }
+    },
+    "live": {
+      "ok": true,
+      "steps": {
+        "l1ToolCallStaged": {
+          "ok": true,
+          "problems": []
+        },
+        "l2ToolCallBrokenSlot": {
+          "ok": true,
+          "problems": []
+        },
+        "realHomeUntouched": {
+          "ok": true,
+          "problems": []
+        },
+        "credentials": {
+          "ok": true,
+          "problems": []
+        }
+      }
+    },
+    "workmate": {
+      "ok": true,
+      "steps": {
+        "t1RegisteredTools": {
+          "ok": true,
+          "problems": []
+        },
+        "t2InitByFunctionalName": {
+          "ok": true,
+          "problems": []
+        },
+        "t3RosterIdRefused": {
+          "ok": true,
+          "problems": []
+        },
+        "t2bNameSpellingInsensitive": {
+          "ok": true,
+          "problems": []
+        },
+        "t4NoBaseIdInToolOutputs": {
+          "ok": true,
+          "problems": []
+        },
+        "t5RoutesCarryNoId": {
+          "ok": true,
+          "problems": []
+        },
+        "t6BuiltClientBytes": {
+          "ok": true,
+          "problems": []
+        },
+        "t7RealHomeUntouched": {
+          "ok": true,
+          "problems": []
+        }
+      }
+    },
+    "hashes": {
+      "ok": true,
+      "t0At": "2026-09-18T04:09:04.452Z",
+      "t1At": "2026-09-18T04:09:54.491Z",
+      "changed": []
+    }
+  },
+  "artifacts": [
+    "consolidate.mjs",
+    "hashes.json",
+    "output.log",
+    "result.json",
+    "routing-output.log",
+    "routing-result.json",
+    "routing-verify.mjs",
+    "s3-failure-text.txt",
+    "s3-probe-files.txt",
+    "s3-probe-stdout.log",
+    "s3-probe.mjs",
+    "settle-pin.mjs",
+    "tool-live-output.log",
+    "tool-live-result.json",
+    "tool-live-verify.mjs",
+    "workmate-output.log",
+    "workmate-result.json",
+    "workmate-verify.mjs"
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "task": "t12",
+  "kind": "review",
+  "round": 1,
+  "attempt_id": "39c327c4-70cd-435d-9680-75eeb9ed97aa",
+  "reviewer": "Reviewer",
+  "verdict": "pass",
+  "reviewed_tasks": ["t2", "t3", "t4", "t5", "t6", "t7", "t8", "t14"],
+  "contract_under_review": "evidence/model-slots/requirements/CONTRACT.md (t1 revision 1)",
+  "tree": {
+    "branch": "dev",
+    "head": "06be32f",
+    "tracked_modified": 48,
+    "untracked_test_files": ["packages/mpd-agent-teams-plugin/test/team-model-slot-routes.test.mjs", "packages/mpd-config-plugin/test/team-models.test.ts"],
+    "staged": 0,
+    "settled": "every input hash re-measured at 04:23:52Z equals the 04:15Z pin; also equals t9's/t10's pinned hashes",
+    "input_hashes_sha256_16": {
+      "packages/mpd-config-plugin/src/settings-schema.ts": "bd64ac48b51071a1",
+      "packages/mpd-config-plugin/src/index.ts": "28fa64d4db831922",
+      "packages/mpd-config-plugin/dist/index.js": "4b142e9b27617a21",
+      "packages/mpd-dsh-adapter-plugin/src/index.ts": "8826eb6d2b7a4b34",
+      "packages/mpd-dsh-adapter-plugin/dist/index.js": "7dffbdf454a800a4",
+      "packages/mpd-tui-plugin/src/settings.ts": "3393e54427a31eeb",
+      "packages/mpd-tui-plugin/dist/index.js": "73159e0470dc80cd",
+      "packages/mpd-bundle-plugin/src/settings-card.js": "ae193846675dd1e0",
+      "packages/mpd-bundle-plugin/src/web-client.js": "c65cbc6dec13d08d",
+      "packages/mpd-bundle-plugin/client.js": "0ee5da800c1dc18b",
+      "packages/mpd-workmate-plugin/src/index.ts": "c5be3c1cfd174bcc",
+      "packages/mpd-workmate-plugin/dist/index.js": "23817a9b2c8035c9",
+      "packages/mpd-agent-teams-plugin/lib/profiles.js": "39fa53045d124346",
+      "packages/mpd-agent-teams-plugin/lib/tools.js": "553bb1f849c2339e",
+      "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "6edc7b15ba9533ea",
+      "packages/mpd-bundle/cordis.patch.yml": "ead4a80f3b0fc540"
+    }
+  },
+  "contract_items": {
+    "A1": { "judged": "met", "evidence": "SettingsSchema.dict.teamModels.dict = slot1/slot2/slot3 (driver t12-parity-attack A1-schema-carries-three-slots); each leaf z.string().default(...); TEAM_MODEL_SLOT_DEFAULTS = deepseek-official/deepseek-v4-flash at max/high/high (settings-schema.ts TEAM_MODEL_SLOT_DEFAULTS)" },
+    "A2": { "judged": "met", "evidence": "config src/index.ts withTeamModelsDefaults applied at the KEYED read `mpdConfig.get` and at `mpd_config_get`; (a)(b) measured by t12-slot-attack A2-fresh-defaults-materialised + A2-partial-slot-merge; (c) loadConfig merges userFile then projectFile (project wins) before the settings section; (d) READ-PATH ONLY: the function returns a NEW object (A2-read-path-does-not-mutate-input) and the write-back delta is changedLeaves(previous, next) over `bridge.section = described.user` (the RAW section), so a materialised default is unreachable from the writer" },
+    "A3": { "judged": "met", "evidence": "22 knobs = the original 13 (git diff shows the 13 lines untouched) + TEAM_MODEL_KNOBS flatMap over TEAM_MODEL_SLOTS in provider/model/reasoningEffort order; every slot knob kind=select with a non-empty declared list; every hint = knobHint(key, semantics) so it contains `mpd.jsonc teamModels.slot<N>.<leaf>` + BRIDGE_DISCLOSURE + BRIDGE_NOT_LOST (driver checks A3-*)" },
+    "A4": { "judged": "met", "evidence": "tui src/settings.ts teamModelOptionLists() projected from adapter.llmCatalog() BEFORE register (readCatalogThenRegister), declared fallback on absent/degraded/empty/throwing catalog, settingsFields() replaces each slot leaf's options with the live list, 22-field pin; built dist carries TEAM_MODEL_SLOTS / teamModelOptionLists / the branch marker `slot options: provider=` (driver A4-built-tui-carries-slot-machinery)" },
+    "A5": { "judged": "met", "evidence": "card optionsFor(): provider ids, models grouped by provider (optionElements optgroup), effort re-derived from the selected provider+model, declared fallback whenever the catalog is empty or the requested entry is missing; readCatalog() uses the SAME host shape as the host's own model-selection client (verified against dsh-client-ui-model-selection/lib/client.js: store.getSnapshot().groups[].models[].reasoning.efforts); BUILT client.js carries exactly nine {path:[teamModels,slotN,leaf], kind:select} rows (driver A5-built-client-carries-nine-select-slot-rows)" },
+    "A6": { "judged": "met", "evidence": "driver t12-parity-attack A6-card-mirror-element-wise-equal = 22/22 rows equal on full path/label/zh/kind/declared options; A6-web-client-does-not-reference-the-declaration (src + BUILT client.js have 0 `SETTINGS_KNOBS`); card's hardcoded BRIDGE_DISCLOSURE / NOT_LOST / RESTART_LIMIT are byte-identical to the declaration; both count pins are 22 (settings-card.test.mjs, plugin.test.ts). HINT is out of parity per the captain's ruling and was NOT filed as drift." },
+    "B1": { "judged": "met", "evidence": "adapter src/index.ts llmCatalog(): built only from service('llm').listProviders/listModels/resolveModelInfo; absent llm or any of the three missing -> {providers:[],degraded:true} + ONE warn-once line naming the seam; rejecting provider/model skipped with degraded=true; capabilities().llmCatalog = every method present" },
+    "B2": { "judged": "met", "evidence": "profiles.js MEMBER_KEYS + tier/route, normalizeMember carries both, both-declared refusal names the member and both keys (driver B2-both-tier-and-route-refused), optionalPositiveInt requires a positive safe integer, assertAllowedKeys still refuses unknown keys; key-by-key retention asserted by team-model-slot-routes.test.mjs against the REAL patch" },
+    "B3": { "judged": "met", "evidence": "my own Bun.YAML.parse of packages/mpd-bundle/cordis.patch.yml: all 11 members carry the frozen tier (1/1/2/1/2/2/3/1/3/1) or the vision route, and NO member carries a literal provider/model/reasoning_effort (driver B3-*)" },
+    "B4": { "judged": "met", "evidence": "driver t12-slot-attack B4-staged-routes-from-slots staged all 11 SEC members from the REAL patch through the REAL materialised config: slot1 -> deepseek-official/deepseek-v4-flash@max (Architect/Planner/Reviewer/Lead/Senior Engineer), slot2 -> @high (Researcher/Explorer/Plan Reviewer), slot3 -> @high (Deep Worker/Junior Engineer), Vision Analyst -> deepseek-v4-flash-vision-exp@high; plus the runtime half: members.js modelSelection()/installModelSelection applies the selection (and strips any inherited effort) on the member's own agent/request, so the recorded route is the executed one" },
+    "B5": { "judged": "met", "evidence": "F1/F2/F3/F4/F5/F7 measured independently in t12-slot-attack (18/18) — every failure names the member and the slot and leaves ZERO team directories; F5 shows the request reaching resolveCallConfig with reasoningEffort 'ultra' verbatim and the underlying UNSUPPORTED_REASONING_EFFORT text preserved; F6 (both keys) via B2; a non-slot route failure is rethrown unchanged; fallback stays the post-failure switch (isFallbackFailureCode) and is never consulted at staging" },
+    "B6": { "judged": "met", "caveat": "see observation O1", "evidence": "my own `node scripts/patch-agent-teams-fixes.mjs --check` = exit 0, `already applied: 123 mpd delta region(s) across 10 adopted file(s)`; every ADDED line in lib/** lies inside a region (mechanical line-map: profiles.js 4 regions, tools.js 65 regions, 0 additions outside); lib/mpd-deltas.js is byte-identical to a fresh `--write-registry` (123 regions) run in a COPY of the tree (3 entries added, 2 existing entries' blocks/contexts regenerated, nothing hand-edited); `lib/index.js` Config retention is asserted key-by-key by t6's test" },
+    "B7": { "judged": "met", "evidence": "the wave diff adds no ctx.provide / webServer.register / registerTool / settingsRegister call (0 matches for the added-line scan), no package.json/lockfile change, and teamModels is the only new config key; the 25-row bundle composition is unchanged (verify:rows stays green per t6)" },
+    "C1": { "judged": "met", "evidence": "workmate src resolveBase matches roles.list() by name through normalizeBaseKey (case/space/underscore/hyphen-insensitive); the legacy roles.get(id) branch is gone (grep 'roles.get' in the package src = 0); driver t12-workmate-attack refused ALL 11 real roster ids and resolved DEEP WORKER / deep-worker / '  Deep Worker  ' to the same base; the refusal lists the 11 functional NAMES and contains no id" },
+    "C2": { "judged": "met", "evidence": "driver: base 'Deep Worker' with no name -> deep-worker-1, second init -> deep-worker-2; slug = sanitizeName(base.name) with a collision-avoiding counter (never the roster id)" },
+    "C3": { "judged": "met", "evidence": "driver t12-workmate-attack: the 7 registered tools; init result / list / match rows / the mpdWorkmate.list|get|read service payloads / the /list,/roster,/get route bodies all carry no baseId and no id; tool descriptions/parameters expose no baseId, no id and no 'roster id or normal name' advertising string; meta.json keeps baseId (C4); grep contract `grep -rn baseId packages/mpd-workmate-plugin/src packages/mpd-bundle-plugin/src` = 8 hits, ALL internal (Meta type, readMeta, publicMeta + its comment, IndexEntry, indexEntryOf, the auto-name counter, the meta.json write literal), zero hits in mpd-bundle-plugin/src; the BUILT client.js has 0 baseId, option value/label = b.name with no '(id)' suffix, and both locale dictionaries carry the corrected 'type the base name' copy" },
+    "C4": { "judged": "met", "evidence": "driver: after a sandbox init, meta.json still contains baseId 'hephaestus' + baseName 'Deep Worker'; workmate.test.ts asserts the same and rename-delete.test.ts asserts baseId survives a rename; no migration writes" },
+    "C5": { "judged": "met", "evidence": "reflect/match still work (driver C5 check: uses bumped to 1, match returns rows); the whole adopted-plugin suite = 320 pass / 0 fail; workmate suite green in t7/t14 payloads with only the declared T-62 dist artifact red (t13's scope)" },
+    "D1": { "judged": "met", "evidence": "my own `bun run verify:docs` = exit 0, '[verify-docs-parity] pairs=38 failed=0 violations=0 exempt=19 derived=3 - PASS', with the derived region-count note reporting carried 123/10 == derived 123/10 and per-file agreement for all 10 adopted files; the reads I spot-checked state the shipped behaviour (workmate README: name-only base, deep-worker-N, baseId internal; bundle-plugin README: the dependent picker + its declared fallback + the honest hint-difference sentence with no browser-render claim; mpd-roles README corrected the now-false workmate-id compatibility claim)" },
+    "D2": { "judged": "not yet met - assigned to t13 (pending, by design)", "evidence": "my own `node scripts/verify-dist-fresh.mjs` = FAIL, 14 of 20 targets STALE: bootstrap, boulder, codegraph, comment-checker, ext, hashline, memory, modelchain, qa-roles-probe, roles, team-compact, team-watchdog, tools, ulw — while the four lane-owned artifacts (config, adapter, tui, workmate) are FRESH. Cause measured, not guessed: the adapter source is INLINED into every bundle, so t2's +169-line seam grows every other bundle's bytes — committed packages/mpd-roles-plugin/dist/index.js contains 0 occurrences of `llmCatalog` while a fresh canonical build contains 7, and every stale file is exactly +3643 B. t13 declares these 14 paths in its inScope and owns this rebuild." },
+    "D3": { "judged": "not yet met - assigned to t13 (pending, by design)", "evidence": "the aggregate sweep is t13's; the three commands MY contract names I ran myself: patch-agent-teams-fixes --check (exit 0), bun run verify:docs (exit 0), the baseId grep (recorded below). Everything else in D3 is integration's." },
+    "D4": { "judged": "met", "evidence": "this review's evidence is under evidence/model-slots/review/20260918T041911Z/ (result.json, output.log, three runnable drivers + their JSON results); the implementation lanes' bound-proof is their task payload plus committed tests, as the contract's H3/D4 assigns" },
+    "D5": { "judged": "met (INV-1 verified by me)", "evidence": "INV-1: `git status --porcelain` shows NO skills/** and NO VENDOR_LOCK.json change, so the single-re-pin rule is not engaged; INV-2: nothing is staged, and the tracked changes are exactly the lanes' declared paths (48 files: t2/t3/t4/t5/t6/t7/t8/t14 prefixes + the 2 new test files)" },
+    "D6": { "judged": "not yet met - assigned to t13 (pending, by design)", "evidence": ".mpd/plans/** is t13's declared scope; the plan has not been marked up yet (t13 is pending on t11/t12/t14/t15)" }
+  },
+  "reviewer_acceptance": {
+    "contract-items-judged-with-file+symbol-evidence": "passed",
+    "adopted-plugin-deltas-judged-as-deltas": "passed (--check exit 0 by my own run; registry == a fresh --write-registry; every ADDED line inside a region; see O1 for the replacement-shaped removals)",
+    "failure-semantics-attacked": "passed (18/18 independent staging checks; effort verbatim; no clamping anywhere in the path; no team state on any failure)",
+    "workmate-absence-attacked": "passed (pattern `baseId` with roots `packages/mpd-workmate-plugin/src packages/mpd-bundle-plugin/src`; 8 internal hits, 0 exposure sites; 11 real roster ids all refused)",
+    "front-door-parity-attacked": "passed (22/22 rows element-wise; SETTINGS_KNOBS absent from card src and BUILT client.js; card disclosure literals byte-identical; built bytes carry the nine select rows and the TUI branch marker)"
+  },
+  "commands_run": [
+    { "command": "node scripts/patch-agent-teams-fixes.mjs --check", "status": "passed", "exitCode": 0, "evidence": "already applied: 123 mpd delta region(s) across 10 adopted file(s)" },
+    { "command": "bun run verify:docs", "status": "passed", "exitCode": 0, "evidence": "pairs=38 failed=0 violations=0 exempt=19 derived=3 - PASS; derived region-count 123/10 per-file agree" },
+    { "command": "grep -rn baseId packages/mpd-workmate-plugin/src packages/mpd-bundle-plugin/src", "status": "passed", "exitCode": 0, "evidence": "8 hits, all internal plumbing in mpd-workmate-plugin/src (Meta type / readMeta / publicMeta+comment / IndexEntry / indexEntryOf / auto-name counter / meta.json write); none in packages/mpd-bundle-plugin/src" },
+    { "command": "bun evidence/model-slots/review/20260918T041911Z/driver/t12-slot-attack.mjs", "status": "passed", "exitCode": 0, "evidence": "18/18 checks passed" },
+    { "command": "bun evidence/model-slots/review/20260918T041911Z/driver/t12-parity-attack.mjs", "status": "passed", "exitCode": 0, "evidence": "12/12 checks passed" },
+    { "command": "bun evidence/model-slots/review/20260918T041911Z/driver/t12-workmate-attack.mjs", "status": "passed", "exitCode": 0, "evidence": "15/15 checks passed" },
+    { "command": "bun test packages/mpd-agent-teams-plugin", "status": "passed", "exitCode": 0, "evidence": "320 pass / 0 fail / 3005 expect() calls" },
+    { "command": "node scripts/verify-dist-fresh.mjs", "status": "reported", "exitCode": 1, "reason": "D2 is t13's declared scope (14 cascade dists + the authoritative client.js rebuild); the four lane-owned artifacts are FRESH and the cause is measured (the inlined adapter seam), so this is the declared pre-integration state, not a wave defect", "evidence": "14 of 20 targets STALE; the stale set is exactly t13's declared list; committed mpd-roles dist has 0 `llmCatalog` vs 7 in a fresh build, +3643 B per file" },
+    { "command": "delta re-materialize simulation: applyAgentTeamsFixes({root: <copy of HEAD's 10 adopted files>, write: true})", "status": "passed", "exitCode": 0, "evidence": "REFUSED loudly for `mpd-delta team-model-slot-routes` ('the lines before its afterContext window do not match the registered beforeContext'), and the copy's aggregate hash is byte-identical before and after — no silent duplicate, no byte touched" }
+  ],
+  "findings": [
+    {
+      "id": "O1",
+      "severity": "low",
+      "file": "packages/mpd-agent-teams-plugin/lib/tools.js",
+      "problem": "B6's literal sentence ('every added/changed line lives inside a region') is not literally true for a REPLACEMENT-shaped delta: the wave replaced the upstream initializeProfileTeam loop, so 9 REMOVED upstream lines (the old `for (const template of profile.members)` block plus its validate call) sit OUTSIDE any region in HEAD. The tree is consistent and --check exits 0; the consequence is that a hand re-materialize cannot heal this region, which I measured as a loud refusal, byte-untouched. This is the documented REPLACEMENT-shaped class (agent-references/agent-teams-deltas.md rows D13/D14/D21/D22 and the t6 row), so it is disclosed, not hidden.",
+      "requiredFix": "No code change required. If a reviewer/planner is to re-read B6 as a mechanical rule, amend its wording to 'every ADDED line inside a region; a REPLACEMENT-shaped delta additionally removes the upstream statements it supersedes, which the applier refuses rather than rewrites' — the registry already documents the class."
+    },
+    {
+      "id": "O2",
+      "severity": "low",
+      "file": "packages/mpd-roles-plugin/src/index.ts",
+      "problem": "The header comment still groups `workmate meta.baseId` with the keys 'legacy callers may still pass', which after t7's removal reads as if mpd_workmate_init still accepts a roster id. t8 corrected the packaged README, but this source header (untouched by any lane, and changing it would cascade the dist) still carries the ambiguous phrasing.",
+      "requiredFix": "When a later wave touches mpd-roles-plugin/src, add the same disambiguation the README got ('the workmate library does not resolve a base this way; it matches the functional NAME only'). Documentation only; no behaviour is affected."
+    },
+    {
+      "id": "O3",
+      "severity": "low",
+      "file": "packages/mpd-tui-plugin/src/settings.ts",
+      "problem": "Two UX limitations of the TUI door, both fail-loud rather than silent: (a) the model option list is a UNION across providers, so the TUI can express a provider/model pair that does not exist together — the staging then fails loudly ('unknown member model ... for provider ...'), never silently; (b) t15 measured that at the real pane geometry the long hint is truncated near ~170 chars, so the not-lost clause (offset ~320) is present in the field metadata but not visible on screen. Neither is a contract item (A4 requires non-empty catalog-derived selections and records the branch; A3 requires the clause in the hint).",
+      "requiredFix": "None for this wave. If visibility matters later, shorten the slot hint prefix or move the clause to a status line — an accepted-design follow-up, not a defect."
+    },
+    {
+      "id": "O4",
+      "severity": "low",
+      "file": "packages/mpd-bundle-plugin/client.js",
+      "problem": "Recorded so it is not re-filed as drift: the committed client.js was rebuilt by t5 AFTER t7 finished (contract H1's ALTERNATIVE), and its bytes are consistent with both corrected sources (no baseId, option value/label = the functional name, both locale strings updated, nine select rows, no SETTINGS_KNOBS). H1's hazard is therefore resolved by ordering, not by an amendment.",
+      "requiredFix": "None. t13's acceptance already re-runs `node scripts/build-mpd-client.mjs` and requires byte identity."
+    }
+  ],
+  "dependencies_note": "t13 (integration) remains the wave's remaining work: the 14 cascade dists, the authoritative client rebuild, the aggregate gate sweep and the plan-of-record update. Its dependencies (t11, t12, t14, t15) are now all terminal, so a pass here unblocks it."
+}

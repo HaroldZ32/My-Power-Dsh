@@ -27,7 +27,7 @@ The roster specialists (`mpd-roles-plugin`) are **BASE templates only**. A
 ~/.mpd/workmate/
   index.json                    # fast library index
   <name>/
-    meta.json                   # name, base, provider/model, readonly, uses, lastTask, renamedFrom
+    meta.json                   # name, baseId + baseName (INTERNAL provenance), provider/model, readonly, uses, lastTask, renamedFrom
     persona.md                  # evolving persona (seeded from base)
     memory.md                   # independent memory (append + evict)
     note.md                     # short searchable note card
@@ -49,11 +49,33 @@ The library root is deliberately the user's HOME (cross-project), a user-approve
 exception to the workspace-scoped state rule (AGENTS.md §6). QA boots with
 `HOME=<sandbox>` so tests never touch the real home.
 
+## Base resolution and auto-naming (functional NAME only)
+
+`mpd_workmate_init`'s `base` is the specialist's **functional NAME** — the name
+`mpd_roles_list` / `mpd_role_persona` use, e.g. `Deep Worker`. Matching is
+case/whitespace/separator-insensitive (`Deep Worker`, `deep worker`, `deep-worker` and
+`DEEP WORKER` are the same base), and an unknown key is refused with a **names-only**
+message that lists the valid names. A roster **id** (`hephaestus`, `sisyphus-junior`, …)
+is INTERNAL provenance and is **not** a base key: it is refused like any other unknown
+key, and the refusal deliberately does not echo the rejected key.
+
+With `name` omitted the instance name is derived from the functional name: `Deep Worker`
+initializes as `deep-worker-1`, and a further init of the same base takes
+`deep-worker-2` (the counter skips every name already taken in the library).
+
+**`baseId` is internal and never exposed.** It stays in `meta.json` (and the library
+index) as provenance for existing instances — no migration is performed or needed — while
+every public projection strips it: the `mpd_workmate_list` / `mpd_workmate_match` payloads
+and their schemas, the `mpdWorkmate` service's `list` / `get` / `read`, the
+`GET /plugins/mpd-workmate/{list,roster,get}` bodies (the `/roster` route also drops the
+roster `id`) and the Workmates sidebar tab. A consumer can therefore only learn a base by
+its functional name.
+
 ## Tools
 
 | Tool | Purpose |
 |---|---|
-| `mpd_workmate_list` | list instances (name, base, uses, updatedAt, note summary) |
+| `mpd_workmate_list` | list instances (name, baseName, uses, updatedAt, note summary) |
 | `mpd_workmate_init` | instantiate a base specialist into an independently-named workmate |
 | `mpd_workmate_spawn` | one-shot reuse: subagent with the workmate's persona+memory+note on its own model route (readonly bases deny write tools) |
 | `mpd_workmate_reflect` | self-evolve after work: memory append/evict, persona revision merge, note regen |

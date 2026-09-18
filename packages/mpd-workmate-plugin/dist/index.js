@@ -143,6 +143,97 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
+  const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
+  let llmCatalogWarned = false;
+  function warnLlmCatalogOnce(detail) {
+    if (llmCatalogWarned)
+      return;
+    llmCatalogWarned = true;
+    try {
+      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+    } catch {}
+  }
+  function catalogLabel(value, id) {
+    return typeof value === "string" && value.length > 0 ? value : id;
+  }
+  async function llmCatalog() {
+    const llm = service("llm");
+    if (llm === undefined || llm === null) {
+      warnLlmCatalogOnce("the harness llm service is unavailable");
+      return { providers: [], degraded: true };
+    }
+    const missing = LLM_CATALOG_METHODS.filter((method) => typeof llm?.[method] !== "function");
+    if (missing.length > 0) {
+      warnLlmCatalogOnce("the harness llm service lacks " + missing.join(", "));
+      return { providers: [], degraded: true };
+    }
+    let providers;
+    try {
+      providers = await llm.listProviders();
+    } catch (error) {
+      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      return { providers: [], degraded: true };
+    }
+    if (!Array.isArray(providers)) {
+      warnLlmCatalogOnce("listProviders() did not return an array");
+      return { providers: [], degraded: true };
+    }
+    let degraded = false;
+    const catalog = [];
+    for (const rawProvider of providers) {
+      const providerId = typeof rawProvider?.id === "string" ? rawProvider.id : undefined;
+      if (providerId === undefined) {
+        degraded = true;
+        continue;
+      }
+      try {
+        const models = await llm.listModels(providerId);
+        if (!Array.isArray(models))
+          throw new Error("listModels(" + providerId + ") did not return an array");
+        const entries = [];
+        for (const rawModel of models) {
+          const modelId = typeof rawModel?.id === "string" ? rawModel.id : undefined;
+          if (modelId === undefined) {
+            degraded = true;
+            continue;
+          }
+          let resolved;
+          try {
+            resolved = await llm.resolveModelInfo(providerId, modelId);
+          } catch {
+            degraded = true;
+            continue;
+          }
+          const reasoning = resolved?.reasoning;
+          const efforts = [];
+          const rawEfforts = Array.isArray(reasoning?.efforts) ? reasoning.efforts : [];
+          for (const rawEffort of rawEfforts) {
+            const effortId = typeof rawEffort?.id === "string" ? rawEffort.id : undefined;
+            if (effortId === undefined)
+              continue;
+            efforts.push({
+              id: effortId,
+              name: catalogLabel(rawEffort?.name, effortId),
+              ...typeof rawEffort?.description === "string" ? { description: rawEffort.description } : {}
+            });
+          }
+          const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined;
+          entries.push({
+            id: modelId,
+            name: catalogLabel(rawModel?.name, modelId),
+            ...typeof rawModel?.description === "string" ? { description: rawModel.description } : {},
+            efforts,
+            ...defaultEffort === undefined ? {} : { defaultEffort }
+          });
+        }
+        catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries });
+      } catch {
+        degraded = true;
+        continue;
+      }
+    }
+    return { providers: catalog, degraded };
+  }
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -186,7 +277,8 @@ function createDshAdapter(ctx, config = {}) {
         agents: agents !== undefined && typeof agents?.list === "function",
         compaction: typeof compaction?.compactNow === "function",
         compactionForAgent: scopedCompaction,
-        events: typeof ctx?.on === "function"
+        events: typeof ctx?.on === "function",
+        llmCatalog: LLM_CATALOG_METHODS.every((method) => typeof service("llm")?.[method] === "function")
       };
     },
     workspaceRoot,
@@ -195,6 +287,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     compactionEngineForAgent,
     onEvent,
+    llmCatalog,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -621,6 +714,11 @@ function readMeta(dir) {
     return null;
   }
 }
+function publicMeta(meta) {
+  const out = { ...meta };
+  delete out.baseId;
+  return out;
+}
 function writeJson(path, value) {
   mkdirSync(join(path, ".."), { recursive: true });
   writeFileSync(path, JSON.stringify(value, null, 2) + `
@@ -962,20 +1060,24 @@ function apply(ctx) {
   function rolesService() {
     return ctx.get ? ctx.get("mpdRoles") : undefined;
   }
+  function normalizeBaseKey(s) {
+    return String(s ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+  }
   function resolveBase(key) {
     const roles = rolesService();
     if (!roles)
       throw new Error("mpd_workmate: mpdRoles service unavailable (mpd-roles-plugin not mounted)");
     const k = String(key ?? "").trim();
     if (!k)
-      throw new Error("mpd_workmate: base required (roster id or normal name)");
-    const direct = roles.get(k);
-    if (direct)
-      return { id: direct.id, name: direct.name, description: direct.description, readonly: Boolean(direct.readonly), provider: direct.chain?.[0]?.provider ?? "deepseek-official", model: direct.chain?.[0]?.model ?? "", persona: String(direct.persona ?? "") };
-    const byName = roles.list().find((r) => String(r.name).toLowerCase() === k.toLowerCase());
-    if (byName)
-      return { id: byName.id, name: byName.name, description: byName.description, readonly: Boolean(byName.readonly), provider: byName.chain?.[0]?.provider ?? "deepseek-official", model: byName.chain?.[0]?.model ?? "", persona: String(byName.persona ?? "") };
-    throw new Error(`mpd_workmate: unknown base "${k}" — run mpd_roles_list (ids or normal names like "Deep Worker")`);
+      throw new Error(`mpd_workmate: base required (the specialist's functional name, e.g. "Deep Worker")`);
+    const all = typeof roles.list === "function" ? roles.list() : [];
+    const wanted = normalizeBaseKey(k);
+    const base = all.find((r) => normalizeBaseKey(String(r?.name ?? "")) === wanted);
+    if (!base) {
+      const names = all.map((r) => String(r?.name ?? "")).filter((n) => n !== "");
+      throw new Error(`mpd_workmate: unknown base — use a functional NAME from mpd_roles_list (${names.join(", ")})`);
+    }
+    return { id: String(base.id), name: String(base.name), description: String(base.description ?? ""), readonly: Boolean(base.readonly), provider: base.chain?.[0]?.provider ?? "deepseek-official", model: base.chain?.[0]?.model ?? "", persona: String(base.persona ?? "") };
   }
   function initWorkmate(baseKey, nameArg, noteArg) {
     assertMutationSandboxed("initialize a workmate");
@@ -983,8 +1085,12 @@ function apply(ctx) {
     const given = sanitizeName(nameArg);
     let name2 = given;
     if (!name2) {
-      const n = listInstances().filter((i) => i.meta.baseId === base.id).length + 1;
-      name2 = `${base.id}-${n}`;
+      const slug = sanitizeName(base.name) || "workmate";
+      const existing = listInstances();
+      let n = existing.filter((i) => i.meta.baseId === base.id).length + 1;
+      while (existing.some((i) => i.name === `${slug}-${n}`))
+        n += 1;
+      name2 = `${slug}-${n}`;
     }
     const dir = wmDir(name2);
     if (existsSync(dir))
@@ -1000,14 +1106,14 @@ function apply(ctx) {
     writeFileSync(join(dir, "note.md"), note + `
 `);
     writeIndexEntry(name2, meta);
-    return { name: name2, baseId: base.id, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
+    return { name: name2, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
   }
   const workmateLibrary = {
-    list: () => listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, renamedFrom: meta.renamedFrom, note })),
+    list: () => listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, renamedFrom: meta.renamedFrom, note })),
     get: (name2) => {
       try {
         const { meta, key } = ensureInstance(name2);
-        return { ...meta, name: key, note: readNote(key) };
+        return { ...publicMeta(meta), name: key, note: readNote(key) };
       } catch {
         return null;
       }
@@ -1015,7 +1121,7 @@ function apply(ctx) {
     read: (name2) => {
       try {
         const { meta, key } = ensureInstance(name2);
-        return { ...meta, name: key, persona: readPersona(key), memory: readMemory(key), note: readNote(key) };
+        return { ...publicMeta(meta), name: key, persona: readPersona(key), memory: readMemory(key), note: readNote(key) };
       } catch {
         return null;
       }
@@ -1032,15 +1138,15 @@ function apply(ctx) {
 ` + v.workmates.map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " :: " + String(w.note).slice(0, 140)).join(`
 `) || "(empty)") },
     execute: async () => {
-      const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
+      const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
       return { workmates: list, count: list.length };
     }
   });
   dsh.registerTool({
     name: "mpd_workmate_init",
-    description: "Instantiate a roster BASE specialist into a durable, evolving workmate copy under ~/.mpd/workmate/<name>/ (independent name). base = roster id or normal name (mpd_roles_list). The base template stays pristine; the workmate gets its own persona.md, memory.md and a short note.md. Use when creating a team or pulling up a specialist you will reuse across sessions.",
-    parameters: { type: "object", properties: { base: { type: "string", description: 'roster id or normal name (e.g. hephaestus or "Deep Worker")' }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { name: { type: "string" }, baseId: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a, v) => textBlock2("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + `)
+    description: `Instantiate a roster BASE specialist into a durable, evolving workmate copy under ~/.mpd/workmate/<name>/ (independent name). base = the specialist's functional NAME (mpd_roles_list), e.g. "Deep Worker". The base template stays pristine; the workmate gets its own persona.md, memory.md and a short note.md. Use when creating a team or pulling up a specialist you will reuse across sessions.`,
+    parameters: { type: "object", properties: { base: { type: "string", description: `the specialist's functional name (e.g. "Deep Worker")` }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated from the functional name if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { name: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a, v) => textBlock2("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + `)
 note: ` + v.note) },
     execute: async (args) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""))
   });
@@ -1138,7 +1244,7 @@ ${capText(outcome, 1200)}`);
       const matches = listInstances().map(({ name: name2, meta, note }) => {
         const memoryTail = readMemory(name2, 600);
         const score = scoreMatch(task, { note, baseName: meta.baseName, description: meta.description, memoryTail });
-        return { name: name2, score: Math.round(score * 100) / 100, baseName: meta.baseName, baseId: meta.baseId, readonly: meta.readonly, uses: meta.uses, note };
+        return { name: name2, score: Math.round(score * 100) / 100, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, note };
       }).sort((a, b) => b.score - a.score);
       const best = matches[0];
       const matched = !!best && best.score >= MATCH_THRESHOLD;
@@ -1193,7 +1299,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
       kind: "exact",
       path: "/plugins/mpd-workmate/list",
       handler: async (_req, res) => {
-        const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseId: meta.baseId, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
+        const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
         res.end(JSON.stringify({ workmates: list }));
       }
@@ -1205,7 +1311,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
         const roles = ctx.get ? ctx.get("mpdRoles") : undefined;
         let bases = [];
         try {
-          bases = (typeof roles?.list === "function" ? roles.list() : []).map((r) => ({ id: String(r.id), name: String(r.name), description: String(r.description ?? ""), readonly: Boolean(r.readonly) }));
+          bases = (typeof roles?.list === "function" ? roles.list() : []).map((r) => ({ name: String(r.name), description: String(r.description ?? ""), readonly: Boolean(r.readonly) }));
         } catch (e) {
           res.writeHead(500, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
           res.end(JSON.stringify({ error: String(e?.message ?? e) }));

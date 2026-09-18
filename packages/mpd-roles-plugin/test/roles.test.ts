@@ -478,7 +478,9 @@ test("extension roles: usable as a workmate BASE template (real mpd_workmate_ini
     const init = toolNamed(stack.tools, "mpd_workmate_init")
     const created = await init.execute({ base: "Code Reviewer", name: "code-reviewer-1", note: "extension base" }, stack.exec)
     expect(created.baseName).toBe("Code Reviewer")
-    expect(created.baseId).toBe("ext-authoring-flows-code-reviewer")
+    // C3 (workmate alias removal): the roster id is internal provenance exposed by NO tool
+    // output — only the stored record below may carry it.
+    expect(created.baseId).toBeUndefined()
     expect(created.readonly).toBe(true)
     const dir = join(sandbox.home, ".mpd", "workmate", "code-reviewer-1")
     expect(readFileSync(join(dir, "persona.md"), "utf8")).toContain("Code Reviewer")

@@ -1269,6 +1269,97 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   }
+  const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
+  let llmCatalogWarned = false;
+  function warnLlmCatalogOnce(detail) {
+    if (llmCatalogWarned)
+      return;
+    llmCatalogWarned = true;
+    try {
+      console.warn("mpd-dsh-adapter: llmCatalog degraded — " + detail);
+    } catch {}
+  }
+  function catalogLabel(value, id) {
+    return typeof value === "string" && value.length > 0 ? value : id;
+  }
+  async function llmCatalog() {
+    const llm = service("llm");
+    if (llm === undefined || llm === null) {
+      warnLlmCatalogOnce("the harness llm service is unavailable");
+      return { providers: [], degraded: true };
+    }
+    const missing = LLM_CATALOG_METHODS.filter((method) => typeof llm?.[method] !== "function");
+    if (missing.length > 0) {
+      warnLlmCatalogOnce("the harness llm service lacks " + missing.join(", "));
+      return { providers: [], degraded: true };
+    }
+    let providers;
+    try {
+      providers = await llm.listProviders();
+    } catch (error) {
+      warnLlmCatalogOnce("listProviders() failed: " + message(error));
+      return { providers: [], degraded: true };
+    }
+    if (!Array.isArray(providers)) {
+      warnLlmCatalogOnce("listProviders() did not return an array");
+      return { providers: [], degraded: true };
+    }
+    let degraded = false;
+    const catalog = [];
+    for (const rawProvider of providers) {
+      const providerId = typeof rawProvider?.id === "string" ? rawProvider.id : undefined;
+      if (providerId === undefined) {
+        degraded = true;
+        continue;
+      }
+      try {
+        const models = await llm.listModels(providerId);
+        if (!Array.isArray(models))
+          throw new Error("listModels(" + providerId + ") did not return an array");
+        const entries = [];
+        for (const rawModel of models) {
+          const modelId = typeof rawModel?.id === "string" ? rawModel.id : undefined;
+          if (modelId === undefined) {
+            degraded = true;
+            continue;
+          }
+          let resolved;
+          try {
+            resolved = await llm.resolveModelInfo(providerId, modelId);
+          } catch {
+            degraded = true;
+            continue;
+          }
+          const reasoning = resolved?.reasoning;
+          const efforts = [];
+          const rawEfforts = Array.isArray(reasoning?.efforts) ? reasoning.efforts : [];
+          for (const rawEffort of rawEfforts) {
+            const effortId = typeof rawEffort?.id === "string" ? rawEffort.id : undefined;
+            if (effortId === undefined)
+              continue;
+            efforts.push({
+              id: effortId,
+              name: catalogLabel(rawEffort?.name, effortId),
+              ...typeof rawEffort?.description === "string" ? { description: rawEffort.description } : {}
+            });
+          }
+          const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined;
+          entries.push({
+            id: modelId,
+            name: catalogLabel(rawModel?.name, modelId),
+            ...typeof rawModel?.description === "string" ? { description: rawModel.description } : {},
+            efforts,
+            ...defaultEffort === undefined ? {} : { defaultEffort }
+          });
+        }
+        catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries });
+      } catch {
+        degraded = true;
+        continue;
+      }
+    }
+    return { providers: catalog, degraded };
+  }
   function timeoutSignal(timeoutMs) {
     try {
       if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function")
@@ -1312,7 +1403,8 @@ function createDshAdapter(ctx, config = {}) {
         agents: agents !== undefined && typeof agents?.list === "function",
         compaction: typeof compaction?.compactNow === "function",
         compactionForAgent: scopedCompaction,
-        events: typeof ctx?.on === "function"
+        events: typeof ctx?.on === "function",
+        llmCatalog: LLM_CATALOG_METHODS.every((method) => typeof service("llm")?.[method] === "function")
       };
     },
     workspaceRoot,
@@ -1321,6 +1413,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     compactionEngineForAgent,
     onEvent,
+    llmCatalog,
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -2231,6 +2324,24 @@ function registerRenderers(ctx, log) {
 // packages/mpd-config-plugin/src/settings-schema.ts
 var import_schemastery = __toESM(require_lib(), 1);
 var SETTINGS_NS = "mpd";
+var TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3"];
+var TEAM_MODEL_SLOT_DEFAULTS = {
+  slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
+  slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
+  slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }
+};
+var TEAM_MODEL_FALLBACK_OPTIONS = {
+  provider: ["deepseek-official"],
+  model: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"],
+  reasoningEffort: ["off", "low", "high", "max"]
+};
+function teamModelSlotSchema(slot) {
+  return import_schemastery.default.object({
+    provider: import_schemastery.default.string().default(slot.provider),
+    model: import_schemastery.default.string().default(slot.model),
+    reasoningEffort: import_schemastery.default.string().default(slot.reasoningEffort)
+  });
+}
 var SettingsSchema = import_schemastery.default.object({
   hashline: import_schemastery.default.object({ maxDiffChars: import_schemastery.default.number().default(20000) }),
   commentChecker: import_schemastery.default.object({ autoCheck: import_schemastery.default.boolean().default(true) }),
@@ -2238,6 +2349,11 @@ var SettingsSchema = import_schemastery.default.object({
   memory: import_schemastery.default.object({ vcs: import_schemastery.default.union([import_schemastery.default.const("git"), import_schemastery.default.const("svn")]).default("git") }),
   team: import_schemastery.default.object({ stateDir: import_schemastery.default.string().default(".mpd/team") }),
   boulder: import_schemastery.default.object({ dir: import_schemastery.default.string().default(".mpd") }),
+  teamModels: import_schemastery.default.object({
+    slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
+    slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
+    slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3)
+  }),
   watchdog: import_schemastery.default.object({
     enabled: import_schemastery.default.boolean().default(true),
     warnSilenceMs: import_schemastery.default.number().default(600000),
@@ -2250,6 +2366,29 @@ var SettingsSchema = import_schemastery.default.object({
 });
 var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
+function knobHint(key, semantics) {
+  return `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}${semantics === undefined ? "" : " " + semantics}`;
+}
+var TEAM_MODEL_SLOT_SEMANTICS = {
+  slot1: "slot 1 is the default route of the slot-1 members (Architect, Planner, Reviewer, Lead, Senior Engineer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort",
+  slot2: "slot 2 is the default route of the slot-2 analysts (Researcher, Explorer, Plan Reviewer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort, while Vision Analyst keeps its own explicit vision route",
+  slot3: "slot 3 is the default route of the slot-3 executors (Deep Worker, Junior Engineer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort"
+};
+var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot, index) => {
+  const leaves = [
+    { leaf: "provider", label: "provider", zh: "提供商" },
+    { leaf: "model", label: "model", zh: "模型" },
+    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
+  ];
+  return leaves.map(({ leaf, label, zh }) => ({
+    path: ["teamModels", slot, leaf],
+    label: `Slot ${index + 1} ${label}`,
+    zh: `槽位 ${index + 1} ${zh}`,
+    kind: "select",
+    options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
+    hint: knobHint(`teamModels.${slot}.${leaf}`, TEAM_MODEL_SLOT_SEMANTICS[slot])
+  }));
+});
 var SETTINGS_KNOBS = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -2263,12 +2402,74 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "warnStreakToEscalate"], label: "Warn streak before escalation", zh: "升级前连续告警次数", kind: "number" },
   { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
-  { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" }
+  { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
+  ...TEAM_MODEL_KNOBS
 ];
 
 // packages/mpd-tui-plugin/src/settings.ts
-function knobHint(key) {
+function knobHint2(key) {
   return `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
+}
+var TEAM_MODEL_LEAVES = ["provider", "model", "reasoningEffort"];
+function dedupeOptions(pairs) {
+  const seen = new Set;
+  const out = [];
+  for (const pair of pairs) {
+    if (pair.value.length === 0 || seen.has(pair.value))
+      continue;
+    seen.add(pair.value);
+    out.push(pair);
+  }
+  return out;
+}
+function declaredOptions(leaf) {
+  return TEAM_MODEL_FALLBACK_OPTIONS[leaf].map((value) => ({ value, label: value }));
+}
+function optionLabel(name, id) {
+  return typeof name === "string" && name.length > 0 ? name : id;
+}
+function teamModelOptionLists(catalog) {
+  const providers = [];
+  const models = [];
+  const efforts = [];
+  if (catalog !== undefined && catalog.degraded !== true) {
+    const rawProviders = Array.isArray(catalog.providers) ? catalog.providers : [];
+    for (const provider of rawProviders) {
+      if (typeof provider?.id !== "string" || provider.id.length === 0)
+        continue;
+      providers.push({ value: provider.id, label: optionLabel(provider.name, provider.id) });
+      const rawModels = Array.isArray(provider.models) ? provider.models : [];
+      for (const model of rawModels) {
+        if (typeof model?.id !== "string" || model.id.length === 0)
+          continue;
+        models.push({ value: model.id, label: optionLabel(model.name, model.id) });
+        const rawEfforts = Array.isArray(model.efforts) ? model.efforts : [];
+        for (const effort of rawEfforts) {
+          if (typeof effort?.id !== "string" || effort.id.length === 0)
+            continue;
+          efforts.push({ value: effort.id, label: optionLabel(effort.name, effort.id) });
+        }
+      }
+    }
+  }
+  const live = { provider: dedupeOptions(providers), model: dedupeOptions(models), reasoningEffort: dedupeOptions(efforts) };
+  const pick2 = (leaf) => live[leaf].length > 0 ? live[leaf] : declaredOptions(leaf);
+  return {
+    provider: pick2("provider"),
+    model: pick2("model"),
+    reasoningEffort: pick2("reasoningEffort"),
+    source: {
+      provider: live.provider.length > 0 ? "live" : "declared",
+      model: live.model.length > 0 ? "live" : "declared",
+      reasoningEffort: live.reasoningEffort.length > 0 ? "live" : "declared"
+    }
+  };
+}
+function slotLeafOf(path) {
+  if (path[0] !== "teamModels")
+    return;
+  const leaf = path[2];
+  return TEAM_MODEL_LEAVES.find((candidate) => candidate === leaf);
 }
 function isServed(provider) {
   try {
@@ -2291,23 +2492,43 @@ function configPluginPresent(ctx) {
     return false;
   }
 }
-var SETTINGS_FIELDS = SETTINGS_KNOBS.map((knob) => ({
-  path: [...knob.path],
-  label: knob.label,
-  descriptions: { zh: knob.zh },
-  hint: knobHint(knob.path.join(".")),
-  kind: knob.kind,
-  ...knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }
-}));
+function declaredField(knob) {
+  return {
+    path: [...knob.path],
+    label: knob.label,
+    descriptions: { zh: knob.zh },
+    hint: knobHint2(knob.path.join(".")),
+    kind: knob.kind,
+    ...knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }
+  };
+}
+var SETTINGS_FIELDS = SETTINGS_KNOBS.map(declaredField);
+function settingsFields(lists) {
+  return SETTINGS_KNOBS.map((knob) => {
+    const leaf = slotLeafOf(knob.path);
+    const field2 = declaredField(knob);
+    return leaf === undefined ? field2 : { ...field2, options: lists[leaf] };
+  });
+}
 var SETTINGS_SECTION = {
   ns: SETTINGS_NS,
   title: "MPD bundle",
   descriptions: { zh: "MPD 插件包" },
   fields: SETTINGS_FIELDS
 };
-function registerSettingsSection(ctx, log) {
+function resolveCatalogReader(ctx) {
+  try {
+    const mounted = serviceOf(ctx, "mpdDsh");
+    if (mounted !== undefined)
+      return mounted;
+  } catch {}
+  return createDshAdapter(ctx);
+}
+function registerSettingsSection(ctx, log, adapterOverride) {
   let namespace = { state: "absent", detail: "settings was not injected" };
   let section = { state: "absent", detail: "tuiSettingsSections was not injected" };
+  let registrationStarted = false;
+  const catalogReader = adapterOverride ?? resolveCatalogReader(ctx);
   onService(ctx, "settings", (_scoped, service) => {
     const provider = service;
     if (typeof provider?.register !== "function") {
@@ -2338,14 +2559,40 @@ function registerSettingsSection(ctx, log) {
       section = { state: "refused", detail: "tuiSettingsSections.register is missing" };
       return;
     }
+    if (registrationStarted)
+      return;
+    registrationStarted = true;
+    if (typeof catalogReader.llmCatalog !== "function") {
+      completeRegistration(sections, teamModelOptionLists(undefined), undefined);
+      return;
+    }
+    section = { state: "requested", detail: `section ${SETTINGS_NS} requested (awaiting the model catalog for the slot options)` };
+    readCatalogThenRegister(sections);
+  });
+  async function readCatalogThenRegister(sections) {
     try {
-      sections.register(SETTINGS_SECTION);
-      section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back)` };
+      let catalog;
+      try {
+        catalog = await catalogReader.llmCatalog?.();
+      } catch {
+        catalog = undefined;
+      }
+      completeRegistration(sections, teamModelOptionLists(catalog), catalog);
     } catch (error) {
       section = { state: "refused", detail: String(error?.message ?? error) };
       log.warn(`/settings section refused: ${section.detail ?? ""}`);
     }
-  });
+  }
+  function completeRegistration(sections, lists, catalog) {
+    try {
+      log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})` + ` model=${lists.source.model}(${lists.model.length})` + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})` + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`);
+      sections.register({ ...SETTINGS_SECTION, fields: settingsFields(lists) });
+      section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` };
+    } catch (error) {
+      section = { state: "refused", detail: String(error?.message ?? error) };
+      log.warn(`/settings section refused: ${section.detail ?? ""}`);
+    }
+  }
   return {
     outcome: () => ({
       state: section.state,

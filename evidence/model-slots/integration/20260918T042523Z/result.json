@@ -1,0 +1,185 @@
+{
+  "case": "t13-integration (wave w1: model slots & workmate aliases)",
+  "measuredAt": "2026-09-18T04:25Z-04:31Z",
+  "tree": "settled; no source file edited by this task",
+  "acceptance": {
+    "A1_dist_cascade_rebuild": {
+      "status": "passed",
+      "evidence": "14 canonical repo-root builds, all exit 0 (dist-rebuild.log), for exactly the paths in scope: mpd-bootstrap-plugin, mpd-boulder-plugin, mpd-codegraph-plugin, mpd-comment-checker-plugin, mpd-ext-plugin, mpd-hashline-plugin, mpd-memory-plugin, mpd-modelchain-plugin, mpd-qa-roles-probe, mpd-roles-plugin, mpd-team-compact-plugin, mpd-team-watchdog-plugin, mpd-tools-plugin, mpd-ulw-plugin. BEFORE: `node scripts/verify-dist-fresh.mjs` reported 14 of 20 targets STALE (exactly these fourteen; the six others were already fresh from their lanes). AFTER: '[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) \u2014 7 NOT COVERED files listed', exit 0 (dist-fresh-after.log). The FOUR lane-owned artifacts were NOT touched: `sha256sum -c lane-owned-and-client-before.txt` returns OK for mpd-config-plugin/dist (t3), mpd-dsh-adapter-plugin/dist and mpd-tui-plugin/dist (t4), mpd-workmate-plugin/dist (t7), plus client.js (t5). The mpd-mcp-* artifacts remain NOT COVERED by design (no local src).",
+      "rebuiltArtifacts": {
+        "packages/mpd-bootstrap-plugin/dist/index.js": {
+          "sha256": "d21368536f44b9cb63d4bcd0251d59e74b08ca71fabb710aeb2a5431723a0412",
+          "bytes": 35653
+        },
+        "packages/mpd-boulder-plugin/dist/index.js": {
+          "sha256": "686e4a879403f2ba39aad7230a5bebbe801f283e6c13f9dcbae73c5a0e0de1e4",
+          "bytes": 53616
+        },
+        "packages/mpd-codegraph-plugin/dist/index.js": {
+          "sha256": "35024651166a7814c029f7a06a20c3f8477864ebca430c4d84ef36069c9437a6",
+          "bytes": 27059
+        },
+        "packages/mpd-comment-checker-plugin/dist/index.js": {
+          "sha256": "d881f285d8b20ee42ed8129ea6a1b2755e6cd30798458350115c169042f0ce90",
+          "bytes": 29178
+        },
+        "packages/mpd-ext-plugin/dist/index.js": {
+          "sha256": "cac8e4dd08d5973e705f7309aa8539eaab1be3126acbb12b9847dc6ea42ee454",
+          "bytes": 158156
+        },
+        "packages/mpd-hashline-plugin/dist/index.js": {
+          "sha256": "7c58a1f700d37bc44e1436fb5cec1cf60b2ce127759071f87bd765805a9fb277",
+          "bytes": 60504
+        },
+        "packages/mpd-memory-plugin/dist/index.js": {
+          "sha256": "a9eb3f6ea4c5c2ebb56b8b39d05ef6696eaccfae27ce0394f891a0985d51e96e",
+          "bytes": 36077
+        },
+        "packages/mpd-modelchain-plugin/dist/index.js": {
+          "sha256": "cbef3e3e94af099eea421c8f3a85fd09f7efcc04979cee7f013941ad6eb4cfe8",
+          "bytes": 28784
+        },
+        "packages/mpd-qa-roles-probe/dist/index.js": {
+          "sha256": "210cdb02b92382a11551fbec5a8e23ab890cce5ebb4d690f86cbb1c35b249bc9",
+          "bytes": 29005
+        },
+        "packages/mpd-roles-plugin/dist/index.js": {
+          "sha256": "98180ed1c3f7a4caa4015c4866bc28f024ebad77bbd39013b8516d421fb77044",
+          "bytes": 45111
+        },
+        "packages/mpd-team-compact-plugin/dist/index.js": {
+          "sha256": "f2dfa9ab29876334615b0d2967e46cf5c438fc0a002925782c6f2c4c8407411a",
+          "bytes": 38911
+        },
+        "packages/mpd-team-watchdog-plugin/dist/index.js": {
+          "sha256": "b9a855469c80b305a3b965f5e563c6561df893c0fd89877e3cbbe06ea646b2c4",
+          "bytes": 161717
+        },
+        "packages/mpd-tools-plugin/dist/index.js": {
+          "sha256": "248dbf383aea3feafacdffd83a564827717a1a359cc1994ae5a1c2e1863fbf69",
+          "bytes": 24835
+        },
+        "packages/mpd-ulw-plugin/dist/index.js": {
+          "sha256": "c116f6aaeb23a56324567d226fa820421b0c8784cff07c4342b6a31a3899b953",
+          "bytes": 47446
+        }
+      },
+      "laneOwnedUntouched": {
+        "packages/mpd-config-plugin/dist/index.js": {
+          "sha256": "4b142e9b27617a21b15ca74343c59ef2f70c14eb81cd83cec4906af60435cadf",
+          "note": "lane-owned: NOT touched by t13 (sha256sum -c OK across the task)"
+        },
+        "packages/mpd-dsh-adapter-plugin/dist/index.js": {
+          "sha256": "7dffbdf454a800a4f4292f976393912dac367a11cd99f3ffd572dcaccc0a281b",
+          "note": "lane-owned: NOT touched by t13 (sha256sum -c OK across the task)"
+        },
+        "packages/mpd-tui-plugin/dist/index.js": {
+          "sha256": "73159e0470dc80cd78eb81e4026ace6aac025c73405759296a4b2e4f734ee51e",
+          "note": "lane-owned: NOT touched by t13 (sha256sum -c OK across the task)"
+        },
+        "packages/mpd-workmate-plugin/dist/index.js": {
+          "sha256": "23817a9b2c8035c978c05a127afb1cc2b899cd8d77fffb72f66633058d20759a",
+          "note": "lane-owned: NOT touched by t13 (sha256sum -c OK across the task)"
+        }
+      }
+    },
+    "A2_client_rebuild_byte_identity": {
+      "status": "passed",
+      "evidence": "`node scripts/build-mpd-client.mjs` re-run, exit 0, printed '[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (305168 bytes)'. The artifact is BYTE-IDENTICAL to the committed one: sha256 0ee5da800c1dc18bdbb640ef31eb0e3b1dc2049f8fd9fa65caf1747d30c044e5 before == after (`sha256sum -c` OK). So the committed client was NOT stale: t5's authoritative write stands, and this re-run acted as the staleness detector of plan \u00a74 and landed no second write.",
+      "clientSha256": "0ee5da800c1dc18bdbb640ef31eb0e3b1dc2049f8fd9fa65caf1747d30c044e5"
+    },
+    "A3_aggregate_gates": {
+      "status": "passed",
+      "evidence": "All eight contract gates exit 0 on the settled tree; full output with exit codes in gate-sweep.log and quoted in commandsRun. Key readings: typecheck tsgo --noEmit clean; test:qa every QA --self-test ok; verify:rows 25 row ids match; verify:docs all pairs ok (process-record exemptions printed as designed); verify-dist-fresh ok 20/20; preset-conformance PASS (31 rows conform, parity 31/31, session on agentPreset mpd, bootLog signatures [], negative control red by design); patch-agent-teams-fixes --check 'already applied: 123 mpd delta region(s) across 10 adopted file(s)' (the expected post-t6 reading, baseline 120/10); install-profile --dry-run prints and writes nothing. Per-package `bun test` over the 14 rebuilt + 4 lane-owned packages: 17 of 18 green (package-tests.log), including mpd-roles-plugin 32 pass / 0 fail \u2014 S7's predicted closure, its T-62 shipped-artifact case now fresh and green. The single non-green is mpd-qa-roles-probe, which has NO test/ directory: bun exits 1 with 'The following filters did not match any test files' \u2014 bun's no-test behaviour, not a red. The repo-wide `bun test` is red (4190 pass / 605 fail / 1052 errors, exit 1) but EVERY attributed failure lives in archived evidence scratch/packed trees under evidence/**/raw/** (71 in evidence/pack-closure/.../negative-control/packed/skills/..., the rest in evidence/mpd-naming/wave2/raw/scratch/**/build/**): ZERO failures inside the wave's 18 packages. `node scripts/dump-config.mjs --profile mpd` was NOT run and is not cited (no mpd profile is installed in this checkout; the composition proof is preset-conformance + verify:rows)."
+    },
+    "A4_plan_of_record": {
+      "status": "passed",
+      "evidence": "`.mpd/plans/model-slots-and-workmate-aliases.md` gained a '## 9. Wave outcome (t13 \u2014 integration)' section: 9.1 marks every lane t1\u2013t15 (deliverable, state, evidence path), 9.2 records the cascade rebuild (14 rebuilt, 20/20 fresh, lane-owned untouched, client byte-identity), 9.3 the gate table with readings + the per-package sweep + the repo-wide attribution, 9.4 CONFIRMS the supersessions as recorded, 9.5 the uncommitted change set. The confirmations: S1 (contract \u00a79/H1 \u2192 t5-after-t7 ordering) CONFIRMED \u2014 client.js stayed t5's, t13's rerun is a detector and returned byte-identity, the path was not moved into t13; S5 (per-lane ownership + the cascade owned by t13 over fourteen explicitly listed paths, not a wildcard) CONFIRMED and APPLIED; S6 ('pre-existing' is wrong) CONFIRMED \u2014 the same gate went 14/20 stale \u2192 20/20 fresh with no source edit; S7 resolved (roles green); S2/S3/S4/S8/S9 unchanged, with S8/S9 still carry-forwards. No recorded supersession is contradicted anywhere in \u00a79."
+    },
+    "A5_changed_paths_and_commit_readiness": {
+      "status": "passed",
+      "evidence": "This task changed exactly 16 paths (14 rebuilt dists + the plan file + this evidence dir) \u2014 no source, no test, no README, no script. The tree left for the captain's single commit: 62 modified + 9 untracked entries (\u00a79.5 of the plan lists them by class: AGENTS.md, root README pair, docs/** bilingual pairs, the three adopted-plugin lib files, cordis.patch.yml, two new test files, the touched packages/* src|dist|test|README* files, and the fourteen cascade dists rebuilt here; untracked = evidence/model-slots/**, three evidence/dsh-qa/preset-conformance/<ts>/ dirs, three evidence/tui/lanes/<ts>/ dirs). The plan file itself is workspace state (.mpd/ is gitignored, .gitignore:21) so \u00a79 is durable but not part of the commit. NO GIT WRITE COMMAND WAS RUN by this task: only read-only git status/diff/log/show.",
+      "changedPaths": [
+        "packages/<14 pkgs>/dist/index.js",
+        "evidence/model-slots/integration/20260918T042523Z/**",
+        ".mpd/plans/model-slots-and-workmate-aliases.md"
+      ]
+    },
+    "A6_evidence": {
+      "status": "passed",
+      "evidence": "evidence/model-slots/integration/20260918T042523Z/{result.json,output.log,gate-sweep.log,dist-rebuild.log,client-rebuild.log,dist-fresh-after.log,package-tests.log,repo-wide-bun-test.log,lane-owned-and-client-before.txt} \u2014 every gate command with its exit code, the per-build output, the freshness readings and the repository-wide attribution."
+    }
+  },
+  "commands": [
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "observed": "tsgo --noEmit; no diagnostics",
+      "status": "passed"
+    },
+    {
+      "command": "bun run test:qa",
+      "exitCode": 0,
+      "observed": "every QA case --self-test ok (agent-teams-adopt, agent-teams-dispatch 14 checks, agent-teams-messaging, agent-teams-sidebar 17 checks, bundle-lifecycle, codegraph-smoke, \u2026)",
+      "status": "passed"
+    },
+    {
+      "command": "bun run verify:rows",
+      "exitCode": 0,
+      "observed": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list",
+      "status": "passed"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exitCode": 0,
+      "observed": "all discovered pairs ok; process-record exemptions printed (docs/bline-report.md, docs/decisions.md, docs/omo-parity-gap.md, docs/plan-*.md, \u2026)",
+      "status": "passed"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.mjs",
+      "exitCode": 0,
+      "observed": "[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) \u2014 7 NOT COVERED files listed \u2014 811ms",
+      "status": "passed"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs",
+      "exitCode": 0,
+      "observed": "[preset-conformance] PASS \u2014 conformance {ok:true,checked:31,parity 31/31,problems:[]}; sessionCreate {ok:true,status:200,agentPreset:\"mpd\"}; bootLog {ok:true,signatures:[]}; negativeControl {ok:true,code:\"agent-preset/invalid\"}",
+      "status": "passed"
+    },
+    {
+      "command": "node scripts/patch-agent-teams-fixes.mjs --check",
+      "exitCode": 0,
+      "observed": "[patch-agent-teams-fixes] already applied: 123 mpd delta region(s) across 10 adopted file(s)",
+      "status": "passed"
+    },
+    {
+      "command": "node scripts/install-profile.mjs --dry-run",
+      "exitCode": 0,
+      "observed": "prints the install plan (profile rows, preset copy, toolchain missing=false); writes nothing (dry-run)",
+      "status": "passed"
+    },
+    {
+      "command": "bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js  (\u00d714, canonical repo-root form)",
+      "exitCode": 0,
+      "observed": "all 14 report 'Bundled \u2026 modules' with exit 0 (dist-rebuild.log)",
+      "status": "passed"
+    },
+    {
+      "command": "node scripts/build-mpd-client.mjs",
+      "exitCode": 0,
+      "observed": "wrote packages/mpd-bundle-plugin/client.js (305168 bytes); sha256 0ee5da80\u2026 unchanged \u2192 byte-identical",
+      "status": "passed"
+    }
+  ],
+  "verdict": {
+    "ok": true,
+    "failed": [],
+    "note": "All six acceptance items passed; no gate is silenced \u2014 the one repo-wide red (bun test) is attributed, file by file, to archived evidence scratch trees and names zero wave-package failures."
+  },
+  "notes": [
+    "No git write command was run (read-only git status/diff/log/show only); the captain holds the single commit.",
+    "The plan of record \u00a79 is the durable outcome record; .mpd/ is gitignored so it is not part of the commit.",
+    "dump-config --profile mpd is not cited anywhere: this checkout has no mpd profile installed (captain's measured fact)."
+  ]
+}

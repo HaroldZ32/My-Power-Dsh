@@ -412,17 +412,19 @@
             # that row is OFF by default (install-profile --with-compat-track is
             # gone) and the harness only registers deepseek-official
             # (dsh-llm-deepseek), so a "deepseek" fallback would fail with
-            # NO_ADAPTER exactly when the fallback is needed. Models stay
-            # tiers: every member is flash — the five that used to default to
-            # the pro tier (Architect/Planner/Reviewer/Lead/Senior Engineer)
-            # carry an explicit reasoning_effort: max, the highest effort this
-            # deployment exposes (off/low/high/max).
+            # NO_ADAPTER exactly when the fallback is needed.
+            # MEMBER ROUTES COME FROM THE SETTINGS SLOTS, not from literals: `tier: N` starts the
+            # member on mpd.teamModels.slot<N> (provider + model + reasoning effort, editable in the
+            # TUI /settings section and in the Web settings card). The frozen class mapping is
+            # tier 1 = Architect/Planner/Reviewer/Lead/Senior Engineer, tier 2 = the analysts
+            # (Researcher/Explorer/Plan Reviewer), tier 3 = the executors (Deep Worker/Junior
+            # Engineer). Vision Analyst keeps an explicit `route` because it needs the vision model,
+            # so editing a slot never moves it. A slot edit applies at the next dsh boot, like every
+            # other mpd knob.
             members:
               - name: Architect
-                reasoning_effort: max
+                tier: 1
                 role: architecture review / deep debugging / self-review
-                provider: deepseek-official
-                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
                 # Read-only members are MECHANICALLY restricted, not just instructed: these
@@ -434,72 +436,58 @@
 
                 toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Researcher
+                tier: 2
                 role: code / open-source evidence search
-                provider: deepseek-official
-                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
                 toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Planner
-                reasoning_effort: max
+                tier: 1
                 role: planning / task decomposition
-                provider: deepseek-official
-                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
                 toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Explorer
+                tier: 2
                 role: read-only codebase exploration
-                provider: deepseek-official
-                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
                 toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Reviewer
-                reasoning_effort: max
+                tier: 1
                 role: correctness / risk review
-                provider: deepseek-official
-                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
               - name: Plan Reviewer
+                tier: 2
                 role: work-plan QA review / UI-UX critique
-                provider: deepseek-official
-                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
                 toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Vision Analyst
+                route: { provider: deepseek-official, model: deepseek-v4-flash-vision-exp, reasoningEffort: high }
                 role: image / diagram analysis
-                provider: deepseek-official
-                model: deepseek-v4-flash-vision-exp
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
                 toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Lead
-                reasoning_effort: max
+                tier: 1
                 role: orchestration / integration
-                provider: deepseek-official
-                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
               - name: Deep Worker
+                tier: 3
                 role: autonomous goal-driven implementation
-                provider: deepseek-official
-                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
               - name: Senior Engineer
-                reasoning_effort: max
+                tier: 1
                 role: primary implementation
-                provider: deepseek-official
-                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
               - name: Junior Engineer
+                tier: 3
                 role: small mechanical changes
-                provider: deepseek-official
-                model: deepseek-v4-flash
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
 

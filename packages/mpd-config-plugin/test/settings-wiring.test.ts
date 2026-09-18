@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply } from "../src/index"
+import { TEAM_MODEL_SLOT_DEFAULTS } from "../src/settings-schema"
 
 const temps: string[] = []
 function sandbox(): { root: string; file: string } {
@@ -466,5 +467,60 @@ describe("the file-derived base under the captain's cardinality rule (§10.1 + r
     const loud = h.logs.find((line) => line.includes("the namespace base is NOT derived from a file"))
     expect(loud).toContain(a.root)
     expect(loud).toContain(b.root)
+  })
+})
+
+describe("the team-model slots are a READ-path projection only (A2)", () => {
+  test("a fully absent .mpd/mpd.jsonc still resolves the three slot defaults", async () => {
+    // No `.mpd` directory at all: the workspace has no file for the layer to read.
+    const bare = mkdtempSync(join(tmpdir(), "mpd-wiring-bare-"))
+    temps.push(bare)
+    const h = harness({ roots: [bare] })
+    apply(h.ctx)
+    expect(h.provided.mpdConfig.states().files).toEqual([])
+    expect(h.provided.mpdConfig.get("teamModels")).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
+    expect(h.provided.mpdConfig.get("teamModels.slot1")).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot1)
+    // … and the tool consumer sees the same resolved view.
+    const get = h.registered.find((tool: any) => tool.name === "mpd_config_get")
+    const payload = await get.execute({})
+    expect(payload.config.teamModels).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
+    await h.settle()
+  })
+
+  test("NEGATIVE CONTROL: an unrelated settings-document save never injects a teamModels block into the file", async () => {
+    const { root, file } = sandbox()
+    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }`)
+    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    apply(h.ctx)
+    // A save of an UNRELATED knob through the settings document: the bridge writes that leaf and
+    // only that leaf, because its delta comes from the settings document, never from the resolved
+    // config — so the materialised slot defaults cannot leak into the workspace file.
+    h.setUser({ ulw: { maxRounds: 11 } })
+    h.emit("update")
+    await h.settle()
+    const text = readFileSync(file, "utf8")
+    expect(text).toContain('"maxRounds": 11')
+    expect(text).not.toContain("teamModels")
+    expect(JSON.parse(text.replace(/^\s*\/\/.*$/gm, ""))).toEqual({ ulw: { maxRounds: 11 } })
+    expect(h.provided.mpdConfig.states().writeback.writtenTo).toEqual([file])
+    // the READ path still answers with the slots, materialised and never written back
+    expect(h.provided.mpdConfig.get("teamModels")).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
+    expect(h.provided.mpdConfig.get()).not.toHaveProperty("teamModels")
+  })
+
+  test("a slot leaf SAVED through the settings document is what lands in the file (the slots stay editable)", async () => {
+    const { root, file } = sandbox()
+    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }`)
+    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    apply(h.ctx)
+    h.setUser({ ulw: { maxRounds: 3 }, teamModels: { slot2: { model: "deepseek-v4-pro" } } })
+    h.emit("update")
+    await h.settle()
+    expect(JSON.parse(readFileSync(file, "utf8").replace(/^\s*\/\/.*$/gm, ""))).toEqual({
+      ulw: { maxRounds: 3 },
+      teamModels: { slot2: { model: "deepseek-v4-pro" } },
+    })
+    expect(h.provided.mpdConfig.get("teamModels.slot2")).toEqual({ provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "high" })
+    expect(h.provided.mpdConfig.get("teamModels.slot1")).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot1)
   })
 })

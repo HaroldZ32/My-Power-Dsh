@@ -1,0 +1,57 @@
+=== EXTRACT: the /settings pane proves the nine slot rows RENDER in the real TUI host ===
+--- run: case-run/ (copied from evidence/tui/lanes/2026-09-18T04-02-10.663Z) ---
+--- section header + page count ---
+  插件设置                                                                                                                                                                                                            1/42
+  ╭─ MPD 插件包 (mpd) ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── [重启生效] ╮
+--- the 22 mpd fields as rendered (the nine slot rows are the last nine) ---
+4:  │ ❯ 行内 diff 上限                                                                                                                                                                                               20000 │
+5:  │   注释检查                                                                                                                                                                                                      [✓ ] │
+6:  │   Ultrawork 轮数                                                                                                                                                                                                   6 │
+7:  │   记忆后端                                                                                                                                                                                                   ‹ git › │
+8:  │   团队状态目录                                                                                                                                                                                             .mpd/team │
+9:  │   Boulder 目录                                                                                                                                                                                                  .mpd │
+10:  │   看门狗启用                                                                                                                                                                                                    [✓ ] │
+11:  │   静默告警阈值（毫秒）                                                                                                                                                                                        600000 │
+12:  │   看门狗轮询间隔（毫秒）                                                                                                                                                                                       15000 │
+13:  │   升级前连续告警次数                                                                                                                                                                                               6 │
+14:  │   升级时的动作                                                                                                                                                                                         ‹ warn-only › │
+15:  │   工具在飞上限（毫秒，0 表示不设上限）                                                                                                                                                                        900000 │
+16:  │   暂停持有有效期（毫秒，0 表示不设有效期）                                                                                                                                                                    900000 │
+17:  │   槽位 1 提供商                                                                                                                                                                                         ‹ DeepSeek › │
+18:  │   槽位 1 模型                                                                                                                                                                                  ‹ DeepSeek-V4-Flash › │
+19:  │   槽位 1 推理强度                                                                                                                                                                                            ‹ Max › │
+20:  │   槽位 2 提供商                                                                                                                                                                                         ‹ DeepSeek › │
+21:  │   槽位 2 模型                                                                                                                                                                                  ‹ DeepSeek-V4-Flash › │
+22:  │   槽位 2 推理强度                                                                                                                                                                                           ‹ High › │
+23:  │   槽位 3 提供商                                                                                                                                                                                         ‹ DeepSeek › │
+24:  │   槽位 3 模型                                                                                                                                                                                  ‹ DeepSeek-V4-Flash › │
+25:  │   槽位 3 推理强度                                                                                                                                                                                           ‹ High › │
+29:  │   界面语言                                                                                                                                                                                                  ‹ 中文 › │
+30:  │   全屏模式                                                                                                                                                                                                      [✓ ] │
+31:  │   终端图片预览                                                                                                                                                                                                  [✓ ] │
+32:  │   diff 布局                                                                                                                                                                                       ‹ 自动（按宽度） › │
+33:  │   思考块展示                                                                                                                                                                                      ‹ 预览（2-3 行） › │
+34:  │   工具卡背景                                                                                                                                                                                                  ‹ 无 › │
+35:  │   转录边栏                                                                                                                                                                                            ‹ 轮次时间线 › │
+36:  │   页边距                                                                                                                                                                                                    ‹ 常规 › │
+
+=== the NINE slot rows, isolated ===
+17:  │   槽位 1 提供商                                                                                                                                                                                         ‹ DeepSeek › │
+18:  │   槽位 1 模型                                                                                                                                                                                  ‹ DeepSeek-V4-Flash › │
+19:  │   槽位 1 推理强度                                                                                                                                                                                            ‹ Max › │
+20:  │   槽位 2 提供商                                                                                                                                                                                         ‹ DeepSeek › │
+21:  │   槽位 2 模型                                                                                                                                                                                  ‹ DeepSeek-V4-Flash › │
+22:  │   槽位 2 推理强度                                                                                                                                                                                           ‹ High › │
+23:  │   槽位 3 提供商                                                                                                                                                                                         ‹ DeepSeek › │
+24:  │   槽位 3 模型                                                                                                                                                                                  ‹ DeepSeek-V4-Flash › │
+25:  │   槽位 3 推理强度                                                                                                                                                                                           ‹ High › │
+
+=== disclosure patterns seen in this pane ===
+MPD 插件包                                        1
+a save writes                                        1
+takes effect for the mpd plugins after a restart     1
+never lost                                           0
+
+=== WHY /never lost/ cannot be visible at this geometry ===
+full hint = 494 chars; 'never lost' starts at offset 320; pane max line width 220;
+the focused hint line is 203 chars and the TUI truncates the hint at ~char 170 before the key footer.

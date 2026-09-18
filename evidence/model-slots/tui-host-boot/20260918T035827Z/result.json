@@ -1,0 +1,123 @@
+{
+  "case": "t15-tui-host-boot (verification: the REAL dsh-tui host renders the /settings section)",
+  "measuredAt": "2026-09-18T04:02Z",
+  "artifact": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "73159e0470dc80cd78eb81e4026ace6aac025c73405759296a4b2e4f734ee51e",
+    "bytes": 161524,
+    "sameDigestAsT9Pin": true,
+    "runRevisionFile": "case-run/REVISION.json (delta.changed=false: the artifact did not move during the run)",
+    "configSchemaSha256": "bd64ac48b51071a1358edaa73837af35cd7454aff09fe6433ab6f51bdee9ce41"
+  },
+  "sandbox": {
+    "root": "evidence/model-slots/tui-host-boot/20260918T035827Z/sandbox",
+    "dshHome": "evidence/model-slots/tui-host-boot/20260918T035827Z/sandbox/dshhome",
+    "home": "evidence/model-slots/tui-host-boot/20260918T035827Z/sandbox/home",
+    "workspace": "evidence/model-slots/tui-host-boot/20260918T035827Z/sandbox/ws",
+    "isolation": "DSH_HOME/HOME/cwd all inside the evidence sandbox; the sandbox dir is gitignored (evidence/**/sandbox/) so the copied credentials can never be committed; the real ~/.dsh was only READ to clone the warm QA sandbox home",
+    "profile": "dsh-tui with bundles [dsh-base, @deepseek-harness-tui/dsh-tui (installed 0.10.1), @mpd-dsh/mpd -> the repo]"
+  },
+  "commands": [
+    {
+      "command": "node skills/dsh-qa/scripts/tui-panels.mjs  (the contract's bare verify command: its DEFAULT sandbox root is empty here)",
+      "exitCode": 0,
+      "observed": "[mpd-qa] SKIP case=tui-panels lane=real reason=absent-fixture prereq=\"tui profile in the sandbox root\" remedy=\"bun skills/dsh-qa/scripts/tui-mount.mjs --sandbox-root <root> --install\"",
+      "status": "passed",
+      "note": "This is the SKIP the case's own prerequisite gate defines (T8-F1: a SKIP is legitimate when the caller did not ask for the missing fixture, and exit 0 IS the script's own non-failure). The substantively measured run is the --sandbox-root invocation below."
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/tui-panels.mjs --self-test",
+      "exitCode": 0,
+      "observed": "[tui-panels self-test] ok: 7 surfaces asserted, negative controls fail as required",
+      "status": "passed"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/tui-panels.mjs --sandbox-root <manual profile>  (ATTEMPT 1 \u2014 boot failed, environmental)",
+      "exitCode": 1,
+      "observed": "tmux: the TUI did not reach the chat screen within 90000ms; root cause in the captured pane: `failed to import loader entry dsh-tui-auth (@deepseek-harness-tui/dsh-tui/oauth): Cannot find package '@deepseek-ai/dsh-llm-pi-ai' imported from /root/.nvm/.../@deepseek-harness-tui/dsh-tui/node_modules/@deepseek-harness-tui/dsh-auth/lib/index.js` \u2014 a hand-built profile that symlinks the GLOBAL dsh-tui package lacks the installed dependency closure.",
+      "status": "reported",
+      "reason": "environmental: a hand-built profile is not a valid TUI fixture; the case's PREREQ 3 remedy (tui-mount --sandbox-root <root> --install) was satisfied offline by cloning the repo's warm complete QA sandbox home (.mpd/recon/qa/dshhome) instead of a network install"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/tui-panels.mjs --sandbox-root evidence/model-slots/tui-host-boot/20260918T035827Z/sandbox  (ATTEMPT 2 \u2014 MEASURED RUN)",
+      "exitCode": 1,
+      "observed": "the real host BOOTED (chat screen reached); surfaces: tuiStatus=rendered tuiCommandTrees=rendered commands=rendered tuiScenes=rendered tuiRenderers=MISSING tuiSettingsSections=MISSING tuiDialogs=rendered; negative control ok=false (must be false); harness command records: mpd workmates (1): qa-tui-probe; board-opened events in the store=1, scene-reported transcript rows=0; FAIL entry: tuiSettingsSections missingPatterns=[\"/never lost/\"]",
+      "status": "reported",
+      "reason": "the case's single ok flag is FALSE because ONE of the four disclosure patterns in its strengthened expectation (/never lost/) cannot be visible at the case's pane geometry; every other surface and the nine slot rows rendered. Reported, never smoothed over."
+    }
+  ],
+  "surfaces": {
+    "from": "case-run/result.json steps.surfaces (quoted as they came)",
+    "tuiStatus": {
+      "rendered": true,
+      "label": "keyed status line above the prompt"
+    },
+    "tuiCommandTrees": {
+      "rendered": true,
+      "label": "/mpd completion advertised the tree child description"
+    },
+    "commands": {
+      "rendered": true,
+      "label": "the command really ran (command/done text recorded by the harness)",
+      "store": [
+        "mpd workmates (1): qa-tui-probe"
+      ]
+    },
+    "tuiScenes": {
+      "rendered": true,
+      "label": "the board scene opened (title rendered)"
+    },
+    "tuiDialogs": {
+      "rendered": true,
+      "label": "the managed select dialog appeared"
+    },
+    "tuiRenderers": {
+      "rendered": false,
+      "label": "the log-only event rendered a transcript row",
+      "preExisting": true,
+      "evidence": "false in EVERY recorded tui-panels run (all 10 Sep-15 runs and both of mine); the store holds 1 board-opened event while the scene reported 0 transcript rows \u2014 'registered + appended, not projected'; the renderer path is untouched by this wave (t4 changed src/settings.ts, not the renderer seam)."
+    },
+    "tuiSettingsSections": {
+      "rendered": false,
+      "label": "the /settings section rendered WITH its bridge+restart+never-lost disclosure",
+      "missingPatterns": [
+        "/never lost/"
+      ],
+      "matchedPatterns": [
+        "/MPD \u63d2\u4ef6\u5305|MPD bundle/",
+        "/a save writes <workspace>\\/\\.mpd\\/mpd\\.jsonc for the live session workspace\\(s\\)/",
+        "/takes effect for the mpd plugins after a restart/"
+      ],
+      "paneChars": 9820
+    }
+  },
+  "theSettingsSectionISRendered_measured": "The captured settings pane shows the section and its declaration: header `\u256d\u2500 MPD \u63d2\u4ef6\u5305 (mpd) \u2500\u2026 [\u91cd\u542f\u751f\u6548] \u256e`, page indicator `1/42`, the 22 mpd fields, and \u2014 as the last nine rows \u2014 the NINE team-model slot rows WITH their values: `\u69fd\u4f4d 1 \u63d0\u4f9b\u5546 \u2039 DeepSeek \u203a`, `\u69fd\u4f4d 1 \u6a21\u578b \u2039 DeepSeek-V4-Flash \u203a`, `\u69fd\u4f4d 1 \u63a8\u7406\u5f3a\u5ea6 \u2039 Max \u203a`, then the same three for \u69fd\u4f4d 2 (High) and \u69fd\u4f4d 3 (High). Raw text: pane-extract.txt + case-run/settings.pane.txt.",
+  "whyNeverLostCannotBeVisible": {
+    "fullHintChars": 494,
+    "charOffsetOfNeverLost": 320,
+    "paneMaxLineWidth": 220,
+    "focusedHintLineChars": 203,
+    "hintTruncatedAt": 170,
+    "explanation": "Every mpd knob hint is `mpd.jsonc <key> \u2014 <BRIDGE_DISCLOSURE> <BRIDGE_NOT_LOST>[ <semantics>]` (knobHint in packages/mpd-config-plugin/src/settings-schema.ts). BRIDGE_DISCLOSURE is 272 chars, so 'never lost' (inside BRIDGE_NOT_LOST, 187 chars) starts at offset 320 \u2014 beyond the 220-char pane line, and the TUI truncates the hint at ~char 170 to leave room for the key footer. The clause IS composed into the hint (proven in bytes: BRIDGE_NOT_LOST present in the TUI dist and the shared schema; 1 hit) but is not VISIBLE at this case's geometry, for ANY row (all share that prefix)."
+  },
+  "caseStrengtheningHistory": {
+    "finding": "NO regression from this wave.",
+    "evidence": "Across all 47 recorded evidence/tui/lanes/*/result.json runs, only TWO use the strengthened 4-pattern expectation (both are mine, from this task). The 10 Sep-15 runs that report tuiSettingsSections=true used the OLDER two-pattern expectation (label 'the /settings section rendered WITH its unbridged marker', requiredPatterns=[header, /not bridged: a save here does not rewrite/]) and their pane literally shows the pre-t35 wording. The strengthening landed in commit a647d47 (2026-09-15 17:57:07, 'feat(bridge): unify the mpd settings namespace ... for both front doors') \u2014 AFTER the last comparable run \u2014 so the 4-pattern expectation has never been green on any tree, not just this wave's."
+  },
+  "whatThePaneProves": [
+    "PROVES: the REAL dsh-tui host boots in the sandbox, mounts this wave's bundle, opens /settings and RENDERS the `MPD \u63d2\u4ef6\u5305 (mpd)` section \u2014 header, the 22-field declaration and the nine team-model slot rows with their resolved values.",
+    "PROVES: the section is not empty/degraded (it is page 1 of 42 of the plugin-settings screen) and the nine slot rows are individually VISIBLE at this geometry (they are the last nine rows of the section).",
+    "PROVES: the assertion engine is falsifiable \u2014 the script's own negative control on the same captured panes is red by design (control.ok=false)."
+  ],
+  "whatThePaneDoesNotProve": [
+    "NOT proven: that a user CLICKED/OPENED a slot picker \u2014 no key was sent to a slot row; the case's pattern set does not isolate the slot rows, and its single ok=false is caused by the unreachable /never lost/ pattern, so the case's own boolean is not usable as the wave's proof.",
+    "NOT proven: the full disclosure text is legible on screen \u2014 the hint is truncated at this geometry (offset 320 > 170-char cut), so the never-lost clause is composed but not visible.",
+    "NOT proven: anything about the WEB card (that is t9's evidence) or about member ROUTING (t10/t12).",
+    "Scope note: extending the case to isolate the slot rows would edit skills/** and force a VENDOR_LOCK re-pin, which this wave deliberately avoids \u2014 so the case was run as-is."
+  ],
+  "noProductFileModified": "verification only: the only writes are under evidence/model-slots/tui-host-boot/<ts>/** (the case additionally wrote its own conventional evidence under evidence/tui/lanes/<ts>/ and the sandbox state under the gitignored sandbox/ dir).",
+  "verdict": {
+    "ok": true,
+    "note": "all six acceptance items are satisfied: the case ran on the real host with its output+exit code quoted; the tuiSettingsSections result is reported as rendered=false with the captured pane text and the failing pattern; the other surfaces and the negative control are quoted; what the pane does and does not prove is stated."
+  }
+}

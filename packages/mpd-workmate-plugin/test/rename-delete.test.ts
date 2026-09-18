@@ -110,7 +110,7 @@ function writeTeamRecord(cwd: string, teamId: string, members: string[], sub = "
   writeFileSync(join(dirPath, "team.json"), JSON.stringify({ id: teamId, name: teamId, members: members.map((m, i) => ({ id: "m" + i, name: m, status: "idle" })) }, null, 2))
 }
 
-async function initOne(h: Harness, name: string, base = "hephaestus") {
+async function initOne(h: Harness, name: string, base = "Deep Worker") {
   return h.byName("mpd_workmate_init").execute({ base, name }, h.exec)
 }
 
@@ -386,7 +386,7 @@ test("purge requires confirm === name, then removes the instance for good (D1)",
 
 test("a READONLY instance is a valid mutation target: library administration, not self-editing (M1)", async () => {
   const h = makeHarness()
-  await initOne(h, "librarian-1", "librarian")
+  await initOne(h, "librarian-1", "Researcher")
   expect(h.provided.mpdWorkmate.get("librarian-1").readonly).toBe(true)
   const out = await h.byName("mpd_workmate_rename").execute({ name: "librarian-1", new_name: "librarian-2" }, h.exec)
   expect(out.name).toBe("librarian-2")
@@ -741,11 +741,51 @@ test("the workmate deny list denies bash and the write-capable MCP tools, and ca
   for (const dead of ["str_replace" + "_editor", "apply" + "_patch"]) expect(READONLY_DENY).not.toContain(dead)
 
   const h = makeHarness()
-  await initOne(h, "librarian-1", "librarian")
+  await initOne(h, "librarian-1", "Researcher")
   await h.byName("mpd_workmate_spawn").execute({ name: "librarian-1", task: "search" }, h.exec)
   expect(h.spawned[0].toolFilter).toEqual({ deny: [...READONLY_DENY] })
   // a non-readonly workmate keeps its write tools
   await initOne(h, "worker-1")
   await h.byName("mpd_workmate_spawn").execute({ name: "worker-1", task: "write" }, h.exec)
   expect(h.spawned[1].toolFilter).toBeUndefined()
+})
+
+// ── C3: the workmate web routes expose no roster id and no baseId ───────────────────────────────
+test("the workmate web routes carry no id/baseId for a base or an instance", async () => {
+  const h = makeHarness()
+  await initOne(h, "routes-1")
+  const callRoute = async (path: string, url = "") => {
+    const route = h.routes.find((r) => r.path === "/plugins/mpd-workmate/" + path)
+    if (!route) throw new Error("no route registered for " + path)
+    const res: any = {
+      status: 0, headers: {} as Record<string, string>, raw: "",
+      writeHead(s: number, hd: any) { res.status = s; res.headers = hd ?? {} },
+      end(b?: any) { res.raw = b === undefined ? "" : String(b) }
+    }
+    await route.handler({ method: "GET", url, async *[Symbol.asyncIterator]() {} }, res)
+    return { status: res.status, body: res.raw === "" ? null : JSON.parse(res.raw) }
+  }
+
+  const list = await callRoute("list")
+  expect(list.status).toBe(200)
+  expect(list.body.workmates.length).toBe(1)
+  for (const w of list.body.workmates) {
+    expect(Object.hasOwn(w, "baseId")).toBe(false)
+    expect(Object.hasOwn(w, "id")).toBe(false)
+    expect(w.baseName).toBe("Deep Worker")
+  }
+
+  const roster = await callRoute("roster")
+  expect(roster.status).toBe(200)
+  expect(roster.body.bases.map((b: any) => b.name)).toEqual(["Deep Worker", "Researcher"])
+  for (const b of roster.body.bases) {
+    expect(Object.hasOwn(b, "id")).toBe(false)
+    expect(Object.hasOwn(b, "baseId")).toBe(false)
+  }
+
+  const get = await callRoute("get", "/plugins/mpd-workmate/get?name=routes-1")
+  expect(get.status).toBe(200)
+  expect(Object.hasOwn(get.body, "baseId")).toBe(false)
+  expect(get.body.baseName).toBe("Deep Worker")
+  expect(get.body.name).toBe("routes-1")
 })

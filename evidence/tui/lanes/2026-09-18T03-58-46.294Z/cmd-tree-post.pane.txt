@@ -1,0 +1,47 @@
+            at async Include._apply (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:240:3) {
+          [cause]: Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@deepseek-ai/dsh-user-questions' imported from /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/questions.js
+              at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+              at packageResolve (node:internal/modules/esm/resolve:768:81)
+              at moduleResolve (node:internal/modules/esm/resolve:859:18)
+              at defaultResolve (node:internal/modules/esm/resolve:992:11)
+              at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+              at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+              at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+              at #resolve (node:internal/modules/esm/loader:673:17)
+              at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+              at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+            code: 'ERR_MODULE_NOT_FOUND'
+          }
+        },
+        Error: failed to import loader entry dsh-tui-auth (@deepseek-harness-tui/dsh-tui/oauth): Cannot find package '@deepseek-ai/dsh-llm-pi-ai' imported from /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/node_modules/@deepseek-harness-tui/dsh-auth/lib/index.js
+            at updateError (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+            at Entry._init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:524:10)
+            at async Entry.init (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:505:4)
+            at async Entry.update (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:426:37)
+            at async EntryGroup.create (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:65:4)
+            at async Promise.allSettled (index 98)
+            at async EntryGroup.update (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:97:21)
+            at async Include._apply (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:240:3) {
+          [cause]: Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@deepseek-ai/dsh-llm-pi-ai' imported from /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/node_modules/@deepseek-harness-tui/dsh-auth/lib/index.js
+              at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+              at packageResolve (node:internal/modules/esm/resolve:768:81)
+              at moduleResolve (node:internal/modules/esm/resolve:859:18)
+              at defaultResolve (node:internal/modules/esm/resolve:992:11)
+              at #cachedDefaultResolve (node:internal/modules/esm/loader:691:20)
+              at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:708:38)
+              at ModuleLoader.resolveSync (node:internal/modules/esm/loader:740:52)
+              at #resolve (node:internal/modules/esm/loader:673:17)
+              at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:593:35)
+              at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33) {
+            code: 'ERR_MODULE_NOT_FOUND'
+          }
+        }
+      ]
+    }
+  }
+}
+
+Node.js v24.16.0
+[dsh-tui] dsh profile 已退出（退出码 1）。可直接运行以下命令查看诊断：
+  dsh --profile dsh-tui
+root@lavm-scaz4azz6c:~/dshProj/my-power-dsh/evidence/model-slots/tui-host-boot/20260918T035827Z/sandbox/ws#      

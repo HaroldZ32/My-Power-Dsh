@@ -18,11 +18,18 @@ import { describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { loadMpdClient } from "./client-harness.mjs"
+// The ONE shared knob declaration, imported at RUNTIME for the parity test: the card MIRRORS it
+// (it must not reference `SETTINGS_KNOBS`, which a QA gate pins against the built client), so the
+// test — not the client — compares the two declarations element by element.
+import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SETTINGS_KNOBS } from "../../mpd-config-plugin/src/settings-schema"
 
 const REPO = join(import.meta.dir, "..", "..", "..")
 const PKG = join(REPO, "packages", "mpd-bundle-plugin")
 const ARTIFACT = readFileSync(join(PKG, "client.js"), "utf8")
 const CARD_SOURCE = readFileSync(join(PKG, "src", "settings-card.js"), "utf8")
+/** The card module itself, plus the EN dictionary it renders rows through. */
+const CARD = (0, eval)("(" + CARD_SOURCE + ")")((name) => ({ react: {}, locales: {} })[name] ?? {})
+const EN = CARD.dictionaries().en
 
 /** A settings scope with the host's measured surface, recording every write. */
 function fakeScope(snapshot, calls = []) {
@@ -256,26 +263,233 @@ describe("isolation and front-door parity", () => {
     expect(readFileSync(join(REPO, "scripts", "build-mpd-client.mjs"), "utf8")).toContain("@mpd-dsh/settings-card")
   })
 
-  test("the card's thirteen fields/labels/zh descriptions are IDENTICAL to the ONE shared declaration (no drift)", () => {
-    // Both front doors now read the knob list from `packages/mpd-config-plugin/src/settings-schema.ts`
-    // (the TUI imports it; the card mirrors it), so this compares the card against that single source.
-    const shared = readFileSync(join(REPO, "packages", "mpd-config-plugin", "src", "settings-schema.ts"), "utf8")
+  test("the card's twenty-two fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift)", () => {
+    // Both front doors read the same knob list — the TUI imports it, the card MIRRORS it — so this
+    // compares the card against that single source at RUNTIME (the nine team-model rows are built
+    // from slot ids and labels in the declaration, which no source-text grep can follow).
     const { FIELDS } = (0, eval)("(" + CARD_SOURCE + ")")((name) => ({ react: {}, locales: {} })[name] ?? {})
     expect(Array.isArray(FIELDS)).toBe(true)
-    // 13 = the shared list after `watchdog.holdTtlMs` joined it in the T-18 redesign; the loop
-    // below is what makes this a no-drift pin rather than a magic number.
-    expect(FIELDS).toHaveLength(13)
-    for (const field of FIELDS) {
-      expect(shared).toContain(`path: ["${field.path[0]}", "${field.path[1]}"]`)
-      expect(shared).toContain(`label: "${field.label}"`)
-      expect(shared).toContain(`zh: "${field.zh}"`)
-      // w16: a knob that carries a semantics sentence must carry the SAME one in the shared
-      // declaration, so the second line a user reads cannot drift from the schema.
-      if (field.semantics !== undefined) expect(shared).toContain(`hint: "${field.semantics}"`)
+    // 22 = the shared list after the nine team-model slot leaves joined it (13 scalar knobs + 9
+    // leaves); the element-wise loop below is what makes this a no-drift pin, not a magic number.
+    expect(FIELDS).toHaveLength(22)
+    expect(SETTINGS_KNOBS).toHaveLength(22)
+    expect(FIELDS.map((field) => field.path)).toEqual(SETTINGS_KNOBS.map((knob) => [...knob.path]))
+    for (const [index, field] of FIELDS.entries()) {
+      const knob = SETTINGS_KNOBS[index]
+      // A6: the FULL path array, never only its first two segments (the slot leaves are 3 deep).
+      expect([...field.path]).toEqual([...knob.path])
+      expect(field.label).toBe(knob.label)
+      expect(field.zh).toBe(knob.zh)
+      expect(field.kind).toBe(knob.kind)
+      // the DECLARED fallback options are the parity surface (§1.3); the LIVE lists differ by design
+      expect(field.options ?? []).toEqual([...(knob.options ?? [])])
+      // w16: a knob that carries a semantics sentence must carry the SAME one as the shared hint
+      if (field.semantics !== undefined) expect(knob.hint).toContain(field.semantics)
     }
+    const slotRows = FIELDS.filter((field) => field.path[0] === "teamModels")
+    expect(slotRows).toHaveLength(9)
+    for (const row of slotRows) expect(row.kind).toBe("select")
     // and the TUI builds its section from that list rather than restating it
     const tuiSource = readFileSync(join(REPO, "packages", "mpd-tui-plugin", "src", "settings.ts"), "utf8")
     expect(tuiSource).toContain("SETTINGS_KNOBS.map(")
     expect(tuiSource).toContain('from "../../mpd-config-plugin/src/settings-schema"')
+    // the card itself must never import the declaration (the client bytes may not carry the symbol)
+    expect(CARD_SOURCE).not.toContain("SETTINGS_KNOBS")
+    expect(ARTIFACT).not.toContain("SETTINGS_KNOBS")
+  })
+
+  test("NEGATIVE CONTROL: the parity pin reddens on a drifted label, a shortened path and a changed declared list", () => {
+    const { FIELDS } = (0, eval)("(" + CARD_SOURCE + ")")((name) => ({ react: {}, locales: {} })[name] ?? {})
+    const drift = (index, patch) => {
+      const copy = FIELDS.map((field) => ({ ...field, path: [...field.path] }))
+      Object.assign(copy[index], patch)
+      return copy
+    }
+    const compare = (fields) => fields.map((field, index) => {
+      const knob = SETTINGS_KNOBS[index]
+      return [JSON.stringify([...field.path]) === JSON.stringify([...knob.path]), field.label === knob.label, JSON.stringify(field.options ?? []) === JSON.stringify([...(knob.options ?? [])])]
+    })
+    const clean = compare(FIELDS)
+    expect(clean.every((row) => row.every(Boolean))).toBe(true)
+    const last = FIELDS.length - 1
+    expect(compare(drift(last, { label: "Slot 3 reasoning effort (drifted)" }))[last][1]).toBe(false)
+    expect(compare(drift(last, { path: ["teamModels", "slot3"] }))[last][0]).toBe(false)
+    expect(compare(drift(last, { options: ["high"] }))[last][2]).toBe(false)
+  })
+})
+
+describe("the team-model slots render as DEPENDENT pickers fed by the live catalog (A5)", () => {
+  /** A two-provider catalog in the host's own shape, with per-model reasoning efforts. */
+  const CATALOG = [
+    {
+      id: "deepseek-official",
+      name: "DeepSeek Official",
+      models: [
+        { id: "deepseek-v4-flash", name: "V4 Flash", reasoning: { efforts: [{ id: "off", name: "Off" }, { id: "low", name: "Low" }, { id: "high", name: "High" }, { id: "max", name: "Max" }], defaultEffort: "high" } },
+        { id: "deepseek-v4-pro", name: "V4 Pro", reasoning: { efforts: [{ id: "high", name: "High" }, { id: "max", name: "Max" }] } },
+      ],
+    },
+    { id: "other-provider", name: "Other", models: [{ id: "x-1", name: "X1" }] },
+  ]
+
+  /** The host's client seams: `sessions.list` for the bound session, `modelDirectories` for the catalog. */
+  function catalogServices(groups = CATALOG, options = {}) {
+    const sessionId = options.sessionId ?? "s1"
+    return {
+      sessions: { list: { getSnapshot: () => ({ current: options.unbound === true ? undefined : { sessionId } }) } },
+      modelDirectories: {
+        directoryFor: (id) => {
+          if (options.throwing === true) throw new Error(`ui-model-selection: session "${String(id)}" resolved no scope`)
+          if (id !== sessionId) throw new Error("unknown session")
+          return { store: { getSnapshot: () => ({ status: "ready", groups }) }, load: async () => ({ groups }) }
+        },
+      },
+    }
+  }
+
+  /** Every element of one type in a rendered tree. */
+  function elementsOf(tree, type, out = []) {
+    if (tree === null || tree === undefined || typeof tree !== "object") return out
+    if (Array.isArray(tree)) {
+      for (const entry of tree) elementsOf(entry, type, out)
+      return out
+    }
+    if (tree.type === type) out.push(tree)
+    elementsOf(tree.props?.children, type, out)
+    return out
+  }
+
+  /** The control element of one field row (its rendered subtree carries the field key). */
+  function controlOf(tree, key) {
+    const controls = findLabelled(tree, key)
+    return controls === undefined ? undefined : controls[0]
+  }
+  function findLabelled(tree, key) {
+    if (tree === null || tree === undefined || typeof tree !== "object") return undefined
+    if (Array.isArray(tree)) {
+      for (const entry of tree) {
+        const found = findLabelled(entry, key)
+        if (found !== undefined) return found
+      }
+      return undefined
+    }
+    if (tree.key === key) return [...elementsOf(tree, "select"), ...elementsOf(tree, "input")]
+    return findLabelled(tree.props?.children, key)
+  }
+
+  /** The option values of a select, flattened across optgroups. */
+  function optionValues(select) {
+    return elementsOf(select, "option").map((option) => option.props.value).filter((value) => value !== "")
+  }
+  function optgroupLabels(select) {
+    return elementsOf(select, "optgroup").map((group) => group.props.label)
+  }
+
+  function renderedTree(scope, services) {
+    const client = loadMpdClient({ services: { settingsScope: scope, ...services } })
+    client.exports.apply(client.ctx)
+    const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
+    return client.hooks.render(registration.component, { useMpdCard: (selector) => selector(registration.inject().hooks.mpdCard.getSnapshot()), t: (key) => EN[key] ?? key }).then((tree) => ({ tree, client, registration }))
+  }
+
+  const SLOT_SECTION = { hashline: { maxDiffChars: 20000 }, teamModels: { slot1: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" } } }
+  const slotScope = (section) => fakeScope({ status: "ready", mode: "host", writable: true, revision: 7, value: section, user: section })
+
+  test("the model control lists the catalog's provider/model pairs, GROUPED by provider", async () => {
+    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const select = controlOf(tree, "teamModels.slot1.model")
+    expect(select?.type).toBe("select")
+    expect(optgroupLabels(select)).toEqual(["DeepSeek Official", "Other"])
+    expect(optionValues(select)).toEqual(["deepseek-v4-flash", "deepseek-v4-pro", "x-1"])
+    const labels = elementsOf(select, "option").map((option) => option.props.children)
+    expect(labels).toContain("V4 Pro")
+    client.restore()
+  })
+
+  test("the provider control lists the catalog's provider ids with their display names", async () => {
+    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const select = controlOf(tree, "teamModels.slot1.provider")
+    expect(optionValues(select)).toEqual(["deepseek-official", "other-provider"])
+    expect(elementsOf(select, "option").map((option) => option.props.children)).toContain("Other")
+    client.restore()
+  })
+
+  test("the effort control offers the SELECTED model's own efforts, and changing the model re-derives them", async () => {
+    const pro = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const proSelect = controlOf(pro.tree, "teamModels.slot1.reasoningEffort")
+    expect(optionValues(proSelect)).toEqual(["high", "max"]) // deepseek-v4-pro advertises exactly these
+    pro.client.restore()
+
+    const flashSection = { ...SLOT_SECTION, teamModels: { slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" } } }
+    const flash = await renderedTree(slotScope(flashSection), catalogServices())
+    const flashSelect = controlOf(flash.tree, "teamModels.slot1.reasoningEffort")
+    expect(optionValues(flashSelect)).toEqual(["off", "low", "high", "max"])
+    expect(optionValues(flashSelect)).not.toEqual(optionValues(proSelect))
+    flash.client.restore()
+  })
+
+  test("a model with no advertised efforts keeps the declared fallback list", async () => {
+    const { tree, client } = await renderedTree(slotScope({ ...SLOT_SECTION, teamModels: { slot1: { provider: "other-provider", model: "x-1" } } }), catalogServices())
+    const select = controlOf(tree, "teamModels.slot1.reasoningEffort")
+    expect(optionValues(select)).toEqual(["off", "low", "high", "max"])
+    client.restore()
+  })
+
+  test("NO slot field is ever a text input (a slot value is never typed)", async () => {
+    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    for (const slot of ["slot1", "slot2", "slot3"]) {
+      for (const leaf of ["provider", "model", "reasoningEffort"]) {
+        const control = controlOf(tree, `teamModels.${slot}.${leaf}`)
+        expect(control?.type).toBe("select")
+        expect(optionValues(control).length).toBeGreaterThan(0)
+      }
+    }
+    client.restore()
+  })
+
+  test("DEGRADE: no catalog services -> the declared lists, and the section still renders", async () => {
+    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), {})
+    expect(controlOf(tree, "teamModels.slot1.model")?.type).toBe("select")
+    expect(optionValues(controlOf(tree, "teamModels.slot1.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
+    expect(optionValues(controlOf(tree, "teamModels.slot1.reasoningEffort"))).toEqual(["off", "low", "high", "max"])
+    expect(textOf(tree)).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
+    client.restore()
+  })
+
+  test("DEGRADE: an unbound session and a THROWING directoryFor keep the declared lists, no throw out of render", async () => {
+    const unbound = await renderedTree(slotScope(SLOT_SECTION), catalogServices(CATALOG, { unbound: true }))
+    expect(optionValues(controlOf(unbound.tree, "teamModels.slot1.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
+    unbound.client.restore()
+
+    const throwing = await renderedTree(slotScope(SLOT_SECTION), catalogServices(CATALOG, { throwing: true }))
+    expect(optionValues(controlOf(throwing.tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official"])
+    expect(textOf(throwing.tree)).toContain("Slot 1 provider")
+    throwing.client.restore()
+  })
+
+  test("edits through the catalog-driven controls still write ONE mutate batch with the revision fence", async () => {
+    const calls = []
+    const { registration } = mountedCard(fakeScope(READY, calls))
+    const face = registration.inject()
+    face.edit("teamModels.slot1.model", "deepseek-v4-pro")
+    face.edit("teamModels.slot1.reasoningEffort", "max")
+    await face.save()
+    expect(calls).toHaveLength(1)
+    expect(calls[0].expected).toBe(7)
+    expect(calls[0].ops).toEqual([
+      { op: "set", path: ["teamModels", "slot1", "model"], value: "deepseek-v4-pro" },
+      { op: "set", path: ["teamModels", "slot1", "reasoningEffort"], value: "max" },
+    ])
+  })
+
+  test("the disclosure sentences are unchanged and still rendered with the new rows", async () => {
+    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const text = textOf(tree)
+    expect(text).toContain(BRIDGE_DISCLOSURE)
+    expect(text).toContain("this knob is read at plugin mount")
+    expect(text).toContain("the file half is host-limited")
+    expect(text).toContain(BRIDGE_NOT_LOST)
+    expect(text).toContain("if no session is live, the save stays in settings")
+    client.restore()
   })
 })

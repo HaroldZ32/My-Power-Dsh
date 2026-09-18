@@ -1,0 +1,43 @@
+=== A1(a) packages/mpd-tui-plugin/dist/index.js   sha256 73159e0470dc80cd78eb81e4026ace6aac025c73405759296a4b2e4f734ee51e   bytes 161524 ===
+-- the slot list literal + per-slot schema/defaults derivation --
+var TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3"]
+teamModelSlotSchema      4
+TEAM_MODEL_SLOT_DEFAULTS 4
+TEAM_MODEL_FALLBACK_OPTIONS 3
+-- the three leaf names the nine paths are composed from --
+  leaf provider         3
+  leaf model            3
+  leaf reasoningEffort  3
+-- catalog-derived option wiring (A4) --
+  teamModelOptionLists       3
+  llmCatalog                 9
+  slot options: provider=    1
+  catalog=                   1
+  declared(                  0
+-- the branch log line the built dist emits --
+
+=== A1(b) packages/mpd-bundle-plugin/client.js   sha256 0ee5da800c1dc18bdbb640ef31eb0e3b1dc2049f8fd9fa65caf1747d30c044e5   bytes 310367 ===
+-- the card's nine new field entries (literal path arrays) --
+total { path: ["teamModels", ...] entries: 9
+  ["teamModels", "slot1", "provider        "] 1
+  ["teamModels", "slot1", "model           "] 1
+  ["teamModels", "slot1", "reasoningEffort "] 1
+  ["teamModels", "slot2", "provider        "] 1
+  ["teamModels", "slot2", "model           "] 1
+  ["teamModels", "slot2", "reasoningEffort "] 1
+  ["teamModels", "slot3", "provider        "] 1
+  ["teamModels", "slot3", "model           "] 1
+  ["teamModels", "slot3", "reasoningEffort "] 1
+-- dependent-picker wiring in the built bytes --
+  optionsFor             4
+  optgroup               3
+  optionElements         3
+  reasoningEffort        21
+  modelDirectories       8
+  kind: "select"         11
+
+-- ADDENDUM: the path/hint COMPOSITION in the built bytes (the nine dotted keys are built here) --
+  teamModels: import_schemastery.default.object({
+    path: ["teamModels", slot, leaf],
+    hint: knobHint(`teamModels.${slot}.${leaf}`, TEAM_MODEL_SLOT_SEMANTICS[slot])
+  if (path[0] !== "teamModels")

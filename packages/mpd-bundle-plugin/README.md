@@ -33,7 +33,7 @@ The `@mpd-dsh/mpd` bundle's own main plugin and web-client surface. Two jobs:
      renames/deletes them via `POST /plugins/mpd-workmate/{rename,delete}` — branching on
      the reason-coded refusals (`invalid-name` / `confirm-required` / `unknown` /
      `collision` / `in-use` with the blocking team list), with an explicit two-step delete
-     (confirmation → archive, or a typed-name purge) and zh/en strings. It
+     (confirmation → archive, or a typed-name purge) and zh/en strings. Bases are addressed by **functional NAME only**: the tab renders names, never a roster id (the ids are internal and the workmate routes no longer carry them). It
      also registers the null `conversation.chat.commandview` row that hides the
      `/agent-teams` command result. There is NO floating fallback for either page:
      `scripts/build-mpd-client.mjs` fails the build if any mpd client source registers
@@ -48,6 +48,21 @@ bridge disclosure — a save writes `<workspace>/.mpd/mpd.jsonc` for the live se
 and the mpd plugins act on it after a restart. The browser reaches the bridge only through the
 public settings seam; the write-back itself belongs to `packages/mpd-config-plugin`. Rebuild the
 combined client (`node scripts/build-mpd-client.mjs`) after touching either half.
+
+**The Web card's team-model pickers.** The card mirrors the ONE 22-row knob declaration of
+`packages/mpd-config-plugin` (the original 13 knobs plus the nine `teamModels` slot leaves) and
+renders each slot as a **dependent, selection-only picker**: a model control whose options are
+the catalog's provider/model pairs (provider shown as a group) and an effort control whose
+options are the SELECTED model's own efforts, re-derived when the model changes. The catalog is
+reached through GUARDED probes of `ctx.get("sessions")` + `ctx.get("modelDirectories")` — the
+existing `team-page.js` pattern, never a declared inject — and when a probe is absent, no session
+is bound, or `directoryFor` throws, the card falls back to the DECLARED option lists and the
+section still renders. Nothing about a slot is settable only by typing. A browser module cannot
+import the TS declaration, so the card mirrors it and a test pins the declared metadata (path,
+label, zh, kind, declared options) element-wise. The two doors' HINT strings differ on purpose
+and both name the dotted `mpd.jsonc` key and carry the disclosure plus the not-lost clause: the
+TUI builds `mpd.jsonc <key> — <disclosure> <not-lost>`, the card mirrors the shared `knobHint`
+and additionally appends a knob's own semantics sentence where it declares one.
 
 ## Config
 
