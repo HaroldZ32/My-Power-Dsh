@@ -1,0 +1,70 @@
+[browser] host boot pid=12 port=42989
+[browser] chromium pid=91 debugging port=37521
+[browser] [cdp] attaching to target 6C7643742EAD2ADEEDB9B08380C02E61 url=about:blank
+[browser] navigated to the token URL
+[browser] log.error: Failed to load resource: the server responded with a status of 404 (Not Found)
+[browser] console.warning: [git-graph] auto-isolation disabled: the workspaces service shape changed; using the official new-session behavior
+[browser] exception: Error: cannot get required service "sessions" in inactive context
+[browser] exception: Error: cannot get required service "sessions" in inactive context
+[browser] app hydrated in 1416 ms
+[browser] exception: Error: cannot get required service "sessions" in inactive context
+[browser] PHASE 1 card: {"text":"declared fallback — live catalog unavailable (no session is bound)","attrs":{"data-mpd-catalog-state":"fallback","data-mpd-catalog-providers":"0","data-mpd-catalog-models":"0","style":"margin: 0px 0px 8px; font-size: 12px; opacity: 0.75;"},"providers":[["","git","svn"],["","pause","warn-only"],["","deepseek-official"],["","deepseek-v4-flash","deepseek-v4-flash-vision-exp","deepseek-v4-pro","deepseek-flash"],["","off","low","high","max"],["","deepseek-official"],["","deepseek-v4-flash","deepseek-v4-flash-vision-exp","deepseek-v4-pro","deepseek-flash"],["","off","low","high","max"],["","deepseek-official"],["","deepseek-v4-flash","deepseek-v4-flash-vision-exp","deepseek-v4-pro","deepseek-flash"],["","off","low","high","max"]]}
+[browser] sessions service (before): {"label":"before-a-session-is-current","serviceType":"object","hasList":"object","listSubscribe":"function","listGetSnapshot":"function","serviceKeys":["rootCtx","searchResultLimit","list","manager","selection","scopes","scopeDrops","watched","deferredRemovals"],"listKeys":["getSnapshot","subscribe","update","set"],"snapshotKeys":["ids","byId","current","phase","subagentsByParent","jobsBySession","currentAddress"],"current":null,"currentSessionId":null,"sessionCount":null}
+[browser] PHASE 2: New Session -> {"step":"new-session","clicked":true,"label":"new-session","text":"New Session","ariaLabel":"New session","index":2,"click":{"clicked":true,"box":{"x":139,"y":93,"width":252,"height":38,"count":21}}}
+[browser] exception: Error: cannot get required service "sessions" in inactive context
+[browser] PHASE 2 attempt 0: {"clicked":true,"label":"workspace-picker","text":"Choose workspace","ariaLabel":"Choose workspace","index":13,"click":{"clicked":true,"box":{"x":596.28125,"y":476,"width":162.5625,"height":28,"count":21}}}
+[browser] PHASE 2: picked workspace entry "Choose workspace"
+[browser] PHASE 2 attempt 1: {"clicked":true,"label":"workspace-picker","text":"Choose workspace","ariaLabel":"Choose workspace","index":13,"click":{"clicked":true,"box":{"x":596.28125,"y":476,"width":162.5625,"height":28,"count":27}}}
+[browser] PHASE 2: picked workspace entry "Choose workspace"
+[browser] PHASE 2 attempt 2: {"clicked":true,"label":"workspace-picker","text":"Choose workspace","ariaLabel":"Choose workspace","index":13,"click":{"clicked":true,"box":{"x":596.28125,"y":476,"width":162.5625,"height":28,"count":27}}}
+[browser] PHASE 2: picked workspace entry "Choose workspace"
+[browser] PHASE 2 attempt 3: {"clicked":true,"label":"workspace-picker","text":"Choose workspace","ariaLabel":"Choose workspace","index":13,"click":{"clicked":true,"box":{"x":596.28125,"y":476,"width":162.5625,"height":28,"count":27}}}
+[browser] PHASE 2: picked workspace entry "Choose workspace"
+[browser] PHASE 2 attempt 4: {"clicked":true,"label":"workspace-picker","text":"Choose workspace","ariaLabel":"Choose workspace","index":13,"click":{"clicked":true,"box":{"x":596.28125,"y":476,"width":162.5625,"height":28,"count":27}}}
+[browser] PHASE 2: picked workspace entry "Choose workspace"
+[browser] PHASE 2 attempt 5: {"clicked":true,"label":"workspace-picker","text":"Choose workspace","ariaLabel":"Choose workspace","index":13,"click":{"clicked":true,"box":{"x":596.28125,"y":476,"width":162.5625,"height":28,"count":27}}}
+[browser] PHASE 2: picked workspace entry "Choose workspace"
+[browser] PHASE 2 attempt 6: {"clicked":true,"label":"workspace-picker","text":"Choose workspace","ariaLabel":"Choose workspace","index":13,"click":{"clicked":true,"box":{"x":596.28125,"y":476,"width":162.5625,"height":28,"count":27}}}
+[browser] PHASE 2: picked workspace entry "Choose workspace"
+[browser] PHASE 2 attempt 7: {"clicked":true,"label":"workspace-picker","text":"Choose workspace","ariaLabel":"Choose workspace","index":13,"click":{"clicked":true,"box":{"x":596.28125,"y":476,"width":162.5625,"height":28,"count":27}}}
+[browser] PHASE 2: picked workspace entry "Choose workspace"
+[browser] PHASE 2 attempt 8: {"clicked":true,"label":"workspace-picker","text":"Choose workspace","ariaLabel":"Choose workspace","index":13,"click":{"clicked":true,"box":{"x":596.28125,"y":476,"width":162.5625,"height":28,"count":27}}}
+[browser] PHASE 2: picked workspace entry "Choose workspace"
+[browser] PHASE 2 attempt 9: {"clicked":true,"label":"workspace-picker","text":"Choose workspace","ariaLabel":"Choose workspace","index":13,"click":{"clicked":true,"box":{"x":596.28125,"y":476,"width":162.5625,"height":28,"count":27}}}
+[browser] PHASE 2: picked workspace entry "Choose workspace"
+[browser] exception: Error: cannot get required service "sessions" in inactive context
+[browser] console.error: [client-store] subscriber failed: TypeError: Cannot read properties of undefined (reading 'getSnapshot')
+    at new BoundConversation (http://127.0.0.1:42989/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.
+[browser] console.error: [client-store] subscriber failed: TypeError: Cannot read properties of undefined (reading 'getSnapshot')
+    at new BoundConversation (http://127.0.0.1:42989/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.
+[browser] PHASE 2 (state injection): {"reason":"the UI could not create a session (native workspace picker); this is an EXPLICIT state injection through the app's own sessions store, NOT a UI drive","hostSessionCreated":"session-c46960ac-d89d-40e5-ba58-7a4624072f3a","injected":{"before":null,"afterId":"session-c46960ac-d89d-40e5-ba58-7a4624072f3a"}}
+[browser] exception: Error: cannot get required service "sessions" in inactive context
+[browser] exception: Error: cannot get required service "sessions" in inactive context
+[browser] exception: Error: cannot get required service "sessions" in inactive context
+[browser] exception: Error: cannot get required service "sessions" in inactive context
+[browser] log.error: Failed to load resource: the server responded with a status of 400 (Bad Request)
+[browser] exception: Error: cannot get required service "sessions" in inactive context
+[browser] PHASE 2: sessions service (after) = {"label":"after-state-injection","serviceType":"object","hasList":"object","listSubscribe":"function","listGetSnapshot":"function","serviceKeys":["rootCtx","searchResultLimit","list","manager","selection","scopes","scopeDrops","watched","deferredRemovals"],"listKeys":["getSnapshot","subscribe","update","set"],"snapshotKeys":["ids","byId","current","phase","subagentsByParent","jobsBySession","currentAddress"],"current":{"sessionId":"session-c46960ac-d89d-40e5-ba58-7a4624072f3a"},"currentSessionId
+[browser] PHASE 2: sidebar after = {"noSessionsMentions":1,"excerpt":"New Session Task Board Workspaces No sessions yet Go 5h 0% Wk 0% · Mo 61% Resets: 9/18/2026, 7:25:26 PM Today ¥0 Peak · Off-peak in 3h 34m Update available A lighter sidebar × Simple display leaves more room for conversations. Enable it now? You can change it in Se
+[browser] PHASE 3 card: {"found":false,"reason":"no visible MPD nav button"}
+[browser] MEASUREMENT C: in-page RPC providers=2 models=31 ["deepseek-official:4","opencode-go:27"]
+[browser] MEASUREMENT C: client's own modelDirectories service -> {"fired":true,"sessionId":"session-c46960ac-d89d-40e5-ba58-7a4624072f3a","hasDirectory":true,"directoryStoreStatus":"ready","providerCount":2,"modelCount":31,"groups":[{"id":"deepseek-official","models":["deepseek-flash","deepseek-v4-flash","deepseek-v4-pro","deepseek-v4-flash-vision-exp"]},{"id":"opencode-go","models":["minimax-m3","qwen3.8-flash","deepseek-v4-flash","deepseek-v4-flash-vision-exp","deepseek-v4-pro","glm-5.1","glm-5.2","glm-5.3","glm-5.3-flash","hy3","hy4-preview","kimi-k2.6","kimi-k2.7-code","kimi-k3","longcat-2.0","mimo-v2.5","mimo-v2.5-pro","minimax-m2.7","omen-alpha","qwen3.6-plus","qwen3.7-max","qwen3.7-plus","qwen3.8-max","gpt-5.6-luna","grok-4.6","muse-spark-1.2-contr
+[browser] MEASUREMENT D: 15 events, 14 errors, 1 warnings
+[browser] MEASUREMENT E: mpd bundles=["@mpd-dsh/team-page","@mpd-dsh/settings-card","@mpd-dsh/mpd"] ctxCaptured=true injectWrapped=true
+[browser] MEASUREMENT E: card inject calls=[{"deps":["modelDirectories","sessions","remote.session"],"fired":true,"scoped":{"hasGet":true,"modelDirectories":"object","directoryFor":"function","hasStore":true,"sessions":"object","currentSession":null,"sessionCount":null}},{"deps":["modelDirectories","sessions"],"fired":true,"scoped":{"hasGet":true,"modelDirectories":"object","directoryFor":"function","hasStore":true,"sessions":"object","currentSession":"session-c46960ac-d89d-40e5-ba58-7a4624072f3a","sessionCount":null,"directoryFound":true,"directorySnapshot":{"status":"ready","groupCount":2,"groups":[{"id":"deepseek-official","models":4},{"id":"opencode-go","models":27}]}}}]
+[browser] MEASUREMENT E: card render states=[["fallback","0","0","declared fallback — live catalog unavailable (no session is bound)","mutation"]]
+[browser] PROBE WARN: [git-graph] auto-isolation disabled: the workspaces service shape changed; using the official new-session behavior
+[browser] PROBE ERROR: unhandledrejection: cannot get required service "sessions" in inactive context
+[browser] PROBE ERROR: unhandledrejection: cannot get required service "sessions" in inactive context
+[browser] PROBE ERROR: unhandledrejection: cannot get required service "sessions" in inactive context
+[browser] PROBE ERROR: unhandledrejection: cannot get required service "sessions" in inactive context
+[browser] PROBE ERROR: unhandledrejection: cannot get required service "sessions" in inactive context
+[browser] PROBE ERROR: [client-store] subscriber failed: TypeError: Cannot read properties of undefined (reading 'getSnapshot')
+    at new BoundConversation (http://127.0.0.1:42989/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.
+[browser] PROBE ERROR: [client-store] subscriber failed: TypeError: Cannot read properties of undefined (reading 'getSnapshot')
+    at new BoundConversation (http://127.0.0.1:42989/plugins/??@deepseek-ai/dsh-api-gateway/client.js,@deepseek-ai/dsh-client-ui-open-in-app/client.js,@deepseek-ai/dsh-api-workspace-files/client.
+[browser] PROBE ERROR: unhandledrejection: cannot get required service "sessions" in inactive context
+[browser] PROBE ERROR: unhandledrejection: cannot get required service "sessions" in inactive context
+[browser] PROBE ERROR: unhandledrejection: cannot get required service "sessions" in inactive context
+[browser] PROBE ERROR: unhandledrejection: cannot get required service "sessions" in inactive context
+[browser] PROBE ERROR: unhandledrejection: cannot get required service "sessions" in inactive context

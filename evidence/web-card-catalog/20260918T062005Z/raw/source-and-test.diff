@@ -1,0 +1,438 @@
+diff --git a/packages/mpd-bundle-plugin/src/settings-card.js b/packages/mpd-bundle-plugin/src/settings-card.js
+index cbaa54e..d24ff97 100644
+--- a/packages/mpd-bundle-plugin/src/settings-card.js
++++ b/packages/mpd-bundle-plugin/src/settings-card.js
+@@ -197,11 +197,29 @@
+    * fiber, and cordis resolves services through the fiber's own scope, so the probe answered
+    * `undefined` forever and the card silently rendered its DECLARED option lists (one provider).
+    * The measured rule lives in this package's `src/web-client.js` header; the answer is the
+-   * dynamic form `ctx.inject(["modelDirectories", "sessions"], …)`, which waits for the providers
++   * dynamic form `ctx.inject(["modelDirectories", "sessions", "remote.session"], …)`, which waits
++   * for the providers
+    * WITHOUT parking this boot entry. They must NEVER be added to the module's declared
+    * `inject`/`REQUIRED_SERVICES` list: a declared-but-unregistered service is fatal to the whole
+    * page (`assertEntriesActive` turns it into a `pending` entry).
+    *
++   * THE SECOND DEFECT (measured in a real browser, `evidence/web-card-catalog/`): the injection
++   * alone is not enough, because cordis services are CALLER-scoped — the service's own `ctx`
++   * resolves to the ACCESSING ctx. The host's model-directory resolver declares
++   * `inject = ["sessions","remote","remote.session"]` and reads `this.ctx.remote.session` inside
++   * `directoryFor()`, so a caller that injected only `["modelDirectories","sessions"]` is REJECTED
++   * with `cannot get property "remote.session" without inject`, the card degrades, and the UI shows
++   * the declared fallback while the browser's own catalog carries two providers. The caller must
++   * therefore declare the same dotted chain it makes the service read: `remote.session` is
++   * NECESSARY AND SUFFICIENT (measured: `["modelDirectories","sessions"]` throws,
++   * `+ "remote"` throws, `+ "remote.session"` is ready with 2 providers / 31 models). `remote` is
++   * NOT added: `this.ctx.remote` is a FIRST-LEVEL read, which a caller-scoped call re-roots at the
++   * RESOLVER's own fiber (where its `static inject` satisfies it) — only DOTTED seams are re-rooted
++   * at the CALLER's injection fiber, so `remote` would be one more activation precondition and
++   * nothing else. The name stays in the DYNAMIC inject list only: a declared-but-unregistered
++   * service on a loader ENTRY is page-fatal (`assertEntriesActive`), while a parked dynamic
++   * injection merely never fires and the card keeps its declared fallback.
++   *
+    * LIVE, not a one-shot snapshot: once a directory exists for the bound session it is
+    * SUBSCRIBED, `load()`ed (so the catalog is really fetched), and every store notification
+    * re-projects the card's own store — a provider/model that appears while the page is open shows
+@@ -300,9 +318,13 @@
+             /* a synchronous throw keeps the last snapshot */
+           }
+         }
+-      } catch {
+-        // directoryFor THROWS for a session the host does not know: degrade, never crash the card.
+-        fallback("the host resolved no model directory for this session")
++      } catch (error) {
++        // directoryFor THROWS for a session the host does not know — and for a CALLER whose inject
++        // list does not satisfy the service's own reads (`cannot get property "remote.session"
++        // without inject`, the measured defect). Degrade, never crash the card, and NAME the cause:
++        // a mislabeled fallback is what kept this defect invisible in the UI for a whole lane.
++        const detail = error !== null && error !== undefined && typeof error.message === "string" ? error.message : ""
++        fallback("the host resolved no model directory for this session" + (detail === "" ? "" : ": " + detail.slice(0, 160)))
+       }
+     }
+ 
+@@ -337,7 +359,12 @@
+           return false
+         }
+         try {
+-          fiber = hostCtx.inject(["modelDirectories", "sessions"], (scoped) => bind(scoped))
++          // The CALLER-SCOPED chain: `remote.session` is what the host's directory resolver reads on
++          // ITS ctx, and cordis resolves a service's ctx to the ACCESSING ctx — so it must be
++          // declared HERE (dynamically; never in the module's declared inject) or `directoryFor`
++          // throws `cannot get property "remote.session" without inject`. Measured necessary AND
++          // sufficient; see the class comment above.
++          fiber = hostCtx.inject(["modelDirectories", "sessions", "remote.session"], (scoped) => bind(scoped))
+         } catch (error) {
+           console.warn("[mpd] settings section: the model catalog could not be injected: " + String(error))
+           fallback("the model catalog injection failed")
+diff --git a/packages/mpd-bundle-plugin/src/team-page.js b/packages/mpd-bundle-plugin/src/team-page.js
+index 1ef967b..a249e4f 100644
+--- a/packages/mpd-bundle-plugin/src/team-page.js
++++ b/packages/mpd-bundle-plugin/src/team-page.js
+@@ -317,10 +317,15 @@
+   /** The auto-open policy lives in the descriptor's own plugin settings (no default there). */
+   let autoOpenPolicyService = undefined;
+   /**
+-   * The model directory service, resolved through `ctx.inject(["modelDirectories"], …)`. It is
++   * The model directory service, resolved through
++   * `ctx.inject(["modelDirectories", "remote.session"], …)`. It is
+    * provided by ANOTHER plugin's fiber, so a bare `ctx.get` probe answers undefined forever (the
+    * measured rule in src/web-client.js) — which is exactly the defect that left every staged
+-   * member's model picker on its declared list.
++   * member's model picker on its declared list. `remote.session` is in the list because cordis
++   * services are CALLER-scoped: the resolver reads `this.ctx.remote.session` on the ACCESSING ctx,
++   * so `directoryFor` throws without it (measured in a real browser, evidence/web-card-catalog/).
++   * `sessions` is deliberately NOT listed here: the settings card reads it for the bound session,
++   * this page never does.
+    */
+   let modelDirectoryService = undefined;
+   function autoOpenEnabled() {
+@@ -377,7 +382,8 @@
+    * render — so it is resolved defensively and degrades to no editor, never to a crash.
+    *
+    * The service comes from `modelDirectoryService`, which `registerTeamSidebarTab` fills through
+-   * `ctx.inject(["modelDirectories"], …)`. It is NEVER re-probed with `ctx.get` here: the service
++   * `ctx.inject(["modelDirectories", "remote.session"], …)`. It is NEVER re-probed with
++   * `ctx.get` here: the service
+    * is provided by another plugin's fiber, so a bare probe answers undefined for the life of the
+    * page and the picker would silently fall back to its declared list forever.
+    */
+@@ -798,10 +804,15 @@
+       // The model directory is provided by ANOTHER plugin's fiber: resolve it with the dynamic
+       // `ctx.inject` form (which waits for the provider and never parks this entry) and cache it
+       // for `directoryForTeam`. A bare `ctx.get` probe here answers undefined forever.
++      // `remote.session` belongs in the list for the same measured reason as the settings card:
++      // cordis services are CALLER-scoped, so the resolver's own read of `this.ctx.remote.session`
++      // inside `directoryFor()` is rejected unless the CALLER declared that dotted seam — the
++      // picker then silently fell back to its declared list. Dynamic only (never declared): a
++      // declared-but-unregistered service parks the whole page.
+       ctx.effect(() => {
+         let catalogFiber;
+         try {
+-          catalogFiber = ctx.inject(["modelDirectories"], (catalogCtx) => {
++          catalogFiber = ctx.inject(["modelDirectories", "remote.session"], (catalogCtx) => {
+             modelDirectoryService = probe(catalogCtx, "modelDirectories");
+           });
+         } catch (error) {
+diff --git a/packages/mpd-bundle-plugin/test/client-harness.mjs b/packages/mpd-bundle-plugin/test/client-harness.mjs
+index 1d993d1..97fbbfb 100644
+--- a/packages/mpd-bundle-plugin/test/client-harness.mjs
++++ b/packages/mpd-bundle-plugin/test/client-harness.mjs
+@@ -134,6 +134,46 @@ export function createHookRuntime() {
+   };
+ }
+ 
++/**
++ * A CALLER-SCOPED service, bound the way cordis binds one: the service's own `ctx` resolves to the
++ * context that ASKED for the service, so a method that reads a dotted seam (`this.ctx.remote.session`)
++ * is rejected unless the CALLER declared that inject. That is the MEASURED live failure behind the
++ * settings card's one-provider defect: the host's model-directory resolver declares
++ * `inject = ["sessions","remote","remote.session"]` and reads `this.ctx.remote.session` inside
++ * `directoryFor()`, so a card that injected only `["modelDirectories","sessions"]` got
++ * `cannot get property "remote.session" without inject` and silently rendered its declared lists.
++ *
++ * `reads` names the dotted seams the methods read (each must be in the CALLER's inject list);
++ * `methods` receive the caller's ctx as their FIRST argument, the way `this.ctx` would, so a method
++ * can only read what the caller declared. A method called with a missing seam throws that exact
++ * error, so a test that asserts a LIVE result proves the chain was satisfied at the call site.
++ */
++export function callerScopedService({ reads = [], methods = {} } = {}) {
++  return { __mpdCallerScoped: { reads: [...reads], methods: { ...methods } } };
++}
++
++/**
++ * Bind a caller-scoped descriptor to the inject list of the ctx that resolved it: the returned view
++ * carries the same non-method fields and method wrappers that THROW when a declared read is absent.
++ * A plain service (no descriptor) passes through untouched, so existing fixtures are unaffected.
++ */
++function bindCallerScoped(value, deps) {
++  const descriptor = value === null || typeof value !== "object" ? undefined : value.__mpdCallerScoped;
++  if (descriptor === undefined) return value;
++  const bound = {};
++  for (const [name, field] of Object.entries(value)) {
++    if (name !== "__mpdCallerScoped") bound[name] = field;
++  }
++  for (const [name, method] of Object.entries(descriptor.methods)) {
++    bound[name] = (...args) => {
++      const missing = descriptor.reads.find((read) => !deps.includes(read));
++      if (missing !== undefined) throw new Error('cannot get property "' + missing + '" without inject');
++      return method({ deps: [...deps] }, ...args);
++    };
++  }
++  return bound;
++}
++
+ /** Records how the page drives the sidebar's expand-on-content-open path. */
+ export function createCalls() {
+   return { registerTab: [], registerFileViewer: [], effects: [], fetched: [], locale: [], openTab: [], pollStarts: [] };
+@@ -297,9 +337,13 @@ export function createHarness(options = {}) {
+   const hidden = new Map(Object.entries(options.hiddenServices ?? {}));
+   const scopedCtx = (deps) => ({
+     ...ctx,
++    // CALLER SCOPING: a service handed to this ctx is bound to THIS ctx's inject list, so a
++    // caller-scoped method reading a seam the caller never declared throws (the measured live
++    // failure — see `callerScopedService`). A visible registry service is bound the same way, so a
++    // fixture can also prove the chain on a probe-visible service.
+     get: (name) => {
+-      if (registry.has(name)) return registry.get(name);
+-      return deps.includes(name) && hidden.has(name) ? hidden.get(name) : undefined;
++      if (registry.has(name)) return bindCallerScoped(registry.get(name), deps);
++      return deps.includes(name) && hidden.has(name) ? bindCallerScoped(hidden.get(name), deps) : undefined;
+     },
+   });
+   const runInjections = () => {
+diff --git a/packages/mpd-bundle-plugin/test/settings-card.test.mjs b/packages/mpd-bundle-plugin/test/settings-card.test.mjs
+index 208da3f..c32b168 100644
+--- a/packages/mpd-bundle-plugin/test/settings-card.test.mjs
++++ b/packages/mpd-bundle-plugin/test/settings-card.test.mjs
+@@ -17,7 +17,7 @@
+ import { describe, expect, test } from "bun:test"
+ import { existsSync, readFileSync, readdirSync } from "node:fs"
+ import { join } from "node:path"
+-import { loadMpdClient } from "./client-harness.mjs"
++import { callerScopedService, loadMpdClient } from "./client-harness.mjs"
+ // The ONE shared knob declaration, imported at RUNTIME for the parity test: the card MIRRORS it
+ // (it must not reference `SETTINGS_KNOBS`, which a QA gate pins against the built client), so the
+ // test — not the client — compares the two declarations element by element.
+@@ -332,11 +332,14 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
+     { id: "other-provider", name: "Other", models: [{ id: "x-1", name: "X1" }] },
+   ]
+ 
+-  /** The host's client seams: `sessions.list` for the bound session, `modelDirectories` for the catalog. */
++  /** The host's client seams: `sessions.list` for the bound session, `modelDirectories` for the
++   * catalog, and the `remote.session` seam the resolver READS on the accessing ctx (so the
++   * injection resolves at all — the live host mounts all three). */
+   function catalogServices(groups = CATALOG, options = {}) {
+     const sessionId = options.sessionId ?? "s1"
+     return {
+       sessions: { list: { getSnapshot: () => ({ current: options.unbound === true ? undefined : { sessionId } }) } },
++      "remote.session": {},
+       modelDirectories: {
+         directoryFor: (id) => {
+           if (options.throwing === true) throw new Error(`ui-model-selection: session "${String(id)}" resolved no scope`)
+@@ -524,6 +527,12 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
+   }
+ 
+   const SESSIONS = { list: { getSnapshot: () => ({ current: { sessionId: "s1" } }) } }
++  /**
++   * The host's `remote.session` seam. The card's dynamic injection WAITS for it (caller scoping), so
++   * every fixture that expects a LIVE catalog mounts it — the live host does (measured). Without it
++   * the injection never fires and the card degrades to its declared lists, which is T-C's arm.
++   */
++  const REMOTE_SESSION = { "remote.session": {} }
+ 
+   /**
+    * Mount the section with services that ONLY an injection can see. A bare `ctx.get` probe is
+@@ -541,6 +550,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
+     const directory = mutableDirectory(CATALOG)
+     const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+       sessions: SESSIONS,
++      ...REMOTE_SESSION,
+       modelDirectories: { directoryFor: () => directory.directory },
+     })
+     // the defect's PREMISE, asserted: the probe the pre-fix card used answers undefined
+@@ -559,6 +569,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
+     const directory = mutableDirectory(CATALOG)
+     const { tree, client, registration, props } = await injectedTree(slotScope(SLOT_SECTION), {
+       sessions: SESSIONS,
++      ...REMOTE_SESSION,
+       modelDirectories: { directoryFor: () => directory.directory },
+     })
+     expect(optionValues(controlOf(tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official", "other-provider"])
+@@ -591,16 +602,105 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
+   })
+ 
+   test("T-D: the SERVED client.js carries the inject acquisition and the fallback marker", () => {
+-    const injectBased = (bytes) => bytes.includes('ctx.inject(["modelDirectories", "sessions"]')
++    const injectBased = (bytes) => bytes.includes('ctx.inject(["modelDirectories", "sessions", "remote.session"]')
+     expect(injectBased(ARTIFACT)).toBe(true)
++    // The CALLER-SCOPED seam is what the live host's resolver reads on the ACCESSING ctx: without
++    // it `directoryFor` throws `cannot get property "remote.session" without inject`.
++    expect(ARTIFACT).toContain("remote.session")
+     expect(ARTIFACT).toContain("declared fallback — live catalog unavailable")
+     expect(ARTIFACT).toContain("data-mpd-catalog-state")
+     expect(ARTIFACT).not.toContain("SETTINGS_KNOBS")
+     // the retired bare probe is GONE from the served bytes (both card and team page)
+     expect(ARTIFACT).not.toContain('ctx.get("modelDirectories")')
+-    // NEGATIVE CONTROL: the inject predicate reddens on probe-only bytes
++    // NEGATIVE CONTROL: the inject predicate reddens on pro<redacted>
+     const preFix = 'const directories = ctx && typeof ctx.get === "function" ? ctx.get("modelDirectories") : undefined'
+     expect(injectBased(preFix)).toBe(false)
++    // NEGATIVE CONTROL for the caller-scoped half: the PRE-FIX inject list (no `remote.session`)
++    // is not accepted by the predicate — the defect shape cannot pass this assertion.
++    const callerBlind = 'ctx.inject(["modelDirectories", "sessions"], (scoped) => bind(scoped))'
++    expect(injectBased(callerBlind)).toBe(false)
+     expect(preFix.includes("declared fallback — live catalog unavailable")).toBe(false)
+   })
++
++  // ── THE CALLER-SCOPED DEFECT (measured in a real browser, evidence/web-card-catalog/): the
++  // injection alone never reached the catalog because cordis services are CALLER-scoped — the
++  // host resolver reads `this.ctx.remote.session` on the ACCESSING ctx, so a caller that injected
++  // only `["modelDirectories","sessions"]` got `cannot get property "remote.session" without
++  // inject` and silently rendered its declared fallback while the browser carried TWO providers.
++  /** The host's live shape: 2 providers / 31 models (deepseek-official 4 + opencode-go 27). */
++  const LIVE_CATALOG = [
++    {
++      id: "deepseek-official",
++      name: "DeepSeek Official",
++      models: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"].map((id) => ({ id, name: id })),
++    },
++    {
++      id: "opencode-go",
++      name: "opencode-go",
++      models: Array.from({ length: 27 }, (_, index) => ({ id: "og-model-" + String(index + 1), name: "OpenCode " + String(index + 1) })),
++    },
++  ]
++
++  /**
++   * The host's model-directory resolver as a CALLER-SCOPED service: `directoryFor` reads the dotted
++   * `remote.session` seam, so the harness REJECTS the call unless the resolving ctx declared it —
++   * exactly the measured live failure. `reads` is overridable so a case can prove the degrade arm
++   * with a seam no inject list can satisfy.
++   */
++  function callerScopedCatalog(groups = LIVE_CATALOG, options = {}) {
++    const reads = options.reads ?? ["remote.session"]
++    const sessionId = options.sessionId ?? "s1"
++    const calls = { directoryFor: 0 }
++    const service = callerScopedService({
++      reads,
++      methods: {
++        directoryFor: (_callerCtx, id) => {
++          calls.directoryFor += 1
++          if (id !== sessionId) throw new Error("unknown session")
++          return { store: { getSnapshot: () => ({ status: "ready", groups }) }, load: async () => ({ groups }) }
++        },
++      },
++    })
++    return { service, calls, host: { sessions: SESSIONS, ...REMOTE_SESSION, modelDirectories: service } }
++  }
++
++  test("T-E: the LIVE catalog is reached when — and only when — the caller-scoped chain is satisfied", async () => {
++    const { calls, host } = callerScopedCatalog()
++    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), host)
++    // The chain is declared at the CALL SITE: without `remote.session` the harness throws the
++    // measured error and the method body never runs.
++    expect(calls.directoryFor).toBe(1)
++    const providerSelect = controlOf(tree, "teamModels.slot1.provider")
++    expect(optionValues(providerSelect)).toEqual(["deepseek-official", "opencode-go"])
++    const modelSelect = controlOf(tree, "teamModels.slot1.model")
++    expect(optgroupLabels(modelSelect)).toEqual(["DeepSeek Official", "opencode-go"])
++    expect(optionValues(modelSelect)).toHaveLength(31)
++    expect(optionValues(modelSelect)).toContain("og-model-27")
++    const status = catalogStatus(tree)
++    expect(status["data-mpd-catalog-state"]).toBe("live")
++    expect(status["data-mpd-catalog-providers"]).toBe("2")
++    expect(status["data-mpd-catalog-models"]).toBe("31")
++    expect(textOf(tree)).toContain("live catalog — 2 providers · 31 models")
++    client.restore()
++  })
++
++  test("T-F: an UNSATISFIABLE caller chain degrades VISIBLY, naming the rejected seam", async () => {
++    // `remote.session` IS satisfied by the fix; this extra seam is not, and cannot be — so any
++    // inject list at all is rejected and the card must still say so out loud instead of showing a
++    // bare fallback.
++    const { calls, host } = callerScopedCatalog(LIVE_CATALOG, { reads: ["remote.session", "testing.absent.seam"] })
++    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), host)
++    expect(calls.directoryFor).toBe(0) // rejected before the method body, exactly like the live host
++    expect(optionValues(controlOf(tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official"])
++    expect(optionValues(controlOf(tree, "teamModels.slot1.model"))).toHaveLength(4)
++    const status = catalogStatus(tree)
++    expect(status["data-mpd-catalog-state"]).toBe("fallback")
++    expect(status["data-mpd-catalog-providers"]).toBe("0")
++    expect(status["data-mpd-catalog-models"]).toBe("0")
++    const text = textOf(tree)
++    expect(text).toContain("declared fallback — live catalog unavailable")
++    // NEVER SILENT: the rendered reason names the rejected seam (the cause the old bare catch hid)
++    expect(text).toContain('cannot get property "testing.absent.seam" without inject')
++    client.restore()
++  })
+ })
+diff --git a/packages/mpd-bundle-plugin/test/team-page.test.mjs b/packages/mpd-bundle-plugin/test/team-page.test.mjs
+index 4614b76..878c3d8 100644
+--- a/packages/mpd-bundle-plugin/test/team-page.test.mjs
++++ b/packages/mpd-bundle-plugin/test/team-page.test.mjs
+@@ -9,7 +9,7 @@
+ // removed in-conversation card / overlay floater can never come back.
+ // Runs the REAL combined client.js through the offline harness — no browser, no server.
+ import { describe, expect, test } from "bun:test";
+-import { createAdoptedStub, createHarness, createSidebarStore, loadBundleClient, loadMpdClient } from "./client-harness.mjs";
++import { callerScopedService, createAdoptedStub, createHarness, createSidebarStore, loadBundleClient, loadMpdClient } from "./client-harness.mjs";
+ 
+ const STATE_URL = "/plugins/dsh-agent-teams/state";
+ const SCOPE = { sessionId: "s1" };
+@@ -321,7 +321,7 @@ describe("staged plan approval", () => {
+     const client = mountClient({
+       teams: [staged],
+       archivedTeams: [],
+-      services: { modelDirectories: { directoryFor: () => ({ id: "dir", models: [] }) } },
++      services: { "remote.session": {}, modelDirectories: { directoryFor: () => ({ id: "dir", models: [] }) } },
+     });
+     const tree = await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
+     const stagedElement = panelParts(tree).body[0];
+@@ -338,7 +338,7 @@ describe("staged plan approval", () => {
+     const client = mountClient({
+       teams: [staged],
+       archivedTeams: [],
+-      hiddenServices: { modelDirectories: { directoryFor: () => ({ id: "dir", models: [] }) } },
++      hiddenServices: { "remote.session": {}, modelDirectories: { directoryFor: () => ({ id: "dir", models: [] }) } },
+     });
+     expect(client.ctx.get("modelDirectories")).toBeUndefined();
+     const tree = await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
+@@ -353,6 +353,7 @@ describe("staged plan approval", () => {
+       teams: [staged],
+       archivedTeams: [],
+       services: {
++        "remote.session": {},
+         modelDirectories: {
+           directoryFor: () => { throw new Error("unknown session"); },
+         },
+@@ -364,6 +365,50 @@ describe("staged plan approval", () => {
+     expect(stagedElement.props.modelDirectory).toBeUndefined();
+     client.restore();
+   });
++
++  // THE CALLER-SCOPED TWIN of the settings card's defect (evidence/web-card-catalog/): the page's
++  // `ctx.inject` list must satisfy the seams the resolved service READS on the accessing ctx, or
++  // `directoryFor` throws `cannot get property "remote.session" without inject` and the staged
++  // member picker silently loses its directory.
++  test("a CALLER-SCOPED modelDirectories reaches the staged team (the chain is declared at the call site)", async () => {
++    const directory = { id: "dir", models: [{ id: "og-model-1" }] };
++    const client = mountClient({
++      teams: [staged],
++      archivedTeams: [],
++      hiddenServices: {
++        "remote.session": {},
++        modelDirectories: callerScopedService({
++          reads: ["remote.session"],
++          methods: { directoryFor: () => directory },
++        }),
++      },
++    });
++    expect(client.ctx.get("modelDirectories")).toBeUndefined();
++    const tree = await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
++    const stagedElement = panelParts(tree).body[0];
++    expect(stagedElement.props.team.phase).toBe("staged");
++    expect(stagedElement.props.modelDirectory).toEqual(directory);
++    client.restore();
++  });
++
++  test("an UNSATISFIABLE caller chain degrades the staged card instead of throwing out of render", async () => {
++    const client = mountClient({
++      teams: [staged],
++      archivedTeams: [],
++      hiddenServices: {
++        "remote.session": {},
++        modelDirectories: callerScopedService({
++          reads: ["testing.absent.seam"],
++          methods: { directoryFor: () => ({ id: "dir", models: [] }) },
++        }),
++      },
++    });
++    const tree = await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
++    const stagedElement = panelParts(tree).body[0];
++    expect(stagedElement.props.team.name).toBe("Staged team");
++    expect(stagedElement.props.modelDirectory).toBeUndefined();
++    client.restore();
++  });
+ });
+ 
+ describe("badge and polling", () => {

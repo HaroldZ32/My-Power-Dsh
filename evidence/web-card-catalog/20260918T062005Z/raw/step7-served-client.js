@@ -6193,3 +6193,5 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries, loadSettingsCard };
   return module.exports;
 } });
+;
+//# sourceMappingURL=/plugins/??@mpd-dsh/mpd/client.js.map&rev=298225212fa7c223-46

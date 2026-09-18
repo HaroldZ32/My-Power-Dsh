@@ -1,0 +1,427 @@
+{
+  "step": "step6-acceptance",
+  "roots": {
+    "DSH_HOME": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T062005Z/sandbox/dsh-home",
+    "HOME": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T062005Z/sandbox/user-home",
+    "workspace": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T062005Z/sandbox/workspace"
+  },
+  "servedClient": {
+    "url": "http://127.0.0.1:36371/plugins/@mpd-dsh/mpd/client.js",
+    "status": 404,
+    "bytes": 0,
+    "hasCallerScopedChain": false,
+    "hasTeamPageChain": false,
+    "hasPreFixCardList": false,
+    "hasPreFixTeamList": false,
+    "hasSettingsKnobs": false
+  },
+  "phases": {
+    "sessionBinding": {
+      "hostSessionCreated": "session-c79c8491-727f-4e46-8964-ddfd13679e66",
+      "rpcStatus": 200,
+      "injected": {
+        "hasService": true,
+        "before": null,
+        "afterId": "session-c79c8491-727f-4e46-8964-ddfd13679e66"
+      },
+      "method": "app's own sessions.list.set via the captured ctx — NOT a UI drive (the workspace picker is a native dialog headless CDP cannot operate)"
+    },
+    "sessionsAfterBinding": {
+      "currentId": null,
+      "count": 14
+    },
+    "openSettings": {
+      "clicked": true,
+      "text": "Settings",
+      "ariaLabel": "Settings",
+      "box": {
+        "x": 10,
+        "y": 998,
+        "width": 260,
+        "height": 42
+      }
+    },
+    "mpdNav": {
+      "clicked": true,
+      "tag": "BUTTON",
+      "text": "MPD",
+      "visible": true
+    },
+    "cardSamples": [
+      {
+        "tick": 0,
+        "statusText": "declared fallback — live catalog unavailable (no session is bound)",
+        "attrs": {
+          "data-mpd-catalog-state": "fallback",
+          "data-mpd-catalog-providers": "0",
+          "data-mpd-catalog-models": "0",
+          "style": "margin: 0px 0px 8px; font-size: 12px; opacity: 0.75;"
+        },
+        "at": 1789712916052
+      }
+    ],
+    "card": {
+      "found": true,
+      "at": 1789712916053,
+      "statusText": "declared fallback — live catalog unavailable (no session is bound)",
+      "catalogAttributes": {
+        "data-mpd-catalog-state": "fallback",
+        "data-mpd-catalog-providers": "0",
+        "data-mpd-catalog-models": "0",
+        "style": "margin: 0px 0px 8px; font-size: 12px; opacity: 0.75;"
+      },
+      "selectCount": 11,
+      "selects": [
+        {
+          "index": 0,
+          "name": null,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "git",
+              "label": "git"
+            },
+            {
+              "value": "svn",
+              "label": "svn"
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "name": null,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "pause",
+              "label": "pause"
+            },
+            {
+              "value": "warn-only",
+              "label": "warn-only"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "name": null,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-official",
+              "label": "deepseek-official"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "name": null,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-v4-flash",
+              "label": "deepseek-v4-flash"
+            },
+            {
+              "value": "deepseek-v4-flash-vision-exp",
+              "label": "deepseek-v4-flash-vision-exp"
+            },
+            {
+              "value": "deepseek-v4-pro",
+              "label": "deepseek-v4-pro"
+            },
+            {
+              "value": "deepseek-flash",
+              "label": "deepseek-flash"
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "name": null,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "off",
+              "label": "off"
+            },
+            {
+              "value": "low",
+              "label": "low"
+            },
+            {
+              "value": "high",
+              "label": "high"
+            },
+            {
+              "value": "max",
+              "label": "max"
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "name": null,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-official",
+              "label": "deepseek-official"
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "name": null,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-v4-flash",
+              "label": "deepseek-v4-flash"
+            },
+            {
+              "value": "deepseek-v4-flash-vision-exp",
+              "label": "deepseek-v4-flash-vision-exp"
+            },
+            {
+              "value": "deepseek-v4-pro",
+              "label": "deepseek-v4-pro"
+            },
+            {
+              "value": "deepseek-flash",
+              "label": "deepseek-flash"
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "name": null,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "off",
+              "label": "off"
+            },
+            {
+              "value": "low",
+              "label": "low"
+            },
+            {
+              "value": "high",
+              "label": "high"
+            },
+            {
+              "value": "max",
+              "label": "max"
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "name": null,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-official",
+              "label": "deepseek-official"
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "name": null,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-v4-flash",
+              "label": "deepseek-v4-flash"
+            },
+            {
+              "value": "deepseek-v4-flash-vision-exp",
+              "label": "deepseek-v4-flash-vision-exp"
+            },
+            {
+              "value": "deepseek-v4-pro",
+              "label": "deepseek-v4-pro"
+            },
+            {
+              "value": "deepseek-flash",
+              "label": "deepseek-flash"
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "name": null,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "off",
+              "label": "off"
+            },
+            {
+              "value": "low",
+              "label": "low"
+            },
+            {
+              "value": "high",
+              "label": "high"
+            },
+            {
+              "value": "max",
+              "label": "max"
+            }
+          ]
+        }
+      ],
+      "providerValuesBySelect": [
+        [
+          "",
+          "git",
+          "svn"
+        ],
+        [
+          "",
+          "pause",
+          "warn-only"
+        ],
+        [
+          "",
+          "deepseek-official"
+        ],
+        [
+          "",
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "deepseek-flash"
+        ],
+        [
+          "",
+          "off",
+          "low",
+          "high",
+          "max"
+        ],
+        [
+          "",
+          "deepseek-official"
+        ],
+        [
+          "",
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "deepseek-flash"
+        ],
+        [
+          "",
+          "off",
+          "low",
+          "high",
+          "max"
+        ],
+        [
+          "",
+          "deepseek-official"
+        ],
+        [
+          "",
+          "deepseek-v4-flash",
+          "deepseek-v4-flash-vision-exp",
+          "deepseek-v4-pro",
+          "deepseek-flash"
+        ],
+        [
+          "",
+          "off",
+          "low",
+          "high",
+          "max"
+        ]
+      ]
+    },
+    "slotProviderSelects": [],
+    "browserCatalog": {
+      "status": 200,
+      "providers": 2,
+      "models": 31,
+      "providerIds": [
+        "deepseek-official",
+        "opencode-go"
+      ]
+    }
+  },
+  "console": {
+    "total": 16,
+    "mpdPrefixed": [],
+    "cardErrors": []
+  },
+  "ok": false,
+  "error": null,
+  "verdict": {
+    "cardFound": true,
+    "statusLine": "declared fallback — live catalog unavailable (no session is bound)",
+    "liveCatalogLine": true,
+    "catalogStateAttribute": "fallback",
+    "catalogProvidersAttribute": "0",
+    "catalogModelsAttribute": "0",
+    "slotProviderSelectCount": 0,
+    "distinctSlotProviderValues": [],
+    "offersMoreThanDeepseekOfficial": false,
+    "cardEmittedMpdConsole": false,
+    "browserCatalog": {
+      "status": 200,
+      "providers": 2,
+      "models": 31,
+      "providerIds": [
+        "deepseek-official",
+        "opencode-go"
+      ]
+    }
+  }
+}

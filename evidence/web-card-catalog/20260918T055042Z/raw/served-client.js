@@ -4043,15 +4043,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd AgentTe
   /** The auto-open policy lives in the descriptor's own plugin settings (no default there). */
   let autoOpenPolicyService = undefined;
   /**
-   * The model directory service, resolved through
-   * `ctx.inject(["modelDirectories", "remote.session"], …)`. It is
+   * The model directory service, resolved through `ctx.inject(["modelDirectories"], …)`. It is
    * provided by ANOTHER plugin's fiber, so a bare `ctx.get` probe answers undefined forever (the
    * measured rule in src/web-client.js) — which is exactly the defect that left every staged
-   * member's model picker on its declared list. `remote.session` is in the list because cordis
-   * services are CALLER-scoped: the resolver reads `this.ctx.remote.session` on the ACCESSING ctx,
-   * so `directoryFor` throws without it (measured in a real browser, evidence/web-card-catalog/).
-   * `sessions` is deliberately NOT listed here: the settings card reads it for the bound session,
-   * this page never does.
+   * member's model picker on its declared list.
    */
   let modelDirectoryService = undefined;
   function autoOpenEnabled() {
@@ -4108,8 +4103,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd AgentTe
    * render — so it is resolved defensively and degrades to no editor, never to a crash.
    *
    * The service comes from `modelDirectoryService`, which `registerTeamSidebarTab` fills through
-   * `ctx.inject(["modelDirectories", "remote.session"], …)`. It is NEVER re-probed with
-   * `ctx.get` here: the service
+   * `ctx.inject(["modelDirectories"], …)`. It is NEVER re-probed with `ctx.get` here: the service
    * is provided by another plugin's fiber, so a bare probe answers undefined for the life of the
    * page and the picker would silently fall back to its declared list forever.
    */
@@ -4530,15 +4524,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd AgentTe
       // The model directory is provided by ANOTHER plugin's fiber: resolve it with the dynamic
       // `ctx.inject` form (which waits for the provider and never parks this entry) and cache it
       // for `directoryForTeam`. A bare `ctx.get` probe here answers undefined forever.
-      // `remote.session` belongs in the list for the same measured reason as the settings card:
-      // cordis services are CALLER-scoped, so the resolver's own read of `this.ctx.remote.session`
-      // inside `directoryFor()` is rejected unless the CALLER declared that dotted seam — the
-      // picker then silently fell back to its declared list. Dynamic only (never declared): a
-      // declared-but-unregistered service parks the whole page.
       ctx.effect(() => {
         let catalogFiber;
         try {
-          catalogFiber = ctx.inject(["modelDirectories", "remote.session"], (catalogCtx) => {
+          catalogFiber = ctx.inject(["modelDirectories"], (catalogCtx) => {
             modelDirectoryService = probe(catalogCtx, "modelDirectories");
           });
         } catch (error) {
@@ -4797,28 +4786,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * fiber, and cordis resolves services through the fiber's own scope, so the probe answered
    * `undefined` forever and the card silently rendered its DECLARED option lists (one provider).
    * The measured rule lives in this package's `src/web-client.js` header; the answer is the
-   * dynamic form `ctx.inject(["modelDirectories", "sessions", "remote.session"], …)`, which waits
-   * for the providers
+   * dynamic form `ctx.inject(["modelDirectories", "sessions"], …)`, which waits for the providers
    * WITHOUT parking this boot entry. They must NEVER be added to the module's declared
    * `inject`/`REQUIRED_SERVICES` list: a declared-but-unregistered service is fatal to the whole
    * page (`assertEntriesActive` turns it into a `pending` entry).
-   *
-   * THE SECOND DEFECT (measured in a real browser, `evidence/web-card-catalog/`): the injection
-   * alone is not enough, because cordis services are CALLER-scoped — the service's own `ctx`
-   * resolves to the ACCESSING ctx. The host's model-directory resolver declares
-   * `inject = ["sessions","remote","remote.session"]` and reads `this.ctx.remote.session` inside
-   * `directoryFor()`, so a caller that injected only `["modelDirectories","sessions"]` is REJECTED
-   * with `cannot get property "remote.session" without inject`, the card degrades, and the UI shows
-   * the declared fallback while the browser's own catalog carries two providers. The caller must
-   * therefore declare the same dotted chain it makes the service read: `remote.session` is
-   * NECESSARY AND SUFFICIENT (measured: `["modelDirectories","sessions"]` throws,
-   * `+ "remote"` throws, `+ "remote.session"` is ready with 2 providers / 31 models). `remote` is
-   * NOT added: `this.ctx.remote` is a FIRST-LEVEL read, which a caller-scoped call re-roots at the
-   * RESOLVER's own fiber (where its `static inject` satisfies it) — only DOTTED seams are re-rooted
-   * at the CALLER's injection fiber, so `remote` would be one more activation precondition and
-   * nothing else. The name stays in the DYNAMIC inject list only: a declared-but-unregistered
-   * service on a loader ENTRY is page-fatal (`assertEntriesActive`), while a parked dynamic
-   * injection merely never fires and the card keeps its declared fallback.
    *
    * LIVE, not a one-shot snapshot: once a directory exists for the bound session it is
    * SUBSCRIBED, `load()`ed (so the catalog is really fetched), and every store notification
@@ -4918,13 +4889,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
             /* a synchronous throw keeps the last snapshot */
           }
         }
-      } catch (error) {
-        // directoryFor THROWS for a session the host does not know — and for a CALLER whose inject
-        // list does not satisfy the service's own reads (`cannot get property "remote.session"
-        // without inject`, the measured defect). Degrade, never crash the card, and NAME the cause:
-        // a mislabeled fallback is what kept this defect invisible in the UI for a whole lane.
-        const detail = error !== null && error !== undefined && typeof error.message === "string" ? error.message : ""
-        fallback("the host resolved no model directory for this session" + (detail === "" ? "" : ": " + detail.slice(0, 160)))
+      } catch {
+        // directoryFor THROWS for a session the host does not know: degrade, never crash the card.
+        fallback("the host resolved no model directory for this session")
       }
     }
 
@@ -4959,12 +4926,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           return false
         }
         try {
-          // The CALLER-SCOPED chain: `remote.session` is what the host's directory resolver reads on
-          // ITS ctx, and cordis resolves a service's ctx to the ACCESSING ctx — so it must be
-          // declared HERE (dynamically; never in the module's declared inject) or `directoryFor`
-          // throws `cannot get property "remote.session" without inject`. Measured necessary AND
-          // sufficient; see the class comment above.
-          fiber = hostCtx.inject(["modelDirectories", "sessions", "remote.session"], (scoped) => bind(scoped))
+          fiber = hostCtx.inject(["modelDirectories", "sessions"], (scoped) => bind(scoped))
         } catch (error) {
           console.warn("[mpd] settings section: the model catalog could not be injected: " + String(error))
           fallback("the model catalog injection failed")
@@ -6193,3 +6155,5 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries, loadSettingsCard };
   return module.exports;
 } });
+;
+//# sourceMappingURL=/plugins/??@mpd-dsh/mpd/client.js.map&rev=ae09bb894a6272e7-46

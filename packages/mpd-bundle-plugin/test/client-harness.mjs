@@ -134,6 +134,46 @@ export function createHookRuntime() {
   };
 }
 
+/**
+ * A CALLER-SCOPED service, bound the way cordis binds one: the service's own `ctx` resolves to the
+ * context that ASKED for the service, so a method that reads a dotted seam (`this.ctx.remote.session`)
+ * is rejected unless the CALLER declared that inject. That is the MEASURED live failure behind the
+ * settings card's one-provider defect: the host's model-directory resolver declares
+ * `inject = ["sessions","remote","remote.session"]` and reads `this.ctx.remote.session` inside
+ * `directoryFor()`, so a card that injected only `["modelDirectories","sessions"]` got
+ * `cannot get property "remote.session" without inject` and silently rendered its declared lists.
+ *
+ * `reads` names the dotted seams the methods read (each must be in the CALLER's inject list);
+ * `methods` receive the caller's ctx as their FIRST argument, the way `this.ctx` would, so a method
+ * can only read what the caller declared. A method called with a missing seam throws that exact
+ * error, so a test that asserts a LIVE result proves the chain was satisfied at the call site.
+ */
+export function callerScopedService({ reads = [], methods = {} } = {}) {
+  return { __mpdCallerScoped: { reads: [...reads], methods: { ...methods } } };
+}
+
+/**
+ * Bind a caller-scoped descriptor to the inject list of the ctx that resolved it: the returned view
+ * carries the same non-method fields and method wrappers that THROW when a declared read is absent.
+ * A plain service (no descriptor) passes through untouched, so existing fixtures are unaffected.
+ */
+function bindCallerScoped(value, deps) {
+  const descriptor = value === null || typeof value !== "object" ? undefined : value.__mpdCallerScoped;
+  if (descriptor === undefined) return value;
+  const bound = {};
+  for (const [name, field] of Object.entries(value)) {
+    if (name !== "__mpdCallerScoped") bound[name] = field;
+  }
+  for (const [name, method] of Object.entries(descriptor.methods)) {
+    bound[name] = (...args) => {
+      const missing = descriptor.reads.find((read) => !deps.includes(read));
+      if (missing !== undefined) throw new Error('cannot get property "' + missing + '" without inject');
+      return method({ deps: [...deps] }, ...args);
+    };
+  }
+  return bound;
+}
+
 /** Records how the page drives the sidebar's expand-on-content-open path. */
 export function createCalls() {
   return { registerTab: [], registerFileViewer: [], effects: [], fetched: [], locale: [], openTab: [], pollStarts: [] };
@@ -297,9 +337,13 @@ export function createHarness(options = {}) {
   const hidden = new Map(Object.entries(options.hiddenServices ?? {}));
   const scopedCtx = (deps) => ({
     ...ctx,
+    // CALLER SCOPING: a service handed to this ctx is bound to THIS ctx's inject list, so a
+    // caller-scoped method reading a seam the caller never declared throws (the measured live
+    // failure — see `callerScopedService`). A visible registry service is bound the same way, so a
+    // fixture can also prove the chain on a probe-visible service.
     get: (name) => {
-      if (registry.has(name)) return registry.get(name);
-      return deps.includes(name) && hidden.has(name) ? hidden.get(name) : undefined;
+      if (registry.has(name)) return bindCallerScoped(registry.get(name), deps);
+      return deps.includes(name) && hidden.has(name) ? bindCallerScoped(hidden.get(name), deps) : undefined;
     },
   });
   const runInjections = () => {

@@ -1,0 +1,118 @@
+{
+  "sessions": {
+    "rootCtx": {
+      "fiber": "object"
+    },
+    "searchResultLimit": "number",
+    "list": {
+      "getSnapshot": "function/0",
+      "subscribe": "function/1",
+      "update": "function/1",
+      "set": "function/1"
+    },
+    "manager": {
+      "remote": "object",
+      "sessions": "object",
+      "sessionDisposals": "object",
+      "queues": "object",
+      "completedNotifications": "object",
+      "prevRunning": "object",
+      "projectionStores": "object",
+      "summaries": "object",
+      "listState": "string",
+      "listPhase": "string",
+      "listError": "null",
+      "listInflight": "null",
+      "listMutations": "null",
+      "addresses": "object",
+      "catalogs": "object",
+      "catalogInflight": "object",
+      "catalogStale": "object",
+      "openCatalogs": "object",
+      "catalogDebounce": "object",
+      "jobsBySession": "object",
+      "selected": "undefined",
+      "listSnapshotCache": "object",
+      "entryCache": "object",
+      "itemsCache": "object",
+      "notifier": "object"
+    },
+    "selection": {
+      "getSnapshot": "function/0",
+      "subscribe": "function/1",
+      "update": "function/1",
+      "set": "function/1"
+    },
+    "scopes": {},
+    "scopeDrops": {},
+    "watched": "undefined",
+    "deferredRemovals": {}
+  },
+  "workspaces": {
+    "ctx": {
+      "fiber": "object"
+    },
+    "name": "string",
+    "model": {
+      "remote": "object",
+      "items": "object",
+      "archivedSessionIds": "object",
+      "state": "string",
+      "phase": "string",
+      "error": "null",
+      "orderRequestGeneration": "number",
+      "orderFrameGeneration": "number",
+      "committedOrder": "object",
+      "removedIds": "object",
+      "listeners": "object",
+      "snapshotCache": "object",
+      "snapshotDirty": "boolean",
+      "notificationPending": "boolean",
+      "notificationScheduled": "boolean",
+      "notificationGeneration": "number"
+    },
+    "list": {
+      "remote": "object",
+      "items": "object",
+      "archivedSessionIds": "object",
+      "state": "string",
+      "phase": "string",
+      "error": "null",
+      "orderRequestGeneration": "number",
+      "orderFrameGeneration": "number",
+      "committedOrder": "object",
+      "removedIds": "object",
+      "listeners": "object",
+      "snapshotCache": "object",
+      "snapshotDirty": "boolean",
+      "notificationPending": "boolean",
+      "notificationScheduled": "boolean",
+      "notificationGeneration": "number"
+    }
+  },
+  "listSnapshot": {
+    "keys": [
+      "ids",
+      "byId",
+      "current",
+      "phase",
+      "subagentsByParent",
+      "jobsBySession",
+      "currentAddress"
+    ],
+    "ids": [
+      "session-7c63cb49-0f61-4eb5-8d1d-bc6ea93956c3",
+      "session-75e51c20-e0d8-422c-9de2-df3ae3d7850b",
+      "session-ff773943-e104-48fb-b19f-9d7bb314fb5b"
+    ],
+    "idCount": 3,
+    "byIdKeys": [
+      "session-7c63cb49-0f61-4eb5-8d1d-bc6ea93956c3",
+      "session-75e51c20-e0d8-422c-9de2-df3ae3d7850b",
+      "session-ff773943-e104-48fb-b19f-9d7bb314fb5b"
+    ],
+    "current": null,
+    "phase": "ready",
+    "currentAddress": null
+  }
+}

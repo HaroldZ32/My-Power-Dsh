@@ -9,7 +9,7 @@
 // removed in-conversation card / overlay floater can never come back.
 // Runs the REAL combined client.js through the offline harness — no browser, no server.
 import { describe, expect, test } from "bun:test";
-import { createAdoptedStub, createHarness, createSidebarStore, loadBundleClient, loadMpdClient } from "./client-harness.mjs";
+import { callerScopedService, createAdoptedStub, createHarness, createSidebarStore, loadBundleClient, loadMpdClient } from "./client-harness.mjs";
 
 const STATE_URL = "/plugins/dsh-agent-teams/state";
 const SCOPE = { sessionId: "s1" };
@@ -321,7 +321,7 @@ describe("staged plan approval", () => {
     const client = mountClient({
       teams: [staged],
       archivedTeams: [],
-      services: { modelDirectories: { directoryFor: () => ({ id: "dir", models: [] }) } },
+      services: { "remote.session": {}, modelDirectories: { directoryFor: () => ({ id: "dir", models: [] }) } },
     });
     const tree = await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
     const stagedElement = panelParts(tree).body[0];
@@ -338,7 +338,7 @@ describe("staged plan approval", () => {
     const client = mountClient({
       teams: [staged],
       archivedTeams: [],
-      hiddenServices: { modelDirectories: { directoryFor: () => ({ id: "dir", models: [] }) } },
+      hiddenServices: { "remote.session": {}, modelDirectories: { directoryFor: () => ({ id: "dir", models: [] }) } },
     });
     expect(client.ctx.get("modelDirectories")).toBeUndefined();
     const tree = await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
@@ -353,9 +353,54 @@ describe("staged plan approval", () => {
       teams: [staged],
       archivedTeams: [],
       services: {
+        "remote.session": {},
         modelDirectories: {
           directoryFor: () => { throw new Error("unknown session"); },
         },
+      },
+    });
+    const tree = await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
+    const stagedElement = panelParts(tree).body[0];
+    expect(stagedElement.props.team.name).toBe("Staged team");
+    expect(stagedElement.props.modelDirectory).toBeUndefined();
+    client.restore();
+  });
+
+  // THE CALLER-SCOPED TWIN of the settings card's defect (evidence/web-card-catalog/): the page's
+  // `ctx.inject` list must satisfy the seams the resolved service READS on the accessing ctx, or
+  // `directoryFor` throws `cannot get property "remote.session" without inject` and the staged
+  // member picker silently loses its directory.
+  test("a CALLER-SCOPED modelDirectories reaches the staged team (the chain is declared at the call site)", async () => {
+    const directory = { id: "dir", models: [{ id: "og-model-1" }] };
+    const client = mountClient({
+      teams: [staged],
+      archivedTeams: [],
+      hiddenServices: {
+        "remote.session": {},
+        modelDirectories: callerScopedService({
+          reads: ["remote.session"],
+          methods: { directoryFor: () => directory },
+        }),
+      },
+    });
+    expect(client.ctx.get("modelDirectories")).toBeUndefined();
+    const tree = await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
+    const stagedElement = panelParts(tree).body[0];
+    expect(stagedElement.props.team.phase).toBe("staged");
+    expect(stagedElement.props.modelDirectory).toEqual(directory);
+    client.restore();
+  });
+
+  test("an UNSATISFIABLE caller chain degrades the staged card instead of throwing out of render", async () => {
+    const client = mountClient({
+      teams: [staged],
+      archivedTeams: [],
+      hiddenServices: {
+        "remote.session": {},
+        modelDirectories: callerScopedService({
+          reads: ["testing.absent.seam"],
+          methods: { directoryFor: () => ({ id: "dir", models: [] }) },
+        }),
       },
     });
     const tree = await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
