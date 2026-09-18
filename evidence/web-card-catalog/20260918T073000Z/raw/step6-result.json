@@ -1,0 +1,1445 @@
+{
+  "step": "live-session-discovery",
+  "roots": {
+    "DSH_HOME": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T073000Z/sandbox/dsh-home",
+    "HOME": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T073000Z/sandbox/user-home",
+    "workspace": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T073000Z/sandbox/workspace"
+  },
+  "measurements": {
+    "workspaceCreateBeforeBoot": {
+      "ok": true,
+      "error": null,
+      "workspace": {
+        "workspaceId": "2f980b00-1a55-4902-ae9e-20d815afcffc",
+        "path": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T055042Z/sandbox/workspace",
+        "title": "workspace",
+        "sessionIds": [
+          "session-33721638-64aa-49fb-8617-18ffafae2a6a"
+        ],
+        "createdAt": "2026-09-18T07:17:49.632Z",
+        "updatedAt": "2026-09-18T07:20:27.266Z"
+      },
+      "created": false
+    },
+    "workspaceCreateFromPage": {
+      "args": {
+        "request": {
+          "path": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T073000Z/sandbox/workspace"
+        }
+      },
+      "httpStatus": 200,
+      "ok": true,
+      "value": {
+        "workspace": {
+          "workspaceId": "2f980b00-1a55-4902-ae9e-20d815afcffc",
+          "path": "/root/dshProj/my-power-dsh/evidence/web-card-catalog/20260918T055042Z/sandbox/workspace",
+          "title": "workspace",
+          "sessionIds": [
+            "session-33721638-64aa-49fb-8617-18ffafae2a6a"
+          ],
+          "createdAt": "2026-09-18T07:17:49.632Z",
+          "updatedAt": "2026-09-18T07:20:27.266Z"
+        },
+        "created": false
+      },
+      "error": null
+    },
+    "workspaceId": "2f980b00-1a55-4902-ae9e-20d815afcffc",
+    "currentTimeline": [
+      {
+        "at": 1789716281665,
+        "current": "session-33721638-64aa-49fb-8617-18ffafae2a6a",
+        "currentTypeof": "string",
+        "idCount": 17,
+        "phase": "ready",
+        "body": "New Session Task Board Workspaces workspace New Session Go 5h 0% Wk 0% · Mo 61% Resets: 9/18/2026, 8:24:38 PM Today ¥0 Peak · Off-peak in 2h 36m Update availabl"
+      }
+    ],
+    "liveCurrentSessionId": "session-33721638-64aa-49fb-8617-18ffafae2a6a",
+    "directoryProbeOnCardCtx": {
+      "current": "session-33721638-64aa-49fb-8617-18ffafae2a6a",
+      "currentTypeof": "string",
+      "hasDirectoryFor": true,
+      "store": {
+        "status": "ready",
+        "groups": [
+          {
+            "id": "deepseek-official",
+            "models": 4
+          },
+          {
+            "id": "opencode-go",
+            "models": 27
+          }
+        ]
+      },
+      "providers": 2,
+      "models": 31
+    },
+    "directoryProbeOnListedId": {
+      "current": "session-33721638-64aa-49fb-8617-18ffafae2a6a",
+      "idCount": 17,
+      "candidates": [
+        {
+          "id": "session-b1611a9e-9a5c-4dd2-b664-4d4f564ca9f5",
+          "scopeResolved": true,
+          "bindingResolved": true,
+          "blank": true,
+          "store": {
+            "status": "ready",
+            "groups": [
+              {
+                "id": "deepseek-official",
+                "models": 4
+              },
+              {
+                "id": "opencode-go",
+                "models": 27
+              }
+            ]
+          },
+          "providers": 2,
+          "models": 31
+        },
+        {
+          "id": "session-2936a258-519a-4db0-b1e3-6d412c3a77d6",
+          "scopeResolved": true,
+          "bindingResolved": true,
+          "blank": true,
+          "store": {
+            "status": "ready",
+            "groups": [
+              {
+                "id": "deepseek-official",
+                "models": 4
+              },
+              {
+                "id": "opencode-go",
+                "models": 27
+              }
+            ]
+          },
+          "providers": 2,
+          "models": 31
+        },
+        {
+          "id": "session-c79c8491-727f-4e46-8964-ddfd13679e66",
+          "scopeResolved": true,
+          "bindingResolved": true,
+          "blank": true,
+          "store": {
+            "status": "ready",
+            "groups": [
+              {
+                "id": "deepseek-official",
+                "models": 4
+              },
+              {
+                "id": "opencode-go",
+                "models": 27
+              }
+            ]
+          },
+          "providers": 2,
+          "models": 31
+        },
+        {
+          "id": "session-c46960ac-d89d-40e5-ba58-7a4624072f3a",
+          "scopeResolved": true,
+          "bindingResolved": true,
+          "blank": true,
+          "store": {
+            "status": "ready",
+            "groups": [
+              {
+                "id": "deepseek-official",
+                "models": 4
+              },
+              {
+                "id": "opencode-go",
+                "models": 27
+              }
+            ]
+          },
+          "providers": 2,
+          "models": 31
+        }
+      ]
+    },
+    "cardOpen": {
+      "open": {
+        "clicked": true,
+        "text": "Settings"
+      },
+      "nav": {
+        "clicked": true,
+        "tag": "BUTTON",
+        "text": "MPD"
+      }
+    },
+    "cardSamples": [
+      {
+        "tick": 0,
+        "statusText": "live catalog — 2 providers · 31 models",
+        "attrs": {
+          "data-mpd-catalog-state": "live",
+          "data-mpd-catalog-providers": "2",
+          "data-mpd-catalog-models": "31",
+          "style": "margin: 0px 0px 8px; font-size: 12px; opacity: 0.75;"
+        }
+      }
+    ],
+    "card": {
+      "found": true,
+      "statusText": "live catalog — 2 providers · 31 models",
+      "catalogAttributes": {
+        "data-mpd-catalog-state": "live",
+        "data-mpd-catalog-providers": "2",
+        "data-mpd-catalog-models": "31",
+        "style": "margin: 0px 0px 8px; font-size: 12px; opacity: 0.75;"
+      },
+      "selectCount": 11,
+      "selects": [
+        {
+          "index": 0,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "git",
+              "label": "git"
+            },
+            {
+              "value": "svn",
+              "label": "svn"
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "pause",
+              "label": "pause"
+            },
+            {
+              "value": "warn-only",
+              "label": "warn-only"
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-official",
+              "label": "DeepSeek"
+            },
+            {
+              "value": "opencode-go",
+              "label": "opencode-go"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-flash",
+              "label": "DeepSeek-V41-Flash"
+            },
+            {
+              "value": "deepseek-v4-flash",
+              "label": "DeepSeek-V4-Flash"
+            },
+            {
+              "value": "deepseek-v4-pro",
+              "label": "DeepSeek-V4-Pro"
+            },
+            {
+              "value": "deepseek-v4-flash-vision-exp",
+              "label": "DeepSeek-V4-Flash-Vision-Exp"
+            },
+            {
+              "value": "minimax-m3",
+              "label": "MiniMax-M3"
+            },
+            {
+              "value": "qwen3.8-flash",
+              "label": "Qwen3.8 Flash"
+            },
+            {
+              "value": "deepseek-v4-flash",
+              "label": "DeepSeek V4 Flash"
+            },
+            {
+              "value": "deepseek-v4-flash-vision-exp",
+              "label": "DeepSeek V4 Flash Vision Exp"
+            },
+            {
+              "value": "deepseek-v4-pro",
+              "label": "DeepSeek V4 Pro (New)"
+            },
+            {
+              "value": "glm-5.1",
+              "label": "GLM-5.1"
+            },
+            {
+              "value": "glm-5.2",
+              "label": "GLM-5.2"
+            },
+            {
+              "value": "glm-5.3",
+              "label": "GLM-5.3"
+            },
+            {
+              "value": "glm-5.3-flash",
+              "label": "GLM-5.3-Flash (2x usage)"
+            },
+            {
+              "value": "hy3",
+              "label": "Hy3"
+            },
+            {
+              "value": "hy4-preview",
+              "label": "Hy4 preview"
+            },
+            {
+              "value": "kimi-k2.6",
+              "label": "Kimi K2.6"
+            },
+            {
+              "value": "kimi-k2.7-code",
+              "label": "Kimi K2.7 Code"
+            },
+            {
+              "value": "kimi-k3",
+              "label": "Kimi K3"
+            },
+            {
+              "value": "longcat-2.0",
+              "label": "LongCat-2.0"
+            },
+            {
+              "value": "mimo-v2.5",
+              "label": "MiMo V2.5"
+            },
+            {
+              "value": "mimo-v2.5-pro",
+              "label": "MiMo V2.5 Pro"
+            },
+            {
+              "value": "minimax-m2.7",
+              "label": "MiniMax-M2.7"
+            },
+            {
+              "value": "omen-alpha",
+              "label": "Omen Alpha"
+            },
+            {
+              "value": "qwen3.6-plus",
+              "label": "Qwen3.6 Plus"
+            },
+            {
+              "value": "qwen3.7-max",
+              "label": "Qwen3.7 Max"
+            },
+            {
+              "value": "qwen3.7-plus",
+              "label": "Qwen3.7 Plus"
+            },
+            {
+              "value": "qwen3.8-max",
+              "label": "Qwen3.8 Max"
+            },
+            {
+              "value": "gpt-5.6-luna",
+              "label": "GPT-5.6 Luna"
+            },
+            {
+              "value": "grok-4.6",
+              "label": "Grok 4.6"
+            },
+            {
+              "value": "muse-spark-1.2-contributor",
+              "label": "Muse Spark 1.2 Contributor"
+            },
+            {
+              "value": "muse-spark-1.3-contributor",
+              "label": "Muse Spark 1.3 Contributor"
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "off",
+              "label": "Off"
+            },
+            {
+              "value": "low",
+              "label": "Low"
+            },
+            {
+              "value": "high",
+              "label": "High"
+            },
+            {
+              "value": "max",
+              "label": "Max"
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-official",
+              "label": "DeepSeek"
+            },
+            {
+              "value": "opencode-go",
+              "label": "opencode-go"
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-flash",
+              "label": "DeepSeek-V41-Flash"
+            },
+            {
+              "value": "deepseek-v4-flash",
+              "label": "DeepSeek-V4-Flash"
+            },
+            {
+              "value": "deepseek-v4-pro",
+              "label": "DeepSeek-V4-Pro"
+            },
+            {
+              "value": "deepseek-v4-flash-vision-exp",
+              "label": "DeepSeek-V4-Flash-Vision-Exp"
+            },
+            {
+              "value": "minimax-m3",
+              "label": "MiniMax-M3"
+            },
+            {
+              "value": "qwen3.8-flash",
+              "label": "Qwen3.8 Flash"
+            },
+            {
+              "value": "deepseek-v4-flash",
+              "label": "DeepSeek V4 Flash"
+            },
+            {
+              "value": "deepseek-v4-flash-vision-exp",
+              "label": "DeepSeek V4 Flash Vision Exp"
+            },
+            {
+              "value": "deepseek-v4-pro",
+              "label": "DeepSeek V4 Pro (New)"
+            },
+            {
+              "value": "glm-5.1",
+              "label": "GLM-5.1"
+            },
+            {
+              "value": "glm-5.2",
+              "label": "GLM-5.2"
+            },
+            {
+              "value": "glm-5.3",
+              "label": "GLM-5.3"
+            },
+            {
+              "value": "glm-5.3-flash",
+              "label": "GLM-5.3-Flash (2x usage)"
+            },
+            {
+              "value": "hy3",
+              "label": "Hy3"
+            },
+            {
+              "value": "hy4-preview",
+              "label": "Hy4 preview"
+            },
+            {
+              "value": "kimi-k2.6",
+              "label": "Kimi K2.6"
+            },
+            {
+              "value": "kimi-k2.7-code",
+              "label": "Kimi K2.7 Code"
+            },
+            {
+              "value": "kimi-k3",
+              "label": "Kimi K3"
+            },
+            {
+              "value": "longcat-2.0",
+              "label": "LongCat-2.0"
+            },
+            {
+              "value": "mimo-v2.5",
+              "label": "MiMo V2.5"
+            },
+            {
+              "value": "mimo-v2.5-pro",
+              "label": "MiMo V2.5 Pro"
+            },
+            {
+              "value": "minimax-m2.7",
+              "label": "MiniMax-M2.7"
+            },
+            {
+              "value": "omen-alpha",
+              "label": "Omen Alpha"
+            },
+            {
+              "value": "qwen3.6-plus",
+              "label": "Qwen3.6 Plus"
+            },
+            {
+              "value": "qwen3.7-max",
+              "label": "Qwen3.7 Max"
+            },
+            {
+              "value": "qwen3.7-plus",
+              "label": "Qwen3.7 Plus"
+            },
+            {
+              "value": "qwen3.8-max",
+              "label": "Qwen3.8 Max"
+            },
+            {
+              "value": "gpt-5.6-luna",
+              "label": "GPT-5.6 Luna"
+            },
+            {
+              "value": "grok-4.6",
+              "label": "Grok 4.6"
+            },
+            {
+              "value": "muse-spark-1.2-contributor",
+              "label": "Muse Spark 1.2 Contributor"
+            },
+            {
+              "value": "muse-spark-1.3-contributor",
+              "label": "Muse Spark 1.3 Contributor"
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "off",
+              "label": "Off"
+            },
+            {
+              "value": "low",
+              "label": "Low"
+            },
+            {
+              "value": "high",
+              "label": "High"
+            },
+            {
+              "value": "max",
+              "label": "Max"
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-official",
+              "label": "DeepSeek"
+            },
+            {
+              "value": "opencode-go",
+              "label": "opencode-go"
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "deepseek-flash",
+              "label": "DeepSeek-V41-Flash"
+            },
+            {
+              "value": "deepseek-v4-flash",
+              "label": "DeepSeek-V4-Flash"
+            },
+            {
+              "value": "deepseek-v4-pro",
+              "label": "DeepSeek-V4-Pro"
+            },
+            {
+              "value": "deepseek-v4-flash-vision-exp",
+              "label": "DeepSeek-V4-Flash-Vision-Exp"
+            },
+            {
+              "value": "minimax-m3",
+              "label": "MiniMax-M3"
+            },
+            {
+              "value": "qwen3.8-flash",
+              "label": "Qwen3.8 Flash"
+            },
+            {
+              "value": "deepseek-v4-flash",
+              "label": "DeepSeek V4 Flash"
+            },
+            {
+              "value": "deepseek-v4-flash-vision-exp",
+              "label": "DeepSeek V4 Flash Vision Exp"
+            },
+            {
+              "value": "deepseek-v4-pro",
+              "label": "DeepSeek V4 Pro (New)"
+            },
+            {
+              "value": "glm-5.1",
+              "label": "GLM-5.1"
+            },
+            {
+              "value": "glm-5.2",
+              "label": "GLM-5.2"
+            },
+            {
+              "value": "glm-5.3",
+              "label": "GLM-5.3"
+            },
+            {
+              "value": "glm-5.3-flash",
+              "label": "GLM-5.3-Flash (2x usage)"
+            },
+            {
+              "value": "hy3",
+              "label": "Hy3"
+            },
+            {
+              "value": "hy4-preview",
+              "label": "Hy4 preview"
+            },
+            {
+              "value": "kimi-k2.6",
+              "label": "Kimi K2.6"
+            },
+            {
+              "value": "kimi-k2.7-code",
+              "label": "Kimi K2.7 Code"
+            },
+            {
+              "value": "kimi-k3",
+              "label": "Kimi K3"
+            },
+            {
+              "value": "longcat-2.0",
+              "label": "LongCat-2.0"
+            },
+            {
+              "value": "mimo-v2.5",
+              "label": "MiMo V2.5"
+            },
+            {
+              "value": "mimo-v2.5-pro",
+              "label": "MiMo V2.5 Pro"
+            },
+            {
+              "value": "minimax-m2.7",
+              "label": "MiniMax-M2.7"
+            },
+            {
+              "value": "omen-alpha",
+              "label": "Omen Alpha"
+            },
+            {
+              "value": "qwen3.6-plus",
+              "label": "Qwen3.6 Plus"
+            },
+            {
+              "value": "qwen3.7-max",
+              "label": "Qwen3.7 Max"
+            },
+            {
+              "value": "qwen3.7-plus",
+              "label": "Qwen3.7 Plus"
+            },
+            {
+              "value": "qwen3.8-max",
+              "label": "Qwen3.8 Max"
+            },
+            {
+              "value": "gpt-5.6-luna",
+              "label": "GPT-5.6 Luna"
+            },
+            {
+              "value": "grok-4.6",
+              "label": "Grok 4.6"
+            },
+            {
+              "value": "muse-spark-1.2-contributor",
+              "label": "Muse Spark 1.2 Contributor"
+            },
+            {
+              "value": "muse-spark-1.3-contributor",
+              "label": "Muse Spark 1.3 Contributor"
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "ariaLabel": null,
+          "options": [
+            {
+              "value": "",
+              "label": "—"
+            },
+            {
+              "value": "off",
+              "label": "Off"
+            },
+            {
+              "value": "low",
+              "label": "Low"
+            },
+            {
+              "value": "high",
+              "label": "High"
+            },
+            {
+              "value": "max",
+              "label": "Max"
+            }
+          ]
+        }
+      ]
+    },
+    "slotProviderPickers": [
+      {
+        "slot": 1,
+        "key": "teamModels.slot1.provider",
+        "found": true,
+        "value": "deepseek-official",
+        "options": [
+          "",
+          "deepseek-official",
+          "opencode-go"
+        ]
+      },
+      {
+        "slot": 2,
+        "key": "teamModels.slot2.provider",
+        "found": true,
+        "value": "deepseek-official",
+        "options": [
+          "",
+          "deepseek-official",
+          "opencode-go"
+        ]
+      },
+      {
+        "slot": 3,
+        "key": "teamModels.slot3.provider",
+        "found": true,
+        "value": "deepseek-official",
+        "options": [
+          "",
+          "deepseek-official",
+          "opencode-go"
+        ]
+      }
+    ],
+    "allSelectsRaw": [
+      {
+        "index": 0,
+        "key": null,
+        "ariaLabel": null,
+        "value": "git",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "git",
+            "label": "git"
+          },
+          {
+            "value": "svn",
+            "label": "svn"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "key": null,
+        "ariaLabel": null,
+        "value": "warn-only",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "pause",
+            "label": "pause"
+          },
+          {
+            "value": "warn-only",
+            "label": "warn-only"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "key": "teamModels.slot1.provider",
+        "ariaLabel": null,
+        "value": "deepseek-official",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "deepseek-official",
+            "label": "DeepSeek"
+          },
+          {
+            "value": "opencode-go",
+            "label": "opencode-go"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "key": "teamModels.slot1.model",
+        "ariaLabel": null,
+        "value": "deepseek-v4-flash",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "deepseek-flash",
+            "label": "DeepSeek-V41-Flash"
+          },
+          {
+            "value": "deepseek-v4-flash",
+            "label": "DeepSeek-V4-Flash"
+          },
+          {
+            "value": "deepseek-v4-pro",
+            "label": "DeepSeek-V4-Pro"
+          },
+          {
+            "value": "deepseek-v4-flash-vision-exp",
+            "label": "DeepSeek-V4-Flash-Vision-Exp"
+          },
+          {
+            "value": "minimax-m3",
+            "label": "MiniMax-M3"
+          },
+          {
+            "value": "qwen3.8-flash",
+            "label": "Qwen3.8 Flash"
+          },
+          {
+            "value": "deepseek-v4-flash",
+            "label": "DeepSeek V4 Flash"
+          },
+          {
+            "value": "deepseek-v4-flash-vision-exp",
+            "label": "DeepSeek V4 Flash Vision Exp"
+          },
+          {
+            "value": "deepseek-v4-pro",
+            "label": "DeepSeek V4 Pro (New)"
+          },
+          {
+            "value": "glm-5.1",
+            "label": "GLM-5.1"
+          },
+          {
+            "value": "glm-5.2",
+            "label": "GLM-5.2"
+          },
+          {
+            "value": "glm-5.3",
+            "label": "GLM-5.3"
+          },
+          {
+            "value": "glm-5.3-flash",
+            "label": "GLM-5.3-Flash (2x usage)"
+          },
+          {
+            "value": "hy3",
+            "label": "Hy3"
+          },
+          {
+            "value": "hy4-preview",
+            "label": "Hy4 preview"
+          },
+          {
+            "value": "kimi-k2.6",
+            "label": "Kimi K2.6"
+          },
+          {
+            "value": "kimi-k2.7-code",
+            "label": "Kimi K2.7 Code"
+          },
+          {
+            "value": "kimi-k3",
+            "label": "Kimi K3"
+          },
+          {
+            "value": "longcat-2.0",
+            "label": "LongCat-2.0"
+          },
+          {
+            "value": "mimo-v2.5",
+            "label": "MiMo V2.5"
+          },
+          {
+            "value": "mimo-v2.5-pro",
+            "label": "MiMo V2.5 Pro"
+          },
+          {
+            "value": "minimax-m2.7",
+            "label": "MiniMax-M2.7"
+          },
+          {
+            "value": "omen-alpha",
+            "label": "Omen Alpha"
+          },
+          {
+            "value": "qwen3.6-plus",
+            "label": "Qwen3.6 Plus"
+          },
+          {
+            "value": "qwen3.7-max",
+            "label": "Qwen3.7 Max"
+          },
+          {
+            "value": "qwen3.7-plus",
+            "label": "Qwen3.7 Plus"
+          },
+          {
+            "value": "qwen3.8-max",
+            "label": "Qwen3.8 Max"
+          },
+          {
+            "value": "gpt-5.6-luna",
+            "label": "GPT-5.6 Luna"
+          },
+          {
+            "value": "grok-4.6",
+            "label": "Grok 4.6"
+          },
+          {
+            "value": "muse-spark-1.2-contributor",
+            "label": "Muse Spark 1.2 Contributor"
+          },
+          {
+            "value": "muse-spark-1.3-contributor",
+            "label": "Muse Spark 1.3 Contributor"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "key": "teamModels.slot1.reasoningEffort",
+        "ariaLabel": null,
+        "value": "max",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "off",
+            "label": "Off"
+          },
+          {
+            "value": "low",
+            "label": "Low"
+          },
+          {
+            "value": "high",
+            "label": "High"
+          },
+          {
+            "value": "max",
+            "label": "Max"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "key": "teamModels.slot2.provider",
+        "ariaLabel": null,
+        "value": "deepseek-official",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "deepseek-official",
+            "label": "DeepSeek"
+          },
+          {
+            "value": "opencode-go",
+            "label": "opencode-go"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "key": "teamModels.slot2.model",
+        "ariaLabel": null,
+        "value": "deepseek-v4-flash",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "deepseek-flash",
+            "label": "DeepSeek-V41-Flash"
+          },
+          {
+            "value": "deepseek-v4-flash",
+            "label": "DeepSeek-V4-Flash"
+          },
+          {
+            "value": "deepseek-v4-pro",
+            "label": "DeepSeek-V4-Pro"
+          },
+          {
+            "value": "deepseek-v4-flash-vision-exp",
+            "label": "DeepSeek-V4-Flash-Vision-Exp"
+          },
+          {
+            "value": "minimax-m3",
+            "label": "MiniMax-M3"
+          },
+          {
+            "value": "qwen3.8-flash",
+            "label": "Qwen3.8 Flash"
+          },
+          {
+            "value": "deepseek-v4-flash",
+            "label": "DeepSeek V4 Flash"
+          },
+          {
+            "value": "deepseek-v4-flash-vision-exp",
+            "label": "DeepSeek V4 Flash Vision Exp"
+          },
+          {
+            "value": "deepseek-v4-pro",
+            "label": "DeepSeek V4 Pro (New)"
+          },
+          {
+            "value": "glm-5.1",
+            "label": "GLM-5.1"
+          },
+          {
+            "value": "glm-5.2",
+            "label": "GLM-5.2"
+          },
+          {
+            "value": "glm-5.3",
+            "label": "GLM-5.3"
+          },
+          {
+            "value": "glm-5.3-flash",
+            "label": "GLM-5.3-Flash (2x usage)"
+          },
+          {
+            "value": "hy3",
+            "label": "Hy3"
+          },
+          {
+            "value": "hy4-preview",
+            "label": "Hy4 preview"
+          },
+          {
+            "value": "kimi-k2.6",
+            "label": "Kimi K2.6"
+          },
+          {
+            "value": "kimi-k2.7-code",
+            "label": "Kimi K2.7 Code"
+          },
+          {
+            "value": "kimi-k3",
+            "label": "Kimi K3"
+          },
+          {
+            "value": "longcat-2.0",
+            "label": "LongCat-2.0"
+          },
+          {
+            "value": "mimo-v2.5",
+            "label": "MiMo V2.5"
+          },
+          {
+            "value": "mimo-v2.5-pro",
+            "label": "MiMo V2.5 Pro"
+          },
+          {
+            "value": "minimax-m2.7",
+            "label": "MiniMax-M2.7"
+          },
+          {
+            "value": "omen-alpha",
+            "label": "Omen Alpha"
+          },
+          {
+            "value": "qwen3.6-plus",
+            "label": "Qwen3.6 Plus"
+          },
+          {
+            "value": "qwen3.7-max",
+            "label": "Qwen3.7 Max"
+          },
+          {
+            "value": "qwen3.7-plus",
+            "label": "Qwen3.7 Plus"
+          },
+          {
+            "value": "qwen3.8-max",
+            "label": "Qwen3.8 Max"
+          },
+          {
+            "value": "gpt-5.6-luna",
+            "label": "GPT-5.6 Luna"
+          },
+          {
+            "value": "grok-4.6",
+            "label": "Grok 4.6"
+          },
+          {
+            "value": "muse-spark-1.2-contributor",
+            "label": "Muse Spark 1.2 Contributor"
+          },
+          {
+            "value": "muse-spark-1.3-contributor",
+            "label": "Muse Spark 1.3 Contributor"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "key": "teamModels.slot2.reasoningEffort",
+        "ariaLabel": null,
+        "value": "high",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "off",
+            "label": "Off"
+          },
+          {
+            "value": "low",
+            "label": "Low"
+          },
+          {
+            "value": "high",
+            "label": "High"
+          },
+          {
+            "value": "max",
+            "label": "Max"
+          }
+        ]
+      },
+      {
+        "index": 8,
+        "key": "teamModels.slot3.provider",
+        "ariaLabel": null,
+        "value": "deepseek-official",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "deepseek-official",
+            "label": "DeepSeek"
+          },
+          {
+            "value": "opencode-go",
+            "label": "opencode-go"
+          }
+        ]
+      },
+      {
+        "index": 9,
+        "key": "teamModels.slot3.model",
+        "ariaLabel": null,
+        "value": "deepseek-v4-flash",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "deepseek-flash",
+            "label": "DeepSeek-V41-Flash"
+          },
+          {
+            "value": "deepseek-v4-flash",
+            "label": "DeepSeek-V4-Flash"
+          },
+          {
+            "value": "deepseek-v4-pro",
+            "label": "DeepSeek-V4-Pro"
+          },
+          {
+            "value": "deepseek-v4-flash-vision-exp",
+            "label": "DeepSeek-V4-Flash-Vision-Exp"
+          },
+          {
+            "value": "minimax-m3",
+            "label": "MiniMax-M3"
+          },
+          {
+            "value": "qwen3.8-flash",
+            "label": "Qwen3.8 Flash"
+          },
+          {
+            "value": "deepseek-v4-flash",
+            "label": "DeepSeek V4 Flash"
+          },
+          {
+            "value": "deepseek-v4-flash-vision-exp",
+            "label": "DeepSeek V4 Flash Vision Exp"
+          },
+          {
+            "value": "deepseek-v4-pro",
+            "label": "DeepSeek V4 Pro (New)"
+          },
+          {
+            "value": "glm-5.1",
+            "label": "GLM-5.1"
+          },
+          {
+            "value": "glm-5.2",
+            "label": "GLM-5.2"
+          },
+          {
+            "value": "glm-5.3",
+            "label": "GLM-5.3"
+          },
+          {
+            "value": "glm-5.3-flash",
+            "label": "GLM-5.3-Flash (2x usage)"
+          },
+          {
+            "value": "hy3",
+            "label": "Hy3"
+          },
+          {
+            "value": "hy4-preview",
+            "label": "Hy4 preview"
+          },
+          {
+            "value": "kimi-k2.6",
+            "label": "Kimi K2.6"
+          },
+          {
+            "value": "kimi-k2.7-code",
+            "label": "Kimi K2.7 Code"
+          },
+          {
+            "value": "kimi-k3",
+            "label": "Kimi K3"
+          },
+          {
+            "value": "longcat-2.0",
+            "label": "LongCat-2.0"
+          },
+          {
+            "value": "mimo-v2.5",
+            "label": "MiMo V2.5"
+          },
+          {
+            "value": "mimo-v2.5-pro",
+            "label": "MiMo V2.5 Pro"
+          },
+          {
+            "value": "minimax-m2.7",
+            "label": "MiniMax-M2.7"
+          },
+          {
+            "value": "omen-alpha",
+            "label": "Omen Alpha"
+          },
+          {
+            "value": "qwen3.6-plus",
+            "label": "Qwen3.6 Plus"
+          },
+          {
+            "value": "qwen3.7-max",
+            "label": "Qwen3.7 Max"
+          },
+          {
+            "value": "qwen3.7-plus",
+            "label": "Qwen3.7 Plus"
+          },
+          {
+            "value": "qwen3.8-max",
+            "label": "Qwen3.8 Max"
+          },
+          {
+            "value": "gpt-5.6-luna",
+            "label": "GPT-5.6 Luna"
+          },
+          {
+            "value": "grok-4.6",
+            "label": "Grok 4.6"
+          },
+          {
+            "value": "muse-spark-1.2-contributor",
+            "label": "Muse Spark 1.2 Contributor"
+          },
+          {
+            "value": "muse-spark-1.3-contributor",
+            "label": "Muse Spark 1.3 Contributor"
+          }
+        ]
+      },
+      {
+        "index": 10,
+        "key": "teamModels.slot3.reasoningEffort",
+        "ariaLabel": null,
+        "value": "high",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "off",
+            "label": "Off"
+          },
+          {
+            "value": "low",
+            "label": "Low"
+          },
+          {
+            "value": "high",
+            "label": "High"
+          },
+          {
+            "value": "max",
+            "label": "Max"
+          }
+        ]
+      }
+    ],
+    "browserCatalog": {
+      "status": 200,
+      "providers": 2,
+      "models": 31,
+      "providerIds": [
+        "deepseek-official",
+        "opencode-go"
+      ]
+    },
+    "scopedKeys": [
+      "[\"settingsScope\"]",
+      "[\"sidebarRightTabs\"]",
+      "[\"betterSidebar\"]",
+      "[\"slots\",\"inputTriggers\",\"sessions\"]",
+      "[\"commandUi\"]",
+      "[\"slots\",\"commandUi\",\"sessions\"]",
+      "[\"modelDirectories\",\"remote.session\"]",
+      "[\"commandUi\",\"modelDirectories\"]",
+      "[\"slots\",\"modelDirectories\"]",
+      "[\"modelDirectories\",\"sessions\",\"remote.session\"]",
+      "[\"slots\",\"conversation\",\"sessions\",\"uiWorkspace\"]",
+      "[\"uiRenderer\"]",
+      "[\"workspaces\",\"sessions\"]",
+      "[\"slots\",\"conversation\",\"sessions\"]",
+      "[\"pluginManager\"]"
+    ]
+  },
+  "console": {
+    "total": 12,
+    "mpdPrefixed": [
+      {
+        "domain": "console.warning",
+        "text": "[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)"
+      },
+      {
+        "domain": "console.info",
+        "text": "[mpd] model catalog: live catalog — 2 providers · 31 models"
+      }
+    ]
+  },
+  "error": null
+}
