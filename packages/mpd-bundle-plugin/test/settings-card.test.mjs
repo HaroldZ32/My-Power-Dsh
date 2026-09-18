@@ -703,4 +703,140 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     expect(text).toContain('cannot get property "testing.absent.seam" without inject')
     client.restore()
   })
+
+  // ── A degraded read used to be missable: the card's own notice sat at the TOP of the section
+  // while the three slot pickers sit at the BOTTOM, and the fallback path never reached the
+  // console. Three surfaces are asserted here, one by one, plus the warn-once discipline.
+  /** Record the catalog lifecycle's console lines in order; `restore()` puts the console back. */
+  function recordConsole() {
+    const lines = []
+    const realWarn = console.warn
+    const realInfo = console.info
+    console.warn = (...args) => lines.push({ level: "warn", args })
+    console.info = (...args) => lines.push({ level: "info", args })
+    return { lines, restore: () => { console.warn = realWarn; console.info = realInfo } }
+  }
+
+  /** The row element carrying one field key (the labeled block holding the hint and the control). */
+  function rowOf(tree, key) {
+    if (tree === null || tree === undefined || typeof tree !== "object") return undefined
+    if (Array.isArray(tree)) {
+      for (const entry of tree) {
+        const found = rowOf(entry, key)
+        if (found !== undefined) return found
+      }
+      return undefined
+    }
+    if (tree.key === key) return tree
+    return rowOf(tree.props?.children, key)
+  }
+
+  /** One row's HINT text (the labeled block's second child). */
+  function hintOfRow(tree, key) {
+    const row = rowOf(tree, key)
+    return row === undefined ? "" : textOf(row.props?.children?.[1])
+  }
+
+  /** BOTH data-attributed catalog lines: the top notice and the slot-adjacent one. */
+  function catalogLines(tree) {
+    return elementsOf(tree, "p").filter((element) => element.props?.["data-mpd-catalog-state"] !== undefined)
+  }
+
+  const SLOT_ROW_KEYS = ["slot1", "slot2", "slot3"].flatMap((slot) => ["provider", "model", "reasoningEffort"].map((leaf) => `teamModels.${slot}.${leaf}`))
+
+  test("D-1: a REJECTED read warns the console ONCE and the same sentence renders at the slot rows", async () => {
+    let notified = null
+    const sessions = { list: { getSnapshot: () => ({ current: { sessionId: "s1" } }), subscribe: (listener) => { notified = listener; return () => { notified = null } } } }
+    const rec = recordConsole()
+    try {
+      const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+        sessions,
+        ...REMOTE_SESSION,
+        modelDirectories: { directoryFor: () => { throw new Error('ui-model-selection: session "s1" resolved no scope') } },
+      })
+      const warned = rec.lines.filter((line) => line.level === "warn")
+      expect(warned).toHaveLength(1)
+      expect(warned[0].args[0]).toBe("[mpd] model catalog:")
+      expect(warned[0].args[1]).toContain("declared fallback — live catalog unavailable")
+      expect(warned[0].args[1]).toContain("the host resolved no model directory for this session")
+      expect(rec.lines.filter((line) => line.level === "info")).toHaveLength(0)
+      // SUSTAINED fallback: two more session notifications re-read and re-publish the SAME state
+      expect(typeof notified).toBe("function")
+      notified()
+      notified()
+      expect(rec.lines.filter((line) => line.level === "warn")).toHaveLength(1)
+      // the compact line renders in the FALLBACK state, between the thirteen rows and the nine
+      const rendered = catalogLines(tree)
+      expect(rendered).toHaveLength(2)
+      const slotLine = rendered.find((element) => element.props["data-mpd-catalog-notice"] === "slots")
+      expect(slotLine).toBeDefined()
+      expect(textOf(slotLine)).toContain("declared fallback — live catalog unavailable")
+      const children = tree.props.children
+      const slotLineIndex = children.indexOf(slotLine)
+      expect(slotLineIndex).toBeGreaterThan(children.findIndex((child) => child?.key === "hashline.maxDiffChars"))
+      expect(slotLineIndex).toBeLessThan(children.findIndex((child) => child?.key === "teamModels.slot1.provider"))
+      // the nine slot rows carry the marker; a scalar row is untouched
+      for (const key of SLOT_ROW_KEYS) expect(hintOfRow(tree, key)).toContain(" — declared fallback: ")
+      expect(hintOfRow(tree, "hashline.maxDiffChars")).not.toContain("declared fallback")
+      client.restore()
+    } finally {
+      rec.restore()
+    }
+  })
+
+  test("D-2: a RESOLVED catalog emits the LIVE sentence once and leaves the slot hints untouched", async () => {
+    const directory = mutableDirectory(CATALOG)
+    const rec = recordConsole()
+    try {
+      const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+        sessions: SESSIONS,
+        ...REMOTE_SESSION,
+        modelDirectories: { directoryFor: () => directory.directory },
+      })
+      const info = rec.lines.filter((line) => line.level === "info")
+      expect(info).toHaveLength(1)
+      expect(info[0].args[0]).toBe("[mpd] model catalog:")
+      expect(info[0].args[1]).toBe("live catalog — 2 providers · 3 models")
+      expect(rec.lines.filter((line) => line.level === "warn")).toHaveLength(0)
+      // the slot-adjacent line renders in the LIVE state too, with the SAME sentence
+      const rendered = catalogLines(tree)
+      expect(rendered).toHaveLength(2)
+      const slotLine = rendered.find((element) => element.props["data-mpd-catalog-notice"] === "slots")
+      expect(textOf(slotLine)).toBe("live catalog — 2 providers · 3 models")
+      for (const key of SLOT_ROW_KEYS) expect(hintOfRow(tree, key)).not.toContain("declared fallback")
+      client.restore()
+    } finally {
+      rec.restore()
+    }
+  })
+
+  test("D-3: warn-once survives repeated publishes and RE-ARMS only after a return to live", async () => {
+    let groups = CATALOG
+    const listeners = new Set()
+    const directory = {
+      store: { getSnapshot: () => ({ status: "ready", groups }), subscribe: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } } },
+    }
+    const setGroups = (next) => {
+      groups = next
+      for (const listener of [...listeners]) listener()
+    }
+    const rec = recordConsole()
+    try {
+      const { client } = await injectedTree(slotScope(SLOT_SECTION), { sessions: SESSIONS, ...REMOTE_SESSION, modelDirectories: { directoryFor: () => directory } })
+      expect(rec.lines.map((line) => line.level)).toEqual(["info"])
+      setGroups([]) // the read DEGRADES: the directory reports no provider
+      expect(rec.lines.map((line) => line.level)).toEqual(["info", "warn"])
+      expect(rec.lines[1].args[1]).toBe("declared fallback — live catalog unavailable (the model directory for this session reports no provider)")
+      setGroups([]) // the SAME state again, twice: never a second warning
+      setGroups([])
+      expect(rec.lines).toHaveLength(2)
+      setGroups(CATALOG) // back to live: re-armed
+      expect(rec.lines.map((line) => line.level)).toEqual(["info", "warn", "info"])
+      setGroups([]) // degrades AGAIN: exactly one more warning
+      expect(rec.lines.map((line) => line.level)).toEqual(["info", "warn", "info", "warn"])
+      client.restore()
+    } finally {
+      rec.restore()
+    }
+  })
 })
