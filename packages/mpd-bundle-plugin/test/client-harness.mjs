@@ -285,13 +285,30 @@ export function createHarness(options = {}) {
    * during apply() answers undefined, which is exactly the live failure this models.
    */
   const pendingInjections = [];
+  /**
+   * PROBE-INVISIBLE services: the exact shape of the live defect. A `hiddenServices` entry is
+   * NOT in `registry`, so a bare `ctx.get(name)` probe answers undefined — only an injection
+   * whose deps NAME it resolves, and that injection's callback receives a SCOPED ctx whose
+   * `get` does see it. That is cordis' actual rule (a service provided by another plugin's
+   * fiber is invisible to a plain probe, and `notify()` only re-evaluates fibers that DECLARE
+   * the dependency), and it is what makes T-A falsifiable: on a bare-probe implementation the
+   * pickers fall back even though the service exists and an injection can reach it.
+   */
+  const hidden = new Map(Object.entries(options.hiddenServices ?? {}));
+  const scopedCtx = (deps) => ({
+    ...ctx,
+    get: (name) => {
+      if (registry.has(name)) return registry.get(name);
+      return deps.includes(name) && hidden.has(name) ? hidden.get(name) : undefined;
+    },
+  });
   const runInjections = () => {
     for (const entry of [...pendingInjections]) {
-      if (entry.disposed || !entry.deps.every((dep) => registry.has(dep))) continue;
+      if (entry.disposed || !entry.deps.every((dep) => registry.has(dep) || hidden.has(dep))) continue;
       pendingInjections.splice(pendingInjections.indexOf(entry), 1);
       calls.injected = calls.injected ?? [];
       calls.injected.push(entry.deps);
-      entry.cb(ctx);
+      entry.cb(scopedCtx(entry.deps));
     }
   };
   const ctx = {

@@ -137,13 +137,12 @@
   const TEAM_MODEL_SLOT = "teamModels"
 
   /**
-   * The session the catalog probe binds to: `sessions.list.getSnapshot().current` is the shape
+   * The session the catalog binds to: `sessions.list.getSnapshot().current` is the shape
    * `team-page.js` already reads. Guarded, so a missing sessions service, a missing list or an
    * unbound session all answer undefined instead of throwing.
    */
-  function currentSessionId(ctx) {
+  function currentSessionIdOf(sessions) {
     try {
-      const sessions = ctx && typeof ctx.get === "function" ? ctx.get("sessions") : undefined
       const list = sessions ? sessions.list : undefined
       const snapshot = list && typeof list.getSnapshot === "function" ? list.getSnapshot() : undefined
       const current = snapshot ? snapshot.current : undefined
@@ -154,29 +153,224 @@
     }
   }
 
-  /**
-   * The live model catalog: the host client's own provider groups
-   * (`{ id, name, models: [{ id, name, reasoning?: { efforts: [{ id, name }] } }] }`), reached
-   * exactly the way `team-page.js` reaches a model directory — guarded probes of
-   * `ctx.get("sessions")` + `ctx.get("modelDirectories")`, never a declared inject (a
-   * declared-but-absent service is fatal to the whole page). `directoryFor` THROWS for a session
-   * the host does not know, so every step is wrapped: any absence or throw answers [] and the
-   * slot controls fall back to their declared option lists.
-   */
-  function readCatalog(ctx) {
+  /** Read one service from a context that has it IN SCOPE (never throws). */
+  function readService(ctx, name) {
     try {
-      const directories = ctx && typeof ctx.get === "function" ? ctx.get("modelDirectories") : undefined
-      if (directories === undefined || directories === null || typeof directories.directoryFor !== "function") return []
-      const sessionId = currentSessionId(ctx)
-      if (sessionId === undefined) return []
-      const directory = directories.directoryFor(sessionId)
-      if (directory === undefined || directory === null) return []
-      const store = directory.store
-      const snapshot = store && typeof store.getSnapshot === "function" ? store.getSnapshot() : undefined
-      const groups = snapshot && Array.isArray(snapshot.groups) ? snapshot.groups : []
-      return groups.filter((group) => group !== null && typeof group === "object" && typeof group.id === "string" && Array.isArray(group.models))
+      return ctx && typeof ctx.get === "function" ? ctx.get(name) : undefined
     } catch {
-      return []
+      return undefined
+    }
+  }
+
+  /** The data attribute carrying the branch that produced the option lists (assertable, no browser). */
+  const CATALOG_ATTR = "data-mpd-catalog-state"
+  /** The sentence a fallback MUST say out loud — a silent fallback is what hid this defect. */
+  const CATALOG_FALLBACK_NOTICE = "declared fallback — live catalog unavailable"
+  const FALLBACK_CATALOG = { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason: "the model catalog injection has not resolved yet" }
+
+  /** The one sentence the card renders for one catalog state: LIVE (with counts) or fallback. */
+  function catalogNotice(info) {
+    const state = info ?? FALLBACK_CATALOG
+    if (state.mode === "live") {
+      const providers = Number(state.providers ?? 0)
+      const models = Number(state.models ?? 0)
+      return "live catalog — " + String(providers) + (providers === 1 ? " provider" : " providers") + " · " + String(models) + (models === 1 ? " model" : " models")
+    }
+    const reason = typeof state.reason === "string" && state.reason.length > 0 ? " (" + state.reason + ")" : ""
+    return CATALOG_FALLBACK_NOTICE + reason
+  }
+
+  /** The provider/model counts of one group list. */
+  function catalogCounts(groups) {
+    let models = 0
+    for (const group of groups) models += Array.isArray(group.models) ? group.models.length : 0
+    return { providers: groups.length, models }
+  }
+
+  /**
+   * The LIVE model catalog: the host client's own provider groups
+   * (`{ id, name, models: [{ id, name, reasoning?: { efforts: [{ id, name }] } }] }`).
+   *
+   * THE DEFECT THIS REPLACES (measured): a BARE `ctx.get` probe for `modelDirectories` can never
+   * see the service — `@deepseek-ai/dsh-client-ui-model-selection` provides it from ANOTHER
+   * plugin's
+   * fiber, and cordis resolves services through the fiber's own scope, so the probe answered
+   * `undefined` forever and the card silently rendered its DECLARED option lists (one provider).
+   * The measured rule lives in this package's `src/web-client.js` header; the answer is the
+   * dynamic form `ctx.inject(["modelDirectories", "sessions"], …)`, which waits for the providers
+   * WITHOUT parking this boot entry. They must NEVER be added to the module's declared
+   * `inject`/`REQUIRED_SERVICES` list: a declared-but-unregistered service is fatal to the whole
+   * page (`assertEntriesActive` turns it into a `pending` entry).
+   *
+   * LIVE, not a one-shot snapshot: once a directory exists for the bound session it is
+   * SUBSCRIBED, `load()`ed (so the catalog is really fetched), and every store notification
+   * re-projects the card's own store — a provider/model that appears while the page is open shows
+   * up without a rebuild. `directoryFor` THROWS for a session the host does not know, so every
+   * step is wrapped and degrades to the declared lists — with `info()` saying so out loud.
+   */
+  function createLiveCatalog(hostCtx) {
+    let directory
+    let boundSessionId
+    let groups = []
+    let info = FALLBACK_CATALOG
+    let unsubscribeStore = null
+    let unsubscribeSessions = null
+    let fiber = null
+    const listeners = new Set()
+
+    function notify() {
+      for (const listener of [...listeners]) {
+        try {
+          listener()
+        } catch {
+          /* a broken listener must not break the card */
+        }
+      }
+    }
+
+    function publish(nextGroups, nextInfo) {
+      groups = nextGroups
+      info = nextInfo
+      notify()
+    }
+
+    function fallback(reason) {
+      publish([], { mode: "fallback", providers: 0, models: 0, notice: CATALOG_FALLBACK_NOTICE, reason })
+    }
+
+    function releaseDirectory() {
+      if (unsubscribeStore !== null) {
+        try {
+          unsubscribeStore()
+        } catch {
+          /* the store may already be gone */
+        }
+        unsubscribeStore = null
+      }
+      directory = undefined
+    }
+
+    /** Re-read the bound directory's store and republish (live: called on every notification). */
+    function readStore() {
+      try {
+        const store = directory ? directory.store : undefined
+        const snapshot = store && typeof store.getSnapshot === "function" ? store.getSnapshot() : undefined
+        const raw = snapshot && Array.isArray(snapshot.groups) ? snapshot.groups : []
+        const next = raw.filter((group) => group !== null && typeof group === "object" && typeof group.id === "string" && Array.isArray(group.models))
+        if (next.length === 0) {
+          fallback("the model directory for this session reports no provider")
+          return
+        }
+        const counts = catalogCounts(next)
+        publish(next, { mode: "live", providers: counts.providers, models: counts.models })
+      } catch {
+        fallback("the model directory could not be read")
+      }
+    }
+
+    function bindDirectory(directories, sessions, force) {
+      const sessionId = currentSessionIdOf(sessions)
+      // A session-list notification is not a reason to re-fetch an unchanged directory: only a
+      // real SWITCH (or a provider remount, which passes force) rebinds and reloads.
+      if (force !== true && sessionId !== undefined && sessionId === boundSessionId && directory !== undefined) return
+      boundSessionId = sessionId
+      releaseDirectory()
+      try {
+        if (directories === null || directories === undefined || typeof directories.directoryFor !== "function") {
+          fallback("no model directory service is registered")
+          return
+        }
+        if (sessionId === undefined) {
+          fallback("no session is bound")
+          return
+        }
+        const found = directories.directoryFor(sessionId)
+        if (found === null || found === undefined) {
+          fallback("the host resolved no model directory for this session")
+          return
+        }
+        directory = found
+        const store = found.store
+        if (store && typeof store.subscribe === "function") unsubscribeStore = store.subscribe(() => readStore())
+        readStore()
+        if (typeof found.load === "function") {
+          try {
+            Promise.resolve(found.load()).then(() => readStore(), () => { /* a failed load keeps the last snapshot */ })
+          } catch {
+            /* a synchronous throw keeps the last snapshot */
+          }
+        }
+      } catch {
+        // directoryFor THROWS for a session the host does not know: degrade, never crash the card.
+        fallback("the host resolved no model directory for this session")
+      }
+    }
+
+    function bind(scoped) {
+      releaseDirectory()
+      if (unsubscribeSessions !== null) {
+        try {
+          unsubscribeSessions()
+        } catch {
+          /* the list may be gone */
+        }
+        unsubscribeSessions = null
+      }
+      const directories = readService(scoped, "modelDirectories")
+      const sessions = readService(scoped, "sessions")
+      try {
+        const list = sessions ? sessions.list : undefined
+        // A session SWITCH re-binds the directory: the picker follows the session the page is on.
+        if (list && typeof list.subscribe === "function") unsubscribeSessions = list.subscribe(() => bindDirectory(directories, sessions, false))
+      } catch {
+        unsubscribeSessions = null
+      }
+      // The injection itself is a (re)bind: a provider remount must never keep a stale directory.
+      bindDirectory(directories, sessions, true)
+    }
+
+    return {
+      /** Start the dynamic injection. The scoped ctx of the callback is what reads the services. */
+      start() {
+        if (typeof hostCtx?.inject !== "function") {
+          fallback("the client runtime exposes no ctx.inject")
+          return false
+        }
+        try {
+          fiber = hostCtx.inject(["modelDirectories", "sessions"], (scoped) => bind(scoped))
+        } catch (error) {
+          console.warn("[mpd] settings section: the model catalog could not be injected: " + String(error))
+          fallback("the model catalog injection failed")
+          return false
+        }
+        return true
+      },
+      dispose() {
+        releaseDirectory()
+        if (unsubscribeSessions !== null) {
+          try {
+            unsubscribeSessions()
+          } catch {
+            /* the list may be gone */
+          }
+          unsubscribeSessions = null
+        }
+        if (fiber !== null && typeof fiber.dispose === "function") {
+          try {
+            fiber.dispose()
+          } catch {
+            /* the fiber may already be gone */
+          }
+        }
+        fiber = null
+        listeners.clear()
+      },
+      groups: () => groups,
+      info: () => info,
+      subscribe(listener) {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
     }
   }
 
@@ -280,7 +474,7 @@
    * `scope.mutate(ops, revision)` — nested paths included, which `scope.set(field, …)` cannot
    * express (it writes top-level fields only).
    */
-  function createMpdCardController(scope, fields = FIELDS, disclosure = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }) {
+  function createMpdCardController(scope, fields = FIELDS, disclosure = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo = () => FALLBACK_CATALOG) {
     const staged = new Map()
     // Declared BEFORE the first projection: `project()` reads all three, and a `let` below the
     // call site is a TDZ ReferenceError (measured by this module's own test).
@@ -322,6 +516,9 @@
         error: lastError,
         controls,
         disclosure,
+        // Which branch produced the slot option lists — LIVE (with counts) or the declared
+        // fallback. It rides the card's OWN store, so a catalog change re-projects the card.
+        catalog: catalogInfo() ?? FALLBACK_CATALOG,
       }
     }
 
@@ -403,6 +600,10 @@
         }
       },
       store,
+      /** Re-project after an EXTERNAL change (the live catalog): the card's store is the channel. */
+      refresh: () => {
+        publish()
+      },
       dispose: () => {
         try {
           scope.dispose()
@@ -420,6 +621,9 @@
       const state = props.useMpdCard((snapshot) => snapshot)
       const t = typeof props.t === "function" ? props.t : (key) => key
       const disabled = !state.writable
+      // The catalog branch this render used. Silent fallback is what hid the defect, so the state
+      // is part of the rendered output (and of the data attributes) — never implicit.
+      const catalog = state.catalog ?? FALLBACK_CATALOG
       let groups = []
       try {
         const probed = readGroups()
@@ -468,6 +672,16 @@
         disabled
           ? createElement("p", { style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 } }, t("readOnly"))
           : null,
+        createElement(
+          "p",
+          {
+            style: { margin: "0 0 8px", fontSize: 12, opacity: 0.75 },
+            [CATALOG_ATTR]: catalog.mode,
+            "data-mpd-catalog-providers": String(catalog.providers ?? 0),
+            "data-mpd-catalog-models": String(catalog.models ?? 0),
+          },
+          catalogNotice(catalog),
+        ),
         ...rows,
         createElement(
           "div",
@@ -549,10 +763,17 @@
               return
             }
             const scope = service.bind({ namespace: NS })
-            const controller = createMpdCardController(scope, fields)
-            // The slot leaves render their option lists from the LIVE catalog, probed through the
-            // guarded client seams on every render (never a declared inject — see readCatalog).
-            const Section = createCardComponent(require("react"), fields, () => readCatalog(ctx))
+            // The LIVE catalog: injected (never probed), subscribed, and re-projected into the
+            // card's own store on every change. Started BEFORE the registration so the first
+            // render already carries the real list when the providers are up.
+            const catalog = createLiveCatalog(ctx)
+            const controller = createMpdCardController(scope, fields, undefined, () => catalog.info())
+            const unsubscribeCatalog = catalog.subscribe(() => {
+              controller.refresh()
+            })
+            catalog.start()
+            // The slot leaves render their option lists from the LIVE catalog on every render.
+            const Section = createCardComponent(require("react"), fields, () => catalog.groups())
             // The host's descriptor: id + explicit order + a label resolved through this
             // registration's locale dictionaries. `children` is omitted because this section
             // renders no nested slot of its own.
@@ -566,6 +787,12 @@
               } catch {
                 /* the slot may be gone */
               }
+              try {
+                unsubscribeCatalog()
+              } catch {
+                /* already unsubscribed */
+              }
+              catalog.dispose()
               controller.dispose()
             }
           })
@@ -586,7 +813,8 @@
     createMpdCardController,
     createCardComponent,
     dictionaries,
-    readCatalog,
+    createLiveCatalog,
+    catalogNotice,
     optionsFor,
     optionElements,
     FIELDS,
@@ -598,5 +826,7 @@
     BRIDGE_DISCLOSURE,
     BRIDGE_RESTART_LIMIT,
     NO_WORKSPACE_NOTICE,
+    CATALOG_ATTR,
+    CATALOG_FALLBACK_NOTICE,
   }
 }
