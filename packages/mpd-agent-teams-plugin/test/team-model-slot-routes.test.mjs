@@ -1,11 +1,11 @@
-// t6 — the three configured `teamModels` slots are the DEFAULT route of the `mpd` roster.
+// t6 / slot 4 — the FOUR configured `teamModels` slots are the DEFAULT route of the `mpd` roster.
 //
 // Two halves, both proved here without a live boot:
 //   * profiles.js — a member may declare `tier` (positive integer) or `route`
 //     ({provider, model, reasoningEffort?}); declaring BOTH is refused naming the member and both
 //     keys; an unknown key is still refused; and the REAL `mpd` profile block in
 //     packages/mpd-bundle/cordis.patch.yml survives the plugin's own Config schema with its `tier`
-//     (and Vision Analyst's `route`) still attached, asserted key-by-key.
+//     still attached, asserted key-by-key — Vision Analyst included, at tier 4.
 //   * tools.js — initializeProfileTeam resolves each member template to one concrete route: an
 //     explicit `route` verbatim, a `tier` from ctx.get("mpdConfig").get("teamModels.slot<N>"), and
 //     today's captain-derived behaviour for a member with neither. An unusable slot fails LOUDLY
@@ -21,12 +21,15 @@ const PATCH_PATH = join(import.meta.dir, "..", "..", "mpd-bundle", "cordis.patch
 const STATE_DIR = join(".mpd", "team")
 const FALLBACK = { provider: "deepseek-official", model: "deepseek-v4-flash" }
 const VISION_ROUTE = { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" }
-/** The frozen §1.2 class mapping — tier 1/2/3 as the captain approved it. */
+/** The frozen class mapping — tier 1/2/3 plus tier 4, the vision slot (Vision Analyst). */
 const FROZEN_TIERS = {
     Architect: 1, Planner: 1, Reviewer: 1, Lead: 1, "Senior Engineer": 1,
     Researcher: 2, Explorer: 2, "Plan Reviewer": 2,
     "Deep Worker": 3, "Junior Engineer": 3,
+    "Vision Analyst": 4,
 }
+/** Slot 4's DEFAULTS = Vision Analyst's former explicit route, so tier 4 is behaviour-preserving. */
+const VISION_SLOT_DEFAULT = { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" }
 /** The six read-only members carry the shared seven-name deny list; the five workers carry none. */
 const READONLY_DENY = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename"]
 const READONLY_MEMBERS = new Set(["Architect", "Researcher", "Planner", "Explorer", "Plan Reviewer", "Vision Analyst"])
@@ -49,7 +52,7 @@ function realProfile() {
 const profileOf = (members, extra = {}) => ({ mpd: { taskPlanning: "captain", members, ...extra } })
 
 describe("B3 — the shipped bundle patch declares tiers, not literals", () => {
-    test("all eleven members carry the frozen tier (or the vision route) and no literal route keys", () => {
+    test("all eleven members carry the frozen tier and no literal route keys", () => {
         const members = realProfile().members
         expect(members.length).toBe(11)
         for (const member of members) {
@@ -66,11 +69,7 @@ describe("B3 — the shipped bundle patch declares tiers, not literals", () => {
             } else {
                 expect(member.toolDeny).toBeUndefined()
             }
-            if (member.name === "Vision Analyst") {
-                expect(member.tier).toBeUndefined()
-                expect(member.route).toEqual(VISION_ROUTE)
-                continue
-            }
+            // Slot 4: the vision member is slot-routed like every other member — no exception.
             expect(member.tier).toBe(FROZEN_TIERS[member.name])
             expect(member.route).toBeUndefined()
         }
@@ -83,29 +82,21 @@ describe("B3 — the shipped bundle patch declares tiers, not literals", () => {
         expect(kept.length).toBe(11)
         for (let index = 0; index < kept.length; index += 1) {
             const name = profile.members[index].name
-            if (name === "Vision Analyst") {
-                expect("route" in kept[index]).toBe(true)
-                expect(kept[index].route).toEqual(VISION_ROUTE)
-                expect("tier" in kept[index]).toBe(false)
-                continue
-            }
             // A future schema that starts stripping unknown keys reddens HERE instead of silently
-            // routing every member by captain default.
+            // routing every member by captain default — Vision Analyst's tier 4 included.
             expect("tier" in kept[index]).toBe(true)
             expect(kept[index].tier).toBe(FROZEN_TIERS[name])
+            expect("route" in kept[index]).toBe(false)
         }
         // …and normalizeMember accepts those very members.
         const normalized = resolveTeamProfile(resolved.profiles, "mpd", 16)
         expect(normalized.members.map((member) => member.name)).toEqual(profile.members.map((member) => member.name))
         for (const member of normalized.members) {
-            if (member.name === "Vision Analyst") {
-                expect(member.route).toEqual(VISION_ROUTE)
-                expect(member.tier).toBeUndefined()
-                continue
-            }
             expect(member.tier).toBe(FROZEN_TIERS[member.name])
             expect(member.route).toBeUndefined()
         }
+        const vision = normalized.members.find((member) => member.name === "Vision Analyst")
+        expect(vision.tier).toBe(4)
     })
 })
 
@@ -119,9 +110,9 @@ describe("B2 — profiles.js accepts `tier` and `route`", () => {
     })
 
     test("an all-or-nothing route is carried, with and without the optional effort", () => {
-        const [withEffort] = load([{ name: "Vision Analyst", role: "r", route: VISION_ROUTE }])
+        const [withEffort] = load([{ name: "Route Literal", role: "r", route: VISION_ROUTE }])
         expect(withEffort.route).toEqual(VISION_ROUTE)
-        const [without] = load([{ name: "Vision Analyst", role: "r", route: { provider: "deepseek-official", model: "m" } }])
+        const [without] = load([{ name: "Route Literal", role: "r", route: { provider: "deepseek-official", model: "m" } }])
         expect(without.route).toEqual({ provider: "deepseek-official", model: "m" })
         expect(Object.hasOwn(without.route, "reasoningEffort")).toBe(false)
     })
@@ -231,17 +222,19 @@ const SLOTS = {
     slot1: { provider: "deepseek-official", model: "slot-one", reasoningEffort: "max" },
     slot2: { provider: "deepseek-official", model: "slot-two", reasoningEffort: "high" },
     slot3: { provider: "deepseek-official", model: "slot-three", reasoningEffort: "low" },
+    slot4: { provider: "deepseek-official", model: "slot-four-vision", reasoningEffort: "max" },
 }
 
 describe("B4 — a staged team takes each member's route from its slot", () => {
-    test("tier 1/2/3 resolve to slot1/slot2/slot3; an explicit route wins over any slot", async () => {
+    test("tier 1/2/3/4 resolve to slot1/slot2/slot3/slot4; an explicit route wins over any slot", async () => {
         const { stateRoot, cleanup } = fixture()
         try {
             const config = configWith([
                 { name: "Architect", role: "r", tier: 1, fallback: FALLBACK },
                 { name: "Researcher", role: "r", tier: 2, fallback: FALLBACK },
                 { name: "Deep Worker", role: "r", tier: 3, fallback: FALLBACK },
-                { name: "Vision Analyst", role: "r", route: VISION_ROUTE, fallback: FALLBACK },
+                { name: "Vision Analyst", role: "r", tier: 4, fallback: FALLBACK },
+                { name: "Route Literal", role: "r", route: VISION_ROUTE, fallback: FALLBACK },
             ])
             await stage({ ctx: makeCtx({ teamModels: SLOTS }), config, stateRoot })
             const members = stagedMembers(stateRoot, "mpd-slot-routes")
@@ -249,6 +242,7 @@ describe("B4 — a staged team takes each member's route from its slot", () => {
                 ["deepseek-official", "slot-one", "max"],
                 ["deepseek-official", "slot-two", "high"],
                 ["deepseek-official", "slot-three", "low"],
+                ["deepseek-official", "slot-four-vision", "max"],
                 ["deepseek-official", "deepseek-v4-flash-vision-exp", "high"],
             ])
         } finally {
@@ -270,6 +264,45 @@ describe("B4 — a staged team takes each member's route from its slot", () => {
             expect(stagedMembers(stateRoot, "before")[0].model).toBe("slot-three")
             expect(stagedMembers(stateRoot, "after")[0].model).toBe("changed-model")
             expect(stagedMembers(stateRoot, "after")[0].reasoningEffort).toBe("max")
+        } finally {
+            cleanup()
+        }
+    })
+
+    test("SLOT 4 — CHANGING slot4 moves Vision Analyst while slots 1-3 and their members stay put", async () => {
+        const { stateRoot, cleanup } = fixture()
+        try {
+            // The profile read is the REAL shipped YAML (`packages/mpd-bundle/cordis.patch.yml`),
+            // never a hand-built imitation: tiers come from the bundle, not from this test.
+            const profile = realProfile()
+            const config = { ...configWith([]), profiles: { mpd: profile } }
+            const ctxWith = (slot4) => makeCtx({ teamModels: { ...SLOTS, slot4 } })
+            await stage({ ctx: ctxWith(VISION_SLOT_DEFAULT), config, stateRoot, teamId: "vision-before" })
+            await stage({
+                ctx: ctxWith({ provider: "deepseek-official", model: "changed-vision-model", reasoningEffort: "low" }),
+                config,
+                stateRoot,
+                teamId: "vision-after",
+            })
+            const before = stagedMembers(stateRoot, "vision-before")
+            const after = stagedMembers(stateRoot, "vision-after")
+            expect(before.map((member) => member.name)).toEqual(after.map((member) => member.name))
+            const byName = (members) => new Map(members.map((member) => [member.name, member]))
+            const triples = (member) => [member.provider, member.model, member.reasoningEffort]
+            const beforeByName = byName(before)
+            const afterByName = byName(after)
+            // The slot's DEFAULT is the member's former explicit route: staging on it is behaviour-preserving.
+            expect(triples(beforeByName.get("Vision Analyst"))).toEqual(["deepseek-official", "deepseek-v4-flash-vision-exp", "high"])
+            // …and the slot is the SOURCE: changing it moves the vision member.
+            expect(triples(afterByName.get("Vision Analyst"))).toEqual(["deepseek-official", "changed-vision-model", "low"])
+            // Slots 1-3 are untouched, and so is every member they route.
+            for (const name of ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer", "Researcher", "Explorer", "Plan Reviewer", "Deep Worker", "Junior Engineer"]) {
+                expect(triples(afterByName.get(name))).toEqual(triples(beforeByName.get(name)))
+            }
+            // A spot check that the untouched half is not accidentally the same for a wrong reason:
+            // slot 1's value is the stub's, and slot 3's too.
+            expect(triples(afterByName.get("Architect"))).toEqual(["deepseek-official", "slot-one", "max"])
+            expect(triples(afterByName.get("Deep Worker"))).toEqual(["deepseek-official", "slot-three", "low"])
         } finally {
             cleanup()
         }
@@ -321,9 +354,9 @@ describe("B5 / F1-F5 — an unusable slot fails loudly and writes NO team state"
             pattern: /member "Deep Worker" is routed by teamModels\.slot3, which is INCOMPLETE \(missing reasoningEffort\)/,
         },
         {
-            label: "a tier outside the three configured slots",
+            label: "a tier outside the four configured slots",
             ctx: () => makeCtx({ teamModels: SLOTS }),
-            pattern: /member "Deep Worker" declares tier 9, but this bundle configures teamModels\.slot1\.\.slot3/,
+            pattern: /member "Deep Worker" declares tier 9, but this bundle configures teamModels\.slot1\.\.slot4/,
             tier: 9,
         },
     ]
@@ -391,7 +424,7 @@ describe("B5 / F1-F5 — an unusable slot fails loudly and writes NO team state"
                 hasService: false,
                 resolveCallConfig: async () => { throw new Error("plain failure text") },
             })
-            const config = configWith([{ name: "Vision Analyst", role: "r", route: VISION_ROUTE, fallback: FALLBACK }])
+            const config = configWith([{ name: "Route Literal", role: "r", route: VISION_ROUTE, fallback: FALLBACK }])
             await expect(stage({ ctx, config, stateRoot })).rejects.toThrow(/^plain failure text$/)
         } finally {
             cleanup()

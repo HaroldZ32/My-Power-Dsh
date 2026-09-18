@@ -75,14 +75,14 @@ export const BRIDGE_NO_WORKSPACE_NOTICE = "saved to settings — not yet written
  * bridge+restart truth AND the clause that keeps a settings-only save from reading as a lost one
  * (captain's ruling 1: with 0 or N live roots the value persists in the host settings document and
  * the read-in layer applies it to every workspace immediately). A knob with no human sentence
- * (every knob but the nine team-model slot leaves) keeps the disclosure-only hint byte-for-byte.
+ * (every knob but the twelve team-model slot leaves) keeps the disclosure-only hint byte-for-byte.
  */
 function knobHint(key: string, semantics?: string): string {
   const disclosure = `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
   return semantics === undefined || semantics.length === 0 ? disclosure : `${semantics} ${disclosure}`
 }
 
-// ── the nine team-model slot knobs: a SELECT with a live option list (A4) ─────
+// ── the twelve team-model slot knobs: a SELECT with a live option list (A4) ─────
 // The host renders `kind: "select"` by CYCLING a frozen option list — it deep-freezes the
 // options at registration and offers no pick-list dialog — so a slot leaf must be
 // registered with the list it should offer, and that list must never be empty (an empty
@@ -105,7 +105,7 @@ export interface SettingsOption {
  */
 export type SlotOptionSource = "live" | "declared"
 
-/** The three derived option lists the nine slot knobs are registered with, plus their source. */
+/** The three derived option lists the twelve slot knobs are registered with, plus their source. */
 export interface TeamModelOptionLists {
   provider: SettingsOption[]
   model: SettingsOption[]
@@ -136,7 +136,7 @@ function optionLabel(name: unknown, id: string): string {
 }
 
 /**
- * Project the adapter catalog into the option lists of the nine slot knobs (A4).
+ * Project the adapter catalog into the option lists of the twelve slot knobs (A4).
  *
  * LIVE: provider ids (label = the catalog's provider NAME), the UNION of every provider's
  * model ids (label = the model name), the UNION of every model's effort ids (label = the
@@ -263,7 +263,7 @@ export function settingsFields(lists: TeamModelOptionLists): readonly TuiSetting
  * Every `hint` is built by {@link knobHint} and therefore carries
  * {@link BRIDGE_DISCLOSURE}: the user reading `/settings` learns at the point of
  * use that an edit here is written to the workspace file AND that its behaviour
- * change waits for a restart. The nine team-model slot hints additionally LEAD with the
+ * change waits for a restart. The twelve team-model slot hints additionally LEAD with the
  * knob's own human sentence (which member group the slot routes and what configuring it
  * does) from the shared declaration (`knob.semantics`); the label carries the group name.
  *
@@ -354,7 +354,7 @@ export function registerSettingsSection(
     }
   })
 
-  // 2) Section: the mpd.jsonc fields. The nine team-model slot knobs carry CATALOG-DERIVED
+  // 2) Section: the mpd.jsonc fields. The twelve team-model slot knobs carry CATALOG-DERIVED
   //    options, and the host DEEP-FREEZES the option list at register time (it renders
   //    `select` by cycling that frozen list) — so the catalog is read BEFORE register, and
   //    because that read is async the registration is deferred by one microtask chain

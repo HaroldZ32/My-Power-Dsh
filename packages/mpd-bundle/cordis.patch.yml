@@ -418,9 +418,10 @@
             # TUI /settings section and in the Web settings card). The frozen class mapping is
             # tier 1 = Architect/Planner/Reviewer/Lead/Senior Engineer, tier 2 = the analysts
             # (Researcher/Explorer/Plan Reviewer), tier 3 = the executors (Deep Worker/Junior
-            # Engineer). Vision Analyst keeps an explicit `route` because it needs the vision model,
-            # so editing a slot never moves it. A slot edit applies at the next dsh boot, like every
-            # other mpd knob.
+            # Engineer), tier 4 = the vision member (Vision Analyst). Slot 4's DEFAULT is Vision
+            # Analyst's own vision route (deepseek-v4-flash-vision-exp at `high`), so routing it
+            # through the slot is behaviour-preserving while making its model configurable. A slot
+            # edit applies at the next dsh boot, like every other mpd knob.
             members:
               - name: Architect
                 tier: 1
@@ -465,7 +466,7 @@
                 executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
                 toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
               - name: Vision Analyst
-                route: { provider: deepseek-official, model: deepseek-v4-flash-vision-exp, reasoningEffort: high }
+                tier: 4
                 role: image / diagram analysis
                 fallback: { provider: deepseek-official, model: deepseek-v4-flash }
                 executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."

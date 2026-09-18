@@ -3334,12 +3334,12 @@ export function seedTaskDrafts(templates, seedToActual, now) {
 //#endregion mpd-delta seed-task-drafts
 //#region mpd-delta team-model-slot-route-helpers (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
 /** How many `teamModels.slot<N>` slots the bundle configures; the config plugin owns the same count. */
-const MAX_TEAM_MODEL_TIER = 3;
+const MAX_TEAM_MODEL_TIER = 4;
 /**
  * Resolve ONE member template to the route the staging loop calls `resolveMemberLlmSelection` with.
  * Precedence, by design: an explicit `route` is VERBATIM; else a `tier` reads the configured slot
  * through the EXISTING mpdConfig service (`get("teamModels.slot<N>")`, whose read path materialises
- * the three schema defaults on a fresh workspace); else the member's own literals, i.e. today's
+ * the four schema defaults on a fresh workspace); else the member's own literals, i.e. today's
  * captain-derived behaviour unchanged. An unusable slot is a LOUD failure naming the member, the
  * slot and the fix — it never falls back to another route, to the schema default, or to the member's
  * literals. `slot` is carried only so a later failure can name the slot; it is not part of a route.
@@ -3428,7 +3428,7 @@ async function attributeMemberSelectionFailure(ctx, templates, routes, selection
 export async function initializeProfileTeam(input) {
     const profile = resolveTeamProfile(input.config.profiles, input.profileName, input.config.maxMembers);
 //#region mpd-delta team-model-slot-routes (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
-    // The three configured `teamModels` slots are the DEFAULT route of this roster: a member that
+    // The four configured `teamModels` slots are the DEFAULT route of this roster: a member that
     // declares `tier: N` takes provider/model/reasoningEffort from
     // `ctx.get("mpdConfig").get("teamModels.slot<N>")`, a member that declares `route` is used
     // VERBATIM, and a member with NEITHER keeps today's captain-derived behaviour unchanged (F7).

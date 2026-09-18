@@ -21,7 +21,7 @@
 
 ## 模型目录接缝（`llmCatalog`）
 
-`packages/mpd-tui-plugin` 在**注册时**读取该接缝，为九个 `teamModels` 槽位 knob 生成选项 ——
+`packages/mpd-tui-plugin` 在**注册时**读取该接缝，为十二个 `teamModels` 槽位 knob 生成选项 ——
 因为宿主渲染 `select` 的方式是循环遍历一份被深度冻结的选项列表（没有选择对话框）。该读取是
 **全量兜底**的：
 

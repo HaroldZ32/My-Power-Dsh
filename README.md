@@ -84,7 +84,7 @@ tab strip. Team work also runs entirely through the `agent_teams_*` tools if you
 
 The same bundle mounts under the host's `dsh-tui` profile, where the terminal UI hosts the
 equivalents of the web tabs: a keyed status line, a full-screen board, the `/mpd` command tree,
-managed dialogs, shortcuts and a `/settings` section for the 22 `mpd.jsonc` knobs (13 + the nine
+managed dialogs, shortcuts and a `/settings` section for the 25 `mpd.jsonc` knobs (13 + the twelve
 `teamModels` slot leaves, the latter catalog-driven selections) — the section is
 bridged to `<workspace>/.mpd/mpd.jsonc` and takes effect **after a restart**. A routed team is
 reachable from the same command: **`/mpd team`** opens the team-workflow surface (id/name/phase,

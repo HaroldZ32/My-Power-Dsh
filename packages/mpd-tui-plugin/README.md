@@ -20,7 +20,7 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 |---|---|---|
 | Status line | `ctx.tuiStatus` | one keyed `mpd` contribution above the prompt: `mpd: team … · boulder … · plans … · workmates …` |
 | Transcript renderers | `ctx.tuiRenderers` | the bundle's log-only session events (`agent-teams/*`, `mpd-tui/board-opened`) as plain text rows, live and on replay |
-| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13 plus the nine `teamModels` slot leaves (22 in all), the slot leaves rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin behaviour needs a restart); every field hint says so on screen (see NOT CLAIMED #2) |
+| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13 plus the twelve `teamModels` slot leaves (25 in all), the slot leaves rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin behaviour needs a restart); every field hint says so on screen (see NOT CLAIMED #2) |
 | Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library; two extra rows for a routed team: `team-plan …` (staged only) and `team-hold held (…)` (only while a watchdog hold lasts) |
 | Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
 | Plan-approval scene | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`, or `a` inside the team workflow: type `approve <teamId>` EXACTLY (the id shown on the surface), then `Ctrl+X`; `Ctrl+D` twice inside the 10-second window discards; `Esc` never mutates; `Ctrl+R` re-reads |
@@ -35,7 +35,7 @@ log-only `mpd-tui/board-opened` session record.
 
 ### Team-model slot fields are catalog-driven selections
 
-The nine `teamModels` leaves (`slot{1,2,3}.{provider,model,reasoningEffort}`) are
+The twelve `teamModels` leaves (`slot{1,2,3,4}.{provider,model,reasoningEffort}`) are
 declared `select` fields. The host renders a `select` by CYCLING a **frozen** option
 list (there is no pick-list dialog), so their options are computed **at registration**
 from the model catalog the adapter reports — `mpdDsh.llmCatalog()`, the additive seam
@@ -171,7 +171,7 @@ only when no logger exists to `stderr`, with `debug` gated behind
    screen: every field hint names its mpd.jsonc key and carries `a save writes
    <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect
    for the mpd plugins after a restart (this knob is read at plugin mount)`,
-   followed by the clause that a settings-only save is never a lost save. The nine
+   followed by the clause that a settings-only save is never a lost save. The twelve
    team-model slot hints LEAD with the knob's own human sentence — the group the
    slot routes (`槽位 2 提供商（分析型成员）` / `Slot 2 provider (analysis members)`)
    and what configuring it does — and only then state the key and that disclosure. The
