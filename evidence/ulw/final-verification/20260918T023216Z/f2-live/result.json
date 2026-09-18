@@ -1,0 +1,81 @@
+{
+  "ok": true,
+  "slug": "t11-f2-live-plan-false",
+  "task": "t11",
+  "at": "2026-09-18T02:34:23.739Z",
+  "baseRevision": "1b89fa168c9dfe48b2f16b3ee91620fd7cdf7381",
+  "sourceHashes": {
+    "packages/mpd-ulw-plugin/dist/index.js": "9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710",
+    "packages/mpd-dsh-adapter-plugin/dist/index.js": "400ad5e6ed9547d6dd539ead6666054ee227292b4bf5f6bee297a01d33da23e8"
+  },
+  "acceptance": "t11 acceptance 4 — F2 repair verified ON THE SHIPPED COMPOSITION: a bounded live mpd_ultrawork (plan=false) + mpd_ulw invocation returns a VALID result, evidenced from the harness session log",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "shippedArtifacts": {
+      "measured": [
+        {
+          "rowId": "mpd-ulw",
+          "path": "packages/mpd-ulw-plugin/dist/index.js",
+          "sha256": "9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710",
+          "carriesFixedConditionalPlanFile": true,
+          "carriesRetiredUnconditionalPlanFile": false
+        },
+        {
+          "rowId": "mpd-dsh-adapter",
+          "path": "packages/mpd-dsh-adapter-plugin/dist/index.js",
+          "sha256": "400ad5e6ed9547d6dd539ead6666054ee227292b4bf5f6bee297a01d33da23e8",
+          "carriesFixedConditionalPlanFile": false,
+          "carriesRetiredUnconditionalPlanFile": false
+        }
+      ],
+      "note": "measured on the INSTALLED PROFILE'S OWN artifacts (no sandbox build, no row retargeting): the boot below exercises the user path."
+    },
+    "shippedLivePlanFalse": {
+      "ok": true,
+      "problems": [],
+      "exit": 0,
+      "crashes": [],
+      "stubRequests": 6,
+      "calls": [
+        {
+          "callId": "call_t11-f2-live-plan-false_0",
+          "tool": "mpd_ultrawork",
+          "objective": "t11-f2-shipped-ultrawork",
+          "plan": false,
+          "resultFound": true,
+          "isError": false,
+          "resultTextHead": "ultrawork status=max-rounds rounds=1 verdict=n/a\nround 1: no summary\nstate: /tmp/mpd-t11-f2-live-plan-false-WQoFJX/ws-f2/.mpd/ulw/ulw-02b0cd15/state.json"
+        },
+        {
+          "callId": "call_t11-f2-live-plan-false_1",
+          "tool": "mpd_ulw",
+          "objective": "t11-f2-shipped-alias",
+          "plan": null,
+          "resultFound": true,
+          "isError": false,
+          "resultTextHead": "mpd_ulw status=max-rounds rounds=1\nround 1: no summary\nstate: /tmp/mpd-t11-f2-live-plan-false-WQoFJX/ws-f2/.mpd/ulw/ulw-eb72d594/state.json"
+        }
+      ],
+      "invalidOutputHits": 0,
+      "invalidOutputExcerpt": [],
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-t11-f2-live-plan-false-WQoFJX-ws-f2--"
+        ]
+      },
+      "sessionsSandboxed": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-t11-f2-live-plan-false-WQoFJX-ws-f2--"
+        ]
+      },
+      "note": "the two tool calls are MODEL-INITIATED in the SHIPPED composition, so the harness ran its own output validation on each returned value"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+### .toolchain bin entries
+lrwxrwxrwx 1 root root   25 Sep 11 11:07 ast-grep -> ../@ast-grep/cli/ast-grep
+lrwxrwxrwx 1 root root   19 Sep 11 11:07 sg -> ../@ast-grep/cli/sg
+
+### ast-grep --version
+ast-grep 0.45.3
+rc=0
+
+### ast-grep -V (probe shape)
+ast-grep 0.45.3
+
+### sg --version
+========================================================================
+WARNING: `sg` is deprecated. Use `ast-grep` instead.
+========================================================================
+
+### sg -V
+========================================================================
+WARNING: `sg` is deprecated. Use `ast-grep` instead.
+========================================================================
+
+### readlink targets
+/root/dshProj/my-power-dsh/.toolchain/node_modules/@ast-grep/cli/ast-grep
+/root/dshProj/my-power-dsh/.toolchain/node_modules/@ast-grep/cli/sg
+### sg -V full stdout+stderr, exit
+========================================================================
+WARNING: `sg` is deprecated. Use `ast-grep` instead.
+========================================================================
+Error: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+EXIT=1
+
+### sg --version stdout only
+EXIT=1
+
+### probeAstGrep source
+export function probeAstGrep(binary) {
+  try {
+    const out = execFileSync(binary, ["--version"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 20_000,
+    })
+    return String(out).toLowerCase().includes("ast-grep")
+  } catch {
+    return false
+  }
+}

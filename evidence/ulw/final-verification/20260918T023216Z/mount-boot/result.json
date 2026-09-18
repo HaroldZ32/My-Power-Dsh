@@ -1,0 +1,141 @@
+{
+  "ok": true,
+  "slug": "t11-mount-boot",
+  "task": "t11",
+  "at": "2026-09-18T02:35:01.163Z",
+  "baseRevision": "1b89fa168c9dfe48b2f16b3ee91620fd7cdf7381",
+  "sourceHashes": {
+    "packages/mpd-ulw-plugin/dist/index.js": "9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8"
+  },
+  "acceptance": "t11 acceptance 6 — a mount-instrumented boot on the integrated revision shows the mpd-ulw row loaded, both command names registered, and no PLUGIN pre-staging for a complex prompt",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "shippedArtifact": {
+      "ok": true,
+      "path": "packages/mpd-ulw-plugin/dist/index.js",
+      "sha256": "9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710",
+      "markers": [
+        "registerCommand",
+        "ULW_ACTIVATION_DIRECTIVE",
+        "usage: /ulw"
+      ],
+      "note": "the shipped dist must carry the command surface, otherwise this boot would measure PRE-WAVE code (that was the pre-integration observation); no sandbox build and no row retargeting is used here"
+    },
+    "mountedShippedBoot": {
+      "ok": true,
+      "problems": [],
+      "exit": 0,
+      "crashes": [],
+      "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+      "tools": {
+        "serviceMounted": true,
+        "hasLookup": true,
+        "mpd_ultrawork": true,
+        "mpd_ulw": true
+      },
+      "commands": [
+        "agent-teams",
+        "agent-teams-mpd",
+        "compact",
+        "feedback",
+        "goal",
+        "mpd",
+        "permission",
+        "plan",
+        "ultrawork",
+        "ulw"
+      ],
+      "descriptors": [
+        {
+          "name": "agent-teams",
+          "description": "run a goal with a multi-agent team (you become the captain)",
+          "hint": "[--profile <name>] <goal>"
+        },
+        {
+          "name": "agent-teams-mpd",
+          "description": "run a goal with the AgentTeams mpd profile",
+          "hint": "<goal>"
+        },
+        {
+          "name": "compact",
+          "description": "Compact older conversation history",
+          "hint": null
+        },
+        {
+          "name": "feedback",
+          "description": "record feedback about this session",
+          "hint": "<text>"
+        },
+        {
+          "name": "goal",
+          "description": "set or view the goal for a long-running task",
+          "hint": "[<objective>|clear|edit <objective>|pause|resume]"
+        },
+        {
+          "name": "mpd",
+          "description": "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
+          "hint": null
+        },
+        {
+          "name": "permission",
+          "description": "Switch the permission preset (sandbox mode + approval policy)",
+          "hint": "<preset>"
+        },
+        {
+          "name": "plan",
+          "description": "Enter or leave plan mode",
+          "hint": "[off|message]"
+        },
+        {
+          "name": "ultrawork",
+          "description": "Run the ULW discipline for an objective, fully autonomously (identical alias: /ulw)",
+          "hint": "objective"
+        },
+        {
+          "name": "ulw",
+          "description": "Run the ULW discipline for an objective, fully autonomously (identical alias: /ultrawork)",
+          "hint": "objective"
+        }
+      ],
+      "registryShape": {
+        "hasRootRegistry": true,
+        "registryKeys": [
+          "ctx",
+          "_counter",
+          "_internal"
+        ]
+      },
+      "notice": {
+        "any": true,
+        "advisory": 1,
+        "provisioned": 0,
+        "signals": [
+          "C"
+        ]
+      },
+      "teams": {
+        "active": [],
+        "archived": []
+      },
+      "isolation": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-t11-mount-boot-Gdtusa-ws-mount--"
+        ]
+      },
+      "sessionsSandboxed": {
+        "ok": true,
+        "checked": 1,
+        "keys": [
+          "--tmp-mpd-t11-mount-boot-Gdtusa-ws-mount--"
+        ]
+      },
+      "note": "registration instrumentation on the SHIPPED composition: the row is loaded, both command names are listed by the live registry, and a complex prompt produced the advisory notice with ZERO team records"
+    }
+  }
+}

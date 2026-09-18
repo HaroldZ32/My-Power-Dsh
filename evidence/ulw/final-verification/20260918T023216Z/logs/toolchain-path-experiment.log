@@ -1,0 +1,37 @@
+### which test bin dir gives sg a working delegate
+ast-grep
+codegraph
+comment-checker
+sg
+
+### A: default PATH (ast-grep absent) -> expect PASS
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [230.75ms]
+ 10 pass
+ 0 fail
+rc=0
+
+### B: PATH with .toolchain/node_modules/.bin prepended -> expect the sg assertion to redden
+(pass) ast-grep: a candidate that fails the ast-grep probe is skipped, never accepted by name [0.21ms]
+Expected: false
+Received: true
+(fail) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [220.21ms]
+ 1 fail
+
+### C: sg with toolchain bin on PATH
+ast-grep 0.45.3
+sg_exit=0
+### root node_modules/.bin ast-grep?
+ast-grep
+sg
+rc=0
+
+### realpath node_modules/.bin
+/root/dshProj/my-power-dsh/node_modules/.bin
+
+### D: direct bun test with node_modules/.bin prepended
+Expected: false
+Received: true
+(fail) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [256.39ms]
+ 1 fail
+
+### PATH that bun run would use

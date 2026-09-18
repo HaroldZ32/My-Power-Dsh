@@ -1,0 +1,29 @@
+{
+  "capturedAtUtc": "2026-09-18T02:32:26.324Z",
+  "commit": "1b89fa168c9dfe48b2f16b3ee91620fd7cdf7381",
+  "branch": "dev",
+  "worktreeClean": false,
+  "statusPorcelain": "?? evidence/ulw/final-verification/",
+  "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "fileHashes": {
+    "packages/mpd-ulw-plugin/src/index.ts": "1480131fcec6d18e5cc8b6bdf6afb74fd7fff916ee6f037d561df3036da2c2ea",
+    "packages/mpd-ulw-plugin/dist/index.js": "9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710",
+    "packages/mpd-ulw-plugin/test/engine.test.ts": "7db8496ef6d124570401f019471b5c320526b2af957d04433ad4efb66437658e",
+    "packages/mpd-ulw-plugin/test/commands.test.ts": "5b4935f5521a3257af4e55953ffb0e6cb75cae1ad2df187f260b5fbbe016a406",
+    "packages/mpd-dsh-adapter-plugin/src/index.ts": "d3dbf438332c933768f756cd59f70072cd145c9f330130e3291abe301bb6f80f",
+    "packages/mpd-dsh-adapter-plugin/dist/index.js": "400ad5e6ed9547d6dd539ead6666054ee227292b4bf5f6bee297a01d33da23e8",
+    "packages/mpd-agent-teams-plugin/lib/session-start.js": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8",
+    "packages/mpd-agent-teams-plugin/lib/mpd-deltas.js": "5d73ff247eefa91a2849dc7ac9cd5a50cf4deef8dd3b95c09fd43d10bf2d175d",
+    "scripts/patch-agent-teams-fixes.mjs": "8d6a3102eed6973dfda5148c30ab49e5e84caaef7beaa223bd8383a8f108db6d",
+    "skills/dsh-qa/scripts/session-start-team.mjs": "c6dc9cb495ab4b8857a1b39f774c3de89d9d8e65d24394efa7937ddf9e824a79",
+    "skills/dsh-qa/scripts/ulw-command.mjs": "5e03eec31c685370da69f75c08c047a8e2c7ce5591e73564372b3924a94add5f",
+    "skills/dsh-qa/scripts/ultrawork-smoke.mjs": "dbad6a4360281d12cc0aba0f60d6bcfabe425cbef73de3e79322d018232fba30",
+    "presets/mpd/agent.cordis.yml": "ccdb671209f7605ca7604d2756c30ac7b7e48e03674139a892152b5b147f057b",
+    "packages/mpd-bundle/cordis.patch.yml": "a48f142d87155c437affb817fe52b9af4ff8a392fa28dcff73d4a3ab3c012116",
+    "VENDOR_LOCK.json": "4ae15e8149cb0f250fc29af42e6d4e9793295028ff10511c1dc2b4c37b064477"
+  },
+  "missing": [
+    "packages/mpd-ulw-plugin/src/engine.test-fixtures.ts"
+  ],
+  "fileHashesSha256": "4570864de80a78693464c7fbcf907941b4287fe0eafe55a8323c59e0ec3813e8"
+}

@@ -1,0 +1,12 @@
+[session-start-team] ok=true -> /root/dshProj/my-power-dsh/evidence/ulw/final-verification/20260918T023216Z/cases/session-start-team-2026-09-18T02-43-31.862Z
+  settled: {"ok":true,"rev":"1b89fa168c9dfe48b2f16b3ee91620fd7cdf7381","gateHash":"4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8"}
+  installer: {"ok":true,"exit":0}
+  patchRow: {"ok":true,"hasRow":true}
+  compose: {"ok":true,"exit":0}
+  simpleSide: [{"prompt":"Reply with exactly: hello-ok","expect":"none","exited":0,"teams":0,"stagedTotal":0,"members":0,"spawnedMembers":0,"archivedRecords":0,"archivedByModel":false,"modelStaged":0,"pluginStaged":0,"unattributed":0,"attributions":[],"notice":{"any":false,"advisory":0,"provisioned":0,"signals":[]},"isolation":true,"sessionRecords":20,"sessionFrames":7,"problems":[],"ok":true},{"prompt":"What d
+  softComplexSide: [{"prompt":"Align the bundle with upstream: audit the orchestration surface, then implement the routing change.","expect":"advise","exited":0,"teams":0,"stagedTotal":0,"members":0,"spawnedMembers":0,"archivedRecords":0,"archivedByModel":false,"modelStaged":0,"pluginStaged":0,"unattributed":0,"attributions":[],"notice":{"any":true,"advisory":1,"provisioned":0,"signals":["C"]},"isolation":true,"sess
+  explicitSide: [{"prompt":"team: fix the flaky test","expect":"provision","exited":0,"teams":0,"stagedTotal":1,"staged":"staged","profile":"mpd","members":11,"spawnedMembers":0,"archivedRecords":1,"archivedByModel":true,"modelStaged":0,"pluginStaged":1,"unattributed":0,"attributions":[{"slot":"archived","id":"mpd-default","phase":"staged","description":"Auto-routed by the complexity gate (sessionTeamPolicy.autoR
+  negativeControl: {"ok":true,"teams":0,"stagedTotal":0,"notice":{"any":false,"advisory":0,"provisioned":0},"disarmed":true,"isolation":true,"problems":[]}
+  threeWay: {"ok":true,"simpleTeams":[0,0,0],"simpleNotices":[false,false,false],"softTeams":[0,0],"softModelStaged":[0,0],"softPluginStaged":[0,0],"softAdvisory":[1,1],"softSignals":[["C"],["C"]],"explicitTeams":[1],"explicitActive":[0],"explicitArchived":[1],"explicitPluginStaged":[1],"explicitProvisioned":[1]}
+[session-start-team] PASS
+EXIT=0

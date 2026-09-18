@@ -1,0 +1,15 @@
+$ node scripts/install-profile.mjs --yes --dsh-home /tmp/mpd-t11-mount-boot-Gdtusa/dsh-home --profile mpd-headless --skip-toolchain
+[[exit=0]]
+[shipped] $ dsh --profile mpd-headless --patch <overlay> "Align the bundle with upstream: audit the orchestration surface, then implement the routing change." (cwd /tmp/mpd-t11-mount-boot-Gdtusa/ws-mount)
+[[exit=0]]
+[mpd-codegraph] init status=ok binary=/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph cwd=/tmp/mpd-t11-mount-boot-Gdtusa/ws-mount
+[mpd-dsh-adapter] mpdDsh provided (h
+[t11-mount-boot] ok=true -> /root/dshProj/my-power-dsh/evidence/ulw/final-verification/20260918T023216Z/mount-boot
+  install: {"ok":true,"exit":0}
+  shippedArtifact: {"ok":true,"path":"packages/mpd-ulw-plugin/dist/index.js","sha256":"9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710","markers":["registerCommand","ULW_ACTIVATION_DIRECTIVE","usage: /ulw"],"note":"the shipped dist must carry the command surface, otherwise this boot would measure PRE-
+  mountedShippedBoot: {"ok":true,"problems":[],"exit":0,"crashes":[],"prompt":"Align the bundle with upstream: audit the orchestration surface, then implement the routing change.","tools":{"serviceMounted":true,"hasLookup":true,"mpd_ultrawork":true,"mpd_ulw":true},"commands":["agent-teams","agent-teams-mpd","compact","fe
+[t11-mount-boot] ok=true -> /root/dshProj/my-power-dsh/evidence/ulw/final-verification/20260918T023216Z/mount-boot
+  install: {"ok":true,"exit":0}
+  shippedArtifact: {"ok":true,"path":"packages/mpd-ulw-plugin/dist/index.js","sha256":"9de61b127d272417e76ca4da0dfe5f5bf8cfeb27af81e7ea5bac6120d541c710","markers":["registerCommand","ULW_ACTIVATION_DIRECTIVE","usage: /ulw"],"note":"the shipped dist must carry the command surface, otherwise this boot would measure PRE-WAVE code (that was 
+  mountedShippedBoot: {"ok":true,"problems":[],"exit":0,"crashes":[],"prompt":"Align the bundle with upstream: audit the orchestration surface, then implement the routing change.","tools":{"serviceMounted":true,"hasLookup":true,"mpd_ultrawork":true,"mpd_ulw":true},"commands":["agent-teams","agent-teams-mpd","compact","feedback","goal","mpd"
+EXIT=0
