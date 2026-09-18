@@ -1721,11 +1721,12 @@ function createDshAdapter(ctx, config = {}) {
 // packages/mpd-config-plugin/src/settings-schema.ts
 var import_schemastery = __toESM(require_lib(), 1);
 var SETTINGS_NS = "mpd";
-var TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3"];
+var TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3", "slot4"];
 var TEAM_MODEL_SLOT_DEFAULTS = {
   slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
   slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }
+  slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
+  slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" }
 };
 var TEAM_MODEL_FALLBACK_OPTIONS = {
   provider: ["deepseek-official"],
@@ -1749,7 +1750,8 @@ var SettingsSchema = import_schemastery.default.object({
   teamModels: import_schemastery.default.object({
     slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
     slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
-    slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3)
+    slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
+    slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4)
   }),
   watchdog: import_schemastery.default.object({
     enabled: import_schemastery.default.boolean().default(true),
@@ -1770,12 +1772,13 @@ function knobHint(key, semantics) {
 var TEAM_MODEL_SLOT_GROUPS = {
   slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
   slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
-  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] }
+  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
+  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
 };
 var TEAM_MODEL_LEAF_TEMPLATES = {
   provider: {
-    en: "The provider half of this slot. The three slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst belongs to no slot: it keeps its own fixed vision route.",
-    zh: "这一档的提供商。三档合起来是 team 成员的默认模型路由：建队时，{group}（{members}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 不属任何档位，它固定使用自己的视觉模型路由。"
+    en: "The provider half of this slot. The slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.",
+    zh: "这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，{group}（{members}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。"
   },
   model: {
     en: "This slot's model. Together with the provider above, it decides the model the {group} ({members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.",
@@ -1786,10 +1789,29 @@ var TEAM_MODEL_LEAF_TEMPLATES = {
     zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。"
   }
 };
+var TEAM_MODEL_SLOT_LEAF_OVERRIDES = {
+  slot4: {
+    provider: {
+      en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
+      zh: "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。"
+    },
+    model: {
+      en: "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
+      zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。"
+    },
+    reasoningEffort: {
+      en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
+      zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。"
+    }
+  }
+};
 function teamModelMembers(slot, lang) {
   return TEAM_MODEL_SLOT_GROUPS[slot].members.join(lang === "zh" ? "、" : ", ");
 }
 function teamModelLeafSentence(slot, leaf, lang) {
+  const override = TEAM_MODEL_SLOT_LEAF_OVERRIDES[slot]?.[leaf];
+  if (override !== undefined)
+    return override[lang];
   return TEAM_MODEL_LEAF_TEMPLATES[leaf][lang].split("{group}").join(TEAM_MODEL_SLOT_GROUPS[slot][lang]).split("{members}").join(teamModelMembers(slot, lang));
 }
 var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {

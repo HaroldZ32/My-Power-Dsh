@@ -86,7 +86,10 @@ row list" state the paragraph above already records for t19/t20/t36). Sites and 
 **Wave-4 (`t6`) additions — THREE regions, documented here in prose under the same ruling** (adding a
 REGION leaves the derived `A1–D42` value unchanged, since an adaptation ROW is not a region; the
 D-rows stay a captain/integration edit). The team-model-slot work mints no new D-id: the `mpd`
-profile's members resolve their default route from `teamModels.slot{1,2,3}`. Sites and region ids:
+profile's members resolve their default route from `teamModels.slot{1,2,3,4}` (slot 4 is the vision
+member's slot; the 2026-09-18 slot-4 change added NO region — `MAX_TEAM_MODEL_TIER` moved 3 -> 4
+INSIDE the existing `team-model-slot-route-helpers` region, so the live count stayed 123 and
+`--write-registry` regenerated the same 123 entries). Sites and region ids:
 
 | row | site | regions |
 |---|---|---|

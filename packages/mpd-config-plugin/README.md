@@ -11,7 +11,7 @@ commas) with prototype-pollution-safe merge.
 ## Known keys
 
 - `memory.vcs`: `git | svn | both` (Plan C / C6 memory engine).
-- `teamModels.slot{1,2,3}.{provider,model,reasoningEffort}`: the three team-model
+- `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}`: the four team-model
   slots — the default route of the agent-teams member classes (see below).
 - `team.stateDir`, `hashline.enabled/guardEditTools`,
   `commentChecker.autoCheck/bin`, `modelchain.<role>`, `boulder.dir`,
@@ -19,31 +19,34 @@ commas) with prototype-pollution-safe merge.
 
 ## Team-model slots (`teamModels`)
 
-The **default model route of agent-teams members**, one slot per member class. Three
-slots, nine leaves:
+The **default model route of agent-teams members**, one slot per member class. Four
+slots, twelve leaves:
 
 | Slot | Path | Default | Member class (agent-teams `tier`) |
 |---|---|---|---|
 | 1 | `teamModels.slot1.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `max` | Architect, Planner, Reviewer, Lead, Senior Engineer (`tier: 1`) |
 | 2 | `teamModels.slot2.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `high` | Researcher, Explorer, Plan Reviewer (`tier: 2`) |
 | 3 | `teamModels.slot3.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `high` | Deep Worker, Junior Engineer (`tier: 3`) |
+| 4 | `teamModels.slot4.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash-vision-exp` / `high` | Vision Analyst (`tier: 4`) |
 
 - **One literal carries the defaults** (`TEAM_MODEL_SLOT_DEFAULTS`), so the schema
   defaults and the resolved config cannot drift.
 - **The READ path materialises them:** a workspace with no `.mpd/mpd.jsonc` at all
-  still resolves all nine leaves — `get("teamModels.slot2")` (and the key-less
+  still resolves all twelve leaves — `get("teamModels.slot2")` (and the key-less
   `mpd_config_get`) answers the defaults. The materialised object is a NEW value: the
   raw merged file config is never mutated and the defaults never leak into the
   settings-document write-back.
-- **Vision Analyst is deliberately not a slot member:** it keeps an explicit route
-  (`deepseek-official` / `deepseek-v4-flash-vision-exp` / `high`), so editing a slot
-  can never cost it the vision model.
+- **Vision Analyst is slot 4's member:** it is routed through
+  `teamModels.slot4` (`deepseek-official` / `deepseek-v4-flash-vision-exp` / `high` by
+  default), so its vision model is editable like every other member's route — and the
+  slot's model MUST accept image input, because this member's whole value is reading
+  images.
 - **Restart semantics:** exactly like every other knob in this layer — a save through
   the settings document reaches `<workspace>/.mpd/mpd.jsonc` immediately and the
   config layer applies it to every workspace, while a RUNNING mpd plugin keeps the
   config it read at `apply()`; the behaviour change waits for a restart.
-- **Front doors:** the nine leaves are `select` knobs of the ONE 22-row declaration
-  (`SETTINGS_KNOBS`: the original 13 knobs plus these 9) in the TUI `/settings`
+- **Front doors:** the twelve leaves are `select` knobs of the ONE 25-row declaration
+  (`SETTINGS_KNOBS`: the original 13 knobs plus these 12) in the TUI `/settings`
   section and in the Web GUI card. Their option lists come from the live model
   catalog (the adapter's `llmCatalog()` server-side, the host's client catalog on the
   Web), falling back to `TEAM_MODEL_FALLBACK_OPTIONS` when that catalog is

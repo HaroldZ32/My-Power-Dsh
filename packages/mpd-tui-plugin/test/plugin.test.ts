@@ -24,7 +24,7 @@ import { DECISION_EVENTS } from "../src/decisions"
 type Disposer = () => void | undefined
 
 /**
- * Let the section's detached catalog-read → register chain finish. The nine slot knobs take
+ * Let the section's detached catalog-read → register chain finish. The twelve slot knobs take
  * their options from the live catalog, which the host freezes at register time, so the
  * registration is one microtask chain behind `apply` by design.
  */
@@ -305,17 +305,17 @@ describe("full composition (every service injected)", () => {
     expect(outcomeOf(report, "tuiRenderers").state).toBe("requested")
 
     // tuiSettingsSections: the mpd.jsonc section, with the on-screen disclosure. The section
-    // registers one microtask behind apply: the nine team-model slot knobs take their option
+    // registers one microtask behind apply: the twelve team-model slot knobs take their option
     // lists from the live model catalog the adapter reports, and the host DEEP-FREEZES the
     // options at register time (it renders `select` by cycling that frozen list).
     await settle()
     expect(calls.sections).toHaveLength(1)
     expect(calls.sections[0].ns).toBe("mpd")
-    // 22 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
-    // thirteen original mpd knobs plus the nine team-model slot leaves (3 slots x provider /
+    // 25 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
+    // thirteen original mpd knobs plus the twelve team-model slot leaves (4 slots x provider /
     // model / reasoningEffort). The per-field assertions below are the other half of the
     // no-drift pair.
-    expect(calls.sections[0].fields).toHaveLength(22)
+    expect(calls.sections[0].fields).toHaveLength(25)
     for (const field of calls.sections[0].fields) {
       expect(field.hint).toContain("mpd.jsonc")
       expect(field.hint).toContain(BRIDGE_DISCLOSURE)
@@ -324,7 +324,7 @@ describe("full composition (every service injected)", () => {
     // This double composes no `llm`, so every slot knob is on the DECLARED fallback branch —
     // and none of them may ever carry an empty option list (a slot must never need typing).
     const slotFields = calls.sections[0].fields.filter((field: any) => field.path[0] === "teamModels")
-    expect(slotFields).toHaveLength(9)
+    expect(slotFields).toHaveLength(12)
     for (const field of slotFields) {
       expect(field.kind).toBe("select")
       expect(field.options.length).toBeGreaterThan(0)
@@ -432,7 +432,7 @@ async function applyWithAdapter(llmCatalog: () => Promise<unknown>): Promise<{ c
   return { calls, host }
 }
 
-describe("A4: the nine team-model slot knobs select from the live catalog", () => {
+describe("A4: the twelve team-model slot knobs select from the live catalog", () => {
   const fieldAt = (section: any, path: string): any => {
     const found = section.fields.find((candidate: any) => candidate.path.join(".") === path)
     if (found === undefined) throw new Error(`no field at ${path}`)
@@ -457,8 +457,8 @@ describe("A4: the nine team-model slot knobs select from the live catalog", () =
       { value: "max", label: "Max" },
       { value: "high", label: "High" },
     ])
-    // all nine: `select` with a NON-EMPTY list — no slot is ever a text input
-    expect(slotFields(section)).toHaveLength(9)
+    // all twelve: `select` with a NON-EMPTY list — no slot is ever a text input
+    expect(slotFields(section)).toHaveLength(12)
     for (const field of slotFields(section)) {
       expect(field.kind).toBe("select")
       expect(field.options.length).toBeGreaterThan(0)
@@ -472,6 +472,29 @@ describe("A4: the nine team-model slot knobs select from the live catalog", () =
     expect(line).toContain("model=live(2)")
     expect(line).toContain("reasoningEffort=live(2)")
     expect(line).toContain("catalog=live")
+  })
+
+  test("the three NEW slot-4 rows register as selects with non-empty options and the declared labels/zh", async () => {
+    const { calls } = await applyWithAdapter(async () => ({ providers: [], degraded: true }))
+    const section = calls.sections[0]
+    const vision = section.fields.filter((field: any) => field.path[0] === "teamModels" && field.path[1] === "slot4")
+    expect(vision).toHaveLength(3)
+    const declared = SETTINGS_KNOBS.filter((knob) => knob.path[1] === "slot4")
+    for (const [index, field] of vision.entries()) {
+      // element-wise against the ONE declaration — the front doors cannot drift
+      expect([...(field.path as string[])]).toEqual([...declared[index].path])
+      expect(field.kind).toBe("select")
+      expect(field.options.length).toBeGreaterThan(0)
+      expect(field.label).toBe(declared[index].label)
+      expect(field.descriptions?.zh).toBe(declared[index].zh)
+      expect(String(field.hint).startsWith(String(declared[index].semantics))).toBe(true)
+    }
+    expect(vision.map((field: any) => field.label)).toEqual([
+      "Slot 4 provider (vision member)", "Slot 4 model (vision member)", "Slot 4 reasoning effort (vision member)",
+    ])
+    expect(vision.map((field: any) => field.descriptions?.zh)).toEqual([
+      "槽位 4 提供商（视觉成员）", "槽位 4 模型（视觉成员）", "槽位 4 推理强度（视觉成员）",
+    ])
   })
 
   test("a degraded catalog falls back to the declared option lists", async () => {
@@ -720,11 +743,11 @@ describe("settings section disclosure (t21)", () => {
   })
 
   test("every slot hint LEADS with the knob's human sentence, then the key + disclosure", () => {
-    // The nine team-model rows are the flat list's only rows with a human sentence: the label
+    // The twelve team-model rows are the flat list's only rows with a human sentence: the label
     // carries the group (`槽位 2 提供商（分析型成员）`), the hint carries what the slot IS and what
     // configuring it DOES, and only then the mandatory key + disclosure + not-lost clause.
     const slotFields = SETTINGS_FIELDS.filter((field) => field.path[0] === "teamModels")
-    expect(slotFields).toHaveLength(9)
+    expect(slotFields).toHaveLength(12)
     for (const field of slotFields) {
       const knob = SETTINGS_KNOBS.find((candidate) => [...candidate.path].join(".") === field.path.join("."))
       expect(knob).toBeDefined()

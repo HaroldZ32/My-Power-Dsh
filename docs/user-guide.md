@@ -283,7 +283,7 @@ transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.
 
 ### 7.2 The `/settings` screen and the `mpd.jsonc` bridge
 
-`/settings` edits the real `mpd.jsonc` knobs — 22 in all (the original 13 plus the nine
+`/settings` edits the real `mpd.jsonc` knobs — 25 in all (the original 13 plus the twelve
 `teamModels` slot leaves, which are selection-only fields whose options come from the live model
 catalog, with the declared lists as fallback), among them `hashline.maxDiffChars`,
 `commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir` — under the
@@ -366,7 +366,7 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | provider/model chains per roster role |
 | `team.stateDir` | agent-teams | where team state lives (defaults to `.mpd/team`) |
-| `teamModels.slot{1,2,3}.*` | agent-teams (via mpd-config) | the three **team-model slots**: `{provider, model, reasoningEffort}` per slot, defaulting to `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high`. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer; Vision Analyst keeps its own explicit vision route. A slot that cannot be resolved fails team creation **loudly** (the member and the slot are named, nothing is written) and an effort is never silently clamped. Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section; a saved change reaches the file immediately and the plugins after a restart. |
+| `teamModels.slot{1,2,3,4}.*` | agent-teams (via mpd-config) | the four **team-model slots**: `{provider, model, reasoningEffort}` per slot, defaulting to `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high` (slot 4: `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high`). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. A slot that cannot be resolved fails team creation **loudly** (the member and the slot are named, nothing is written) and an effort is never silently clamped. Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section; a saved change reaches the file immediately and the plugins after a restart. |
 
 `mpd-codegraph` is deliberately absent from this table: it takes `autoInit`, `initTimeoutMs`,
 `cooldownMs` and `binary` from its **bundle-patch row** options (read at apply time), and no plugin

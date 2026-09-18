@@ -93,13 +93,15 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   with `purge: true` + `confirm === name`, and recovery is a manual `mv` back — there is no
   in-product restore). Both mutations are refused while the workmate is in use (see §12) and
   names are ASCII-only `[a-z0-9_-]` before any filesystem call. The profile's members do not
-  carry literal models: each resolves its DEFAULT route from the three configurable
-  **team-model slots** (`teamModels.slot{1,2,3}.{provider,model,reasoningEffort}` in
+  carry literal models: each resolves its DEFAULT route from the four configurable
+  **team-model slots** (`teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in
   `mpd.jsonc` / the `mpd` settings namespace, defaulting to `deepseek-official` /
-  `deepseek-v4-flash` at `max`/`high`/`high`) — slot 1 = Architect/Planner/Reviewer/Lead/
+  `deepseek-v4-flash` at `max`/`high`/`high`, and to `deepseek-v4-flash-vision-exp` at
+  `high` for slot 4) — slot 1 = Architect/Planner/Reviewer/Lead/
   Senior Engineer, slot 2 = Researcher/Explorer/Plan Reviewer, slot 3 = Deep Worker/Junior
-  Engineer. A member may declare an explicit `route` instead (Vision Analyst does, to keep
-  its vision model), and a slot that cannot be resolved — missing service, missing or
+  Engineer, slot 4 = Vision Analyst (the vision member: the slot's model must accept image
+  input, and its default is the vision model this member used to carry as an explicit
+  route). A member may still declare an explicit `route` instead, and a slot that cannot be resolved — missing service, missing or
   incomplete slot, unknown model, unsupported effort — fails team creation LOUDLY naming the
   member and the slot, writes no team state, and NEVER clamps an effort. The ONLY
   shipped preset is `mpd` — the main working agent — which also carries the
@@ -645,12 +647,14 @@ in `evidence/platform/harness-close/`.
   registration, and `dsh --dump-config` composes rows without mounting them). Do not filter
   the list with `dsh.hasTool` either: it reads the global tool view, where `write`/`edit`/`bash`
   answer false, so filtering would silently DROP the entries that are the guarantee.
-- team-model slot: one of the three configurable default model routes of the agent-teams
-  members — `teamModels.slot{1,2,3}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the
+- team-model slot: one of the four configurable default model routes of the agent-teams
+  members — `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the
   `mpd` settings namespace, whose defaults are `deepseek-official` / `deepseek-v4-flash` at
-  `max`/`high`/`high`. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2
-  Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer; a member may declare
-  an explicit `route` instead (Vision Analyst does, keeping its vision model). A slot that
+  `max`/`high`/`high`, plus `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high`
+  for slot 4. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2
+  Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision
+  Analyst (the vision member; the model here MUST accept image input); a member may still
+  declare an explicit `route` instead. A slot that
   cannot be resolved fails team creation LOUDLY naming the member and the slot, writes no team
   state, and never clamps an effort.
 - workmate: a durable, evolving agent instance in `~/.mpd/workmate/` created by

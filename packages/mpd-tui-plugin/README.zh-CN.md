@@ -19,7 +19,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 |---|---|---|
 | 状态行 | `ctx.tuiStatus` | 提示框上方一个键控的 `mpd` 贡献：`mpd: team … · boulder … · plans … · workmates …` |
 | 条目渲染器 | `ctx.tuiRenderers` | 本包的 log-only 会话事件（`agent-teams/*`、`mpd-tui/board-opened`）渲染为纯文本行，实时与回放同路径 |
-| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个加上九个 `teamModels` 槽位叶子（共 22 个），其中槽位叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**已与 `<workspace>/.mpd/mpd.jsonc` 打通**（保存会写入文件；插件行为需重启后生效）；每个字段的提示在界面上直接写明（见"明确不声明"第 2 条） |
+| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个加上十二个 `teamModels` 槽位叶子（共 25 个），其中槽位叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**已与 `<workspace>/.mpd/mpd.jsonc` 打通**（保存会写入文件；插件行为需重启后生效）；每个字段的提示在界面上直接写明（见"明确不声明"第 2 条） |
 | 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库；已路由团队在面板上多两行：`team-plan …`（仅 staged 时）与 `team-hold held (…)`（仅看门狗 hold 持续期间） |
 | 团队工作流场景 | `ctx.tuiScenes` | `mpd-tui-team` —— 用 `/mpd team` 打开，或在面板中按 `a`：团队 id/名称/阶段、计划审阅状态、看门狗 hold、成员表（角色/模型/状态/进度/当前任务）以及任务 DAG（kind/状态/负责人/尝试/轮次/判定/依赖，按深度缩进，标 `failed-dep=`）与邮箱尾部 |
 | 计划批准场景 | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开，或在团队工作流中按 `a`：逐字输入 `approve <teamId>`（界面上显示的 id），然后按 `Ctrl+X`；10 秒窗口内按两次 `Ctrl+D` 丢弃；`Esc` 永不产生变更；`Ctrl+R` 重新读取 |
@@ -33,7 +33,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 
 ### 团队模型槽位字段：由模型目录驱动的选择项
 
-九个 `teamModels` 叶子（`slot{1,2,3}.{provider,model,reasoningEffort}`）声明为
+十二个 `teamModels` 叶子（`slot{1,2,3,4}.{provider,model,reasoningEffort}`）声明为
 `select` 字段。宿主渲染 `select` 的方式是**循环遍历一份已冻结的选项列表**（没有选择
 对话框），因此它们的选项在**注册时**根据适配器上报的模型目录（`mpdDsh.llmCatalog()`，
 即 `packages/mpd-dsh-adapter-plugin` 记录的增量接缝）计算：
@@ -148,7 +148,7 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
    `apply()` 时读取配置——界面上同样如此说明：每个字段提示都写出自己的 mpd.jsonc 键并携带 `a
    save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and
    takes effect for the mpd plugins after a restart (this knob is read at plugin
-   mount)`，并附上「仅存于设置中的保存不会丢失」的说明。九个团队模型槽位的提示**以该开关自身的
+   mount)`，并附上「仅存于设置中的保存不会丢失」的说明。十二个团队模型槽位的提示**以该开关自身的
    人类语句开头**（写明该槽位路由哪个成员分组，例如 `槽位 2 提供商（分析型成员）`，以及配置它的
    影响），之后才写出键与上述披露。当目标不明确时回写会
    **明确拒绝且不写文件**（无活动会话 `no-live-session`；多个活动工作区

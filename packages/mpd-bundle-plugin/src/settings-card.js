@@ -2,7 +2,7 @@
 // top-level section by w14/t83 at the user's request: "web的设置栏请单开一栏MPD设置，别混在插件栏里").
 //
 // WHERE THIS MOUNTS: its OWN top-level `MPD` section of the Web settings dialog. The same
-// mpd.jsonc knobs (thirteen scalar knobs plus the nine team-model slot leaves) used to ride the
+// mpd.jsonc knobs (thirteen scalar knobs plus the twelve team-model slot leaves) used to ride the
 // Plugins tab's keyed per-namespace item slot; this file no longer
 // registers anything there, so the Plugins tab shows no mpd card.
 //
@@ -67,13 +67,13 @@
 
   /**
    * The twenty-two knobs — the SAME fields the TUI `/settings` section declares (the thirteen
-   * scalar knobs, then the nine team-model slot leaves). The composed hint LEADS with the knob's
+   * scalar knobs, then the twelve team-model slot leaves). The composed hint LEADS with the knob's
    * human sentence (`semantics`/`semanticsZh`) and then states its mpd.jsonc key + the shared
    * disclosure, exactly as the TUI builds it; a scalar knob keeps its declared metadata (the two
    * watchdog rows carry the sentence they always had). The slot leaves take their option lists
    * from the live catalog at render time instead.
    */
-  const SLOT_SLOTS = ["slot1", "slot2", "slot3"]
+  const SLOT_SLOTS = ["slot1", "slot2", "slot3", "slot4"]
   const SLOT_LEAVES = [
     { leaf: "provider", label: "provider", zh: "提供商", options: ["deepseek-official"] },
     { leaf: "model", label: "model", zh: "模型", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
@@ -81,28 +81,58 @@
   ]
   /**
    * What each slot IS — the member group it routes, in the group's own order (mirror of
-   * `TEAM_MODEL_SLOT_GROUPS`). The group name and the member list are the only inputs the nine
-   * human sentences interpolate, so the card cannot drift from the declaration by accident: the
-   * parity test compares every sentence and heading below with the shared declaration's own
-   * builders.
+   * `TEAM_MODEL_SLOT_GROUPS`). The group name and the member list are the only inputs the twelve
+   * shared human sentences interpolate, so the card cannot drift from the declaration by accident:
+   * the parity test compares every sentence and heading below with the shared declaration's own
+   * builders. Slot 4 carries its OWN sentences/impact (an image-input constraint, not a
+   * shared-route one), mirrored from `TEAM_MODEL_SLOT_LEAF_OVERRIDES` / `…_IMPACT_OVERRIDES`.
    */
   const SLOT_GROUPS = {
     slot1: { en: "heavy members", zh: "重推理成员", members: "Architect, Planner, Reviewer, Lead, Senior Engineer", membersZh: "Architect、Planner、Reviewer、Lead、Senior Engineer" },
     slot2: { en: "analysis members", zh: "分析型成员", members: "Researcher, Explorer, Plan Reviewer", membersZh: "Researcher、Explorer、Plan Reviewer" },
     slot3: { en: "execution members", zh: "执行型成员", members: "Deep Worker, Junior Engineer", membersZh: "Deep Worker、Junior Engineer" },
+    slot4: { en: "vision member", zh: "视觉成员", members: "Vision Analyst", membersZh: "Vision Analyst" },
   }
-  /** The one-line impact under a slot's group heading (same text for all three slots). */
+  /** The one-line impact under a slot's group heading (the shared text for slots 1-3). */
   const SLOT_IMPACT = {
     en: "When a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.",
     zh: "建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。",
   }
+  /** The vision slot's OWN impact line (mirror of `TEAM_MODEL_SLOT_IMPACT_OVERRIDES.slot4`). */
+  const SLOT_IMPACT_OVERRIDES = {
+    slot4: {
+      en: "When a team is created Vision Analyst starts on this slot's provider · model · reasoning effort; the model here MUST accept image input or image analysis fails; an unusable value fails team creation loudly, naming the member and the slot.",
+      zh: "建队时 Vision Analyst 默认用本档的 提供商 · 模型 · 推理强度 启动；本档的模型必须支持图像输入，否则看图任务会失败；填错会让建队直接失败并点名成员与槽位。",
+    },
+  }
+  /** Slot 4's OWN leaf sentences (mirror of `TEAM_MODEL_SLOT_LEAF_OVERRIDES.slot4`). */
+  const SLOT_SENTENCE_OVERRIDES = {
+    slot4: {
+      provider: {
+        en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
+        zh: "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。",
+      },
+      model: {
+        en: "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
+        zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
+      },
+      reasoningEffort: {
+        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
+        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+      },
+    },
+  }
+  /** The impact line of ONE slot: the slot's own override, else the shared sentence. */
+  const impactOf = (slot, lang) => (SLOT_IMPACT_OVERRIDES[slot] ?? SLOT_IMPACT)[lang]
   /** The HUMAN sentence of one slot leaf in both locales: what it IS, then what configuring it DOES. */
   function slotSentence(slot, leaf) {
+    const override = SLOT_SENTENCE_OVERRIDES[slot]
+    if (override !== undefined) return override[leaf]
     const group = SLOT_GROUPS[slot]
     if (leaf === "provider") {
       return {
-        en: `The provider half of this slot. The three slots are the default model route of team members: when a team is created, the ${group.en} (${group.members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst belongs to no slot: it keeps its own fixed vision route.`,
-        zh: `这一档的提供商。三档合起来是 team 成员的默认模型路由：建队时，${group.zh}（${group.membersZh}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 不属任何档位，它固定使用自己的视觉模型路由。`,
+        en: `The provider half of this slot. The slots are the default model route of team members: when a team is created, the ${group.en} (${group.members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.`,
+        zh: `这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，${group.zh}（${group.membersZh}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。`,
       }
     }
     if (leaf === "model") {
@@ -121,7 +151,7 @@
     const group = SLOT_GROUPS[slot]
     return { en: `Slot ${index} — ${group.en} (${group.members})`, zh: `槽位 ${index} —— ${group.zh}（${group.membersZh}）` }
   }
-  /** The nine slot rows: the same order, paths and DECLARED option lists as the shared declaration. */
+  /** The twelve slot rows: the same order, paths and DECLARED option lists as the shared declaration. */
   const SLOT_FIELDS = SLOT_SLOTS.flatMap((slot, index) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
     const sentence = slotSentence(slot, leaf)
     return {
@@ -149,7 +179,7 @@
     { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
     { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", semantics: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
     { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", semantics: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
-    // The three team-model slots (nine leaves, mirrors of the ONE knob declaration in
+    // The four team-model slots (twelve leaves, mirrors of the ONE knob declaration in
     // packages/mpd-config-plugin/src/settings-schema.ts). Every slot leaf is a `select`: the
     // options come from the live catalog at render time (see optionsFor) and fall back to the
     // declared lists below, so no slot value is ever typed. The DECLARED lists are the parity
@@ -842,7 +872,7 @@
         const key = fieldKey(field)
         const control = state.controls[key] ?? { text: "" }
         const label = t(key)
-        // The nine slot rows carry the fallback marker; the thirteen scalar rows are untouched.
+        // The twelve slot rows carry the fallback marker; the thirteen scalar rows are untouched.
         const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
         // HUMAN SENTENCE FIRST, at full readability; the mandatory key+disclosure line sits BENEATH
         // it, dimmer. A knob with no human sentence renders the single dim disclosure line it always
@@ -886,9 +916,9 @@
           ),
         )
       })
-      // VISIBLE AT THE CONTROL: the three team-model pickers sit at the BOTTOM of the 22 rows,
+      // VISIBLE AT THE CONTROL: the four team-model pickers sit at the BOTTOM of the 25 rows,
       // where the section's top notice is off-screen — so the SAME sentence renders again
-      // immediately above the first slot row (between the 13 scalar rows and the nine slot rows),
+      // immediately above the first slot row (between the 13 scalar rows and the twelve slot rows),
       // in BOTH states. It carries its own `data-mpd-catalog-state`; the top notice keeps its own.
       const slotStart = fields.findIndex((field) => field.path[0] === TEAM_MODEL_SLOT)
       const scalarRows = slotStart < 0 ? rows : rows.slice(0, slotStart)
@@ -996,8 +1026,8 @@
       const heading = slotHeading(slot, index + 1)
       en["teamModels." + slot + ".heading"] = heading.en
       zh["teamModels." + slot + ".heading"] = heading.zh
-      en["teamModels." + slot + ".impact"] = SLOT_IMPACT.en
-      zh["teamModels." + slot + ".impact"] = SLOT_IMPACT.zh
+      en["teamModels." + slot + ".impact"] = impactOf(slot, "en")
+      zh["teamModels." + slot + ".impact"] = impactOf(slot, "zh")
     }
     return { en, zh }
   }

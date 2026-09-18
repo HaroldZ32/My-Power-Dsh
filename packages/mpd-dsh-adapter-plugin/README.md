@@ -24,7 +24,7 @@ instead of across every plugin.
 
 ## The model-catalog seam (`llmCatalog`)
 
-`packages/mpd-tui-plugin` reads this seam AT REGISTRATION for the nine `teamModels` slot
+`packages/mpd-tui-plugin` reads this seam AT REGISTRATION for the twelve `teamModels` slot
 knobs, because the host renders `select` by cycling a deep-frozen option list (there is no
 pick-list dialog). The read is TOTAL:
 

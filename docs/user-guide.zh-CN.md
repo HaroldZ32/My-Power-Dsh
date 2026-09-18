@@ -258,7 +258,7 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 
 ### 7.2 `/settings` 界面与 `mpd.jsonc` 桥接
 
-`/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 共 22 个（原有 13 个加九个 `teamModels` 槽位叶子，
+`/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 共 25 个（原有 13 个加十二个 `teamModels` 槽位叶子，
 后者是只可选择字段，选项来自实时模型目录，回退到声明列表），其中包括 `hashline.maxDiffChars`、
 `commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 它们位于 harness settings 命名空间
 `mpd` 之下。该命名空间由 `packages/mpd-config-plugin` 提供，其 base 是工作区**文件**里的值，所以界面
@@ -329,7 +329,7 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
 | `team.stateDir` | agent-teams | 团队状态位置（默认 `.mpd/team`） |
-| `teamModels.slot{1,2,3}.*` | agent-teams（经 mpd-config） | 三个**团队模型槽位**：每个槽位是 `{provider, model, reasoningEffort}`，默认 `deepseek-official` / `deepseek-v4-flash`，推理强度依次为 `max`/`high`/`high`。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer；Vision Analyst 保留自己的显式视觉路由。槽位解析失败会让创建团队**大声失败**（指名成员与槽位，不写入任何内容），且推理强度**永远不会**被悄悄钳制。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑；保存后立即落到文件，插件在重启后生效。 |
+| `teamModels.slot{1,2,3,4}.*` | agent-teams（经 mpd-config） | 四个**团队模型槽位**：每个槽位是 `{provider, model, reasoningEffort}`，默认 `deepseek-official` / `deepseek-v4-flash`，推理强度依次为 `max`/`high`/`high`（槽位 4 默认 `deepseek-official` / `deepseek-v4-flash-vision-exp` / `high`）。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。槽位解析失败会让创建团队**大声失败**（指名成员与槽位，不写入任何内容），且推理强度**永远不会**被悄悄钳制。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑；保存后立即落到文件，插件在重启后生效。 |
 
 `mpd-codegraph` 刻意不在上表中：它的 `autoInit`、`initTimeoutMs`、`cooldownMs` 与 `binary` 来自
 它的 **bundle-patch 行** 配置（在 apply 时读取），没有任何插件通过 `mpd.jsonc` 读取

@@ -18,7 +18,7 @@ export const PROFILE_PROTOCOL_PROMPT_LIMIT = 240;
 const PROFILE_KEYS = ['description', 'protocol', 'executionPrompt', 'fallback', 'members', 'tasks', 'taskPlanning', 'reviewPolicy'];
 const REVIEW_POLICY_KEYS = ['requirementsMinRounds', 'requirementsMaxRounds', 'codeMaxRounds', 'maxRepairAttempts', 'requiredReviewers'];
 //#region mpd-delta member-tool-deny-keys (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
-// `tier` (a positive integer, 1..3 in this bundle) selects one of the configured `teamModels`
+// `tier` (a positive integer, 1..4 in this bundle) selects one of the configured `teamModels`
 // slots at staging time; `route` declares an explicit provider/model/reasoningEffort that is used
 // verbatim. Both are optional, both are accepted HERE so the existing assertAllowedKeys call stays
 // byte-identical, and declaring BOTH on one member is refused in the `member-tool-deny-parse`

@@ -49,8 +49,8 @@ and the mpd plugins act on it after a restart. The browser reaches the bridge on
 public settings seam; the write-back itself belongs to `packages/mpd-config-plugin`. Rebuild the
 combined client (`node scripts/build-mpd-client.mjs`) after touching either half.
 
-**The Web card's team-model pickers.** The card mirrors the ONE 22-row knob declaration of
-`packages/mpd-config-plugin` (the original 13 knobs plus the nine `teamModels` slot leaves) and
+**The Web card's team-model pickers.** The card mirrors the ONE 25-row knob declaration of
+`packages/mpd-config-plugin` (the original 13 knobs plus the twelve `teamModels` slot leaves) and
 renders each slot as a **dependent, selection-only picker**: a model control whose options are
 the catalog's provider/model pairs (provider shown as a group) and an effort control whose
 options are the SELECTED model's own efforts, re-derived when the model changes. The catalog is

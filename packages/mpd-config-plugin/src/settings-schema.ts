@@ -4,15 +4,15 @@
 // §10.1 places the REGISTRATION in this package (it is the only module that can supply the
 // file-derived `base`); the TUI package keeps a guarded fallback for compositions without this
 // plugin. Both therefore read the schema and the field list from HERE, so the two front doors
-// cannot drift and the twenty-two knobs (thirteen mpd knobs + nine team-model slot leaves) stay
+// cannot drift and the twenty-five knobs (thirteen mpd knobs + twelve team-model slot leaves) stay
 // one declaration.
 import z from "../../mpd-agent-teams-plugin/_deps/schemastery"
 
 /** The settings namespace the section and the Web card both edit. */
 export const SETTINGS_NS = "mpd"
 
-/** The three team-model slots, in display order (slot1 first). */
-export const TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3"] as const
+/** The four team-model slots, in display order (slot1 first). */
+export const TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3", "slot4"] as const
 
 /** One team-model slot: the provider, the model and the reasoning effort a member class stages on. */
 export interface TeamModelSlot {
@@ -22,16 +22,18 @@ export interface TeamModelSlot {
 }
 
 /**
- * The three slot DEFAULTS — ONE literal declaration, so the schema defaults, the config layer's
+ * The four slot DEFAULTS — ONE literal declaration, so the schema defaults, the config layer's
  * READ-PATH materialisation and the tests cannot drift apart. Values are the frozen vocabulary of
  * the settings contract §1.1: provider `deepseek-official`, model `deepseek-v4-flash`, efforts
  * `max` / `high` / `high` for slot1 / slot2 / slot3 — i.e. the live behaviour of the member
- * classes before the slots existed.
+ * classes before the slots existed. Slot 4 is the VISION slot and its default is Vision Analyst's
+ * own route, unchanged by this option: `deepseek-v4-flash-vision-exp` at `high`.
  */
 export const TEAM_MODEL_SLOT_DEFAULTS: Readonly<Record<(typeof TEAM_MODEL_SLOTS)[number], TeamModelSlot>> = {
   slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
   slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
   slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
+  slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" },
 }
 
 /**
@@ -66,15 +68,17 @@ export const SettingsSchema = z.object({
   memory: z.object({ vcs: z.union([z.const("git"), z.const("svn")]).default("git") }),
   team: z.object({ stateDir: z.string().default(".mpd/team") }),
   boulder: z.object({ dir: z.string().default(".mpd") }),
-  // The three team-model slots (§3.1 of the plan of record): each is the DEFAULT route of one
+  // The four team-model slots (§3.1 of the plan of record): each is the DEFAULT route of one
   // member class — slot1 Architect/Planner/Reviewer/Lead/Senior Engineer, slot2 the analysts
-  // Researcher/Explorer/Plan Reviewer, slot3 the executors Deep Worker/Junior Engineer. The
+  // Researcher/Explorer/Plan Reviewer, slot3 the executors Deep Worker/Junior Engineer, slot4 the
+  // vision member Vision Analyst. The
   // schema default is the L0 layer a fresh workspace resolves to; the read path materialises it
   // (see `withTeamModelsDefaults`) so a consumer never has to apply defaults itself.
   teamModels: z.object({
     slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
     slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
     slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
+    slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4),
   }),
   // The watchdog block is the §3 defaults table of the frozen contract and MUST stay byte-equal in
   // value to `packages/mpd-team-watchdog-plugin/src/machine.ts` `WATCHDOG_DEFAULTS` and to the
@@ -150,13 +154,15 @@ export interface TeamModelSlotGroup {
 
 /**
  * What each slot IS: one member group per slot (A3). The group name and the member list are the
- * ONLY inputs the per-leaf sentences interpolate, so a slot's copy is declared once here and both
- * front doors mirror it (the Web card cannot import this module).
+ * ONLY inputs the shared per-leaf templates interpolate (slot 4 carries its own sentences below,
+ * because it states an image-input constraint rather than a shared-route one), so a slot's copy is
+ * declared once here and both front doors mirror it (the Web card cannot import this module).
  */
 export const TEAM_MODEL_SLOT_GROUPS: Readonly<Record<(typeof TEAM_MODEL_SLOTS)[number], TeamModelSlotGroup>> = {
   slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
   slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
   slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
+  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] },
 }
 
 /**
@@ -166,8 +172,8 @@ export const TEAM_MODEL_SLOT_GROUPS: Readonly<Record<(typeof TEAM_MODEL_SLOTS)[n
  */
 const TEAM_MODEL_LEAF_TEMPLATES: Readonly<Record<keyof typeof TEAM_MODEL_FALLBACK_OPTIONS, { readonly en: string; readonly zh: string }>> = {
   provider: {
-    en: "The provider half of this slot. The three slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst belongs to no slot: it keeps its own fixed vision route.",
-    zh: "这一档的提供商。三档合起来是 team 成员的默认模型路由：建队时，{group}（{members}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 不属任何档位，它固定使用自己的视觉模型路由。",
+    en: "The provider half of this slot. The slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.",
+    zh: "这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，{group}（{members}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。",
   },
   model: {
     en: "This slot's model. Together with the provider above, it decides the model the {group} ({members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.",
@@ -179,10 +185,47 @@ const TEAM_MODEL_LEAF_TEMPLATES: Readonly<Record<keyof typeof TEAM_MODEL_FALLBAC
   },
 }
 
-/** The one-line IMPACT sentence a front door renders under a slot's group heading (same text for all three). */
+/**
+ * Slot 4's OWN leaf sentences. The shared templates above describe a member GROUP that shares a
+ * route; the vision member needs the image-input constraint stated instead, because its whole
+ * value is reading images. Declared once here and mirrored byte-for-byte by the Web card.
+ */
+const TEAM_MODEL_SLOT_LEAF_OVERRIDES: Partial<
+  Record<(typeof TEAM_MODEL_SLOTS)[number], Readonly<Record<keyof typeof TEAM_MODEL_FALLBACK_OPTIONS, { readonly en: string; readonly zh: string }>>>
+> = {
+  slot4: {
+    provider: {
+      en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
+      zh: "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。",
+    },
+    model: {
+      en: "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
+      zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
+    },
+    reasoningEffort: {
+      en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
+      zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+    },
+  },
+}
+
+/** The one-line IMPACT sentence a front door renders under a slot's group heading (the shared text for slots 1-3). */
 export const TEAM_MODEL_SLOT_IMPACT: Readonly<Record<"en" | "zh", string>> = {
   en: "When a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.",
   zh: "建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。",
+}
+
+/** The vision slot's OWN impact line: it names the image-input requirement the other slots do not have. */
+export const TEAM_MODEL_SLOT_IMPACT_OVERRIDES: Partial<Record<(typeof TEAM_MODEL_SLOTS)[number], Readonly<Record<"en" | "zh", string>>>> = {
+  slot4: {
+    en: "When a team is created Vision Analyst starts on this slot's provider · model · reasoning effort; the model here MUST accept image input or image analysis fails; an unusable value fails team creation loudly, naming the member and the slot.",
+    zh: "建队时 Vision Analyst 默认用本档的 提供商 · 模型 · 推理强度 启动；本档的模型必须支持图像输入，否则看图任务会失败；填错会让建队直接失败并点名成员与槽位。",
+  },
+}
+
+/** The impact line of ONE slot in `lang` — the shared sentence, or the slot's own override. */
+export function teamModelSlotImpact(slot: (typeof TEAM_MODEL_SLOTS)[number], lang: "en" | "zh"): string {
+  return (TEAM_MODEL_SLOT_IMPACT_OVERRIDES[slot] ?? TEAM_MODEL_SLOT_IMPACT)[lang]
 }
 
 /** One slot's members, joined in the group's own order with the separator the language uses. */
@@ -196,6 +239,8 @@ export function teamModelLeafSentence(
   leaf: keyof typeof TEAM_MODEL_FALLBACK_OPTIONS,
   lang: "en" | "zh",
 ): string {
+  const override = TEAM_MODEL_SLOT_LEAF_OVERRIDES[slot]?.[leaf]
+  if (override !== undefined) return override[lang]
   return TEAM_MODEL_LEAF_TEMPLATES[leaf][lang]
     .split("{group}")
     .join(TEAM_MODEL_SLOT_GROUPS[slot][lang])
@@ -212,7 +257,7 @@ export function teamModelSlotHeading(slot: (typeof TEAM_MODEL_SLOTS)[number], la
     : `Slot ${index} — ${group.en} (${teamModelMembers(slot, "en")})`
 }
 
-/** The nine team-model knobs: every slot leaf, in slot order, each a `select` with a declared fallback list. */
+/** The twelve team-model knobs: every slot leaf, in slot order, each a `select` with a declared fallback list. */
 const TEAM_MODEL_KNOBS: readonly SettingsKnob[] = TEAM_MODEL_SLOTS.flatMap((slot) => {
   const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1
   const group = TEAM_MODEL_SLOT_GROUPS[slot]
@@ -256,7 +301,7 @@ export interface SettingsKnob {
   readonly hint?: string
 }
 
-/** The twenty-two knobs, in display order: the original thirteen, then the nine team-model slot leaves. */
+/** The twenty-five knobs, in display order: the original thirteen, then the twelve team-model slot leaves. */
 export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
