@@ -316,6 +316,13 @@
 
   /** The auto-open policy lives in the descriptor's own plugin settings (no default there). */
   let autoOpenPolicyService = undefined;
+  /**
+   * The model directory service, resolved through `ctx.inject(["modelDirectories"], …)`. It is
+   * provided by ANOTHER plugin's fiber, so a bare `ctx.get` probe answers undefined forever (the
+   * measured rule in src/web-client.js) — which is exactly the defect that left every staged
+   * member's model picker on its declared list.
+   */
+  let modelDirectoryService = undefined;
   function autoOpenEnabled() {
     try {
       const snapshot = autoOpenPolicyService && typeof autoOpenPolicyService.getSnapshot === "function"
@@ -368,12 +375,17 @@
    * The staged-plan approval editor needs a model directory, and the adopted
    * directoryFor() THROWS for an unknown session while StagingPlanEditor calls it during
    * render — so it is resolved defensively and degrades to no editor, never to a crash.
+   *
+   * The service comes from `modelDirectoryService`, which `registerTeamSidebarTab` fills through
+   * `ctx.inject(["modelDirectories"], …)`. It is NEVER re-probed with `ctx.get` here: the service
+   * is provided by another plugin's fiber, so a bare probe answers undefined for the life of the
+   * page and the picker would silently fall back to its declared list forever.
    */
-  function directoryForTeam(ctx, team) {
+  function directoryForTeam(team) {
     if (team === undefined || team.phase !== "staged") return undefined;
     try {
-      const directories = ctx && typeof ctx.get === "function" ? ctx.get("modelDirectories") : undefined;
-      if (directories === undefined || typeof directories.directoryFor !== "function") return undefined;
+      const directories = modelDirectoryService;
+      if (directories === undefined || directories === null || typeof directories.directoryFor !== "function") return undefined;
       return directories.directoryFor(team.captainSessionId);
     } catch {
       return undefined;
@@ -618,7 +630,7 @@
         body.push(react.createElement(adopted.TeamSection, {
           key: team.teamId,
           team,
-          modelDirectory: directoryForTeam(ctx, team),
+          modelDirectory: directoryForTeam(team),
           onContinuePlanning: focusComposer,
           onDiscarded: focusComposer,
           onNavigate: (parentId, childId) => { openMember(ctx, parentId, childId); },
@@ -783,6 +795,25 @@
           stopPolling();
         };
       }, "mpd-agent-teams: activity polling");
+      // The model directory is provided by ANOTHER plugin's fiber: resolve it with the dynamic
+      // `ctx.inject` form (which waits for the provider and never parks this entry) and cache it
+      // for `directoryForTeam`. A bare `ctx.get` probe here answers undefined forever.
+      ctx.effect(() => {
+        let catalogFiber;
+        try {
+          catalogFiber = ctx.inject(["modelDirectories"], (catalogCtx) => {
+            modelDirectoryService = probe(catalogCtx, "modelDirectories");
+          });
+        } catch (error) {
+          console.warn("[mpd] AgentTeams: the model directory could not be injected: " + String(error));
+        }
+        return () => {
+          modelDirectoryService = undefined;
+          try {
+            if (catalogFiber !== undefined && catalogFiber !== null && typeof catalogFiber.dispose === "function") catalogFiber.dispose();
+          } catch { /* the fiber may already be gone */ }
+        };
+      }, "mpd-agent-teams: model directory injection");
       ctx.effect(() => {
         const unsubscribe = subscribeStore(() => { maybeAutoOpen(); });
         return unsubscribe;
@@ -813,6 +844,7 @@
     autoOpenSeen.clear();
     autoOpenFired.clear();
     autoOpenPolicyService = undefined;
+    modelDirectoryService = undefined;
     chevronIcon = undefined;
   };
   exports.__armAutoOpen = armAutoOpen;

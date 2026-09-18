@@ -492,4 +492,115 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     expect(text).toContain("if no session is live, the save stays in settings")
     client.restore()
   })
+
+  // ── The reproduced DEFECT: the catalog is a service another plugin's fiber provides, so it is
+  // invisible to a bare `ctx.get` probe and reachable ONLY through `ctx.inject` (the measured rule
+  // in src/web-client.js's header). The pre-fix card probed, got undefined, and silently rendered
+  // its DECLARED option lists forever — one provider, four models, no way to see the rest.
+  /** The catalog-status paragraph (data-attributed), so the state is assertable without a browser. */
+  function catalogStatus(tree) {
+    return elementsOf(tree, "p").find((element) => element.props?.["data-mpd-catalog-state"] !== undefined)?.props
+  }
+
+  /** A MUTABLE directory store: `addProvider` notifies subscribers the way the host's store does. */
+  function mutableDirectory(initialGroups) {
+    let groups = initialGroups
+    const listeners = new Set()
+    const state = { loads: 0 }
+    return {
+      state,
+      directory: {
+        store: {
+          getSnapshot: () => ({ status: "ready", groups }),
+          subscribe: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } },
+        },
+        load: async () => { state.loads += 1; return { groups } },
+      },
+      addProvider(provider) {
+        groups = [...groups, provider]
+        for (const listener of [...listeners]) listener()
+      },
+    }
+  }
+
+  const SESSIONS = { list: { getSnapshot: () => ({ current: { sessionId: "s1" } }) } }
+
+  /**
+   * Mount the section with services that ONLY an injection can see. A bare `ctx.get` probe is
+   * asserted undefined in T-A, so the case cannot silently degrade into the old behaviour.
+   */
+  function injectedTree(scope, hiddenServices) {
+    const client = loadMpdClient({ services: { settingsScope: scope }, hiddenServices })
+    client.exports.apply(client.ctx)
+    const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")
+    const props = { useMpdCard: (selector) => selector(registration.inject().hooks.mpdCard.getSnapshot()), t: (key) => EN[key] ?? key }
+    return client.hooks.render(registration.component, props).then((tree) => ({ tree, client, registration, props }))
+  }
+
+  test("T-A: a PROBE-INVISIBLE catalog still feeds the pickers through ctx.inject (the defect)", async () => {
+    const directory = mutableDirectory(CATALOG)
+    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+      sessions: SESSIONS,
+      modelDirectories: { directoryFor: () => directory.directory },
+    })
+    // the defect's PREMISE, asserted: the probe the pre-fix card used answers undefined
+    expect(client.ctx.get("modelDirectories")).toBeUndefined()
+    const select = controlOf(tree, "teamModels.slot1.model")
+    expect(select?.type).toBe("select")
+    expect(optionValues(select)).toEqual(["deepseek-v4-flash", "deepseek-v4-pro", "x-1"])
+    expect(optgroupLabels(select)).toEqual(["DeepSeek Official", "Other"])
+    expect(catalogStatus(tree)["data-mpd-catalog-state"]).toBe("live")
+    expect(catalogStatus(tree)["data-mpd-catalog-providers"]).toBe("2")
+    expect(directory.state.loads).toBeGreaterThan(0) // directory.load() actually fetched
+    client.restore()
+  })
+
+  test("T-B: a directory-store mutation reaches the card with NO re-mount (live read, live re-projection)", async () => {
+    const directory = mutableDirectory(CATALOG)
+    const { tree, client, registration, props } = await injectedTree(slotScope(SLOT_SECTION), {
+      sessions: SESSIONS,
+      modelDirectories: { directoryFor: () => directory.directory },
+    })
+    expect(optionValues(controlOf(tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official", "other-provider"])
+    const cardStore = registration.inject().hooks.mpdCard
+    expect(cardStore.getSnapshot().catalog).toMatchObject({ mode: "live", providers: 2, models: 3 })
+
+    // The user gains a provider: the store notifies, and the CARD'S OWN store is re-projected —
+    // no render, no re-mount, no rebuild. This is the push half of "read the list live".
+    directory.addProvider({ id: "third-provider", name: "Third", models: [{ id: "z-9", name: "Z9" }] })
+    expect(cardStore.getSnapshot().catalog).toMatchObject({ mode: "live", providers: 3, models: 4 })
+
+    // The same mounted controller re-renders the new list (act = re-render, NOT a remount).
+    const next = await client.hooks.act(registration.component, props)
+    expect(optionValues(controlOf(next, "teamModels.slot1.provider"))).toEqual(["deepseek-official", "other-provider", "third-provider"])
+    expect(optionValues(controlOf(next, "teamModels.slot1.model"))).toContain("z-9")
+    expect(catalogStatus(next)["data-mpd-catalog-models"]).toBe("4")
+    client.restore()
+  })
+
+  test("T-C: when inject never resolves the declared lists render AND the fallback state is VISIBLE", async () => {
+    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {})
+    expect(optionValues(controlOf(tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official"])
+    expect(optionValues(controlOf(tree, "teamModels.slot1.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
+    expect(textOf(tree)).toContain("declared fallback — live catalog unavailable")
+    const status = catalogStatus(tree)
+    expect(status["data-mpd-catalog-state"]).toBe("fallback")
+    expect(status["data-mpd-catalog-providers"]).toBe("0")
+    expect(status["data-mpd-catalog-models"]).toBe("0")
+    client.restore()
+  })
+
+  test("T-D: the SERVED client.js carries the inject acquisition and the fallback marker", () => {
+    const injectBased = (bytes) => bytes.includes('ctx.inject(["modelDirectories", "sessions"]')
+    expect(injectBased(ARTIFACT)).toBe(true)
+    expect(ARTIFACT).toContain("declared fallback — live catalog unavailable")
+    expect(ARTIFACT).toContain("data-mpd-catalog-state")
+    expect(ARTIFACT).not.toContain("SETTINGS_KNOBS")
+    // the retired bare probe is GONE from the served bytes (both card and team page)
+    expect(ARTIFACT).not.toContain('ctx.get("modelDirectories")')
+    // NEGATIVE CONTROL: the inject predicate reddens on probe-only bytes
+    const preFix = 'const directories = ctx && typeof ctx.get === "function" ? ctx.get("modelDirectories") : undefined'
+    expect(injectBased(preFix)).toBe(false)
+    expect(preFix.includes("declared fallback — live catalog unavailable")).toBe(false)
+  })
 })

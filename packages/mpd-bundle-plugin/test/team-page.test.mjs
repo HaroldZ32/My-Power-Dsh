@@ -330,6 +330,24 @@ describe("staged plan approval", () => {
     client.restore();
   });
 
+  test("a PROBE-INVISIBLE modelDirectories still reaches a staged team through ctx.inject", async () => {
+    // The sidebar's staged-member picker had the same defect as the settings card: a bare
+    // `ctx.get("modelDirectories")` probe can never see a service another plugin's fiber
+    // provides, so the picker silently fell back to its declared list. Here the service is
+    // reachable ONLY through the injection the page now uses.
+    const client = mountClient({
+      teams: [staged],
+      archivedTeams: [],
+      hiddenServices: { modelDirectories: { directoryFor: () => ({ id: "dir", models: [] }) } },
+    });
+    expect(client.ctx.get("modelDirectories")).toBeUndefined();
+    const tree = await renderPage(client, { ctx: client.ctx, scope: SCOPE, tab: {}, visible: true });
+    const stagedElement = panelParts(tree).body[0];
+    expect(stagedElement.props.team.phase).toBe("staged");
+    expect(stagedElement.props.modelDirectory).toEqual({ id: "dir", models: [] });
+    client.restore();
+  });
+
   test("a throwing directoryFor degrades instead of crashing the page", async () => {
     const client = mountClient({
       teams: [staged],
