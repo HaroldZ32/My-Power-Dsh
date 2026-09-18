@@ -37,6 +37,7 @@ Single source of truth for frozen values: `evidence/omo-align/requirements/froze
 |---|---|---|
 | `D_FIRST` | Every qualifying session starts with **no team and no team notice** unless a complexity signal fires. | Upstream parity, not local taste: upstream `team_mode.enabled` defaults to `false` (t3 `[U2][U3]`). |
 | `D_AUTOROUTE_SPLIT` | The mechanical gate and the legacy injection mode are **decoupled**: `sessionTeamPolicy.mode` defaults to `off` (existing enum values kept); the new mechanical gate is a separate key `sessionTeamPolicy.autoRoute` (default enabled). | Upstream has **no** complexity heuristic (0 hits for heuristic/threshold in t3); activation upstream is an explicit keyword. The split lets us add a gate without silently changing what `off`/`instruct` mean. |
+| `D_AUTOROUTE_ADVISORY` | A triggered auto-route **stages nothing**: `routeDecision` returns `advise` and `installSessionTeamPolicy` injects ONE advisory notice (same marker `[AgentTeams] Session-start team rule`) that names the fired signals, states that **no team was staged**, and asks the captain to stage one with `agent_teams_create(approval="required", profile="mpd")` only at the moment the work actually warrants a team — otherwise to continue solo and say so. `mode:"auto"`, `mode:"instruct"`, an explicit `team:`/`!team` flag and the `/agent-teams` command keep their existing paths. | User clause 4 (2026-09-17): judging complexity must not cost the user a pre-staged team plus an approval step. The advisory wording deliberately says nothing against automatic approval, because a ULW run stages with `approval="automatic"` (frozen contract §4.3). |
 | `D_SKILLS_WRITER` | This wave's **only** writer of `skills/**` is `t5`, limited to `skills/dsh-qa/SKILL.md` and `skills/dsh-qa/scripts/session-start-team.mjs`. `t9` writes nothing this wave. | AGENTS.md `§9`: one writer per wave; a `skills/**` edit invalidates the corpus `treeSha` and the re-pin must ride the same commit. Baseline: `afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`, 328 files. |
 | `D_LEDGER` | Ledger = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`, same commit, language switch link directly under each title. `docs/omo-parity-gap.md` and prior wave reports stay untouched. | User ruling 6; AGENTS.md `§3` bilingual rule with the historical-record exemption. |
 | `D_UPSTREAM_REF` | Upstream reference is beta.62 (`d1557a4b4`); repo baseline remains beta.20. | User ruling 1; AGENTS.md `§9` (never chase upstream). |
@@ -70,16 +71,22 @@ multi-clause request such as “Check the test, build the package, verify the ou
 (C2+C3) and therefore DOES route to a team; no rule operating on C alone can separate it from frozen
 complex prompt #1. See §7 `O1` and §8's rate study.
 
-On trigger, the gate stages a team (`profile: mpd`, `approval: required`, name `MPD Default`,
-description “auto-routed by the complexity gate”) — **staged only**, no member spawns before the
-user approves the Web plan — and injects a notice whose wording states the session is *gated*, not
-that a team is mandatory.
+On a trigger the gate now **ADVISES** (`D_AUTOROUTE_ADVISORY`): it stages nothing and injects ONE
+advisory notice (marker `[AgentTeams] Session-start team rule`) naming the fired signals and stating
+that **no team was staged**; the captain stages a team itself with
+`agent_teams_create(approval="required", profile="mpd")` at the moment the work actually warrants
+one, or continues solo and says so. An explicit `team:` / `!team` request — and the `/agent-teams`
+command — still provisions the staged team (`profile: mpd`, `approval: required`, name
+`MPD Default`, description “auto-routed by the complexity gate”) — **staged only**, no member
+spawns before the user approves the Web plan.
 
-**Two-sided test (`testPrompts` in the frozen contract).** Every `simple` prompt must leave
-`.mpd/team` empty and the log free of the startup notice; every `complex` prompt must produce
-exactly one staged team and one notice. A run where either side is not observed is a `FAIL`, and a
-gate that cannot fail this test is not accepted. Both directions must run on the same settled
-revision hash, in a sandboxed workspace (`sandboxWorkspace` + `assertSessionsSandboxed`).
+**Three-way test (`testPrompts` in the frozen contract + this wave's QA case).** Every `simple`
+prompt must leave `.mpd/team` empty and the log free of the startup notice; every `complex` prompt
+that fires a SOFT signal must leave `.mpd/team` empty while carrying exactly one advisory notice;
+an explicit `team:` prompt must still produce exactly one staged team and one notice. A run where
+any side is not observed is a `FAIL`, and a gate that cannot fail this test is not accepted. Every
+side must run on the same settled revision hash, in a sandboxed workspace (`sandboxWorkspace` +
+`assertSessionsSandboxed`).
 
 **Measured trigger rate on REAL ordinary prompts (t37, re-verified by t40).** 20 real ordinary
 prompts (all containing Chinese; 5 session-start — the only stratum the gate actually evaluates —
@@ -131,7 +138,7 @@ Renaming any of these is forbidden; **adding** names is allowed.
 | Id | File | Region |
 |---|---|---|
 | `L1` | `packages/mpd-bundle/cordis.patch.yml` | agent-teams row `sessionTeamPolicy` block + its comment |
-| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` predicate + `provisionedNotice` / `instructNotice` text |
+| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` predicate + `advisoryNotice` / `provisionedNotice` / `instructNotice` text |
 | `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` block and the sizing doctrine placement |
 | `L4` | `packages/mpd-bundle/README.md` | the whole `Session-start team gate (binding)` section |
 | `L5` | `packages/mpd-bundle/README.zh-CN.md` | the whole `会话启动团队门（强制）` section (same commit as `L4`) |
@@ -184,7 +191,7 @@ anchors. The wave's own frozen values and gate code were byte-identical across t
 | plugin tests | `bun test packages/mpd-agent-teams-plugin` | verified at this anchor (161 pass / 0 fail, 42 files). **Current tree (v0.9.1):** 220 pass / 0 fail over 60 files — the plugin gained the dispatch-stall regression + region-pinning suites (`evidence/agent-teams/dispatch-stall/`) and, in v0.9.1, the pool-capability guard (`self-fix-tests/pool-capability-guard.test.mjs`; registry 46 → 48 regions) |
 | QA self-tests | `bun run test:qa` | verified (exit 0, all self-tests passed) |
 | runtime boot | `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` | verified (PASS; one-command install, no home copy, uninstall leaves no residue) |
-| two-sided gate case | `bun skills/dsh-qa/scripts/session-start-team.mjs` | verified (PASS: simple 3/3 silent, complex 3/3 exactly one staged team + one notice, negative control disarmed = true) |
+| two-sided gate case | `bun skills/dsh-qa/scripts/session-start-team.mjs` | verified at this pre-advisory anchor (PASS: simple 3/3 silent, complex 3/3 exactly one staged team + one notice, negative control disarmed = true). **Superseded for the current tree by `D_AUTOROUTE_ADVISORY`:** the complex side must now assert 0 staged teams + one advisory notice and the explicit-flag side must assert exactly one staged team; that re-run belongs to this wave's QA case (`L7`/`L8`) |
 | preset/patch rows | `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` | verified (30 harness rows conform, row parity 31/31) |
 | installer | `node scripts/install-profile.mjs --self-test` | verified (exit 0) |
 | vendor | `node scripts/verify-vendor.mjs` | verified at this anchor (PASS; that wave's corpus re-pin had landed). **Superseded for the current tree by v0.9.0:** the extension wave added the `skills/dsh-qa/SKILL.md` rows plus the three `extension-*.mjs` QA cases, so the skills asset is re-pinned to `fileCount: 301` / `treeSha: 0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576` and the gate PASSes again — see `VENDOR_LOCK.json` and `evidence/release/v0.9.0-integration/` |

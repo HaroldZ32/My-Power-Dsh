@@ -367,20 +367,26 @@
         # team_mode.enabled defaults to false) and means "no auto-provision, no
         # unconditional notice". The DECOUPLED mechanical gate is `autoRoute`
         # (default enabled): at the session's first pre-step it evaluates the
-        # frozen complexity gate — trigger = (matchedSignals >= 2) OR
-        # anyExplicitFlag, with signals A (a `team:` prefix or `!team`, the
-        # marker is consumed), B (>=4 distinct deliverable verbs), C (>=3
-        # enumerated lines / action verbs / clauses) and D (a `.mpd/plans/*.md`
-        # artifact exists). On a hit it provisions the STAGED default team
-        # (profile `mpd`, approval=required — nothing spawns until the user
-        # approves the Web plan) and injects ONE startup notice saying the
-        # session was routed by the gate. presets: [mpd] scopes the gate to
-        # mpd-preset sessions (sessions without any preset, e.g. headless direct
-        # runs, are covered too), and subagent/member sessions (they carry
-        # parentSession) never qualify. The gate runs on the PRE-STEP, before any
-        # sizing doctrine, so it can actually prevent a team.
-        # mode=auto keeps the legacy unconditional provisioning as an explicit
-        # opt-in; mode=instruct keeps the legacy instruction notice.
+        # frozen complexity gate, whose predicate is
+        #   trigger = explicit flag OR (matchedSignals >= 1)
+        # with signals A (a `team:` prefix or `!team`, the marker is consumed),
+        # B (>=4 distinct deliverable verbs), C (>=3 enumerated lines / action
+        # verbs / clauses) and D (a `.mpd/plans/*.md` artifact exists).
+        # A triggered SOFT signal is ADVISORY: NOTHING is staged (no team state
+        # is created) — the plugin injects ONE advisory notice that names the
+        # fired signals, states that no team was staged, and tells the captain to
+        # stage one on demand with agent_teams_create(approval="required",
+        # profile="mpd") at the moment the work actually warrants a team
+        # (otherwise continue solo and say so). An explicit `team:` / `!team`
+        # request still PROVISIONS the staged default team (profile `mpd`,
+        # approval=required — nothing spawns until the user approves the Web
+        # plan), and mode=auto keeps the legacy unconditional provisioning as an
+        # explicit opt-in; mode=instruct keeps the legacy instruction notice.
+        # presets: [mpd] scopes the gate to mpd-preset sessions (sessions without
+        # any preset, e.g. headless direct runs, are covered too), and
+        # subagent/member sessions (they carry parentSession) never qualify. The
+        # gate runs on the PRE-STEP, before any sizing doctrine, so it can
+        # actually prevent a team.
         sessionTeamPolicy:
           mode: off
           autoRoute: true

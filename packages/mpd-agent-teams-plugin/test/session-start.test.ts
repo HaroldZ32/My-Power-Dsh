@@ -1,8 +1,8 @@
 import { test, expect } from "bun:test"
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs"
+import { mkdtempSync, readdirSync, rmSync, writeFileSync, mkdirSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { DEFAULT_TEAM_NAME, STARTUP_NOTICE_MARKER, availableTeamId, consumeExplicitFlag, evaluateComplexityGate, instructNotice, policyEnabled, policyQualifies, provisionedNotice, routeDecision, spliceNotice } from "../lib/session-start.js"
+import { DEFAULT_TEAM_NAME, STARTUP_NOTICE_MARKER, advisoryNotice, availableTeamId, consumeExplicitFlag, evaluateComplexityGate, instructNotice, installSessionTeamPolicy, policyEnabled, policyQualifies, provisionedNotice, routeDecision, spliceNotice } from "../lib/session-start.js"
 import { createMessage } from "../_deps/dsh-llm/lib/index.js"
 
 function makeAgent({ parentSession, agentPreset }) {
@@ -86,6 +86,65 @@ test("notices carry the startup marker, mention the team, and are user-role mess
   expect(instructed.content[0].text).toContain('profile="mpd"')
 })
 
+test("advisory notice: marker, fired signals, NO team staged, on-demand staging path", () => {
+  const notice = advisoryNotice(["C"], { profile: "mpd" })
+  expect(notice.role).toBe("user")
+  const text = notice.content[0].text
+  expect(text).toContain(STARTUP_NOTICE_MARKER)
+  // the fired signals are named
+  expect(text).toContain("complexity signals C")
+  // ... and the absence of a team is stated plainly
+  expect(text).toContain("NO team was staged")
+  // ... with the on-demand staging path the captain is told to use
+  expect(text).toContain('agent_teams_create(approval="required", profile="mpd")')
+  // ... and the other half of the clause: continue solo and say so
+  expect(text).toContain("continue solo")
+  expect(notice.source.reason).toBe("session-start-advisory")
+  // Clause-3 consistency: the notice names the NORMAL-mode default only and says nothing
+  // about automatic approval — a ULW run stages with approval="automatic", which the
+  // advisory must not forbid (it must not speak about it at all).
+  expect(text).not.toContain('approval="automatic"')
+})
+
+test("installSessionTeamPolicy: a triggered SOFT auto-route injects the advisory and stages NO team", async () => {
+  const workspace = mkdtempSync(join(tmpdir(), "mpd-l3-advisory-"))
+  try {
+    const listeners: any[] = []
+    const ctx = {
+      on: (name: string, handler: any) => listeners.push({ name, handler }),
+      logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+    }
+    const stateDir = join(".mpd", "team")
+    installSessionTeamPolicy(ctx, { stateDir, sessionTeamPolicy: { mode: "off", autoRoute: true, profile: "mpd" } })
+    expect(listeners.length).toBe(1)
+    expect(listeners[0].name).toBe("agent/pre-step")
+    const user = createMessage({ role: "user", content: [{ type: "text", text: "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot" }], source: { kind: "user" } })
+    const payload = { agent: { id: "l3-advisory-captain", session: { header: { cwd: workspace } } }, messages: [user] }
+    const decision = await listeners[0].handler(payload, async () => ({ kind: "enter", messages: [...payload.messages] }))
+    // the notice IS injected (after the claimed message, via spliceNotice) ...
+    expect(decision.kind).toBe("enter")
+    expect(decision.messages.length).toBe(2)
+    expect(decision.messages[0].id).toBe(user.id)
+    const notice = decision.messages[1]
+    expect(notice.role).toBe("user")
+    expect(notice.content[0].text).toContain(STARTUP_NOTICE_MARKER)
+    expect(notice.content[0].text).toContain("NO team was staged")
+    expect(notice.content[0].text).toContain('agent_teams_create(approval="required", profile="mpd")')
+    // ... and NOTHING was staged: the state root carries no team record at all
+    const stateRoot = join(workspace, stateDir)
+    const teamIds = (() => {
+      try {
+        return readdirSync(stateRoot).filter((name) => name !== "archive")
+      } catch {
+        return []
+      }
+    })()
+    expect(teamIds).toEqual([])
+  } finally {
+    rmSync(workspace, { recursive: true, force: true })
+  }
+})
+
 test("complexity gate: both directions on the frozen prompt sets", () => {
   const simple = [
     "Reply with exactly: hello-ok",
@@ -125,19 +184,24 @@ test("explicit flag is consumed out of the goal text", () => {
   expect(consumeExplicitFlag("no flag here")).toEqual({ flagged: false, text: "no flag here" })
 })
 
-test("routeDecision: off+autoRoute gates, auto/instruct keep the legacy paths", async () => {
+test("routeDecision: a triggered auto-route ADVISES; explicit flag / auto / instruct keep provisioning", async () => {
   const simple = "Reply with exactly: hello-ok"
   const complex = "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot"
-  // Gate default: off + autoRoute -> only the complex text routes.
+  // Gate default: off + autoRoute -> only the complex text routes, and it routes ADVISORY:
+  // the plugin stages nothing while complexity is merely being judged (user clause 4).
   expect((await routeDecision({ mode: "off", autoRoute: true }, simple, "/nonexistent-ws")).action).toBe("none")
   const routed = await routeDecision({ mode: "off", autoRoute: true }, complex, "/nonexistent-ws")
-  expect(routed.action).toBe("provision")
+  expect(routed.action).toBe("advise")
   // t24/F1: C is ONE signal that already enforces its own 2-of-3 sub-signal majority,
   // so a complex prompt may legitimately route on the single "C" signal.
   expect(routed.signals.length).toBeGreaterThanOrEqual(1)
   expect(routed.signals).toContain("C")
-  // The explicit flag alone routes.
-  expect((await routeDecision({ mode: "off", autoRoute: true }, "team: do it", "/nonexistent-ws")).signals).toContain("A")
+  // An explicit request is NOT advisory: `team:` alone still PROVISIONS (R4).
+  const flagged = await routeDecision({ mode: "off", autoRoute: true }, "team: do it", "/nonexistent-ws")
+  expect(flagged.signals).toContain("A")
+  expect(flagged.action).toBe("provision")
+  // `!team` is the same explicit request.
+  expect((await routeDecision({ mode: "off", autoRoute: true }, "please !team handle it", "/nonexistent-ws")).action).toBe("provision")
   // autoRoute disabled -> nothing routes even for complex text.
   expect((await routeDecision({ mode: "off", autoRoute: false }, complex, "/nonexistent-ws")).action).toBe("none")
   // Legacy opt-ins are preserved.

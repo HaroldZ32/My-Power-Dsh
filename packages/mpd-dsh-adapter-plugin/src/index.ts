@@ -9,12 +9,15 @@
 //   skills.registerProvider / skills.list / skills.get
 //   agentPresets.resolve
 //   agents.list (session cwds)                    -> workspaceRoot / workspaceRootsAll
+//   commands.register (slash commands)            -> registerCommand
+//   user-role message construction (injection)    -> userMessage
 //
 // Consumers use `createDshAdapter(ctx)` directly (works standalone, e.g. in
 // unit tests) or `ctx.get("mpdDsh")` for the mounted instance provided by the
 // `mpd-dsh-adapter` row. The adapter never mutates harness state on import and
 // never throws at construction: a missing seam surfaces as an actionable error
 // at call time, or as a `capabilities()` flag a caller can degrade on.
+import { randomUUID } from "node:crypto"
 import { resolve } from "node:path"
 
 export const name = "mpd-dsh-adapter"
@@ -49,6 +52,82 @@ export interface DshToolDef {
   output?: DshToolOutput
   timeoutMs?: number
   execute: (args: any, exec: any) => unknown
+}
+
+/**
+ * Optional input hint advertised to capable clients.
+ *
+ * MEASURED against the installed harness (`dsh-commands/lib/index.js`
+ * `normalizeDefinition`): `hint` must be a non-empty string and `attachments`, when
+ * present, must be a boolean; a definition that fails either check throws at
+ * `register()` time.
+ */
+export interface DshCommandInput {
+  hint: string
+  attachments?: boolean
+}
+
+/** The invocation the harness hands one registered command handler. */
+export interface DshCommandInvocation {
+  /** Exact text following the command name, including separator whitespace. */
+  rawInput: string
+  /** The Agent whose surface received the command — the injection target. */
+  agent?: unknown
+  signal?: AbortSignal
+  attachments?: readonly unknown[]
+  /**
+   * Submit one user-role message into the INVOKING agent's own next turn, through
+   * {@link DshAdapter.submitUserTurn}. Bound by `registerCommand`, so a handler
+   * never has to touch the host's `invocation.agent` shape itself (AGENTS.md §6).
+   *
+   * A handler that only RETURNS `{kind:'success', text}` does not run the
+   * objective — the host runs a command "without sending the command to the
+   * model" — so a command that must start work submits through here (or through
+   * a pre-step `{kind:'enter', messages:[…]}` decision, which needs no seam:
+   * `onEvent` forwards to `ctx.on`).
+   *
+   * @returns true when the submission reached the agent's turn seam.
+   */
+  submit?: (message: DshUserMessage) => boolean
+  [key: string]: unknown
+}
+
+/**
+ * One command registration.
+ *
+ * `name` is the LOWERCASE name WITHOUT the leading slash: the host parses
+ * `/^\/([a-z][a-z0-9_-]*)(?=$|[\t\n\r ])/u` and validates the registered name
+ * against its own `COMMAND_NAME` pattern, so `/ulw` registers as `"ulw"`. A
+ * duplicate name THROWS inside the host registry, which is why a caller
+ * registers `/ulw` and `/ultrawork` as two separate definitions.
+ */
+export interface DshCommandDef {
+  name: string
+  description: string
+  input?: DshCommandInput
+  handler: (invocation: DshCommandInvocation) => unknown
+}
+
+/** Producer tag of an injected message (`{kind:'user'}`, `{kind:'plugin',plugin:'…'}`). */
+export interface DshUserMessageSource {
+  kind: string
+  [key: string]: unknown
+}
+
+/** A user-role message the harness accepts for session injection. */
+export interface DshUserMessage {
+  /** Fresh identity, the branded `MessageId` string the host stores. */
+  id: string
+  role: "user"
+  content: DshTextBlock[]
+  source: DshUserMessageSource
+}
+
+export interface DshUserMessageInput {
+  /** Model-facing text; becomes the single `text` content block. */
+  text: string
+  /** Producer tag; defaults to `{kind:'user'}` (a plain user gesture). */
+  source?: DshUserMessageSource
 }
 
 /** Waterfall decision handed to a post-execute listener (the downstream result). */
@@ -144,6 +223,20 @@ export interface DshCapabilities {
   skills: boolean
   skillsProvider: boolean
   agentPresets: boolean
+  /** `ctx.get("commands")`: the human-command registry. */
+  commands: boolean
+  /** The registry's `register()` — the seam {@link DshAdapter.registerCommand} needs. */
+  commandsRegister: boolean
+  /**
+   * The turn-submission seam: at least one LIVE agent exposes `agent.followup`,
+   * i.e. {@link DshAdapter.submitUserTurn} can start a turn for it.
+   *
+   * This is a LIVE-REGISTRY probe (the same shape as {@link DshCapabilities.compactionForAgent}),
+   * so a composition with no live session reports false even though the surface
+   * exists. `submitUserTurn`'s own boolean return is therefore the authoritative
+   * per-call signal; this flag is the apply-time snapshot.
+   */
+  turnSubmit: boolean
   /** The live-session registry (`agents.list`) — the only way to reach a member's Agent. */
   agents: boolean
   /** `ctx.get("compaction")`: the HOST-plane engine. Never used to drive a member. */
@@ -286,6 +379,30 @@ export interface DshAdapter {
   ): Promise<DshSettingsMutateResult>
   registerTool(definition: DshToolDef): () => void
   registerTools(definitions: DshToolDef[]): () => void
+  /**
+   * Register ONE slash command through the harness command registry — the ONLY
+   * sanctioned path (AGENTS.md §6: no plugin touches `ctx.commands` /
+   * `ctx.get("commands")` directly).
+   *
+   * Feature-detected exactly like every other seam: a composition without the
+   * `commands` row (or one whose registry exposes no `register()`) returns a
+   * NO-OP disposer and NEVER throws, so a plugin's `apply` cannot be taken down
+   * while it degrades on `capabilities().commandsRegister`.
+   *
+   * MEASURED in the installed harness (`dsh-commands/lib/index.js`): `register()`
+   * RETURNS the exact `() => void` effect disposer that unregisters the
+   * definition, and that disposer is passed through verbatim when it is a
+   * function — a stub registry may return anything (the codegraph test double
+   * returns `Array.push`'s number), which must degrade to a no-op rather than
+   * leak a non-callable as a "disposer". Host-side validation errors (a
+   * duplicate name, a malformed definition) are NOT swallowed: they are real
+   * programming errors and stay loud, unlike a missing optional seam.
+   *
+   * @param definition - `{name, description, input?, handler}`; the name carries
+   *   NO leading slash (`/ulw` registers as `"ulw"`).
+   * @returns the registry's disposer, or a no-op when the seam is absent.
+   */
+  registerCommand(definition: DshCommandDef): () => void
   guardTool(guard: (exec: DshToolExec) => string | undefined): () => void
   /**
    * Observe a tool call BEFORE dispatch — the `tools/pre-execute` waterfall.
@@ -338,11 +455,76 @@ export interface DshAdapter {
   loadSkill(skillName: string, options?: { cwd?: string }): Promise<unknown>
   resolvePreset(presetId: string): Promise<DshPresetInfo>
   text(content: unknown): DshTextBlock[]
+  /**
+   * Build ONE user-role message for SESSION INJECTION — the value
+   * `agent.followup(message)` takes and the value a pre-step
+   * `{kind:'enter', messages:[…]}` decision appends (in-tree precedent:
+   * `packages/mpd-agent-teams-plugin/lib/command.js`, the `/agent-teams`
+   * handler, which is what makes a command actually RUN its objective instead of
+   * only answering).
+   *
+   * The shape is built LOCALLY to the installed host's contract rather than
+   * imported: `@deepseek-ai/dsh-llm` is not resolvable by bare specifier from
+   * this repository (MODULE_NOT_FOUND, measured), and no mpd plugin outside the
+   * adopted tree runtime-imports a host package. The field set is measured
+   * against the installed `dsh-llm/lib/types/message.d.ts`
+   * (`Message = {id, role, content, source}`, `MessageId` is a brand-only
+   * passthrough) and the vendored reference implementation
+   * (`_deps/dsh-llm/lib/index.js` `createUserMessage`): a fresh `id`, the
+   * `user` role, one `{type:'text', text}` block, and the producer tag
+   * (`source.kind`). The message is frozen like the host's own constructors
+   * freeze theirs.
+   */
+  userMessage(input: DshUserMessageInput): DshUserMessage
+  /**
+   * Submit one user-role message into an agent's OWN next turn — the turn seam a
+   * command handler needs, because the host runs a command "without sending the
+   * command to the model", so returning `{kind:'success', text}` starts nothing.
+   *
+   * MEASURED in the installed harness (`dsh-agent-loop/lib/index.js`):
+   * `followup(input)` is `send(input, "next-turn", true)` — the item becomes the
+   * sole ordinary message of its own turn and the driver wakes. The in-tree
+   * precedent is `packages/mpd-agent-teams-plugin/lib/command.js`, the
+   * `/agent-teams` handler calling `invocation.agent.followup(createUserMessage(…))`.
+   *
+   * The agent's shape is read HERE ONLY: a caller passes whatever it holds (the
+   * command invocation's `agent`, a live-registry entry, a pre-step gesture's
+   * agent) and never touches `followup` itself (AGENTS.md §6). `steer`/`inject`
+   * are deliberately NOT exposed: this seam's contract is the agent's own turn.
+   * The conventional pair is `submitUserTurn(agent, userMessage({…}))`.
+   *
+   * Never throws: a non-object, or an object without a callable `followup`, is a
+   * reported `false` — the safe no-op a caller degrades on.
+   *
+   * @returns true when the submission reached the agent's turn seam.
+   */
+  submitUserTurn(agent: unknown, message: DshUserMessage): boolean
 }
 
 /** Canonical model-facing text block (the one shape every harness build accepts). */
 export function textBlock(content: unknown): DshTextBlock[] {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }]
+}
+
+/**
+ * Build one user-role message for session injection (see {@link DshAdapter.userMessage}).
+ *
+ * Local construction is deliberate: importing the host's own `createUserMessage`
+ * would need `@deepseek-ai/dsh-llm`, which the installed harness does not expose to
+ * this repository as a resolvable bare specifier (measured MODULE_NOT_FOUND), and
+ * the seam rule here is that a harness rename is absorbed in THIS file.
+ *
+ * Frozen at the same levels the host's constructor freezes, so a message already
+ * handed to an Agent's inbox can no longer be mutated by its producer.
+ */
+export function userMessage(input: DshUserMessageInput): DshUserMessage {
+  const content = textBlock(input?.text)
+  for (const block of content) Object.freeze(block)
+  Object.freeze(content)
+  const source: DshUserMessageSource = { kind: "user", ...(input?.source ?? {}) }
+  Object.freeze(source)
+  const message: DshUserMessage = { id: randomUUID(), role: "user", content, source }
+  return Object.freeze(message)
 }
 
 /** Post-execute decision helpers (the harness uses `feedback`, older notes `reason`). */
@@ -519,6 +701,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const subagents = service("subagents")
       const skills = service("skills")
       const presets = service("agentPresets")
+      const commands = service("commands")
       const agents = service("agents")
       const compaction = service("compaction")
       const sample = liveAgents()[0]
@@ -541,6 +724,11 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         skills: skills !== undefined,
         skillsProvider: typeof skills?.registerProvider === "function",
         agentPresets: typeof presets?.resolve === "function",
+        commands: commands !== undefined,
+        commandsRegister: typeof commands?.register === "function",
+        // LIVE-REGISTRY probe (like compactionForAgent): the turn seam lives on the
+        // Agent, so this reports whether one is reachable and usable right now.
+        turnSubmit: liveAgents().some((candidate) => typeof (candidate as { followup?: unknown } | undefined)?.followup === "function"),
         agents: agents !== undefined && typeof agents?.list === "function",
         compaction: typeof compaction?.compactNow === "function",
         compactionForAgent: scopedCompaction,
@@ -580,6 +768,32 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     registerTools(definitions: DshToolDef[]): () => void {
       const disposers = definitions.map((definition) => adapter.registerTool(definition))
       return () => { for (const dispose of disposers) dispose() }
+    },
+
+    // ── command plane ───────────────────────────────────────────────────────
+    registerCommand(definition: DshCommandDef): () => void {
+      const commands = service("commands")
+      // Missing optional seam: a no-op disposer, never a throw (the caller degrades on
+      // capabilities().commandsRegister instead of being taken down at apply time).
+      if (commands === undefined || commands === null || typeof commands.register !== "function") return noop
+      const registered = commands.register({
+        name: definition?.name,
+        description: definition?.description,
+        ...(definition?.input === undefined ? {} : { input: definition.input }),
+        handler: (invocation: DshCommandInvocation) => {
+          const host = invocation ?? { rawInput: "" }
+          // The plugin receives a COPY carrying the submission surface bound to the
+          // INVOKING agent: the host's own invocation object is never mutated, and the
+          // plugin never reads `agent.followup` itself (AGENTS.md §6).
+          return definition.handler({
+            ...host,
+            submit: (message: DshUserMessage) => adapter.submitUserTurn(host.agent, message),
+          })
+        },
+      })
+      // The host's register() returns the exact effect disposer; a stub registry can
+      // return anything, and only a callable may be handed back as a disposer.
+      return typeof registered === "function" ? registered : noop
     },
 
     guardTool(guard: (exec: DshToolExec) => string | undefined): () => void {
@@ -880,6 +1094,22 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     },
 
     text: textBlock,
+    userMessage,
+
+    // ── turn plane ──────────────────────────────────────────────────────────
+    submitUserTurn(agent: unknown, message: DshUserMessage): boolean {
+      const followup = (agent as { followup?: unknown } | undefined)?.followup
+      if (typeof followup !== "function") return false
+      try {
+        // Bound to the agent: the host's method reads `this`.
+        ;(followup as (input: DshUserMessage) => unknown).call(agent, message)
+        return true
+      } catch {
+        // A rejected submission must never escape into the caller (a command handler
+        // or a pre-step listener) — the boolean is the whole contract.
+        return false
+      }
+    },
   }
 
   return adapter

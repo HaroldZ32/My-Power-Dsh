@@ -112,11 +112,13 @@ export const Config = z.object({
     reclaimStaleAfterMs: z.natural().default(3600000),
     promptSectionOrder: z.natural().default(117),
     slashCommand: z.boolean().default(true),
-    // Session-start team policy: a session starts with NO team unless the
-    // mechanical complexity gate fires (see lib/session-start.js). `mode` keeps
-    // its three legacy values and defaults to 'off' = no auto-provision and no
-    // unconditional notice; `autoRoute` is the DECOUPLED mechanical gate and
-    // defaults ON, so the complexity gate is evaluated without a mandatory team.
+    // Session-start team policy: a session starts with NO team, and the
+    // mechanical complexity gate is ADVISORY (see lib/session-start.js) — when it
+    // fires it injects a notice asking the captain to stage a team ONLY if the
+    // work warrants one, so nothing is pre-staged while complexity is being
+    // judged. `mode` keeps its three legacy values and defaults to 'off' = no
+    // auto-provision and no unconditional notice; `autoRoute` is the DECOUPLED
+    // mechanical advisory gate, defaults ON, and provisions nothing by itself.
     sessionTeamPolicy: z.object({
         mode: z.union([z.const('off'), z.const('auto'), z.const('instruct')]).default('off'),
         autoRoute: z.boolean().default(true),

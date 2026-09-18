@@ -163,7 +163,7 @@ weak match → initialize a new workmate.
 ## Build / test
 
 ```bash
-bun build src/index.ts --target node --format esm --outfile dist/index.js
+bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js
 bun test packages/mpd-workmate-plugin   # offline lifecycle tests (sandbox HOME), rename/delete included
 ```
 

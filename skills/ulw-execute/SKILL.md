@@ -1,6 +1,6 @@
 ---
 name: ulw-execute
-description: "Execute a Prometheus work plan with Boulder state, evidence ledger updates, worktree discipline, parallel subagents, and Stop-hook continuation. Use after planning when the user says ulw-execute, execute plan, continue plan, resume plan, or asks to run a .mpd/plans plan."
+description: "Execute a Prometheus work plan with Boulder state, evidence ledger updates, worktree discipline, parallel subagents, and Boulder-ledger resumption across turns (`.mpd/boulder.json` says this `dsh:<session_id>` still has unchecked plan work, so execute plan / resume plan re-enters it). Use after planning when the user says ulw-execute, execute plan, continue plan, resume plan, or asks to run a .mpd/plans plan."
 ---
 
 ## ABSOLUTE RULE: YOU ARE AN ORCHESTRATOR — NEVER THE IMPLEMENTER

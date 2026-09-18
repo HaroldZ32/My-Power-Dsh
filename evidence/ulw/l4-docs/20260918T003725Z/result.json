@@ -1,0 +1,164 @@
+{
+  "task": "t6",
+  "kind": "implementation",
+  "lane": "L4 docs (AGENTS.md + human-facing docs, bilingual)",
+  "owner": "docs-engineer",
+  "attempt_id": "995fea1b-ffaf-40de-9285-e91e8847b9d6",
+  "run_utc": "2026-09-18T00:37:25Z",
+  "base_revision": "5aa222a144e4238b67453731c5decd806db6db94",
+  "spec": [
+    ".mpd/plans/ulw-commands-and-gate.md §2 D1/D3/D4, §4 (legacy list items 1, 5)",
+    "evidence/ulw/requirements/20260918T001246Z/contract.md §1.1 S1/S10/S11, §1.2 S12/S13/S14/S15, §4.2 G4/G5/G6, §6"
+  ],
+  "changed_paths": [
+    { "path": "AGENTS.md", "sha256": "43b38e0d1197a90e9de14228c64b0daff5263ee26ca945e005e75b0647310ad6" },
+    { "path": "presets/mpd/agent.cordis.yml", "sha256": "ccdb671209f7605ca7604d2756c30ac7b7e48e03674139a892152b5b147f057b" },
+    { "path": "packages/mpd-bundle/README.md", "sha256": "54657c8eb55bd16f7a2a3661ec6a957440599475cb4079a91500cd43b5e65a45" },
+    { "path": "packages/mpd-bundle/README.zh-CN.md", "sha256": "a620278df83edb74dad16556c2373a5b4bd2de440e9441fbde7cc19ca296585d" },
+    { "path": "docs/feature-audit.md", "sha256": "f30cfb664381b78788d5c81208bc72b255fd0919d3a3f96cc9d02f98a244bb0f" },
+    { "path": "docs/feature-audit.zh-CN.md", "sha256": "ee05cf5f79ba2a5fe074c181a8530756fd6b8ffed9baac88451dadbc90291d3d" },
+    { "path": "docs/upstream-parity-ledger.md", "sha256": "77688a07061239b5ea51017812a33e527d45eaaa58564deb147cc03c808436cb" },
+    { "path": "docs/upstream-parity-ledger.zh-CN.md", "sha256": "14f004020f256eca4239fe1acbebdb646f293e30f9ee115b5eaca57a8e9c787c" },
+    { "path": "docs/architecture.md", "sha256": "ae16ac33d99f83a0dee308d10586da18a0fb56128336a7d8c6caaa5662d3c4ab" },
+    { "path": "docs/architecture.zh-CN.md", "sha256": "9e5e9a3d6156e019f7c99d4eaa6d25fc99017a2e076d7b16d2203cee857ad85a" },
+    { "path": "docs/user-guide.md", "sha256": "5b958da971cccce77fbc722a543652f98266a911f2e7147b7ca5f4719a4cab74" },
+    { "path": "docs/user-guide.zh-CN.md", "sha256": "bd2d81b4353992c1dd5dc9078aea9358bff9791cedc69e6424d826a360359150" },
+    { "path": "evidence/ulw/l4-docs/20260918T003725Z/result.json", "sha256": "self" },
+    { "path": "evidence/ulw/l4-docs/20260918T003725Z/output.log", "sha256": "self" }
+  ],
+  "edits": {
+    "AGENTS.md": [
+      "S1: §3 layout row `mpd-ulw-plugin` — `# B3: mpd_ulw loop discipline` -> `# C2 (Plan C) ultrawork v2 engine: mpd_ultrawork + mpd_ulw alias, /ulw + /ultrawork commands`.",
+      "Clause 2: new §1 bullet `ULW is user-invocable` — /ulw + /ultrawork (equivalent, objective as argument), the directive is submitted as the invoking agent's own next user turn, empty input -> usage, plain-text /ulw gesture on headless, and the six autonomy behaviours incl. self-staging with approval=\"automatic\".",
+      "Clause 4: new §1 bullet `The session-start complexity gate ADVISES — it never pre-stages a team` — frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)`, ONE advisory notice on the same marker, no team staged, stage at the moment the work warrants it else continue solo, explicit team:/!team + /agent-teams still stage, mode:\"auto\" unchanged."
+    ],
+    "presets/mpd/agent.cordis.yml": [
+      "S12/G4: SESSION STARTUP RULE rewritten — the triggered branch no longer claims the plugin 'has already staged the default team'; it now states the gate only ADVISES (stages nothing, ONE advisory notice), the captain stages with agent_teams_create(approval=\"required\", profile=\"mpd\") when the work warrants it else continues solo and says so; a separate branch keeps the explicit `team:`/`!team` provisioning (and names /agent-teams).",
+      "Superseded predicate `(matchedSignals >= 2) OR explicit flag` -> `explicit flag OR (matchedSignals >= 1)`, matching lib/session-start.js:194-219 / its module doc."
+    ],
+    "packages/mpd-bundle/README.md": [
+      "S13/G5: 'complexity gate' section -> 'advisory complexity gate'; predicate corrected to `explicit flag OR (matchedSignals >= 1)`; the Triggered bullet now says the gate stages nothing and injects one advisory notice with the marker, and adds an explicit-flag bullet for the unchanged provisioning path.",
+      "Typo fix on sight (R1): duplicated 'The / The specialists' -> 'The / specialists'."
+    ],
+    "packages/mpd-bundle/README.zh-CN.md": [
+      "S14/G5: matching zh-CN rewrite of the 会话启动团队门 section (advisory branch + corrected predicate + explicit-flag bullet)."
+    ],
+    "docs/feature-audit.md": [
+      "S10: Skills corpus row — `➖ removed by decision (2026-08-27): no upstream-derived content ships` -> `✅ ported (2026-08-27): the corpus ships under skills/ (18 directories) and is SERVED by reference (mpd-bootstrap registers <bundle>/skills as a bundled provider; never copied into $DSH_HOME)`, cross-referencing docs/omo-parity-gap.md §Content gaps.",
+      "R1 on-sight: Slash commands row — removed the non-existent `mpd_team_*` tool claim and named `/ulw` + `/ultrawork` + `/agent-teams`.",
+      "R1 on-sight: ultrawork/ulw row now names the user-invocable commands."
+    ],
+    "docs/feature-audit.zh-CN.md": [
+      "S11: matching zh-CN correction of the Skills 语料 row.",
+      "R1: matching zh-CN corrections of the Slash commands and ultrawork rows."
+    ],
+    "docs/upstream-parity-ledger.md": [
+      "S15: new frozen decision `D_AUTOROUTE_ADVISORY` recorded in §2.",
+      "§3: 'On trigger, the gate stages a team' replaced by the advisory path (stages nothing, one advisory notice, captain stages when warranted) plus the unchanged explicit-flag provisioning; two-sided test -> three-way test (simple / complex soft / explicit flag).",
+      "§6 L2 landing point now names `advisoryNotice`.",
+      "§8: the pre-advisory two-sided case row is marked SUPERSEDED by D_AUTOROUTE_ADVISORY with the new three-way shape and a pointer that the re-run belongs to the wave's QA case (L7/L8)."
+    ],
+    "docs/upstream-parity-ledger.zh-CN.md": [
+      "Matching zh-CN changes for all four EN edits above (delta row, §3 prose, §6 L2, §8 superseded note)."
+    ],
+    "docs/architecture.md": [
+      "Plugin inventory row mpd-ulw now lists the `/ulw` and `/ultrawork` commands next to the tools, and labels the engine C2 ultrawork v2."
+    ],
+    "docs/architecture.zh-CN.md": ["Matching zh-CN change."],
+    "docs/user-guide.md": [
+      "'Drive long work' row now names the equivalent `/ulw <objective>` / `/ultrawork <objective>` commands and the run's no-questions autonomy (stages its own team when the work warrants one)."
+    ],
+    "docs/user-guide.zh-CN.md": ["Matching zh-CN change."]
+  },
+  "acceptance_results": [
+    {
+      "criterion": "AGENTS.md no longer carries the B3 label for the ulw package and describes the C2 v2 engine",
+      "status": "passed",
+      "evidence": "grep -n B3 AGENTS.md -> no hits (exit 1); the layout row now reads `# C2 (Plan C) ultrawork v2 engine: mpd_ultrawork + mpd_ulw alias, /ulw + /ultrawork commands`."
+    },
+    {
+      "criterion": "AGENTS.md documents /ulw and /ultrawork (equivalent, objective as argument) and the advisory gate: complexity is still evaluated, no team is pre-staged, a team is staged only when the work warrants it, and an explicit team: / !team / /agent-teams request still stages",
+      "status": "passed",
+      "evidence": "§1 bullet 'ULW is user-invocable' (lines 110-119) names both commands, the equivalent behaviour and the objective-as-argument semantics; §1 bullet 'The session-start complexity gate ADVISES — it never pre-stages a team' (lines 120-129) states the frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)`, the ONE advisory notice (marker `[AgentTeams] Session-start team rule`), 'no team was staged', staging with agent_teams_create(approval=\"required\", profile=\"mpd\") only when the work warrants it, and that explicit team:/!team + /agent-teams still stage."
+    },
+    {
+      "criterion": "No human-facing doc under docs/** teaches the package-directory build form; the canonical repo-root command from AGENTS.md §6 is used",
+      "status": "passed",
+      "evidence": "grep -rn 'bun build .*--outdir dist|bun build src/index.ts' docs/ -> no hits (exit 1); docs/development.md + zh twin already carry the canonical repo-root form `bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js`. NOTE: 12 files OUTSIDE this task's inScope still teach the package-directory form (six packages x EN+zh pair) — reported to the captain as finding F1, not edited here."
+    },
+    {
+      "criterion": "docs/feature-audit.md and docs/feature-audit.zh-CN.md no longer claim that no upstream-derived content ships, and agree with docs/omo-parity-gap.md",
+      "status": "passed",
+      "evidence": "grep for 'no upstream-derived content ships' / '不随附任何上游衍生内容' over docs/ -> no hits; the row now reads ✅ ported with the corpus shipped under skills/ (ls skills/ = 18 dirs) and SERVED by reference via mpd-bootstrap (packages/mpd-bootstrap-plugin/src/index.ts header: registers a ctx.skills provider over <bundle>/skills, no $DSH_HOME copy), cross-referencing docs/omo-parity-gap.md:55 'Skills corpus — RESOLVED (2026-08-27, ported)'."
+    },
+    {
+      "criterion": "packages/mpd-agent-teams-plugin/README.md + README.zh-CN.md describe the advisory gate, not auto-provisioning",
+      "status": "passed",
+      "evidence": "DISCLOSED TREATMENT: the adopted pair is README.md + README_ZH.md (no README.zh-CN.md exists) and both are exempt-from-edit VERBATIM provenance — AGENTS.md language policy ('Adopted third-party docs kept verbatim as provenance ... are exempt and stay untouched') and verify:docs prints `skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance`. Checked rather than edited: grep -rn 'auto-provision|pre-stage|already staged|staged before' over both files -> NO HITS, so neither file claims auto-provisioning or pre-staging; its only staging narrative is the explicit `/agent-teams` command path (README.md:45,197 + README_ZH.md:45,164), which is unchanged behaviour. The advisory gate is documented on the repo side instead: packages/mpd-bundle/README.md pair, presets/mpd/agent.cordis.yml, AGENTS.md."
+    },
+    {
+      "criterion": "presets/mpd/agent.cordis.yml's SESSION STARTUP RULE block no longer promises pre-staging and no longer repeats the SUPERSEDED predicate wording (matchedSignals >= 2): it must state the shipped advisory behaviour and the ACTUAL frozen predicate (explicit flag OR >= 1 matched signal, lib/session-start.js), consistent with the notice the plugin emits and with the freeze verdict rationale",
+      "status": "passed",
+      "evidence": "grep 'already staged the default team' + 'matchedSignals >= 2' over the preset -> no hits; the block now has a `gate TRIGGERED by a soft signal -> the gate only ADVISES: it stages NOTHING and injects ONE advisory notice` branch, an explicit-flag branch that still stages, and `trigger = explicit flag OR (matchedSignals >= 1)`. Consistency: the wording mirrors the shipped advisoryNotice text (lib/session-start.js:441-454, marker + 'NO team was staged' + stage with approval=\"required\", profile=...) and deliberately says nothing against ULW's approval=\"automatic\" (frozen contract §4.3). preset-conformance --self-test exit 0 ('persona prefix=true') proves the folded persona scalar still parses/mounts."
+    },
+    {
+      "criterion": "packages/mpd-bundle/README.md + README.zh-CN.md carry the same correction as the preset block, keeping the bilingual pair in sync and bun run verify:docs green",
+      "status": "passed",
+      "evidence": "EN: 'advisory complexity gate', predicate `explicit flag OR (matchedSignals >= 1)`, `Triggered by a soft signal -> the gate stages nothing ... one advisory notice ... no team was staged` + explicit-flag bullet. ZH: matching 咨询式复杂度门 section with the same predicate and branches. verify:docs PASS (pairs=38 failed=0 violations=0 exempt=19 derived=3)."
+    },
+    {
+      "criterion": "Every touched human-facing doc has its zh-CN twin updated in the same change with a working language switch link; bun run verify:docs is green",
+      "status": "passed",
+      "evidence": "6 pairs touched, both sides in this change: docs/feature-audit{,.zh-CN}.md, docs/upstream-parity-ledger{,.zh-CN}.md, docs/architecture{,.zh-CN}.md, docs/user-guide{,.zh-CN}.md, packages/mpd-bundle/README{,.zh-CN}.md (5 pairs of files = 10 files) plus the two agent-facing files (AGENTS.md, presets/mpd/agent.cordis.yml) which per policy get no twin. Each twin's switch link sits directly under its title (verified in output.log); `bun run verify:docs` -> PASS, exit 0."
+    }
+  ],
+  "commands_run": [
+    { "command": "bun run verify:docs", "status": "passed", "exitCode": 0, "evidence": "[verify-docs-parity] pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS" },
+    { "command": "bun run verify:rows", "status": "passed", "exitCode": 0, "evidence": "ok: 25 row ids match the bundle patch insert list" },
+    { "command": "node skills/dsh-qa/scripts/preset-conformance.mjs --self-test", "status": "passed", "exitCode": 0, "evidence": "ok: 31 harness rows conform; persona prefix=true; row parity 31/31" }
+  ],
+  "findings": [
+    {
+      "id": "L4-F1",
+      "severity": "medium",
+      "class": "out-of-scope stale build form (same defect class as S2/S3, which t4 fixed for the ulw pair)",
+      "paths": [
+        "packages/mpd-boulder-plugin/README.md:26 + README.zh-CN.md:22",
+        "packages/mpd-comment-checker-plugin/README.md:39 + README.zh-CN.md:38",
+        "packages/mpd-hashline-plugin/README.md:28 + README.zh-CN.md:24",
+        "packages/mpd-memory-plugin/README.md:39 + README.zh-CN.md:31",
+        "packages/mpd-qa-roles-probe/README.md:20 + README.zh-CN.md:16",
+        "packages/mpd-workmate-plugin/README.md:166 + README.zh-CN.md:130"
+      ],
+      "problem": "Each of these 12 human-facing files teaches `bun build src/index.ts ...` (package-directory form). Per AGENTS.md §6 that form writes CWD-relative path comments and is flagged STALE by node scripts/verify-dist-fresh.mjs.",
+      "requiredFix": "Replace with the canonical repo-root form `bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js` in both twins of each pair. NOT edited here: these paths are outside t6's inScope (rule: work only in-scope paths). Captain path amendment or a follow-up lane needed.",
+      "resolved": false
+    },
+    {
+      "id": "L4-F2",
+      "severity": "medium",
+      "class": "out-of-scope stale gate text (the §6 L1 landing point)",
+      "paths": ["packages/mpd-bundle/cordis.patch.yml:365-383"],
+      "problem": "The agent-teams row's SESSION-START TEAM GATE comment still promises provisioning ('On a hit it provisions the STAGED default team ... and injects ONE startup notice saying the session was routed by the gate') and still carries the SUPERSEDED predicate `trigger = (matchedSignals >= 2) OR anyExplicitFlag` — the same two defects S12/S13 fixed in the preset and the bundle README.",
+      "requiredFix": "Rewrite that comment to the advisory behaviour and the frozen predicate (explicit flag OR matchedSignals >= 1). NOT edited here: out of t6's inScope (it is the config file, not the README pair); R1 says one captain message names the path amendment.",
+      "resolved": false
+    },
+    {
+      "id": "L4-F3",
+      "severity": "low",
+      "class": "acceptance-criterion wording vs the adopted-verbatim policy",
+      "paths": ["packages/mpd-agent-teams-plugin/README.md", "packages/mpd-agent-teams-plugin/README_ZH.md"],
+      "problem": "The t6 acceptance criterion names `README.zh-CN.md`, which does not exist; the pair is `README.md` + `README_ZH.md`, both exempt-verbatim provenance per AGENTS.md. Neither file carries an auto-provisioning claim, so no correction is required inside them; the advisory gate is documented in the bundle README pair + preset + AGENTS.md.",
+      "requiredFix": "Captain confirmation that the check-not-edit treatment satisfies criterion 5 (or an explicit amendment naming a repo-side delta section to add).",
+      "resolved": false
+    }
+  ],
+  "self_check": {
+    "bilingual_pairs_synced": true,
+    "agent_facing_files_english_only": true,
+    "no_git_write": true,
+    "no_skills_touched": true,
+    "no_dist_touched": true,
+    "no_ulw_plugin_readme_touched": true
+  }
+}

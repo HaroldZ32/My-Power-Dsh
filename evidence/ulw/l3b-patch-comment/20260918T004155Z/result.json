@@ -1,0 +1,91 @@
+{
+  "lane": "L3b — bundle-patch gate comment repair (t13)",
+  "task": "t13",
+  "attempt_id": "8f7557c3-a272-4f78-8bd1-6ee80e2118e2",
+  "timestamp_utc": "2026-09-18T00:41:55Z",
+  "source_finding": "t6 (docs-engineer) F2 — the agent-teams row's SESSION-START TEAM GATE comment in packages/mpd-bundle/cordis.patch.yml was stale after t5: it carried the superseded `(matchedSignals >= 2)` predicate and promised pre-staging. Reported, not edited (outside the docs lane's inScope).",
+  "what_changed": {
+    "file": "packages/mpd-bundle/cordis.patch.yml",
+    "block": "the SESSION-START TEAM GATE comment block above `sessionTeamPolicy:` (20 lines before, 25 lines after; the sessionTeamPolicy key itself is untouched)",
+    "predicate": "now states the frozen predicate on ONE line: `trigger = explicit flag OR (matchedSignals >= 1)` (the `>= 2` form is gone from the whole file)",
+    "advisory_half": "states that a triggered SOFT signal is ADVISORY — NOTHING is staged (no team state is created), ONE advisory notice names the fired signals, says no team was staged, and the captain stages on demand with agent_teams_create(approval=\"required\", profile=\"mpd\") when the work warrants it, else continues solo",
+    "explicit_half": "an explicit `team:` / `!team` request (marker consumed) still PROVISIONS the staged default team; mode=auto stays the legacy opt-in unconditional path; mode=instruct stays",
+    "unchanged": "every row CONFIG value — verified by parsing HEAD and the working tree with the installed DSH's own YAML parser and comparing the parsed values"
+  },
+  "acceptanceResults": [
+    {
+      "criterion": "The SESSION-START TEAM GATE comment no longer promises provisioning: it states that a triggered auto-route ADVISES (injects ONE advisory notice, creates NO team state) and that a team is staged on demand with agent_teams_create(approval=\"required\", profile=\"mpd\")",
+      "status": "passed",
+      "evidence": "comment-after.txt lines 375-380: 'A triggered SOFT signal is ADVISORY: NOTHING is staged (no team state is created) — the plugin injects ONE advisory notice that names the fired signals, states that no team was staged, and tells the captain to stage one on demand with agent_teams_create(approval=\"required\", profile=\"mpd\") ... (otherwise continue solo and say so)'; `grep -n 'already staged|routed by the gate|provisions the STAGED' packages/mpd-bundle/cordis.patch.yml` returns nothing; consistency-check.mjs arms 'comment: soft trigger is ADVISORY', 'comment: no team state is created', 'comment: states no team was staged', 'comment: names the on-demand staging call', 'comment: names the solo half'"
+    },
+    {
+      "criterion": "The comment no longer carries the superseded predicate wording: it states the frozen predicate `explicit flag OR (matchedSignals >= 1)`, matching lib/session-start.js (whose module doc forbids restoring the >= 2 form)",
+      "status": "passed",
+      "evidence": "comment-after.txt line 371 carries the predicate as ONE contiguous token (the first attempt split it across a line break and the lane's own consistency check caught it — recorded in output.log); `grep -n 'matchedSignals >= 2' packages/mpd-bundle/cordis.patch.yml` returns nothing; consistency-check.mjs arms 'comment: frozen predicate', 'comment: >= 2 wording is gone', and 'code: frozen predicate kept' (lib/session-start.js still reads `input.explicitFlag === true || signals.length >= 1`)"
+    },
+    {
+      "criterion": "The explicit-request half is still described correctly: an explicit team: / !team request (marker consumed) still provisions, and mode:\"auto\" remains the opt-in unconditional path",
+      "status": "passed",
+      "evidence": "comment-after.txt lines 372 (signal A: a `team:` prefix or `!team`, the marker is consumed) and 380-384 ('An explicit `team:` / `!team` request still PROVISIONS the staged default team (profile `mpd`, approval=required — nothing spawns until the user approves the Web plan), and mode=auto keeps the legacy unconditional provisioning as an explicit opt-in; mode=instruct keeps the legacy instruction notice'); consistency-check.mjs arms 'comment: explicit request still provisions', 'comment: mode=auto opt-in kept', 'comment: mode=instruct kept'"
+    },
+    {
+      "criterion": "The row's CONFIG is byte-identical apart from comment text (no key/value change), and bun run verify:rows plus node skills/dsh-qa/scripts/preset-conformance.mjs --self-test are green",
+      "status": "passed",
+      "evidence": "row-config-compare.json (parser = the installed DSH's own yaml): whole_document_values_identical=true, agent_teams_row_config_identical=true, agent_teams_row_name_identical=true, session_team_policy_before_after_identical=true; every changed diff line is a YAML comment (`git diff -U0 | grep '^[+-]' | grep -v '^[+-]\\s*#'` is empty); bun run verify:rows exit 0 ('25 row ids match the bundle patch insert list'); preset-conformance --self-test exit 0 ('31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31')"
+    },
+    {
+      "criterion": "Evidence under evidence/ulw/l3b-patch-comment/** quoting the before/after comment block and both gate outputs",
+      "status": "passed",
+      "evidence": "evidence/ulw/l3b-patch-comment/20260918T004155Z/{comment-before.txt (git show HEAD:…, the stale block), comment-after.txt (final block), comment-diff.txt (the unified diff), row-config-compare.json, consistency-check.mjs + consistency-check.json (17/17 arms, comment vs shipped code), output.log (both gate runs, the first green pass AND the self-caught split-predicate defect, then the final-revision reruns)}"
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "bun run verify:rows",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, … mpd-workmate) — run twice, both green (initial edit and final revision)"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.mjs --self-test",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "[preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31 — run twice, both green"
+    },
+    {
+      "command": "node evidence/ulw/l3b-patch-comment/20260918T004155Z/consistency-check.mjs",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "17/17 arms: the comment's advisory half, predicate, explicit half and legacy modes all match the shipped lib/session-start.js; the FIRST run exited 1 on 'comment: frozen predicate' because the predicate was split across a line break — fixed by reflowing it onto one line, then re-run green"
+    },
+    {
+      "command": "YAML parse-compare of HEAD vs working tree (installed DSH parser)",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "whole_document_values_identical=true and agent_teams_row_config_identical=true — comments cannot move a parsed value, and here they provably did not"
+    }
+  ],
+  "changedPaths": [
+    "packages/mpd-bundle/cordis.patch.yml",
+    "evidence/ulw/l3b-patch-comment/20260918T004155Z/comment-before.txt",
+    "evidence/ulw/l3b-patch-comment/20260918T004155Z/comment-after.txt",
+    "evidence/ulw/l3b-patch-comment/20260918T004155Z/comment-diff.txt",
+    "evidence/ulw/l3b-patch-comment/20260918T004155Z/row-config-compare.json",
+    "evidence/ulw/l3b-patch-comment/20260918T004155Z/consistency-check.mjs",
+    "evidence/ulw/l3b-patch-comment/20260918T004155Z/consistency-check.json",
+    "evidence/ulw/l3b-patch-comment/20260918T004155Z/output.log"
+  ],
+  "housekeeping_disclosure": "My own shell created one transient pointer file `.mpd/l3b-evidence-dir.txt` (cross-call state carrier; bash /tmp is fresh per call, T-23) and removed it in the same turn; `git status --porcelain -- .mpd/` is empty afterwards and no team state was read or written outside the agent_teams_* tools. It is disclosed because it briefly touched a path outside the declared inScope.",
+  "settled_hashes_sha256": {
+    "packages/mpd-bundle/cordis.patch.yml": "a48f142d87155c437affb817fe52b9af4ff8a392fa28dcff73d4a3ab3c012116",
+    "evidence/ulw/l3b-patch-comment/20260918T004155Z/consistency-check.mjs": "cab22081018c8ef2981e670de73c769370b8d59a39e8b4228028a3178a02788b",
+    "evidence/ulw/l3b-patch-comment/20260918T004155Z/comment-before.txt": "51e7a1b175a1f31d0af0ed8d436ec6e39c030645424eeedd829b50300440067d",
+    "evidence/ulw/l3b-patch-comment/20260918T004155Z/comment-after.txt": "a5c19c108f6c78deae7cf420c97db983dd1d006eb310716d3cd06662067ab8b1",
+    "evidence/ulw/l3b-patch-comment/20260918T004155Z/row-config-compare.json": "bd9995c2399542b4996626029ee88bc7b4b6c48959982fd3f9d00515b77c34cb"
+  },
+  "for_the_reviewer": [
+    "The repair is comment-only by construction AND by measurement: the parsed YAML document (and the agent-teams row config specifically) is value-identical to HEAD.",
+    "The two gate commands are the proof the captain asked for: verify:rows pins the insert-id list, preset-conformance validates every row config against the installed schemas.",
+    "Disclosure: the first wording split `explicit flag OR (matchedSignals >=` / `1)` across two comment lines; the lane's own consistency check caught it (exit 1) and it was reflowed onto a single line before the final gates were run. Both the red and the green run are in output.log."
+  ]
+}

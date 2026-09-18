@@ -1129,11 +1129,22 @@ var require_lib = __commonJS((exports, module) => {
 var import_schemastery = __toESM(require_lib(), 1);
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
+}
+function userMessage(input) {
+  const content = textBlock(input?.text);
+  for (const block of content)
+    Object.freeze(block);
+  Object.freeze(content);
+  const source = { kind: "user", ...input?.source ?? {} };
+  Object.freeze(source);
+  const message = { id: randomUUID(), role: "user", content, source };
+  return Object.freeze(message);
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
@@ -1270,6 +1281,7 @@ function createDshAdapter(ctx, config = {}) {
       const subagents = service("subagents");
       const skills = service("skills");
       const presets = service("agentPresets");
+      const commands = service("commands");
       const agents = service("agents");
       const compaction = service("compaction");
       const sample = liveAgents()[0];
@@ -1293,6 +1305,9 @@ function createDshAdapter(ctx, config = {}) {
         skills: skills !== undefined,
         skillsProvider: typeof skills?.registerProvider === "function",
         agentPresets: typeof presets?.resolve === "function",
+        commands: commands !== undefined,
+        commandsRegister: typeof commands?.register === "function",
+        turnSubmit: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
         agents: agents !== undefined && typeof agents?.list === "function",
         compaction: typeof compaction?.compactNow === "function",
         compactionForAgent: scopedCompaction,
@@ -1327,6 +1342,24 @@ function createDshAdapter(ctx, config = {}) {
         for (const dispose of disposers)
           dispose();
       };
+    },
+    registerCommand(definition) {
+      const commands = service("commands");
+      if (commands === undefined || commands === null || typeof commands.register !== "function")
+        return noop2;
+      const registered = commands.register({
+        name: definition?.name,
+        description: definition?.description,
+        ...definition?.input === undefined ? {} : { input: definition.input },
+        handler: (invocation) => {
+          const host = invocation ?? { rawInput: "" };
+          return definition.handler({
+            ...host,
+            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+          });
+        }
+      });
+      return typeof registered === "function" ? registered : noop2;
     },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
@@ -1573,13 +1606,25 @@ function createDshAdapter(ctx, config = {}) {
         return { ok: false, error: String(error?.message ?? error), ...conflict ? { conflict: true } : {} };
       }
     },
-    text: textBlock
+    text: textBlock,
+    userMessage,
+    submitUserTurn(agent, message2) {
+      const followup = agent?.followup;
+      if (typeof followup !== "function")
+        return false;
+      try {
+        followup.call(agent, message2);
+        return true;
+      } catch {
+        return false;
+      }
+    }
   };
   return adapter;
 }
 
 // packages/mpd-team-watchdog-plugin/src/actions.ts
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 import { join as join4 } from "node:path";
 
 // packages/mpd-team-watchdog-plugin/src/paths.ts
@@ -2043,7 +2088,7 @@ function applyHold(workspace, stateDir, args, registry, defaultTtlMs = 0) {
     return { applied: false, error: "team_id is required", path: holdPath(workspace, stateDir, "") };
   const existing = readHold(workspace, stateDir, teamId);
   const hold = {
-    id: existing?.id ?? randomUUID(),
+    id: existing?.id ?? randomUUID2(),
     teamId,
     since: existing?.since ?? Date.now(),
     cause: args.cause ?? existing?.cause ?? "silence",

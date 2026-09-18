@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "sourceArtifact": "/root/dshProj/my-power-dsh/evidence/ulw/l6-verification/20260918T012345Z/session-start-team-2026-09-18T01-29-15.614Z/sides/soft-complex/0/team/upstream-routing-align/team.json",
+  "sessionStore": "/root/dshProj/my-power-dsh/evidence/ulw/l6-verification/20260918T012345Z/session-start-team-2026-09-18T01-29-15.614Z/sides/soft-complex/0/sessions/--tmp-mpd-sst-6rkYoY-side-soft-complex-0-ws--",
+  "record": {
+    "id": "upstream-routing-align",
+    "phase": "staged",
+    "captainSessionId": "session-7af9c9b1-f4cc-44b8-ba98-6d52ccd4d2c2",
+    "description": "Align the adopted agent-teams orchestration surface in the my-power-dsh bundle with its upstream (NanmiCoder/dsh-agent-teams, latest v0.1.20): audit the orchestration surface, resolve what \"the routin"
+  },
+  "evidence": {
+    "resolution": "session-id",
+    "sessionId": "session-7af9c9b1-f4cc-44b8-ba98-6d52ccd4d2c2",
+    "records": 268,
+    "frames": 149,
+    "createCalls": 1,
+    "createCallReasons": ""
+  },
+  "attribution": {
+    "origin": "model",
+    "reasons": [
+      "the captain session log records an agent_teams_create tool call"
+    ],
+    "pluginDescription": false,
+    "modelCalled": true
+  },
+  "repairedVerdict": {
+    "ok": true,
+    "problems": []
+  },
+  "counterfactuals": {
+    "pluginStagedStillFails": true,
+    "unattributableStillFails": true,
+    "pluginProblems": [
+      "a team record on the advisory path is not attributed to the model (id=mpd-default, origin=plugin: the record carries the plugin's auto-route description and belongs to this session)"
+    ],
+    "unknownProblems": [
+      "a team record on the advisory path is not attributed to the model (id=upstream-routing-align, origin=unknown: no agent_teams_create call and no plugin auto-route description)"
+    ]
+  },
+  "problems": []
+}

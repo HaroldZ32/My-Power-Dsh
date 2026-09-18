@@ -127,7 +127,7 @@ Tab 完全一致），而不是疏漏。
 ## 构建 / 测试
 
 ```bash
-bun build src/index.ts --target node --format esm --outfile dist/index.js
+bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js
 bun test packages/mpd-workmate-plugin   # 离线生命周期测试（沙箱 HOME），含重命名/删除
 ```
 

@@ -1,0 +1,197 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-sst-0Rx1MS",
+  "steps": {
+    "settled": {
+      "ok": true,
+      "rev": "5aa222a144e4238b67453731c5decd806db6db94",
+      "gateHash": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8"
+    },
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "patchRow": {
+      "ok": true,
+      "hasRow": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "simpleSide": [
+      {
+        "prompt": "Reply with exactly: hello-ok",
+        "expect": "none",
+        "exited": 0,
+        "teams": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "notice": {
+          "any": false,
+          "advisory": 0,
+          "provisioned": 0,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 20,
+        "sessionFrames": 7,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "What does the git-master skill do? Answer in one sentence.",
+        "expect": "none",
+        "exited": 0,
+        "teams": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "notice": {
+          "any": false,
+          "advisory": 0,
+          "provisioned": 0,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 20,
+        "sessionFrames": 7,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+        "expect": "none",
+        "exited": 0,
+        "teams": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "notice": {
+          "any": false,
+          "advisory": 0,
+          "provisioned": 0,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 42,
+        "sessionFrames": 20,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "softComplexSide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "advise",
+        "exited": 0,
+        "teams": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "notice": {
+          "any": true,
+          "advisory": 1,
+          "provisioned": 0,
+          "signals": [
+            "C"
+          ]
+        },
+        "isolation": true,
+        "sessionRecords": 201,
+        "sessionFrames": 110,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+        "expect": "advise",
+        "exited": 0,
+        "teams": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "notice": {
+          "any": true,
+          "advisory": 1,
+          "provisioned": 0,
+          "signals": [
+            "C"
+          ]
+        },
+        "isolation": true,
+        "sessionRecords": 87,
+        "sessionFrames": 45,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "explicitSide": [
+      {
+        "prompt": "team: fix the flaky test",
+        "expect": "provision",
+        "exited": 0,
+        "teams": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "notice": {
+          "any": true,
+          "advisory": 0,
+          "provisioned": 1,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 100,
+        "sessionFrames": 53,
+        "problems": [
+          "an explicit team: prompt must stage EXACTLY ONE team"
+        ],
+        "ok": false
+      }
+    ],
+    "negativeControl": {
+      "ok": true,
+      "teams": 0,
+      "notice": {
+        "any": false,
+        "advisory": 0,
+        "provisioned": 0
+      },
+      "disarmed": true,
+      "isolation": true,
+      "problems": []
+    },
+    "threeWay": {
+      "ok": false,
+      "simpleTeams": [
+        0,
+        0,
+        0
+      ],
+      "simpleNotices": [
+        false,
+        false,
+        false
+      ],
+      "softTeams": [
+        0,
+        0
+      ],
+      "softAdvisory": [
+        1,
+        1
+      ],
+      "softSignals": [
+        [
+          "C"
+        ],
+        [
+          "C"
+        ]
+      ],
+      "explicitTeams": [
+        0
+      ],
+      "explicitProvisioned": [
+        1
+      ]
+    }
+  },
+  "totalSteps": 9
+}

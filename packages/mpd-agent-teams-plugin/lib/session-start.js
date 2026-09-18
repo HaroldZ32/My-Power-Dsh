@@ -12,10 +12,13 @@
  *   unconditional notice. The mechanical gate below still runs when
  *   `autoRoute` is enabled.
  * - `sessionTeamPolicy.autoRoute: true` (DEFAULT) — the complexity gate is
- *   mechanically evaluated at the first pre-step. When it fires, the staged
- *   default team is provisioned (the same path `agent_teams_create` uses, so
- *   member routes and team state are byte-identical) and exactly one startup
- *   notice is injected telling the captain the session was routed BY THE GATE.
+ *   mechanically evaluated at the first pre-step. When it fires on a SOFT
+ *   signal, exactly one ADVISORY startup notice is injected: it names the
+ *   matched signals, states that NO team was staged, and asks the captain to
+ *   stage one with `agent_teams_create(approval="required", profile=...)` at the
+ *   moment the work actually warrants a team — otherwise the captain continues
+ *   solo and says so. Nothing is provisioned while complexity is merely being
+ *   judged; an explicit `team:` / `!team` request still provisions (R4).
  * - `sessionTeamPolicy.mode: 'auto'` — legacy opt-in: provision unconditionally
  *   for every qualifying session (kept for explicit opt-in, not the default).
  * - `sessionTeamPolicy.mode: 'instruct'` — legacy opt-in: inject the
@@ -62,10 +65,11 @@
  *   at all (the headless direct driver, legacy installs) are covered by
  *   default, because such deployments run the bundle itself.
  *
- * The policy settles once per session: after the first check (team found,
- * team provisioned, or provisioning failed) it never provisions again, so a
- * team the user deletes mid-session is NOT recreated and a new team the
- * captain creates afterwards is never fought over.
+ * The policy settles once per session: after the first check (an advisory
+ * notice injected, team found, team provisioned, or provisioning failed) the
+ * gate is never evaluated for that session again, so a team the user deletes
+ * mid-session is NOT recreated and a new team the captain creates afterwards
+ * is never fought over.
  *
  * Failure policy: a provisioning error never breaks the step — the step runs
  * unreduced and the gated notice is injected instead, so the session still gets
@@ -397,25 +401,55 @@ export async function provisionSessionTeam(ctx, config, policy, agent, signal) {
     });
 }
 /**
- * The notice shown when the complexity gate provisioned a team. It states that
- * the session was ROUTED BY THE GATE — never that a team is mandatory.
+ * The notice shown when a team WAS provisioned at session start — the explicit
+ * `team:` / `!team` request path (R4) or the unconditional `mode: 'auto'`
+ * opt-in. It states how the team came to exist and that a team is never
+ * mandatory. A triggered SOFT auto-route no longer reaches this builder: it is
+ * advisory and stages nothing (see `advisoryNotice`).
  * @param team - the provisioned team state.
  * @param signals - the matched gate signal ids.
  * @returns the user-role startup notice.
  */
 export function provisionedNotice(team, signals = []) {
     const profileName = team.profile?.name ?? '';
-    const matched = signals.length === 0 ? 'complexity signals' : `complexity signals ${signals.join('/')}`;
+    const routing = signals.length === 0
+        ? 'this deployment stages a team unconditionally (sessionTeamPolicy.mode="auto")'
+        : `this session was routed by the complexity gate (complexity signals ${signals.join('/')})`;
     return createUserMessage({
         content: [{
             type: 'text',
-            text: `${STARTUP_NOTICE_MARKER}: this session was routed by the complexity gate (${matched}) — a team is NOT a precondition of this session.
+            text: `${STARTUP_NOTICE_MARKER}: ${routing} — a team is NOT a precondition of this session.
 - Team "${team.name}" (id ${team.id}${profileName === '' ? '' : `, profile \`${profileName}\``}) is staged in this workspace; you are its captain.
 - While it is staged, shape the roster/DAG with agent_teams_add_member / agent_teams_create_task / agent_teams_edit_plan / agent_teams_send_message, then tell the user the Web plan is ready. Members start only after the user edits and approves the plan (agent_teams_approve is yours to call only on explicit user approval).
 - If the staged team does not fit this session, archive it with agent_teams_delete and continue solo with the user — that is an accepted outcome of this gate.
 - You may not create a second team while leading this one.`,
         }],
         source: { kind: 'plugin', plugin: 'agent-teams', reason: 'session-start-provision' },
+    });
+}
+/**
+ * The ADVISORY notice shown when the complexity gate fires on a SOFT signal:
+ * the session was NOT staged a team (user clause 4 / D1). It names the matched
+ * signals, states that no team exists yet, and leaves the staging decision to
+ * the captain at the moment the work actually warrants one. It deliberately
+ * says nothing about automatic approval: a ULW run stages with
+ * `approval="automatic"`, so the advisory must not forbid that path.
+ * @param signals - the matched gate signal ids.
+ * @param policy - the normalized sessionTeamPolicy config.
+ * @returns the user-role startup notice.
+ */
+export function advisoryNotice(signals = [], policy = {}) {
+    const profile = policy.profile ?? 'mpd';
+    const matched = signals.length === 0 ? 'complexity signals' : `complexity signals ${signals.join('/')}`;
+    return createUserMessage({
+        content: [{
+            type: 'text',
+            text: `${STARTUP_NOTICE_MARKER}: this session shows ${matched}, and NO team was staged — the gate is ADVISORY and stages nothing while complexity is merely being judged.
+- Stage a team at the moment the work actually warrants one: call agent_teams_create(approval="required", profile="${profile}") with the goal as its description, then shape the roster/DAG while staged and tell the user the Web plan is ready for review.
+- If the work does not warrant a team (a short or single-threaded task), continue solo — and say so: tell the user in one line that the gate fired and no team was staged.
+- A team is NOT a precondition of this session, and you may not create a second team while leading one.`,
+        }],
+        source: { kind: 'plugin', plugin: 'agent-teams', reason: 'session-start-advisory' },
     });
 }
 /**
@@ -455,7 +489,8 @@ export function spliceNotice(decision, claimed, notice) {
  * @param policy - the normalized sessionTeamPolicy config.
  * @param userText - the text of the latest claimed user message (undefined when none).
  * @param workspace - the session workspace root.
- * @returns the routing decision: which path applies and the matched signals.
+ * @returns the routing decision: which path applies and the matched signals
+ * (`advise` = the gate fired on a soft signal and NOTHING is staged).
  */
 export async function routeDecision(policy, userText, workspace) {
     if (userText === undefined)
@@ -468,8 +503,14 @@ export async function routeDecision(policy, userText, workspace) {
         const consumed = consumeExplicitFlag(userText);
         const planArtifact = await hasPlanArtifact(workspace);
         const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, planArtifact });
-        if (verdict.trigger)
-            return { action: 'provision', signals: verdict.signals };
+        if (verdict.trigger) {
+            // An explicit `team:` / `!team` request is a DIRECT request and still provisions
+            // (R4: never "the user asked for a team and nothing happened"). Every SOFT trigger
+            // (B/C/D) is ADVISORY instead (user clause 4 / D1): while complexity is merely
+            // being judged the gate stages NOTHING — it tells the captain that a team MAY be
+            // warranted at the moment the work actually needs one.
+            return { action: consumed.flagged ? 'provision' : 'advise', signals: verdict.signals };
+        }
     }
     return { action: 'none', signals: [] };
 }
@@ -479,8 +520,9 @@ export async function routeDecision(policy, userText, workspace) {
  * The listener is registered global + prepend so it sits outermost in the
  * `agent/pre-step` waterfall (the host mounts before per-preset listeners) and
  * its returned decision is the final one. It faithfully forwards the inner
- * decision untouched on every non-provisioning step, and it lands BEFORE any
- * sizing/scale doctrine so the gate can actually prevent a team.
+ * decision untouched on every step whose route is `none`; a triggered SOFT
+ * auto-route injects the advisory notice and stages nothing, and it lands
+ * BEFORE any sizing/scale doctrine so the gate can actually prevent a team.
  * @param ctx - the plugin context (injects `agents`, `llm`, `systemPrompt`).
  * @param resolved - the resolved plugin runtime config (must carry `sessionTeamPolicy`).
  */
@@ -548,6 +590,13 @@ export function installSessionTeamPolicy(ctx, resolved) {
                 return decision;
             if (team !== undefined)
                 notice = provisionedNotice(team, route.signals);
+        }
+        else if (route.action === 'advise') {
+            // ADVISORY auto-route (user clause 4 / D1): the gate fired on a soft signal and
+            // stages NOTHING here — provisioning is reached ONLY from `mode:'auto'` or an
+            // explicit `team:` / `!team` request (`route.action === 'provision'`). No profile
+            // init, no team record and no lock is touched on this path.
+            notice = advisoryNotice(route.signals, policy);
         }
         else {
             notice = instructNotice(policy);

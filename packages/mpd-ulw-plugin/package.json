@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.2.3",
   "type": "module",
-  "description": "ulw-loop/ultrawork loop discipline plugin (B3)",
+  "description": "ulw-loop/ultrawork loop discipline plugin (mpd_ultrawork + mpd_ulw alias; /ulw + /ultrawork commands)",
   "scripts": {
     "test": "bun test"
   }

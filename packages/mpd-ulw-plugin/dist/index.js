@@ -1,14 +1,25 @@
 // packages/mpd-ulw-plugin/src/index.ts
 import { mkdirSync, writeFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
+}
+function userMessage(input) {
+  const content = textBlock(input?.text);
+  for (const block of content)
+    Object.freeze(block);
+  Object.freeze(content);
+  const source = { kind: "user", ...input?.source ?? {} };
+  Object.freeze(source);
+  const message = { id: randomUUID(), role: "user", content, source };
+  return Object.freeze(message);
 }
 function message(error) {
   return error instanceof Error ? error.message : String(error);
@@ -145,6 +156,7 @@ function createDshAdapter(ctx, config = {}) {
       const subagents = service("subagents");
       const skills = service("skills");
       const presets = service("agentPresets");
+      const commands = service("commands");
       const agents = service("agents");
       const compaction = service("compaction");
       const sample = liveAgents()[0];
@@ -168,6 +180,9 @@ function createDshAdapter(ctx, config = {}) {
         skills: skills !== undefined,
         skillsProvider: typeof skills?.registerProvider === "function",
         agentPresets: typeof presets?.resolve === "function",
+        commands: commands !== undefined,
+        commandsRegister: typeof commands?.register === "function",
+        turnSubmit: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
         agents: agents !== undefined && typeof agents?.list === "function",
         compaction: typeof compaction?.compactNow === "function",
         compactionForAgent: scopedCompaction,
@@ -202,6 +217,24 @@ function createDshAdapter(ctx, config = {}) {
         for (const dispose of disposers)
           dispose();
       };
+    },
+    registerCommand(definition) {
+      const commands = service("commands");
+      if (commands === undefined || commands === null || typeof commands.register !== "function")
+        return noop;
+      const registered = commands.register({
+        name: definition?.name,
+        description: definition?.description,
+        ...definition?.input === undefined ? {} : { input: definition.input },
+        handler: (invocation) => {
+          const host = invocation ?? { rawInput: "" };
+          return definition.handler({
+            ...host,
+            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+          });
+        }
+      });
+      return typeof registered === "function" ? registered : noop;
     },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
@@ -448,7 +481,19 @@ function createDshAdapter(ctx, config = {}) {
         return { ok: false, error: String(error?.message ?? error), ...conflict ? { conflict: true } : {} };
       }
     },
-    text: textBlock
+    text: textBlock,
+    userMessage,
+    submitUserTurn(agent, message2) {
+      const followup = agent?.followup;
+      if (typeof followup !== "function")
+        return false;
+      try {
+        followup.call(agent, message2);
+        return true;
+      } catch {
+        return false;
+      }
+    }
   };
   return adapter;
 }
@@ -509,6 +554,18 @@ var DIRECTIVE = [
   "Subagent barrier: no done/final answer while children are non-terminal.",
   "End with ONLY the structured report (status=continue|complete|blocked; wave label; criteria states; evidence; nextSteps; blocker). continue requires nextSteps; complete requires all evidence and empty nextSteps; blocked requires a concrete blocker."
 ].join(String.fromCharCode(10));
+var ULW_ACTIVATION_DIRECTIVE = [
+  "ULTRAWORK ACTIVATION (user-invoked; execute autonomously and ask the user nothing)",
+  "1. TRIAGE FIRST: when the objective is unclear, or the task is investigate-first-then-execute, run one normal-MPD investigation round BEFORE the gate, a team or the loop; never open a team on a guess.",
+  "2. GATE: then evaluate the SAME complexity predicate the session-start gate uses — an explicit `team:`/`!team` flag OR any matched signal A-D (A explicit flag; B deliverable verbs; C enumerated steps; D an existing .mpd/plans artifact). Never invent a second predicate.",
+  '3. TEAM WHEN WARRANTED: when the gate fires, or the work is complex, call agent_teams_create(approval="automatic", profile="mpd"), design the roster and the task DAG yourself, and run it — no user confirmation and no plan review.',
+  "4. LOOP TO COMPLETION: never stop early to ask the user; keep rounds until every success criterion is clean.",
+  "5. FIX ON SIGHT: a defect the run finds is fixed in the same turn — never report-and-wait and never ask the user for approval.",
+  "6. CLOSE OUT ON PROOF: report done only after the verification gate and the quality-gate ledger both approve; otherwise keep working, or report the concrete blocker."
+].join(String.fromCharCode(10));
+function activationDirective(objective) {
+  return ULW_ACTIVATION_DIRECTIVE + String.fromCharCode(10, 10) + "OBJECTIVE: " + String(objective ?? "").trim();
+}
 function textBlock2(text) {
   return [{ type: "text", text }];
 }
@@ -520,6 +577,35 @@ function stateRoot(cfg, dsh, exec) {
 }
 function writeJson(p, v) {
   writeFileSync(p, JSON.stringify(v, null, 2));
+}
+function messageText(message2) {
+  if (!Array.isArray(message2?.content))
+    return;
+  const parts = message2.content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text);
+  return parts.length === 0 ? undefined : parts.join(String.fromCharCode(10));
+}
+var GESTURE_PATTERN = /^(?:\/ulw|\/ultrawork)(?:[\t\n\r ]+|$)/u;
+function claimGesture(messages) {
+  if (!Array.isArray(messages))
+    return;
+  for (const message2 of messages) {
+    if (message2?.role !== "user")
+      continue;
+    const text = messageText(message2);
+    if (text === undefined)
+      continue;
+    const match = GESTURE_PATTERN.exec(text.trim());
+    if (match !== null)
+      return { message: message2, text, match };
+  }
+  return;
+}
+function rewriteMessageText(message2, text) {
+  const content = Array.isArray(message2?.content) ? message2.content : [];
+  const at = content.findIndex((block) => block?.type === "text");
+  if (at < 0)
+    return message2;
+  return { ...message2, content: content.map((block, index) => index === at ? { ...block, text } : block) };
 }
 function apply(ctx, config = {}) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
@@ -575,7 +661,7 @@ function apply(ctx, config = {}) {
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, planFile: { type: "string" }, verdict: { type: "string" }, ledger: { type: "array", items: { type: "object" } }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] },
+      schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, planFile: { type: "string", description: "Present only when a plan file was written (plan=true or tier=heavy); absent otherwise" }, verdict: { type: "string" }, ledger: { type: "array", items: { type: "object" } }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] },
       render: (_a, v) => textBlock2("ultrawork status=" + v.status + " rounds=" + v.rounds + " verdict=" + (v.verdict ?? "-") + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile)
     },
     execute: async (args, exec) => {
@@ -589,7 +675,7 @@ function apply(ctx, config = {}) {
       const hyperplan = args?.hyperplan === true;
       const strictReview = args?.strictReview === true;
       const rounds = Math.min(Math.max(Number(args?.maxRounds ?? maxRounds) || 1, 1), 8);
-      const id = "ulw-" + randomUUID().slice(0, 8);
+      const id = "ulw-" + randomUUID2().slice(0, 8);
       const dir = join(stateDir, id);
       mkdirSync(dir, { recursive: true });
       mkdirSync(planDir, { recursive: true });
@@ -753,12 +839,12 @@ function apply(ctx, config = {}) {
       state.status = status;
       state.verdict = verdict;
       writeJson(stateFile, state);
-      return { status, rounds: used, planFile, verdict, ledger: gateLedger, finalReport, stateFile };
+      return { status, rounds: used, ...planFile === null ? {} : { planFile }, verdict, ledger: gateLedger, finalReport, stateFile };
     }
   });
   dsh.registerTool({
     name: "mpd_ulw",
-    description: "Lightweight ulw-loop alias: same engine as mpd_ultrawork with tier=light, plan=false, hyperplan=false. Returns the B3-shaped result.",
+    description: "Lightweight ulw-loop alias: same engine as mpd_ultrawork with tier=light, plan=false, hyperplan=false. Returns the same result fields as mpd_ultrawork (status, rounds, finalReport, stateFile).",
     parameters: { type: "object", properties: { objective: { type: "string" }, maxRounds: { type: "integer", description: "1..8" } }, required: ["objective"] },
     output: { schema: { type: "object", properties: { status: { type: "string" }, rounds: { type: "integer" }, finalReport: { type: "string" }, stateFile: { type: "string" } }, required: ["status", "rounds", "finalReport", "stateFile"] }, render: (_a, v) => textBlock2("mpd_ulw status=" + v.status + " rounds=" + v.rounds + String.fromCharCode(10) + v.finalReport + String.fromCharCode(10) + "state: " + v.stateFile) },
     execute: async (args, exec) => {
@@ -770,9 +856,48 @@ function apply(ctx, config = {}) {
       return { status: res.status, rounds: res.rounds, finalReport: res.finalReport, stateFile: res.stateFile };
     }
   });
+  const ULW_USAGE = "usage: /ulw <objective> (alias: /ultrawork <objective>) — starts an autonomous ULW run for that objective";
+  const ULW_COMMAND_DESCRIPTION = (alias) => "Run the ULW discipline for an objective, fully autonomously (identical alias: " + alias + ")";
+  const runUlwCommand = (invocation) => {
+    const objective = String(invocation?.rawInput ?? "").trim();
+    if (objective === "")
+      return { kind: "error", text: ULW_USAGE };
+    const submitted = invocation.submit?.(dsh.userMessage({ text: activationDirective(objective), source: { kind: "plugin", plugin: "mpd-ulw" } })) === true;
+    if (!submitted)
+      return { kind: "error", text: "ULW could not start: no live agent turn surface to submit the activation directive for " + JSON.stringify(objective) };
+    return { kind: "success", text: "ULW activated: " + objective };
+  };
+  const commandDisposers = ["ulw", "ultrawork"].map((name2) => dsh.registerCommand({ name: name2, description: ULW_COMMAND_DESCRIPTION(name2 === "ulw" ? "/ultrawork" : "/ulw"), input: { hint: "objective" }, handler: runUlwCommand }));
+  const gestureDispose = dsh.onEvent("agent/pre-step", async (payload, next) => {
+    const decision = typeof next === "function" ? await next() : undefined;
+    try {
+      if (decision === undefined || decision === null || decision.kind === "reject")
+        return decision;
+      const messages = Array.isArray(decision.messages) ? decision.messages : Array.isArray(payload?.messages) ? payload.messages : undefined;
+      if (messages === undefined)
+        return decision;
+      const claimed = claimGesture(messages);
+      if (claimed === undefined)
+        return decision;
+      const objective = claimed.text.trim().slice(claimed.match[0].length).trim();
+      if (objective === "")
+        return decision;
+      return { ...decision, messages: messages.map((message2) => message2 === claimed.message ? rewriteMessageText(message2, activationDirective(objective)) : message2) };
+    } catch {
+      return decision;
+    }
+  });
+  const disposers = [...commandDisposers, ...gestureDispose === undefined ? [] : [gestureDispose]];
+  if (typeof ctx.effect === "function")
+    ctx.effect(() => () => {
+      for (const dispose of disposers)
+        dispose();
+    }, "mpd-ulw.commands");
 }
 export {
   name,
   inject,
-  apply
+  apply,
+  activationDirective,
+  ULW_ACTIVATION_DIRECTIVE
 };

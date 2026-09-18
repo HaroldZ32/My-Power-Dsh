@@ -1,0 +1,29 @@
+### t16 BEFORE-fix reference: the t2 verifier's measured live failure
+source: evidence/ulw/l6-verification/20260918T012345Z/output.log  (sha256 7a5999b56b7a82e62345d7191de33a5256544a8b4a055f706067b04fa080c90a)
+source: evidence/ulw/l6-verification/20260918T012345Z/result.json (sha256 e2407d6a95d489fb1c749a44585db641ec003c5414a51658ab3fd8d49c029a68)
+
+--- output.log line 90 ---
+  L6-F2 — the tool RESULT was invalid on EVERY call: `Error: tool "mpd_ultrawork" returned invalid output: "value.planFile" must be a string`
+
+--- result.json finding F2 problem text (verbatim) ---
+{
+  "id": "L6-F2",
+  "severity": "high",
+  "problem": "The mpd_ultrawork tool's declared output schema is `planFile: { type: \"string\" }` while the engine returns `planFile: string | null` (null whenever plan=false). The harness's output validator therefore rejects EVERY plan=false result: `Error: tool \"mpd_ultrawork\" returned invalid output: \"value.planFile\" must be a string` — measured live, reproducibly, on both calls of ultrawork-smoke (the model had to read `.mpd/ulw/<id>/state.json` from disk instead of consuming the tool result). plan=false is the DEFAULT for the /ulw command path, so the user-invocable surface this wave ships hands its caller an invalid result. The defect is PRE-EXISTING: `git show HEAD:packages/mpd-ulw-plugin/src/index.ts` carries the identical `schema:` line with `planFile: { type: \"string\" }` and the wave's diff does not touch it; no test covers it (engine.test.ts only asserts planFile truthy on the plan=true path), and ultrawork-smoke greens because it asserts on-disk state, not the tool result.",
+  "evidence": null,
+  "requiredFix": "Declare the field nullable (e.g. `planFile: { type: [\"string\", \"null\"] }`) or omit it when null, in packages/mpd-ulw-plugin/src/index.ts; add a unit test that validates a plan=false result object against the tool's own declared schema. Note the fix belongs to src (t8 rebuilds dist) and must not be applied by this verification lane."
+}
+
+### the live session log (the acceptance's raw anchor)
+path:  evidence/ulw/l2c-schema-fix/20260918T015142Z/live/raw/arm-live-plan-false.session.decoded.jsonl
+sha256: d22e1283227117d5d7479d0d02339d491231e6d48293f5871dbc5842006a321f
+records: 32
+tool/call records: 2
+tool/result records: 2
+'returned invalid output' occurrences: 0   <- BEFORE the fix every plan=false result produced one
+
+### the two model-initiated calls and their non-error results
+  call mpd_ultrawork args={"objective":"qa-l2c-schema-ultrawork","tier":"light","plan":false,"maxRounds":1}
+    -> result isError=false text="ultrawork status=max-rounds rounds=1 verdict=n/a | round 1: no summary | state: /tmp/mpd-l2c-live-schema-84afzh/ws-live/.mpd/ulw/ulw-011971d8/state.js"
+  call mpd_ulw args={"objective":"qa-l2c-schema-alias","maxRounds":1}
+    -> result isError=false text="mpd_ulw status=max-rounds rounds=1 | round 1: no summary | state: /tmp/mpd-l2c-live-schema-84afzh/ws-live/.mpd/ulw/ulw-77bc0d5d/state.json"

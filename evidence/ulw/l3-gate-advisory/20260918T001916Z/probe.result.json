@@ -1,0 +1,175 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "name": "simple prompt -> none",
+      "ok": true,
+      "detail": "action=none signals="
+    },
+    {
+      "name": "SOFT trigger -> advise",
+      "ok": true,
+      "detail": "action=advise signals=C"
+    },
+    {
+      "name": "explicit team: -> provision",
+      "ok": true,
+      "detail": "action=provision signals=A"
+    },
+    {
+      "name": "explicit !team -> provision",
+      "ok": true,
+      "detail": "action=provision signals=A"
+    },
+    {
+      "name": "mode auto -> provision",
+      "ok": true,
+      "detail": "action=provision signals="
+    },
+    {
+      "name": "mode instruct -> instruct",
+      "ok": true,
+      "detail": "action=instruct signals="
+    },
+    {
+      "name": "autoRoute off -> none",
+      "ok": true,
+      "detail": "action=none signals="
+    },
+    {
+      "name": "no user text -> none",
+      "ok": true,
+      "detail": "action=none signals="
+    },
+    {
+      "name": "plan artifact (D) -> advise",
+      "ok": true,
+      "detail": "action=advise signals=D"
+    },
+    {
+      "name": "advisory is a user-role message",
+      "ok": true,
+      "detail": "role=user"
+    },
+    {
+      "name": "advisory keeps the startup marker",
+      "ok": true,
+      "detail": "[AgentTeams] Session-start team rule"
+    },
+    {
+      "name": "advisory names the fired signals",
+      "ok": true,
+      "detail": "C"
+    },
+    {
+      "name": "advisory states NO team was staged",
+      "ok": true,
+      "detail": "NO team was staged"
+    },
+    {
+      "name": "advisory names the on-demand staging path",
+      "ok": true,
+      "detail": "agent_teams_create(approval=\"required\", profile=\"mpd\")"
+    },
+    {
+      "name": "advisory names the solo half",
+      "ok": true,
+      "detail": "continue solo"
+    },
+    {
+      "name": "advisory does not forbid automatic staging (clause 3)",
+      "ok": true,
+      "detail": "no approval=\"automatic\""
+    },
+    {
+      "name": "advisory source reason",
+      "ok": true,
+      "detail": "session-start-advisory"
+    },
+    {
+      "name": "installer registers exactly one pre-step listener",
+      "ok": true,
+      "detail": "1 listener(s)"
+    },
+    {
+      "name": "decision carries claimed message + notice",
+      "ok": true,
+      "detail": "2 message(s)"
+    },
+    {
+      "name": "injected notice is the advisory",
+      "ok": true,
+      "detail": "[AgentTeams] Session-start team rule: this session shows complexity signals C/D, and NO team was staged — the gate is AD"
+    },
+    {
+      "name": "NO team state was created",
+      "ok": true,
+      "detail": "state root entries: []"
+    }
+  ],
+  "observed": [
+    {
+      "name": "simple prompt -> none",
+      "expected": "none",
+      "action": "none",
+      "signals": []
+    },
+    {
+      "name": "SOFT trigger -> advise",
+      "expected": "advise",
+      "action": "advise",
+      "signals": [
+        "C"
+      ]
+    },
+    {
+      "name": "explicit team: -> provision",
+      "expected": "provision",
+      "action": "provision",
+      "signals": [
+        "A"
+      ]
+    },
+    {
+      "name": "explicit !team -> provision",
+      "expected": "provision",
+      "action": "provision",
+      "signals": [
+        "A"
+      ]
+    },
+    {
+      "name": "mode auto -> provision",
+      "expected": "provision",
+      "action": "provision",
+      "signals": []
+    },
+    {
+      "name": "mode instruct -> instruct",
+      "expected": "instruct",
+      "action": "instruct",
+      "signals": []
+    },
+    {
+      "name": "autoRoute off -> none",
+      "expected": "none",
+      "action": "none",
+      "signals": []
+    },
+    {
+      "name": "no user text -> none",
+      "expected": "none",
+      "action": "none",
+      "signals": []
+    },
+    {
+      "name": "plan artifact (D) -> advise",
+      "expected": "advise",
+      "action": "advise",
+      "signals": [
+        "D"
+      ]
+    }
+  ],
+  "workspace": "/tmp/l3-gate-advisory-zxQCm8"
+}

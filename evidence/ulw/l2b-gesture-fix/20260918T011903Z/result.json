@@ -1,0 +1,87 @@
+{
+  "task": "t15",
+  "kind": "repair",
+  "lane": "L2b",
+  "member": "ulw-engineer",
+  "attempt": 1,
+  "attemptId": "1e771a62-ad64-49dd-bbdc-256947659054",
+  "baseRevision": "5aa222a",
+  "branch": "dev",
+  "capturedAtUtc": "20260918T011903Z",
+  "sourceFinding": "t7 QA lane finding F1 (evidence/ulw/l5-skills-and-cases/REPORT.md §3 F1, run dir ulw-command-2026-09-18T00-51-38.756Z)",
+  "defect": {
+    "symptom": "the /ulw + /ultrawork plain-text gesture never fired in the real bundle composition while its unit test was green",
+    "rootCause": "the listener claimed latestUserMessage(messages) — the LAST user-role message carrying text — but this composition appends user-role notices AFTER the user's prompt, so the claimed text was a notice and the anchored GESTURE_PATTERN never matched",
+    "measuredBefore": {
+      "sessionLog": "evidence/ulw/l5-skills-and-cases/ulw-command-2026-09-18T00-51-38.756Z/raw/arm-gesture.session.decoded.jsonl",
+      "sha256": "fcb5564ff710222b331f459d9285ceb11b9fa950e4aad437b57a7c4062a01f24",
+      "ULTRAWORK_occurrences": 0,
+      "objective_occurrences": 4,
+      "userMessageSequence": [
+        "seq 3 | source=user | \"/ulw qa-ulw-objective-gesture\"",
+        "seq 9 | source=plugin | \"Current runtime context. This snapshot supersedes earlier runtime-context snapshots. …\"",
+        "seq 10 | source=skill-catalog | \"<system-reminder> … Available skills … </system-reminder>\"",
+        "seq 14 | source=plugin | \"Generate the session title from this JSON array of human messages: [{\\\"seq\\\":8,\\\"text\\\":\\\"/ulw qa-ulw-objective-gesture\\\"}]\""
+      ],
+      "note": "the raw prompt is one user message; the runtime-context notice and the skill catalog are LATER user-role messages, so 'the last user message' is a notice — exactly the shape the new unit test reproduces (quoted excerpt: failing-excerpt.log)"
+    }
+  },
+  "fix": {
+    "file": "packages/mpd-ulw-plugin/src/index.ts",
+    "change": "replaced the latestUserMessage claim with `claimGesture(messages)`: EVERY user-role message of the claimed batch is scanned in order for the anchored gesture (`GESTURE_PATTERN` hoisted to module scope); the first matching message is rewritten. `latestUserMessage` is deleted (no other caller).",
+    "invariantsKept": [
+      "next()-first waterfall discipline: the composed decision is awaited before any rewrite, and returned unchanged on reject/absent/user-less steps or on any failure",
+      "identity-preserving rewrite: the claiming message becomes a copy with its first text block replaced (id/role/source preserved, mirroring the adopted consumeFlagFromMessage) — no other message is touched",
+      "the command path is untouched: the same activation directive constant, the same registerCommand/submit composition"
+    ],
+    "negativeControlsStillGreen": ["bare `/ulw`", "mid-text mention of /ulw", "kind:'reject' decision", "a step with no user message"]
+  },
+  "mutationControl": {
+    "purpose": "prove the new unit test is falsifiable (it must fail under the retired behaviour)",
+    "script": "evidence/ulw/l2b-gesture-fix/20260918T011903Z/mutation-control.mjs",
+    "log": "evidence/ulw/l2b-gesture-fix/20260918T011903Z/mutation-control.log",
+    "result": "RETIRED behaviour restored -> 1 fail / 11 pass, the failing test being 'the gesture fires in the REAL composition shape … (t15 regression)'; file restored byte-exactly (sha256 bc6238ba8c6efcb61b51b699b07770a3a4d45ac48583b5ccca22b395fff258ee before AND after)",
+    "mutatedSha256": "fd7bc4204f36dbe28136774123afebe2e0c9d416a90b4524ad19055190a2e612"
+  },
+  "acceptance": [
+    {
+      "criterion": "The gesture listener matches the anchored gesture against the USER'S OWN message of the claimed batch — not the LAST user-role message — while keeping the next()-first waterfall discipline, identity-preserving rewrite, and the existing negative controls",
+      "status": "passed",
+      "evidence": "src/index.ts: claimGesture(messages) scans every user-role message in order (GESTURE_PATTERN anchored at the text start); latestUserMessage deleted. test/commands.test.ts keeps the delegation assertion (next() awaited once), the id-preserving rewrite assertion, and the four negative controls (bare /ulw, mid-text mention, reject, user-less step) — all green."
+    },
+    {
+      "criterion": "A unit test reproduces the REAL COMPOSITION SHAPE (gesture FOLLOWED BY user-role notices) and asserts the directive IS injected; the same test proves the old last-message behaviour would have missed it (a labelled regression arm)",
+      "status": "passed",
+      "evidence": "'the gesture fires in the REAL composition shape — the prompt FOLLOWED BY user-role notices (t15 regression)': messages [prompt, runtime-context notice, skill-catalog reminder] -> messages[0] rewritten to activationDirective('ship the widget') with id 'u1', notices untouched by identity; LABELLED REGRESSION ARM reproduces the retired claim and shows it selects the skill catalog (a notice whose text does not open with the gesture). Extra coverage: a notice BEFORE the prompt and an attachment-only (text-less) user message both still resolve. Mutation control: under the retired behaviour the identical test goes RED (1 fail / 11 pass) and the tree was restored byte-exactly."
+    },
+    {
+      "criterion": "The live case node skills/dsh-qa/scripts/ulw-command.mjs shows the gesture arm GREEN in an isolated boot with the raw decoded session log carrying the rewritten directive (grep -c ULTRAWORK > 0); the evidence path and the grep counts are quoted",
+      "status": "passed",
+      "evidence": "Run dir evidence/ulw/l2b-gesture-fix/ulw-command-2026-09-18T01-19-36.728Z (case exit 0, final line '[ulw-command] PASS'). steps.gesture = {ok:true, gating:true, rewritten:true, finding:null, problems:[], commandRuns:0, objectiveSeen:true, clauses:[triage,gate,team,loop,fixOnSight,closeOut], numbered:6}; crossLaneFindings = []. Gesture arm log raw/arm-gesture.session.decoded.jsonl: `grep -c ULTRAWORK` = 3 (BEFORE the fix, same arm: 0) and `grep -c qa-ulw-objective-gesture` = 3. The ordered user messages now read: seq 3 raw prompt (source=user, unchanged on disk) -> seq 8 THE SAME message carrying the rewritten directive (source=user) -> seq 9 runtime notice -> seq 10 skill catalog -> seq 14 the title request quoting the DIRECTIVE. Isolation: DSH_HOME + sandbox HOME + sandbox workspace (steps.workspacesSandboxed ok, sandbox /tmp/mpd-ulw-command-QEzvoL)."
+    },
+    {
+      "criterion": "bun test packages/mpd-ulw-plugin and bun run typecheck are green; no other behaviour of the command path changes (the command arm stays green)",
+      "status": "passed",
+      "evidence": "bun test packages/mpd-ulw-plugin: 12 pass / 0 fail (11 before; +1 regression test). bun run typecheck: exit 0. Command arm in the same live run: steps.resolvedArtifacts.ok=true — listing [agent-teams, agent-teams-mpd, compact, feedback, goal, mpd, permission, plan, ultrawork, ulw]; empty invocation -> {kind:'error', text:'usage: /ulw <objective> (alias: /ultrawork <objective>) …'}; '/ultrawork qa-ulw-objective-command' -> {kind:'success', text:'ULW activated: qa-ulw-objective-command'}; lifecycle runs [ulw, ultrawork] kinds [error, success]; the injected directive still carries the 6 ordered clauses."
+    },
+    {
+      "criterion": "Evidence under evidence/ulw/l2b-gesture-fix/** quoting the failing session-log excerpt, the new unit test output and the live arm result",
+      "status": "passed",
+      "evidence": "evidence/ulw/l2b-gesture-fix/20260918T011903Z/{result.json (this file), failing-excerpt.log (the BEFORE excerpt with the source sha256 and both grep counts, plus the AFTER sequence), mutation-control.mjs + mutation-control.log, ulw-command.self-test.log, ulw-command.real.log, index.ts.fixed} and the case's own tree evidence/ulw/l2b-gesture-fix/ulw-command-2026-09-18T01-19-36.728Z/{result.json, output.log, raw/**}."
+    }
+  ],
+  "commandsRun": [
+    { "command": "bun test packages/mpd-ulw-plugin", "status": "passed", "exitCode": 0, "evidence": "12 pass / 0 fail (engine 3 + commands 9)" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit, no diagnostics" },
+    { "command": "node skills/dsh-qa/scripts/ulw-command.mjs", "status": "passed", "exitCode": 0, "evidence": "case PASS; steps.gesture gating=true rewritten=true finding=null; ULTRAWORK count 3 in the gesture arm's decoded log (was 0); self-test also green" }
+  ],
+  "fileHashesSha256": {
+    "packages/mpd-ulw-plugin/src/index.ts": "bc6238ba8c6efcb61b51b699b07770a3a4d45ac48583b5ccca22b395fff258ee",
+    "packages/mpd-ulw-plugin/test/commands.test.ts": "cfc6aee6d7ae5971d3777811277a68f5f57a566518e98389064a04d7f0a95581"
+  },
+  "honestNotes": [
+    "dist/** untouched by rule (repair scope excludes it, T-88): the SHIPPED composition still aborts on the stale adapter dist (case step shippedComposition ok=false, gating=false, disclosed by the case itself as pendingIntegrationRebuild=true), so this run exercised SRC-BUILT artifacts produced by the canonical repo-root bun build inside the sandbox. That is also why steps.artifact reports src-built for both mpd-ulw and mpd-dsh-adapter. After t8's rebuild the case re-reads the shipped composition and that arm becomes gating.",
+    "The live case was NOT edited (skills/** is outside this task's inScope): it already carried a labelled non-gating finding for exactly this defect, and the repair flipped its own `gating` flag to true — the case's own comment states 'a repair of the gesture finding turns its gating flag true'.",
+    "No git write command was run; the working tree carries only my two source/test edits plus evidence/ulw/l2b-gesture-fix/**."
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-c2-cLEzfn",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "live": {
+      "ok": true,
+      "exit": 0
+    },
+    "state": {
+      "ok": true,
+      "stateAny": {
+        "id": "ulw-b2135282",
+        "status": "complete",
+        "verdict": "n/a",
+        "rounds": 1,
+        "planFile": null
+      }
+    },
+    "ledger": {
+      "ok": true,
+      "rows": 2
+    },
+    "planFile": {
+      "ok": true
+    },
+    "commentCheck": {
+      "ok": true
+    }
+  }
+}

@@ -9,6 +9,11 @@
 // so under any C-only rule they are indistinguishable. The captain's Option A ruling
 // therefore accepts that both route; the simple prompts (all sub-signals false) stay
 // silent, which is the direction the two-sided case pins.
+//
+// ULW wave, clause 4 / D1 (t5 of the gate lane): "routes" no longer means "provisions". A SOFT
+// trigger now returns `advise` and stages NOTHING; only an explicit `team:` / `!team` request
+// (signal A) still provisions. The gate VERDICT asserted below is unchanged — the C aggregation
+// fix this file guards is untouched.
 import { expect, test } from "bun:test"
 import { consumeExplicitFlag, evaluateComplexityGate, routeDecision } from "../lib/session-start.js"
 
@@ -50,12 +55,21 @@ test("F1: the frozen two-sided prompt set still behaves 3 silent / 3 complex", a
         expect(verdict.trigger).toBe(false)
         expect((await routeDecision({ mode: "off", autoRoute: true }, prompt, "/nonexistent-ws")).action).toBe("none")
     }
-    for (const prompt of COMPLEX) {
+    // The route ACTION is now split: an explicit flag provisions (R4), a soft trigger advises.
+    const EXPECTED_ACTION = [
+        { prompt: COMPLEX[0], action: "advise" },
+        { prompt: COMPLEX[1], action: "provision" },
+        { prompt: COMPLEX[2], action: "advise" },
+    ]
+    for (const { prompt, action } of EXPECTED_ACTION) {
         // mirror the real call: the explicit `team:` marker is consumed first
         const consumed = consumeExplicitFlag(prompt)
         const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, planArtifact: false })
         expect(verdict.trigger).toBe(true)
-        expect((await routeDecision({ mode: "off", autoRoute: true }, prompt, "/nonexistent-ws")).action).toBe("provision")
+        const routed = await routeDecision({ mode: "off", autoRoute: true }, prompt, "/nonexistent-ws")
+        expect(routed.action).toBe(action)
+        // the fired signals are still carried on BOTH actions — the advisory names them
+        expect(routed.signals.length).toBeGreaterThanOrEqual(1)
     }
 })
 

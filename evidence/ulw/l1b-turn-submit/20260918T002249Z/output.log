@@ -1,0 +1,45 @@
+=== t12 / L1b verify sweep (captured 2026-09-18T00:24:46Z) ===
+--- revision ---
+5aa222a chore(wave2b): commit the post-merge residue — the independent corpus-fold evidence and two lane scratch pointers
+--- my t12 changed files + sha256 ---
+d3dbf438332c933768f756cd59f70072cd145c9f330130e3291abe301bb6f80f  packages/mpd-dsh-adapter-plugin/src/index.ts
+6598b8271f21763795a110692c5f2f3b472569738389b715bb0463836d5bc164  packages/mpd-dsh-adapter-plugin/test/adapter.test.ts
+8143813b769d84b03d97e3f5cc1680f4812c79843f6a6f2b8a2ccefd0c48109d  evidence/ulw/l1b-turn-submit/20260918T002249Z/probe-turn-submit.ts
+
+=== [1/3] bun test packages/mpd-dsh-adapter-plugin ===
+
+
+ 54 pass
+ 0 fail
+ 191 expect() calls
+Ran 54 tests across 81 files. [6.27s]
+exit=0
+
+=== [2/3] bun run typecheck ===
+$ tsgo --noEmit
+exit=0
+
+=== [probe] turn-submission vs the INSTALLED harness ===
+PASS A1.installed-followup-delegates-next-turn — followup(input) { this.send(input, "next-turn", true); }
+PASS A2.method-lives-on-the-live-agent-class — ReactLoopAgent (internal, not exported): reachable only as a live Agent from the registry
+PASS B1.seam-reports-success — true
+PASS B2.followup-called-on-the-receiver — this === the agent handed to the seam
+PASS B3.message-passed-verbatim — identity preserved (same object)
+PASS B4.absent-surfaces-no-throw — [false,false,false,false,false]
+PASS B5.absent-surfaces-false — [false,false,false,false,false]
+PASS C1.flag-true-with-a-live-agent — {"turnSubmit":true}
+PASS C2.flag-false-without-the-surface — {"bareAgent":false,"noAgents":false}
+PASS D1.handler-submit-works — {"kind":"success"}
+PASS D2.host-invocation-unmutated — ["agent","rawInput"]
+PASS D3.submission-reached-the-agent — calls recorded: 2
+PASS D4.message-matches-the-installed-constructor — producer tag preserved; frozen
+PASS D5.no-steer-or-inject-on-the-surface — submitUserTurn is the surface; steer/inject deliberately absent: []
+probe-exit=0
+
+=== [regression] the t3 lanes stay green ===
+
+ 9 pass
+ 0 fail
+ 23 expect() calls
+Ran 9 tests across 81 files. [5.40s]
+exit=0

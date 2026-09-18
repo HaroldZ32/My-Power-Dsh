@@ -1,0 +1,15 @@
+### Why the repair OMITS the key when null instead of declaring a nullable type
+The verifier's F2 requiredFix offered both options. The INSTALLED harness validator accepts
+exactly ONE scalar type per property — measured in its own source and at runtime:
+
+--- source: /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tools/lib/index.js (checkSchemaNode) ---
+235-		if (typeof type !== "string" || !SCHEMA_TYPES.includes(type)) {
+236:			violations.push(Array.isArray(type) ? `${path}.type must be a single type string (type arrays are not supported)` : `${path}.type must be one of ${SCHEMA_TYPES.join("/")}`);
+237-			continue;
+238-		}
+
+--- runtime measurement through the vendored copy of the SAME validator ---
+planFile: null   -> ["\"value.planFile\" must be a string"]
+planFile: absent -> []
+planFile: "p"    -> []
+type array       -> REJECTED: unsupported JSON schema: schema.properties.planFile.type must be a single type string (type arrays are not supported)

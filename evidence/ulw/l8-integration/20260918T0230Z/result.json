@@ -1,0 +1,152 @@
+{
+  "task": "t8 integration",
+  "owner": "captain (single git writer)",
+  "revision_before": "5aa222a1",
+  "rebuild": {
+    "rebuilt": 20,
+    "skipped_prebuilt": 4,
+    "skipped_paths": [
+      "packages/mpd-mcp-astgrep/dist/cli.js",
+      "packages/mpd-mcp-codegraph/dist/serve.js",
+      "packages/mpd-mcp-gitbash/dist/cli.js",
+      "packages/mpd-mcp-lsp/dist/cli.js"
+    ],
+    "dist_files_changed": 18,
+    "command_form": "bun build packages/<pkg>/src/<entry>.ts --target node --format esm --outfile packages/<pkg>/dist/<entry>.js (repo root, path-qualified)"
+  },
+  "gates": {
+    "verify-dist-fresh": {
+      "exit": 0,
+      "result": "ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED listed"
+    },
+    "verify-gates": {
+      "exit": 0,
+      "result": "PASS - 5/5 member gate(s) green (vendor, dist-fresh, rows, docs-parity, preset-conformance)"
+    },
+    "verify-vendor": {
+      "exit": 0,
+      "result": "PASS"
+    },
+    "verify-pack-closure": {
+      "exit": 0,
+      "result": "1184 file(s) compared, 1184 identical, 0 drift, 0 expected-after-pack; completeness 408/409 present, 1 declared exemption"
+    },
+    "test-qa": {
+      "exit": 0,
+      "result": "all self-tests passed"
+    }
+  },
+  "vendor_repin": {
+    "count": 1,
+    "pre_check_exit": 1,
+    "post_check_exit": 0,
+    "fields_changed": 2,
+    "skills_fileCount": "324 -> 326",
+    "note": "captain-only --i-know-this-is-the-captains-step; lands in the same commit as the skills change"
+  },
+  "repack": {
+    "exit": 0,
+    "stale_gate_text_after_pack": 0,
+    "packed_ulw_dist_carries_fixes": true
+  },
+  "live_shipped_composition": {
+    "ulw-command": {
+      "exit": 0,
+      "verdict": "PASS",
+      "artifact_sources": "both rows source=shipped",
+      "shippedComposition_ok": true,
+      "listing": [
+        "agent-teams",
+        "agent-teams-mpd",
+        "compact",
+        "feedback",
+        "goal",
+        "mpd",
+        "permission",
+        "plan",
+        "ultrawork",
+        "ulw"
+      ],
+      "gesture": {
+        "gating": true,
+        "rewritten": true,
+        "clauses": [
+          "triage",
+          "gate",
+          "team",
+          "loop",
+          "fixOnSight",
+          "closeOut"
+        ],
+        "numbered": 6
+      },
+      "evidence": "evidence/dsh-qa/ulw-command/2026-09-18T02-25-31.584Z"
+    },
+    "session-start-team": {
+      "exit": 0,
+      "verdict": "PASS",
+      "threeWay": {
+        "simpleTeams": [
+          0,
+          0,
+          0
+        ],
+        "simpleNotices": [
+          false,
+          false,
+          false
+        ],
+        "softTeams": [
+          0,
+          0
+        ],
+        "softModelStaged": [
+          0,
+          0
+        ],
+        "softPluginStaged": [
+          0,
+          0
+        ],
+        "softAdvisory": [
+          1,
+          1
+        ],
+        "softSignals": [
+          [
+            "C"
+          ],
+          [
+            "C"
+          ]
+        ],
+        "explicitTeams": [
+          1
+        ],
+        "explicitArchived": [
+          1
+        ],
+        "explicitPluginStaged": [
+          1
+        ]
+      },
+      "evidence": "evidence/dsh-qa/session-start-team/2026-09-18T02-25-31.534Z"
+    },
+    "ultrawork-smoke": {
+      "exit": 0,
+      "verdict": "PASS",
+      "state": {
+        "status": "complete",
+        "rounds": 1,
+        "ledgerRows": 1
+      },
+      "evidence": "evidence/plan-c/c2-ultrawork/2026-09-18T02-25-31.609Z"
+    }
+  },
+  "carry_forwards": [
+    "contract U1 (a full live /ulw run that autonomously stages a team end-to-end) is claimed by no lane; substitutes observed are the bounded plan=false call and the submitted directive",
+    "the ULW plugin never consults capabilities().commandsRegister: a composition without the dsh-commands row would lose /ulw silently (theoretical in shipped profiles)",
+    "a live dsh session needs a RESTART to gain /ulw (T-21: no plugin-module hot reload)"
+  ],
+  "wave_commit": "the wave lands as ONE commit on dev: feat(ulw): user-invocable /ulw + /ultrawork with full autonomy, and an advisory (non-pre-staging) complexity gate (hash recorded in the t8 completion payload, not inside the artifact it contains)"
+}

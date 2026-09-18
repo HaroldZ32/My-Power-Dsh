@@ -87,13 +87,18 @@
       mechanical COMPLEXITY GATE at the session's first pre-step and behaves accordingly:
         - gate NOT triggered -> run the session solo; do NOT create a team, and do not
           invent one. Ordinary questions, one-line edits and lookups belong here.
-        - gate TRIGGERED -> the plugin has already staged the default team "MPD Default"
-          (profile `mpd`, approval=required) and injected ONE notice saying the session was
-          routed by the gate; you are its captain from that moment. Shape the roster/DAG,
-          tell the user the Web plan is ready, and let the panel approve it. If the staged
-          team does not fit, archive it with agent_teams_delete and continue solo with the
-          user — that is an accepted outcome.
-      The gate is frozen: trigger = (matchedSignals >= 2) OR explicit flag, where the
+        - gate TRIGGERED by a soft signal -> the gate only ADVISES: it stages NOTHING and
+          injects ONE advisory notice naming the fired signals and stating that no team was
+          staged. Stage a team yourself at the moment the work actually warrants one, with
+          agent_teams_create(approval="required", profile="mpd"); if the work does not warrant
+          a team (a short or single-threaded task), continue solo and say so in one line.
+        - explicit team request (`team:` prefix or `!team`) -> the plugin stages the default
+          team "MPD Default" (profile `mpd`, approval=required) and injects ONE notice saying
+          the session was routed by the gate; you are its captain from that moment. Shape the
+          roster/DAG, tell the user the Web plan is ready, and let the panel approve it. If the
+          staged team does not fit, archive it with agent_teams_delete and continue solo with
+          the user — that is an accepted outcome. The `/agent-teams` command stages the same way.
+      The gate is frozen: trigger = explicit flag OR (matchedSignals >= 1), where the
       explicit flag is a `team:` prefix or `!team`, and the soft signals are (B) >=4 distinct
       deliverable verbs, (C) >=3 enumerated steps/action verbs/clauses, (D) a
       `.mpd/plans/*.md` artifact for this workspace. This rule is enforced on the PRE-STEP,

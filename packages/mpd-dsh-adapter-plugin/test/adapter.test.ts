@@ -3,9 +3,11 @@
 // actionable error instead of crashing the plugin tree.
 import { describe, expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
+import { readFileSync } from "node:fs"
 
 import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
-import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, SERVICE_NAME, textBlock } from "../src/index"
+import { createUserMessage } from "../../mpd-agent-teams-plugin/_deps/dsh-llm/lib/index.js"
+import { apply, createDshAdapter, createLazyDshAdapter, decision, dshAdapterIdentity, ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, ADAPTER_IDENTITY_PENDING, SERVICE_NAME, textBlock, userMessage } from "../src/index"
 
 function fakeHarness(overrides: Record<string, unknown> = {}) {
   const registered: any[] = []
@@ -15,6 +17,8 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
   const provided: Record<string, unknown> = {}
   const started: Array<{ mode: string; spec: any }> = []
   const executed: any[] = []
+  const commandsRegistered: any[] = []
+  const commandDisposers: Array<() => void> = []
   const tools = {
     register: (definition: any) => { registered.push(definition); return () => { registered.pop() } },
     guard: (guard: any) => { guards.push(guard); return () => { guards.pop() } },
@@ -39,12 +43,32 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
   }
   const agentPresets = { resolve: async (id: string) => ({ id, path: "/bundle/presets/" + id + "/agent.cordis.yml", trust: "system" }) }
   const compaction = { compactNow: async (agent: any) => ({ agent }) }
+  // MEASURED host contract (dsh-commands/lib/index.js `register()`): the registry
+  // returns the exact effect disposer that unregisters the definition, which the
+  // adapter must pass through verbatim.
+  const commands = {
+    register: (definition: any) => {
+      commandsRegistered.push(definition)
+      const dispose = () => {
+        const at = commandsRegistered.indexOf(definition)
+        if (at >= 0) commandsRegistered.splice(at, 1)
+      }
+      commandDisposers.push(dispose)
+      return dispose
+    },
+  }
   // The sample agent carries its OWN scoped ctx: on a real harness the agent-scoped compaction
   // service is a different object from the host-plane one, so capabilities() reports two seams.
-  const sampleAgent = { id: "sample-agent", ctx: { get: (serviceName: string) => (serviceName === "compaction" ? compaction : undefined) } }
+  const submitted: any[] = []
+  const sampleAgent = {
+    id: "sample-agent",
+    ctx: { get: (serviceName: string) => (serviceName === "compaction" ? compaction : undefined) },
+    // The host turn seam (dsh-agent-loop: `followup(input) => send(input, "next-turn", true)`).
+    followup: (message: any) => { submitted.push(message) },
+  }
   const agents = { list: () => [sampleAgent], get: (id: string) => (id === sampleAgent.id ? sampleAgent : undefined) }
   const ctx = {
-    get: (serviceName: string) => ({ tools, subagents, skills, agentPresets, agents, compaction } as Record<string, unknown>)[serviceName],
+    get: (serviceName: string) => ({ tools, subagents, skills, agentPresets, agents, compaction, commands } as Record<string, unknown>)[serviceName],
     on: (event: string, listener: any) => {
       if (event === "tools/post-execute") listeners.push(listener)
       if (event === "tools/pre-execute") preListeners.push(listener)
@@ -53,7 +77,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
     provide: (serviceName: string, value: unknown) => { provided[serviceName] = value },
     ...overrides,
   }
-  return { ctx, registered, guards, listeners, preListeners, provided, started, executed }
+  return { ctx, registered, guards, listeners, preListeners, provided, started, executed, commandsRegistered, commandDisposers, submitted }
 }
 
 describe("capabilities", () => {
@@ -340,6 +364,163 @@ describe("skill + preset plane", () => {
       path: "/bundle/presets/mpd/agent.cordis.yml",
       trust: "system",
     })
+  })
+})
+
+describe("command plane (AGENTS.md §6: the ONE sanctioned registration path)", () => {
+  test("registerCommand passes the definition through and hands back the host's own disposer", async () => {
+    const { ctx, commandsRegistered, commandDisposers } = fakeHarness()
+    const adapter = createDshAdapter(ctx)
+    const handler = async (invocation: { rawInput?: string }) => ({ kind: "success", text: "ran " + String(invocation.rawInput ?? "") })
+    const dispose = adapter.registerCommand({
+      name: "ulw",
+      description: "run one ULW loop on an objective",
+      input: { hint: "<objective>" },
+      handler,
+    })
+    expect(commandsRegistered).toHaveLength(1)
+    expect(commandsRegistered[0].name).toBe("ulw")
+    expect(commandsRegistered[0].description).toBe("run one ULW loop on an objective")
+    expect(commandsRegistered[0].input).toEqual({ hint: "<objective>" })
+    // The handler is wrapped for a stable call shape, so the seam still answers when a
+    // harness build passes no invocation at all.
+    expect(await commandsRegistered[0].handler({ rawInput: " ship it" })).toEqual({ kind: "success", text: "ran  ship it" })
+    expect(await commandsRegistered[0].handler()).toEqual({ kind: "success", text: "ran " })
+    // Identity, not just callability: the registry's disposer is the one returned.
+    expect(dispose).toBe(commandDisposers[0])
+    dispose()
+    expect(commandsRegistered).toHaveLength(0)
+  })
+
+  test("a stub register returning a NON-function still yields a safe no-op disposer", () => {
+    // A test double (and any registry that forgets to return its effect disposer) can
+    // answer with anything — e.g. the codegraph stub returns Array.push()'s number.
+    const adapter = createDshAdapter({ get: (serviceName: string) => (serviceName === "commands" ? { register: () => 42 } : undefined) })
+    let dispose: (() => void) | undefined
+    expect(() => { dispose = adapter.registerCommand({ name: "ulw", description: "d", handler: () => ({ kind: "success" }) }) }).not.toThrow()
+    expect(typeof dispose).toBe("function")
+    expect(() => dispose?.()).not.toThrow()
+  })
+
+  test("an absent seam is a no-op disposer plus two false capability flags, never a throw", () => {
+    const adapter = createDshAdapter({ get: () => undefined })
+    const caps = adapter.capabilities()
+    expect(caps.commands).toBe(false)
+    expect(caps.commandsRegister).toBe(false)
+    let dispose: (() => void) | undefined
+    expect(() => { dispose = adapter.registerCommand({ name: "ulw", description: "d", handler: () => ({ kind: "success" }) }) }).not.toThrow()
+    expect(typeof dispose).toBe("function")
+    expect(() => dispose?.()).not.toThrow()
+  })
+
+  test("apply() never throws when the composition has no command registry", () => {
+    const provided: Record<string, unknown> = {}
+    const ctx = { get: () => undefined, provide: (serviceName: string, value: unknown) => { provided[serviceName] = value } }
+    expect(() => apply(ctx)).not.toThrow()
+    // The row still provides its adapter, and that adapter's command seam is a no-op
+    // in this composition rather than a failure.
+    const mounted = provided[SERVICE_NAME] as ReturnType<typeof createDshAdapter>
+    expect(mounted).toBeDefined()
+    const dispose = mounted.registerCommand({ name: "ulw", description: "d", handler: () => ({ kind: "success" }) })
+    expect(() => dispose()).not.toThrow()
+  })
+
+  test("capabilities() reports a present registry, and distinguishes one without register()", () => {
+    const { ctx } = fakeHarness()
+    const present = createDshAdapter(ctx).capabilities()
+    expect(present.commands).toBe(true)
+    expect(present.commandsRegister).toBe(true)
+    // Present but unusable: the service exists, the registration seam does not.
+    const partial = createDshAdapter({ get: (serviceName: string) => (serviceName === "commands" ? { list: () => [] } : undefined) }).capabilities()
+    expect(partial.commands).toBe(true)
+    expect(partial.commandsRegister).toBe(false)
+  })
+})
+
+describe("message plane (user-role session injection)", () => {
+  test("userMessage builds the host's message contract, frozen at every level", () => {
+    const message = userMessage({ text: "run /ulw ship the wave" })
+    expect(message.role).toBe("user")
+    expect(message.content).toEqual([{ type: "text", text: "run /ulw ship the wave" }])
+    expect(message.source).toEqual({ kind: "user" })
+    expect(message.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u)
+    expect(Object.isFrozen(message)).toBe(true)
+    expect(Object.isFrozen(message.content)).toBe(true)
+    expect(Object.isFrozen(message.content[0])).toBe(true)
+    expect(Object.isFrozen(message.source)).toBe(true)
+    expect(() => { (message as { role?: string }).role = "system" }).toThrow()
+  })
+
+  test("a producer tag wins over the default kind, and every call mints a fresh id", () => {
+    const injected = userMessage({ text: "directive", source: { kind: "plugin", plugin: "mpd-ulw" } })
+    expect(injected.source).toEqual({ kind: "plugin", plugin: "mpd-ulw" })
+    expect(userMessage({ text: "a" }).id).not.toBe(userMessage({ text: "a" }).id)
+  })
+
+  test("the field set matches the vendored host constructor, and only the identity differs", () => {
+    const input = { text: "same text", source: { kind: "plugin", plugin: "mpd-ulw" } }
+    const mine = userMessage(input)
+    const reference = createUserMessage({ content: [{ type: "text", text: input.text }], source: input.source })
+    expect(Object.keys(mine).sort()).toEqual(Object.keys(reference).sort())
+    const { id: _mine, ...mineRest } = mine
+    const { id: _reference, ...referenceRest } = reference
+    expect(mineRest).toEqual(referenceRest)
+    expect(typeof mine.id).toBe("string")
+  })
+
+  test("the adapter surface exposes it, and the source imports no host package by bare specifier", () => {
+    const { ctx } = fakeHarness()
+    expect(createDshAdapter(ctx).userMessage({ text: "x" }).role).toBe("user")
+    const source = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8")
+    expect(source).not.toMatch(/(?:from|import)\s*\(?\s*["']@deepseek-ai\//u)
+  })
+})
+
+describe("turn plane (the submission surface a command handler needs)", () => {
+  test("a registered command handler submits through its invocation, and the host's invocation is not mutated", async () => {
+    const { ctx, commandsRegistered, submitted } = fakeHarness()
+    const adapter = createDshAdapter(ctx)
+    const agent = { id: "invoking-agent", followup: (message: unknown) => { submitted.push(message) } }
+    const directive = userMessage({ text: "run the ULW loop", source: { kind: "plugin", plugin: "mpd-ulw" } })
+    adapter.registerCommand({
+      name: "ulw",
+      description: "start one ULW run",
+      handler: (invocation) => {
+        const reached = invocation.submit?.(directive) ?? false
+        return { kind: reached ? "success" : "error", text: reached ? "started" : "no turn seam" }
+      },
+    })
+    const hostInvocation = { rawInput: " ship it", agent }
+    expect(await commandsRegistered[0].handler(hostInvocation)).toEqual({ kind: "success", text: "started" })
+    expect(submitted).toEqual([directive])
+    // The plugin got a COPY: the object the host handed over still carries no `submit`.
+    expect("submit" in hostInvocation).toBe(false)
+    expect(Object.keys(hostInvocation).sort()).toEqual(["agent", "rawInput"])
+  })
+
+  test("submitUserTurn reaches the agent's followup, and every absent or broken surface is a safe no-op", () => {
+    const { ctx, submitted } = fakeHarness()
+    const adapter = createDshAdapter(ctx)
+    const message = userMessage({ text: "directive" })
+    expect(adapter.submitUserTurn({ id: "live", followup: (input: unknown) => { submitted.push(input) } }, message)).toBe(true)
+    expect(submitted).toEqual([message])
+    expect(adapter.submitUserTurn({ id: "no-followup" }, message)).toBe(false)
+    expect(adapter.submitUserTurn(undefined, message)).toBe(false)
+    expect(adapter.submitUserTurn(null, message)).toBe(false)
+    expect(adapter.submitUserTurn("not-an-agent", message)).toBe(false)
+    // A rejecting driver is reported, never thrown into the caller.
+    expect(adapter.submitUserTurn({ followup: () => { throw new Error("driver refused") } }, message)).toBe(false)
+  })
+
+  test("capabilities().turnSubmit is truthful for a present and an absent agent surface", () => {
+    const { ctx } = fakeHarness()
+    expect(createDshAdapter(ctx).capabilities().turnSubmit).toBe(true)
+    // A live agent whose surface has no followup, and no registry at all.
+    const withoutFollowup = { get: (serviceName: string) => (serviceName === "agents" ? { list: () => [{ id: "bare-agent" }] } : undefined) }
+    expect(createDshAdapter(withoutFollowup).capabilities().turnSubmit).toBe(false)
+    expect(createDshAdapter({ get: () => undefined }).capabilities().turnSubmit).toBe(false)
+    // The absent-surface path a caller degrades on: a boolean, not a throw.
+    expect(createDshAdapter(withoutFollowup).submitUserTurn({ id: "bare-agent" }, userMessage({ text: "x" }))).toBe(false)
   })
 })
 

@@ -34,6 +34,7 @@
 |---|---|---|
 | `D_FIRST` | 每个符合条件的会话启动时**不建队、不注入通知**，除非复杂度信号命中。 | 对齐上游默认而非本地口味：上游 `team_mode.enabled` 默认为 `false`（t3 `[U2][U3]`）。 |
 | `D_AUTOROUTE_SPLIT` | 机械门与旧的注入模式**解耦**：`sessionTeamPolicy.mode` 默认 `off`（枚举值全部保留）；新机械门是独立键 `sessionTeamPolicy.autoRoute`（默认启用）。 | 上游**没有**复杂度启发式（t3 全文 0 处 heuristic/threshold），其激活靠显式关键词。解耦可在新增门的同时不悄悄改变 `off`/`instruct` 的既有语义。 |
+| `D_AUTOROUTE_ADVISORY` | 自动路由命中后**不建任何团队**：`routeDecision` 返回 `advise`，`installSessionTeamPolicy` 只注入**一条**咨询通知（标记仍为 `[AgentTeams] Session-start team rule`），点名命中的信号、明确说明**没有团队被 staged**，并要求 captain 只在工作确实需要团队时才用 `agent_teams_create(approval="required", profile="mpd")` 建队，否则继续单独执行并说明。`mode:"auto"`、`mode:"instruct"`、显式 `team:`/`!team` 标记与 `/agent-teams` 命令的既有路径全部不变。 | 用户第 4 条（2026-09-17）：仅仅在判断复杂度，不应让用户先付出「已 staged 团队 + 一次审批」的代价。咨询措辞刻意不排斥自动批准，因为 ULW 运行会以 `approval="automatic"` 建队（冻结契约 §4.3）。 |
 | `D_SKILLS_WRITER` | 本波次 `skills/**` 的**唯一**写者是 `t5`，且仅限 `skills/dsh-qa/SKILL.md` 与 `skills/dsh-qa/scripts/session-start-team.mjs`。`t9` 本波次不写入。 | AGENTS.md `§9`：每波单写者；`skills/**` 变更会使语料 `treeSha` 失效，re-pin 必须与之同提交。基线：`afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`，328 个文件。 |
 | `D_LEDGER` | 台账 = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`，同提交，标题下直接放语言切换链接。`docs/omo-parity-gap.md` 与既往报告不动。 | 用户裁决 6；AGENTS.md `§3` 双语规则及历史记录豁免。 |
 | `D_UPSTREAM_REF` | 上游参考为 beta.62（`d1557a4b4`）；仓库基线仍为 beta.20。 | 用户裁决 1；AGENTS.md `§9`（不追上游）。 |
@@ -66,14 +67,19 @@ verify`；中文 12 个 —— `设计, 实现, 验证, 改造, 补充, 对齐, 
 从而**确实**进入建队路径；仅凭 C 上的任何规则都无法把它与冻结的 complex #1 区分开。详见 §7 `O1`
 与 §8 的误触发实测。
 
-命中后门会 staged 一个团队（`profile: mpd`、`approval: required`、名称 `MPD Default`、
-描述“auto-routed by the complexity gate”）—— **仅 staged**，用户批准 Web 计划前不 spawn 成员
-—— 并注入一条通知，措辞为“本会话已被门控”，而非“必须建队”。
+命中后门现在只**咨询**（`D_AUTOROUTE_ADVISORY`）：不建任何团队，只注入一条咨询通知
+（标记 `[AgentTeams] Session-start team rule`），点名命中的信号并明确说明**没有团队被
+staged**；captain 只在工作确实需要团队时自行调用
+`agent_teams_create(approval="required", profile="mpd")` 建队，否则继续单独执行并说明。
+显式 `team:` / `!team` 请求 —— 以及 `/agent-teams` 命令 —— 仍然会供应 staged 团队
+（`profile: mpd`、`approval: required`、名称 `MPD Default`、描述“auto-routed by the complexity
+gate”）—— **仅 staged**，用户批准 Web 计划前不 spawn 成员。
 
-**双向测试（冻结契约中的 `testPrompts`）。** 每个 `simple` 提示必须使 `.mpd/team` 为空且日志中
-无启动通知；每个 `complex` 提示必须恰好产生一个 staged 团队与一条通知。任一侧未观察到即
-`FAIL`，且**无法失败的门不被接受**。两侧必须跑在同一稳定修订 hash 上，且在沙箱工作区中
-（`sandboxWorkspace` + `assertSessionsSandboxed`）。
+**三向测试（冻结契约中的 `testPrompts` + 本波次 QA 用例）。** 每个 `simple` 提示必须使
+`.mpd/team` 为空且日志中无启动通知；每个命中**软信号**的 `complex` 提示必须使 `.mpd/team`
+为空，同时携带恰好一条咨询通知；显式 `team:` 提示仍必须恰好产生一个 staged 团队与一条通知。
+任一侧未观察到即 `FAIL`，且**无法失败的门不被接受**。每一侧都必须跑在同一稳定修订 hash 上，
+且在沙箱工作区中（`sandboxWorkspace` + `assertSessionsSandboxed`）。
 
 **真实普通提示上的触发率实测（t37 测、t40 复核）。** 从本仓库自己的会话日志抽取 20 条真实普通提示
 （全部含中文；其中 5 条为 session-start —— 门真正评估的唯一分层 —— 另 15 条为后续追问），用门自身
@@ -117,7 +123,7 @@ verify`；中文 12 个 —— `设计, 实现, 验证, 改造, 补充, 对齐, 
 | Id | 文件 | 区域 |
 |---|---|---|
 | `L1` | `packages/mpd-bundle/cordis.patch.yml` | agent-teams row `sessionTeamPolicy` 块及其注释 |
-| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` 谓词 + `provisionedNotice` / `instructNotice` 文本 |
+| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` 谓词 + `advisoryNotice` / `provisionedNotice` / `instructNotice` 文本 |
 | `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` 段与 sizing doctrine 的位置 |
 | `L4` | `packages/mpd-bundle/README.md` | 整个 `Session-start team gate (binding)` 节 |
 | `L5` | `packages/mpd-bundle/README.zh-CN.md` | 整个 `会话启动团队门（强制）` 节（与 `L4` 同提交） |
@@ -170,7 +176,7 @@ verify`；中文 12 个 —— `设计, 实现, 验证, 改造, 补充, 对齐, 
 | 插件测试 | `bun test packages/mpd-agent-teams-plugin` | 在该锚点已验证（161 通过 / 0 失败，42 个文件）。**当前树（v0.9.1）：** 220 通过 / 0 失败、60 个文件 —— 插件新增了 dispatch-stall 回归与 region 钉定测试套件（`evidence/agent-teams/dispatch-stall/`），并在 v0.9.1 加入了 pool-capability 守卫（`self-fix-tests/pool-capability-guard.test.mjs`；region 46 → 48） |
 | QA 自检 | `bun run test:qa` | 已验证（退出码 0，全部自检通过） |
 | 运行时启动 | `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` | 已验证（PASS：一条命令安装、home 无副本、卸载无残留） |
-| 双向门控用例 | `bun skills/dsh-qa/scripts/session-start-team.mjs` | 已验证（PASS：simple 3/3 静默、complex 3/3 恰好一个 staged 团队 + 一条通知、反向控制 disarmed = true） |
+| 双向门控用例 | `bun skills/dsh-qa/scripts/session-start-team.mjs` | 在该咨询前锚点已验证（PASS：simple 3/3 静默、complex 3/3 恰好一个 staged 团队 + 一条通知、反向控制 disarmed = true）。**对当前代码树已被 `D_AUTOROUTE_ADVISORY` 取代：** complex 一侧须断言 0 个 staged 团队 + 一条咨询通知，显式标记一侧须断言恰好一个 staged 团队；该重跑属于本波次 QA 用例（`L7`/`L8`） |
 | preset/patch 行 | `node skills/dsh-qa/scripts/preset-conformance.mjs --self-test` | 已验证（30 条 harness 行合规、行对齐 31/31） |
 | 安装器 | `node scripts/install-profile.mjs --self-test` | 已验证（退出码 0） |
 | vendor | `node scripts/verify-vendor.mjs` | 在该锚点已验证（PASS；该波语料的 re-pin 已落盘）。**当前树已被 v0.9.0 取代：** 扩展波新增了 `skills/dsh-qa/SKILL.md` 行与三个 `extension-*.mjs` QA 案例，故 skills 资产重钉为 `fileCount: 301` / `treeSha: 0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576`，闸门再次 PASS —— 见 `VENDOR_LOCK.json` 与 `evidence/release/v0.9.0-integration/` |

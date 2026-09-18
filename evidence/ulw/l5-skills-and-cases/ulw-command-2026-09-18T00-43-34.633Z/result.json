@@ -1,0 +1,126 @@
+{
+  "ok": false,
+  "slug": "ulw-command",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "probeMounted": {
+      "ok": true,
+      "file": "/tmp/mpd-ulw-command-bAg3qK/probe-result.json",
+      "sessionLog": "/tmp/mpd-ulw-command-bAg3qK/dsh-home/sessions/--tmp-mpd-ulw-command-bAg3qK-ws-command--/session-bf681a3c-822c-4bbd-8e09-d3707e7b337a/session.v3.jsonl.zstd",
+      "sessionRecords": 20,
+      "errors": []
+    },
+    "listing": {
+      "ok": false,
+      "names": [
+        "agent-teams",
+        "agent-teams-mpd",
+        "compact",
+        "feedback",
+        "goal",
+        "mpd",
+        "permission",
+        "plan"
+      ],
+      "problems": [
+        "the live command registry does not list ulw",
+        "the live command registry does not list ultrawork"
+      ]
+    },
+    "usage": {
+      "ok": false,
+      "problems": [
+        "the empty invocation did not resolve (the name is not registered)"
+      ],
+      "result": null
+    },
+    "activation": {
+      "ok": false,
+      "problems": [
+        "the non-empty invocation did not resolve (the name is not registered)"
+      ],
+      "result": null
+    },
+    "lifecycle": {
+      "ok": false,
+      "problems": [
+        "the session log carries no command/run for ulw",
+        "the session log carries no command/run for ultrawork",
+        "the session log carries no command/done of kind 'error' (the empty invocation)",
+        "the session log carries no command/done of kind 'success' (the started run)"
+      ],
+      "names": [],
+      "kinds": []
+    },
+    "injected": {
+      "ok": false,
+      "problems": [
+        "no injected directive message was found in the session log",
+        "the injected directive is missing clause 'triage'",
+        "the injected directive is missing clause 'gate'",
+        "the injected directive is missing clause 'team'",
+        "the injected directive is missing clause 'loop'",
+        "the injected directive is missing clause 'fixOnSight'",
+        "the injected directive is missing clause 'closeOut'",
+        "the injected directive carries only 0 numbered clause(s)",
+        "the injected directive does not carry the head sentence ('noQuestions')",
+        "the injected directive does not carry OBJECTIVE: qa-ulw-objective-command"
+      ],
+      "clauses": [],
+      "numbered": 0,
+      "head": "noQuestions",
+      "carrier": "command path (probe -> commands.execute -> handler -> submit -> user turn)"
+    },
+    "isolationCommand": {
+      "ok": true,
+      "checked": 1,
+      "keys": [
+        "--tmp-mpd-ulw-command-bAg3qK-ws-command--"
+      ]
+    },
+    "gesture": {
+      "ok": false,
+      "problems": [
+        "the injected directive is missing clause 'triage'",
+        "the injected directive is missing clause 'gate'",
+        "the injected directive is missing clause 'team'",
+        "the injected directive is missing clause 'loop'",
+        "the injected directive is missing clause 'fixOnSight'",
+        "the injected directive is missing clause 'closeOut'",
+        "the injected directive carries only 0 numbered clause(s)",
+        "the injected directive does not carry the head sentence ('noQuestions')",
+        "the injected directive does not carry OBJECTIVE: qa-ulw-objective-gesture"
+      ],
+      "clauses": [],
+      "numbered": 0,
+      "commandRuns": 0
+    },
+    "isolationGesture": {
+      "ok": false,
+      "error": "Error: workspace isolation violated: --tmp-mpd-ulw-command-bAg3qK-ws-command--"
+    },
+    "stubServed": {
+      "ok": true,
+      "requests": 4
+    },
+    "workspacesSandboxed": {
+      "ok": true,
+      "sandbox": "/tmp/mpd-ulw-command-bAg3qK",
+      "wsCommand": "/tmp/mpd-ulw-command-bAg3qK/ws-command",
+      "wsGesture": "/tmp/mpd-ulw-command-bAg3qK/ws-gesture"
+    },
+    "equivalenceTableTools": {
+      "ok": true,
+      "observed": true,
+      "toolCount": 103,
+      "missing": []
+    }
+  },
+  "env": {
+    "DSH_HOME": "/tmp/mpd-ulw-command-bAg3qK/dsh-home",
+    "HOME": "/tmp/mpd-ulw-command-bAg3qK/run-home"
+  }
+}

@@ -107,6 +107,25 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   backported**, and `lib/client.js` is still the 0.1.14 client build — so the 0.1.14 body is
   real provenance, never a stale claim; LICENSE-NOTICES.md is the authoritative record.
   Its `stateDir` is overridden to `.mpd/team` so all our state stays under one `.mpd` root.
+- **ULW is user-invocable**: the C2 (Plan C) ultrawork v2 engine (`mpd-ulw-plugin`) is reachable as
+  `/ulw <objective>` and `/ultrawork <objective>` (equivalent, objective as argument) — the command
+  submits the ULW activation directive as the invoking agent's own next user turn, so the run
+  actually starts; empty input returns usage, and a plain-text `/ulw …` gesture gets the same
+  directive on surfaces without command adjudication (headless). An activated ULW run asks the user
+  nothing: it triages an unclear or investigate-first objective first, evaluates the same complexity
+  predicate as any MPD request, stages a team itself with
+  `agent_teams_create(approval="automatic", profile="mpd")` when the work warrants one, loops to
+  completion, fixes defects on sight, and closes out through the verification and quality gates
+  before reporting done.
+- **The session-start complexity gate ADVISES — it never pre-stages a team**: the frozen predicate
+  `trigger = explicit flag OR (matchedSignals >= 1)` is still evaluated at the session's first
+  pre-step, and its notice keeps the marker `[AgentTeams] Session-start team rule`, but a triggered
+  auto-route only injects ONE advisory notice naming the fired signals and stating that **no team
+  was staged**; the captain stages a team with
+  `agent_teams_create(approval="required", profile="mpd")` at the moment the work actually warrants
+  one, or continues solo and says so. An explicit `team:` / `!team` request and the `/agent-teams`
+  command still stage, and `sessionTeamPolicy.mode: "auto"` remains the opt-in
+  unconditional-provisioning path.
 
 ---
 
@@ -153,7 +172,7 @@ mpd-dsh/
 │   ├── mpd-roles-plugin/         # specialists: roster (roles.data.ts, normal names + stable ids) + personas/ + mpd_roles_list / mpd_role_spawn / mpd_role_persona + mpdRoles service
 │   ├── mpd-tools-plugin/         # B1: write guard, truncation, edit-error recovery
 │   ├── mpd-modelchain-plugin/    # B4: mpd_modelchain_resolve + mpd_memory_save/recall
-│   ├── mpd-ulw-plugin/           # B3: mpd_ulw loop discipline
+│   ├── mpd-ulw-plugin/           # C2 (Plan C) ultrawork v2 engine: mpd_ultrawork + mpd_ulw alias, /ulw + /ultrawork commands
 │   ├── mpd-codegraph-plugin/     # binary resolve + project init + mpd-codegraph command
 │   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendor hashline-core)
 │   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendor boulder-state)

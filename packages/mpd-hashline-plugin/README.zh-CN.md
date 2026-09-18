@@ -21,6 +21,6 @@ Vendored core：上游项目 `packages/hashline-core`（base commit 8c57e46；�
 ## 构建 / 测试
 
 ```sh
-bun build src/index.ts --outdir dist --target node --format esm
+bun build packages/mpd-hashline-plugin/src/index.ts --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js
 bun test
 ```

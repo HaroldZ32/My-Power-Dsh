@@ -13,5 +13,5 @@
 仅由 `skills/dsh-qa/scripts/preset-register.mjs` 使用。构建：
 
 ```bash
-bun build src/index.ts --target node --format esm --outfile dist/index.js
+bun build packages/mpd-qa-roles-probe/src/index.ts --target node --format esm --outfile packages/mpd-qa-roles-probe/dist/index.js
 ```

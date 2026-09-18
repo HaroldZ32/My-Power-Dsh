@@ -35,13 +35,24 @@ function captureCwd(run: () => void): string {
   return match?.[1] ?? ""
 }
 
-function commandCtx(rootFor?: (exec?: { agent?: unknown }) => string): { ctx: Ctx; registered: Registered[] } {
+/**
+ * The adapter double the plugin now talks to (AGENTS.md §6: the command goes
+ * through `registerCommand`, never through the harness registry directly).
+ * `mounted: false` drops the `mpdDsh` service so `apply` builds the real
+ * standalone adapter, which then reads the `commands` key itself — the stub
+ * deliberately returns NOTHING from `register()`, so that path also proves the
+ * adapter's non-callable-disposer guard.
+ */
+function commandCtx(rootFor?: (exec?: { agent?: unknown }) => string, mounted = true): { ctx: Ctx; registered: Registered[] } {
   const registered: Registered[] = []
-  const dsh = { workspaceRoot: rootFor ?? ((exec?: { agent?: unknown }) => ((exec?.agent as any)?.session?.header?.cwd ?? process.cwd())) }
+  const dsh = {
+    workspaceRoot: rootFor ?? ((exec?: { agent?: unknown }) => ((exec?.agent as any)?.session?.header?.cwd ?? process.cwd())),
+    registerCommand: (definition: Registered) => { registered.push(definition); return () => { /* seam double: nothing to release */ } },
+  }
   const ctx: Ctx = {
     get(key: string) {
-      if (key === "mpdDsh") return dsh
-      if (key === "commands") return { register: (d: unknown) => { registered.push(d as Registered) } }
+      if (key === "mpdDsh") return mounted ? dsh : undefined
+      if (key === "commands" && !mounted) return { register: (d: unknown) => { registered.push(d as Registered) } }
       return undefined
     },
   }
@@ -137,5 +148,23 @@ describe("O-1 call-time /mpd-codegraph handler", () => {
     expect(one.text).toContain(first)
     expect(two.text).toContain(second)
     expect(one.text).not.toContain(second)
+  })
+})
+
+describe("command registration goes through the adapter (AGENTS.md §6)", () => {
+  test("the standalone adapter registers the command and survives a stub register returning no disposer", async () => {
+    const session = tempWorkspace(true)
+    const { ctx, registered } = commandCtx(undefined, false)
+    captureCwd(() => apply(ctx, { autoInit: false, binary: process.execPath }))
+    expect(registered).toHaveLength(1)
+    expect(registered[0]?.name).toBe("mpd-codegraph")
+    const result = await registered[0]!.handler({ agent: { session: { header: { cwd: session } } } })
+    expect(result.kind).toBe("success")
+    expect(result.text).toContain(session)
+  })
+
+  test("apply never throws when the composition has no command registry at all", () => {
+    expect(() => { captureCwd(() => apply({ get: () => undefined }, { autoInit: false })) }).not.toThrow()
+    expect(() => { captureCwd(() => apply({ get: (key: string) => (key === "commands" ? {} : undefined) }, { autoInit: false })) }).not.toThrow()
   })
 })

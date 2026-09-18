@@ -1,0 +1,77 @@
+{
+  "task": "t14",
+  "kind": "repair",
+  "lane": "L4b (docs-engineer) — repair for t6 finding F1",
+  "owner": "docs-engineer",
+  "attempt_id": "6aa9bdcb-afce-4764-9ed0-098ea6104b43",
+  "run_utc": "2026-09-18T00:41:12Z",
+  "base_revision": "5aa222a144e4238b67453731c5decd806db6db94",
+  "defect": "Twelve human-facing package READMEs taught the PACKAGE-DIRECTORY build form (`bun build src/index.ts ...`). AGENTS.md §6 marks that form STALE: bun build writes every bundled module path RELATIVE TO CWD into the artifact's path comments, so `node scripts/verify-dist-fresh.mjs` reproduces different bytes and flags the committed dist STALE. Same defect class as S2/S3 (fixed for the mpd-ulw-plugin pair by t4).",
+  "fix": "Each file's single build command line replaced with the canonical repo-root, path-qualified form; nothing else touched.",
+  "per_file_before_after": [
+    { "file": "packages/mpd-boulder-plugin/README.md", "line": 26, "before": "bun build src/index.ts --outdir dist --target node --format esm", "after": "bun build packages/mpd-boulder-plugin/src/index.ts --target node --format esm --outfile packages/mpd-boulder-plugin/dist/index.js" },
+    { "file": "packages/mpd-boulder-plugin/README.zh-CN.md", "line": 22, "before": "bun build src/index.ts --outdir dist --target node --format esm", "after": "bun build packages/mpd-boulder-plugin/src/index.ts --target node --format esm --outfile packages/mpd-boulder-plugin/dist/index.js" },
+    { "file": "packages/mpd-comment-checker-plugin/README.md", "line": 39, "before": "bun build src/index.ts --outdir dist --target node --format esm", "after": "bun build packages/mpd-comment-checker-plugin/src/index.ts --target node --format esm --outfile packages/mpd-comment-checker-plugin/dist/index.js" },
+    { "file": "packages/mpd-comment-checker-plugin/README.zh-CN.md", "line": 38, "before": "bun build src/index.ts --outdir dist --target node --format esm", "after": "bun build packages/mpd-comment-checker-plugin/src/index.ts --target node --format esm --outfile packages/mpd-comment-checker-plugin/dist/index.js" },
+    { "file": "packages/mpd-hashline-plugin/README.md", "line": 28, "before": "bun build src/index.ts --outdir dist --target node --format esm", "after": "bun build packages/mpd-hashline-plugin/src/index.ts --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js" },
+    { "file": "packages/mpd-hashline-plugin/README.zh-CN.md", "line": 24, "before": "bun build src/index.ts --outdir dist --target node --format esm", "after": "bun build packages/mpd-hashline-plugin/src/index.ts --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js" },
+    { "file": "packages/mpd-memory-plugin/README.md", "line": 39, "before": "bun build src/index.ts --outdir dist --target node --format esm", "after": "bun build packages/mpd-memory-plugin/src/index.ts --target node --format esm --outfile packages/mpd-memory-plugin/dist/index.js" },
+    { "file": "packages/mpd-memory-plugin/README.zh-CN.md", "line": 31, "before": "bun build src/index.ts --outdir dist --target node --format esm", "after": "bun build packages/mpd-memory-plugin/src/index.ts --target node --format esm --outfile packages/mpd-memory-plugin/dist/index.js" },
+    { "file": "packages/mpd-qa-roles-probe/README.md", "line": 20, "before": "bun build src/index.ts --target node --format esm --outfile dist/index.js", "after": "bun build packages/mpd-qa-roles-probe/src/index.ts --target node --format esm --outfile packages/mpd-qa-roles-probe/dist/index.js" },
+    { "file": "packages/mpd-qa-roles-probe/README.zh-CN.md", "line": 16, "before": "bun build src/index.ts --target node --format esm --outfile dist/index.js", "after": "bun build packages/mpd-qa-roles-probe/src/index.ts --target node --format esm --outfile packages/mpd-qa-roles-probe/dist/index.js" },
+    { "file": "packages/mpd-workmate-plugin/README.md", "line": 166, "before": "bun build src/index.ts --target node --format esm --outfile dist/index.js", "after": "bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js" },
+    { "file": "packages/mpd-workmate-plugin/README.zh-CN.md", "line": 130, "before": "bun build src/index.ts --target node --format esm --outfile dist/index.js", "after": "bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js" }
+  ],
+  "changed_paths": [
+    { "path": "packages/mpd-boulder-plugin/README.md", "sha256": "b8c88e62a3ce980333fed4eef0a0b52359f4d0ee9c825caaee5a96154f973d2e" },
+    { "path": "packages/mpd-boulder-plugin/README.zh-CN.md", "sha256": "74a31faa1cc8b084f00bce11bf90b98325b12187b7b7c569a15657b139859503" },
+    { "path": "packages/mpd-comment-checker-plugin/README.md", "sha256": "ff5c8cef836f06f1e0a05694e10c4b215c0a6baf831223dfb3e474f9c32d8a53" },
+    { "path": "packages/mpd-comment-checker-plugin/README.zh-CN.md", "sha256": "aae5d4aa750a5855d2a81b01b2afb4ea2ba67804a544176dca2c2e0f0a7a801f" },
+    { "path": "packages/mpd-hashline-plugin/README.md", "sha256": "89ffae7c516d39bd567b7b4fc298ce87ede45f17d1213b15e75db8cecc5fd515" },
+    { "path": "packages/mpd-hashline-plugin/README.zh-CN.md", "sha256": "e642b0744d980c8155908a527b39793caeecc065d6d448fd8987b9b4f6b01c07" },
+    { "path": "packages/mpd-memory-plugin/README.md", "sha256": "aa6c4438ac37d69b97bd6662f5765428fa04ceadef8c4e863d8587234ff78045" },
+    { "path": "packages/mpd-memory-plugin/README.zh-CN.md", "sha256": "583e6eca5b64a1d5234b40e97d79cf7e39cc94786a5c3df59ed4a4aa3f4db864" },
+    { "path": "packages/mpd-qa-roles-probe/README.md", "sha256": "fe5c752586f05d919d3b42564254e70895040e06ff5db35aa3bd0c825d2e8deb" },
+    { "path": "packages/mpd-qa-roles-probe/README.zh-CN.md", "sha256": "7820458c79121894a07a32a049dc254f7cd4dc960a6074fb8e47022d0376faf0" },
+    { "path": "packages/mpd-workmate-plugin/README.md", "sha256": "42263972268cc8fdb7730603b563b43eb04ed59013c6692195aca7c156afe1cb" },
+    { "path": "packages/mpd-workmate-plugin/README.zh-CN.md", "sha256": "9082479e9b4cc5a8a05fe7f46c796005d18a9683ed7c784b028bb39146f13501" },
+    { "path": "evidence/ulw/l4b-readme-buildform/20260918T004112Z/result.json", "sha256": "self" },
+    { "path": "evidence/ulw/l4b-readme-buildform/20260918T004112Z/output.log", "sha256": "self" }
+  ],
+  "acceptance_results": [
+    {
+      "criterion": "All 12 files carry the CANONICAL repo-root, path-qualified build form and no package-directory form (`bun build src/index.ts …`) survives in any of them",
+      "status": "passed",
+      "evidence": "AFTER sweep: every one of the 12 files holds exactly 1 canonical line `bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js` (grep -c = 1 for all 12, with the concrete package name per file); `grep -rn 'bun build src/index.ts' <the 12 files>` -> no hits (exit 1); repo-wide `grep -rn 'bun build src/index.ts' packages/*/README*.md` -> no hits (exit 1) — the ulw pair fixed by t4 and every other package README are clean too."
+    },
+    {
+      "criterion": "Each pair's EN and zh-CN twins are updated in the SAME change and stay semantically identical",
+      "status": "passed",
+      "evidence": "All 6 pairs edited in this one change (12 files); per-pair twin identity check `diff <(grep 'bun build' EN) <(grep 'bun build' zh)` -> 'identical' for all six pairs. The command is language-neutral, so semantic identity is byte identity here."
+    },
+    {
+      "criterion": "The edit is limited to the build/test command line(s): no other prose, heading or link changes (minimal diff), and no unrelated README is touched",
+      "status": "passed",
+      "evidence": "`git diff --stat` over the 12 files: 12 files changed, 12 insertions(+), 12 deletions(-) — exactly one replaced line per file. A per-file `diff <(git show HEAD:<file>) <file>` filtered to exclude the build line prints nothing ('no NON-BUILD CHANGE lines'), so headings ('## Build / test' / '## 构建 / 测试'), fences, the `bun test` lines and all prose/links are byte-unchanged. No file outside the 12 inScope paths was edited."
+    },
+    {
+      "criterion": "bun run verify:docs is green (pairs + switch links + heading tree + CJK content)",
+      "status": "passed",
+      "evidence": "`bun run verify:docs` -> [verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS, exit 0 (run at 2026-09-18T00:43:17Z; re-run at the final state after the evidence write)."
+    },
+    {
+      "criterion": "Evidence under evidence/ulw/l4b-readme-buildform/** lists per-file before/after command lines and the gate output",
+      "status": "passed",
+      "evidence": "evidence/ulw/l4b-readme-buildform/20260918T004112Z/{result.json, output.log}: result.json carries the per_file_before_after table and per-file sha256; output.log carries the pre-edit BEFORE sweep (with a clean `git status` of the 12 files), the post-edit AFTER sweep, the stale-form sweeps, the twin-identity and non-build-line checks, the full diffstat, and the verify:docs output with its exit code."
+    }
+  ],
+  "commands_run": [
+    { "command": "bun run verify:docs", "status": "passed", "exitCode": 0, "evidence": "[verify-docs-parity] pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS" }
+  ],
+  "self_check": {
+    "no_git_write": true,
+    "no_docs_agents_preset_skills_dist_touched": true,
+    "in_scope_only": true,
+    "en_zh_same_change": true
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "task": "t3",
+  "lane": "L1 — mpd-dsh-adapter command seam",
+  "member": "harness-engineer",
+  "attempt_id": "bed39939-c773-4f24-b147-6008eb6e1e30",
+  "attempt": 2,
+  "captured_at": "2026-09-18T00:20:07Z",
+  "base_revision": "5aa222a (dev)",
+  "contract_revision": 1,
+  "changed_files": [
+    {
+      "path": "packages/mpd-dsh-adapter-plugin/src/index.ts",
+      "sha256": "c08b95ff63dc30a9380a6632e184a25cb11acd116da8ed5e96f131061446109b",
+      "change": "DshCommandDef/DshCommandInput/DshCommandInvocation/DshUserMessage(+Input/Source) types; DshCapabilities.commands + commandsRegister; DshAdapter.registerCommand + userMessage; module-level userMessage() constructor (local shape, node:crypto randomUUID); command-plane implementation resolving ctx service \"commands\" lazily; capabilities() flags."
+    },
+    {
+      "path": "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts",
+      "sha256": "43207f04e2ddb13a079bfb9db92601e2ce57b670ab6cc7b64938354779e9a3c7",
+      "change": "fakeHarness() gains a commands stub returning the host's own effect disposer; new describes \"command plane\" (5 tests) and \"message plane\" (4 tests), both sides per the contract."
+    },
+    {
+      "path": "packages/mpd-codegraph-plugin/src/index.ts",
+      "sha256": "6f1005c0934a203c1ba377b8d845e5abaff267a629358a6d135c471e0854eaba",
+      "change": "the ONLY remaining direct ctx.get(\"commands\") user in the repo now registers through dsh.registerCommand; the local structural seam type gained AdapterSeams = WorkspacePlane & {registerCommand}."
+    },
+    {
+      "path": "packages/mpd-codegraph-plugin/src/index.test.ts",
+      "sha256": "a89923c0b88ed49b1ceffdac2a49f292ec5a27e38dcf6cabb2c941bd8f07213e",
+      "change": "commandCtx() double now provides registerCommand (mounted) and, with mounted=false, drops mpdDsh so the standalone adapter reads the commands key itself (whose stub register returns no disposer); new describe proves both paths + an absent registry."
+    }
+  ],
+  "verify": [
+    {
+      "command": "bun test packages/mpd-dsh-adapter-plugin",
+      "exitCode": 0,
+      "key_output": "51 pass / 0 fail / 176 expect() calls (42 before this change; +9 new tests)"
+    },
+    {
+      "command": "bun test packages/mpd-codegraph-plugin",
+      "exitCode": 0,
+      "key_output": "9 pass / 0 fail / 23 expect() calls (baseline 7 pass / 0 fail; +2 new tests)"
+    },
+    {
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "key_output": "tsgo --noEmit, clean"
+    },
+    {
+      "command": "bun run evidence/ulw/l1-adapter-command/20260918T001851Z/host-acceptance.ts",
+      "exitCode": 0,
+      "key_output": "16/16 PASS against the INSTALLED harness by absolute path (see checks below)"
+    }
+  ],
+  "host_acceptance_checks": {
+    "A1.parseCommand-no-slash": "the host's own parseCommand('/ulw ship the wave') -> {name:'ulw', rawInput:' ship the wave'} — confirms the registered name carries no leading slash",
+    "B0.capabilities-commands": "{commands:true, commandsRegister:true}",
+    "B1.disposer-is-function": "the seam returned a callable",
+    "B2.host-resolves-definition": "a REAL dsh-commands CommandRuntime.find(agent,'ulw') resolved the definition",
+    "B3.host-lists-descriptor": "the host lists the descriptor",
+    "B4.duplicate-throws-host-side": "a second registration of 'ulw' threw '... already registered' THROUGH the seam",
+    "B5.disposer-unregisters": "calling the returned disposer removed the definition from the real registry",
+    "C1.host-executes-handler": "runtime.execute(agent,'/ultrawork go') ran the handler and normalized {kind:'success', text:'ran go'}",
+    "C2.host-wrote-the-lifecycle": "the host appended command/run {commandId,name,args,source} and command/done {commandId,kind,text} (session.append is a double; the registry, dispatch and normalization are the host's own code)",
+    "D1.keys-match-installed": "content,id,role,source vs the installed createUserMessage — identical key set",
+    "D2.values-match-minus-id": "field-by-field equal (role, content, source) against the installed dsh-llm createUserMessage",
+    "D3.identity-is-a-fresh-string": "fresh non-empty id string per call",
+    "D4.frozen-like-the-host": "message, content, source and the host's own message are all frozen",
+    "D5.durable-log-serializable": "structuredClone round-trip is lossless",
+    "D6.source-shape-accepted-by-host-types": "{kind:'plugin', plugin:'mpd-ulw'} producer tag preserved",
+    "E1.no-bare-host-import": "the adapter source imports 0 host packages by bare specifier"
+  },
+  "acceptance_map": {
+    "registerCommand exposed + disposer + missing-seam no-op + non-function stub": "adapter.test.ts command plane (disposer IDENTITY assert, register()->42 -> callable no-op, absent seam no-throw, apply() without a registry); probe B1/B5",
+    "capabilities() truthful both sides": "adapter.test.ts (present true/true, service-without-register true/false, absent false/false) + the pre-existing full-harness all-true assertion; probe B0",
+    "userMessage host-acceptable + measured + no bare import": "adapter.test.ts message plane (4 tests incl. the vendored createUserMessage equivalence) + probe D1-D6/E1",
+    "adapter.test.ts both sides + fakeHarness commands stub keeps the all-true assertion green": "fakeHarness() commands stub; 'capabilities > reports every seam of a full harness' passes",
+    "codegraph registration through the adapter, stub in src/index.test.ts, package stays green": "codegraph src + src/index.test.ts (mounted and standalone-adapter paths); 9 pass / 0 fail",
+    "all three verify commands green + evidence under evidence/ulw/l1-adapter-command/**": "output.log (exit=0 for all four runs) + this result.json"
+  },
+  "not_verified_here": [
+    "The LIVE half: a real dsh boot mounting the mpd preset and a live /ulw turn. Only composition is knowable from here — dsh-base/cordis.patch.yml mounts the commands row (id: commands, @deepseek-ai/dsh-commands) and the mpd preset mounts command-goal/command-compact, so ctx.get('commands') resolves (composition-only evidence, never a load proof). The boot + live-turn proof belongs to t2/t7/L6.",
+    "bundle-lifecycle's ADAPTER_SEAMS assertion is membership-based (seams.includes('toolsRegister') etc.), so the two new flags do not redden it — read from skills/dsh-qa/scripts/bundle-lifecycle.mjs, not executed here (skills/** is out of my scope).",
+    "packages/*/dist/** is intentionally NOT rebuilt (D6/T-88: the integration task owns dists), so packages/mpd-codegraph-plugin/dist/index.js and packages/mpd-dsh-adapter-plugin/dist/index.js are STALE relative to src until t8 rebuilds them; verify-dist-fresh reddens by design until then.",
+    "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts is outside the root tsconfig include (packages/*/src/**/*.ts), so bun run typecheck does not cover that test file; its types are checked by bun's own transpile at test time (pre-existing repo config, not changed here).",
+    "The working tree also carries other lanes' concurrent edits (mpd-agent-teams-plugin/** and agent-references/agent-teams-deltas.md), so this sweep ran on a shared, mixed tree — not on an isolated revision."
+  ]
+}

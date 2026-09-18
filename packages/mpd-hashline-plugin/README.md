@@ -25,6 +25,6 @@ model re-reads anchors or switches to `mpd_hashline_edit`.
 ## Build / test
 
 ```sh
-bun build src/index.ts --outdir dist --target node --format esm
+bun build packages/mpd-hashline-plugin/src/index.ts --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js
 bun test
 ```

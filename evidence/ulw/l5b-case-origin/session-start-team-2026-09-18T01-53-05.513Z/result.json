@@ -1,0 +1,277 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-sst-YGDFja",
+  "steps": {
+    "settled": {
+      "ok": true,
+      "rev": "5aa222a144e4238b67453731c5decd806db6db94",
+      "gateHash": "4888f69fad5c746432e4f57f0bb62b65da53f4d6dca082f256678ccb9fdbafc8"
+    },
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "patchRow": {
+      "ok": true,
+      "hasRow": true
+    },
+    "compose": {
+      "ok": true,
+      "exit": 0
+    },
+    "simpleSide": [
+      {
+        "prompt": "Reply with exactly: hello-ok",
+        "expect": "none",
+        "exited": 0,
+        "teams": 0,
+        "stagedTotal": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "archivedRecords": 0,
+        "archivedByModel": false,
+        "modelStaged": 0,
+        "pluginStaged": 0,
+        "unattributed": 0,
+        "attributions": [],
+        "notice": {
+          "any": false,
+          "advisory": 0,
+          "provisioned": 0,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 20,
+        "sessionFrames": 7,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "What does the git-master skill do? Answer in one sentence.",
+        "expect": "none",
+        "exited": 0,
+        "teams": 0,
+        "stagedTotal": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "archivedRecords": 0,
+        "archivedByModel": false,
+        "modelStaged": 0,
+        "pluginStaged": 0,
+        "unattributed": 0,
+        "attributions": [],
+        "notice": {
+          "any": false,
+          "advisory": 0,
+          "provisioned": 0,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 25,
+        "sessionFrames": 10,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+        "expect": "none",
+        "exited": 0,
+        "teams": 0,
+        "stagedTotal": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "archivedRecords": 0,
+        "archivedByModel": false,
+        "modelStaged": 0,
+        "pluginStaged": 0,
+        "unattributed": 0,
+        "attributions": [],
+        "notice": {
+          "any": false,
+          "advisory": 0,
+          "provisioned": 0,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 46,
+        "sessionFrames": 22,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "softComplexSide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "advise",
+        "exited": 0,
+        "teams": 0,
+        "stagedTotal": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "archivedRecords": 0,
+        "archivedByModel": false,
+        "modelStaged": 0,
+        "pluginStaged": 0,
+        "unattributed": 0,
+        "attributions": [],
+        "notice": {
+          "any": true,
+          "advisory": 1,
+          "provisioned": 0,
+          "signals": [
+            "C"
+          ]
+        },
+        "isolation": true,
+        "sessionRecords": 110,
+        "sessionFrames": 58,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+        "expect": "advise",
+        "exited": 0,
+        "teams": 0,
+        "stagedTotal": 0,
+        "members": 0,
+        "spawnedMembers": 0,
+        "archivedRecords": 0,
+        "archivedByModel": false,
+        "modelStaged": 0,
+        "pluginStaged": 0,
+        "unattributed": 0,
+        "attributions": [],
+        "notice": {
+          "any": true,
+          "advisory": 1,
+          "provisioned": 0,
+          "signals": [
+            "C"
+          ]
+        },
+        "isolation": true,
+        "sessionRecords": 110,
+        "sessionFrames": 58,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "explicitSide": [
+      {
+        "prompt": "team: fix the flaky test",
+        "expect": "provision",
+        "exited": 0,
+        "teams": 0,
+        "stagedTotal": 1,
+        "staged": "staged",
+        "profile": "mpd",
+        "members": 11,
+        "spawnedMembers": 0,
+        "archivedRecords": 1,
+        "archivedByModel": true,
+        "modelStaged": 0,
+        "pluginStaged": 1,
+        "unattributed": 0,
+        "attributions": [
+          {
+            "slot": "archived",
+            "id": "mpd-default",
+            "phase": "staged",
+            "description": "Auto-routed by the complexity gate (sessionTeamPolicy.autoRoute; staged — the captain designs the roster/DAG, then the user reviews and approves the plan in the Web panel).",
+            "captainSessionId": "session-b646729a-d5d6-4a9e-8c4e-b62f7ab14656",
+            "logResolution": "session-id",
+            "logSessionId": "session-b646729a-d5d6-4a9e-8c4e-b62f7ab14656",
+            "createCalls": [],
+            "archiveCalls": [
+              "call_00_WYJJF6v71QG13QwDMgRi2516"
+            ],
+            "origin": "plugin",
+            "reasons": [
+              "the record carries the plugin's auto-route description and belongs to this session"
+            ],
+            "pluginDescription": true,
+            "modelCalled": false
+          }
+        ],
+        "notice": {
+          "any": true,
+          "advisory": 0,
+          "provisioned": 1,
+          "signals": []
+        },
+        "isolation": true,
+        "sessionRecords": 62,
+        "sessionFrames": 31,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "negativeControl": {
+      "ok": true,
+      "teams": 0,
+      "stagedTotal": 0,
+      "notice": {
+        "any": false,
+        "advisory": 0,
+        "provisioned": 0
+      },
+      "disarmed": true,
+      "isolation": true,
+      "problems": []
+    },
+    "threeWay": {
+      "ok": true,
+      "simpleTeams": [
+        0,
+        0,
+        0
+      ],
+      "simpleNotices": [
+        false,
+        false,
+        false
+      ],
+      "softTeams": [
+        0,
+        0
+      ],
+      "softModelStaged": [
+        0,
+        0
+      ],
+      "softPluginStaged": [
+        0,
+        0
+      ],
+      "softAdvisory": [
+        1,
+        1
+      ],
+      "softSignals": [
+        [
+          "C"
+        ],
+        [
+          "C"
+        ]
+      ],
+      "explicitTeams": [
+        1
+      ],
+      "explicitActive": [
+        0
+      ],
+      "explicitArchived": [
+        1
+      ],
+      "explicitPluginStaged": [
+        1
+      ],
+      "explicitProvisioned": [
+        1
+      ]
+    }
+  },
+  "totalSteps": 9
+}

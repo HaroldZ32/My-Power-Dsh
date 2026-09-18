@@ -1,0 +1,88 @@
+{
+  "task": "t4",
+  "lane": "L2",
+  "member": "ulw-engineer",
+  "role": "engineer — mpd-ulw-plugin (commands + autonomy)",
+  "attempt": 6,
+  "attemptId": "746e48d4-d7d8-4a5c-8a00-6e95cbc6a388",
+  "baseRevision": "5aa222a",
+  "branch": "dev",
+  "capturedAtUtc": "20260918T003046Z",
+  "authority": [
+    "evidence/ulw/requirements/20260918T001246Z/contract.md §1.1 (S1-S15), §2.1/§2.2/§2.3 (C2.1-C2.5), §3 (C3.1-C3.4b)",
+    ".mpd/plans/ulw-commands-and-gate.md §2 D2/D3/D4/D5, §4 items 2+3, §8 R1"
+  ],
+  "changedPaths": [
+    "packages/mpd-ulw-plugin/src/index.ts",
+    "packages/mpd-ulw-plugin/test/commands.test.ts",
+    "packages/mpd-ulw-plugin/test/engine.test.ts",
+    "packages/mpd-ulw-plugin/README.md",
+    "packages/mpd-ulw-plugin/README.zh-CN.md",
+    "packages/mpd-ulw-plugin/package.json"
+  ],
+  "fileHashesSha256": {
+    "packages/mpd-ulw-plugin/src/index.ts": "c06ec6645422b0d185a81727043bab9beeeeb4700f452546674e3f3036c4a5de",
+    "packages/mpd-ulw-plugin/test/engine.test.ts": "01e602a988e4e7d934103538fb76cc79025524f334a89f4040d8ad7536106031",
+    "packages/mpd-ulw-plugin/test/commands.test.ts": "cdb12585b42a114c9cf5e8875099f28145e5ea1b960da57f52cb44e8a875a146",
+    "packages/mpd-ulw-plugin/README.md": "d043e187e1c718118bb6b7b59e397711b7bb9b9a67cec92d20f68a320571159c",
+    "packages/mpd-ulw-plugin/README.zh-CN.md": "635108e772a7875403063c63c0f0e5930b5db0b21c01aad6298cf5a7196a9749",
+    "packages/mpd-ulw-plugin/package.json": "1793a88ede02d76b307aa642ab861b6e334659cdd6764cb3842d7b6304fcfcde"
+  },
+  "implementation": {
+    "commands": "dsh.registerCommand({name:'ulw'}) + dsh.registerCommand({name:'ultrawork'}) — bare names (the host parses the slash), input {hint:'objective'}, ONE handler; the returned host disposers + the gesture disposer are handed to the plugin fiber via ctx.effect when available.",
+    "turnSubmission": "the handler calls `invocation.submit(dsh.userMessage({text: activationDirective(objective), source:{kind:'plugin',plugin:'mpd-ulw'}}))`; `submit` is bound by the adapter to `submitUserTurn(invocation.agent, message)` (t12), so the plugin never reads invocation.agent itself. Boolean true -> {kind:'success', text:'ULW activated: <objective>'}; false -> {kind:'error', text:'ULW could not start: no live agent turn surface …'}.",
+    "gesture": "dsh.onEvent('agent/pre-step', async (payload, next) => …): awaits next() FIRST (waterfall discipline), returns the composed decision unchanged unless the latest user-role message text matches /^(?:\\/ulw|\\/ultrawork)(?:[\\t\\n\\r ]+|$)/u, then returns {...decision, messages} with that message's first text block rewritten to the SAME activation directive (identity id/role/source preserved, mirroring the adopted consumeFlagFromMessage). A bare `/ulw` (no objective), a mid-text mention, a reject decision and a step without a user message are all returned untouched.",
+    "directive": "exported ULW_ACTIVATION_DIRECTIVE + activationDirective(objective) — six clauses in order (triage -> gate -> team -> loop -> fix-on-sight -> close-out); stable head, objective appended last (DeepSeek V4 prefix-cache discipline). Deliberately NOT folded into the child-round DIRECTIVE (requirements contract §3).",
+    "legacy": "mpd_ulw description without the retired B3 vocabulary; src file-header label removed; package.json description suffix removed; engine.test.ts comment reworded explanatory; README pair documents both commands, the autonomy policy and the canonical repo-root build command."
+  },
+  "acceptance": [
+    {
+      "criterion": "Both /ulw and /ultrawork registered through the adapter seam with identical behaviour, WITHOUT a leading slash (two registrations); empty input returns usage naming the objective form; non-empty input injects a user-role message with the objective plus the activation directive and returns a short confirmation",
+      "status": "passed",
+      "evidence": "test/commands.test.ts: 'both /ulw and /ultrawork are registered through the adapter seam (bare names, identical behaviour)' — 2 registrations, names ['ulw','ultrawork'], no leading slash, description + input.hint present, behavioural identity via both names (equal result object, equal directive bytes). 'empty input returns usage naming the objective form and starts nothing' — {kind:'error'} containing '/ulw <objective>' and '/ultrawork <objective>' for '', '   ', '\\t\\n', zero submissions. 'a non-empty invocation submits …' — {kind:'success'} + exactly 1 submitted message."
+    },
+    {
+      "criterion": "The directive is submitted as a TURN through the adapter's turn-submission surface; the message is built with the adapter's userMessage seam; the gesture boundary uses the adapter's onEvent('agent/pre-step', …) waterfall seam (every argument incl. next forwarded); the plugin must NOT call ctx.on / ctx.get('commands') directly and must NOT import any host package by bare specifier",
+      "status": "passed",
+      "evidence": "The submission test calls the REGISTERED definition (the adapter-wrapped handler) with a host-shaped {rawInput, agent} and asserts the live agent's followup received the built message (role 'user', fresh id, source.kind 'plugin'). The gesture test drives the captured agent/pre-step listener and asserts next() was awaited first (delegated === 1). Source-discipline test + gates.log greps: no ctx.commands, no ctx.get(\"commands\"), no ctx.on(, no `from \"@deepseek-ai/` import; the source contains dsh.registerCommand(, dsh.onEvent(, dsh.userMessage(."
+    },
+    {
+      "criterion": "A test proves a run can actually be STARTED: a handler invocation results in a submitted user-role turn carrying the directive (not merely a {kind:'success'} return)",
+      "status": "passed",
+      "evidence": "'a non-empty invocation submits the activation directive as the invoking agent's next user turn' asserts submitted.length === 1 with the directive bytes (ULTRAWORK ACTIVATION + OBJECTIVE + approval=\"automatic\"), and that the no-live-surface case reports {kind:'error'} 'could not start' rather than a false success. Submission path: invocation.submit -> adapter submitUserTurn(agent, message) -> agent.followup (the t12 seam)."
+    },
+    {
+      "criterion": "The directive states the six autonomy behaviours: triage-first, the same complexity gate (signals A-D), agent_teams_create(approval=\"automatic\", profile=\"mpd\") with a captain-designed roster/DAG, loop to completion without asking, close-out only after verification gate + quality-gate ledger, and fix-on-sight",
+      "status": "passed",
+      "evidence": "'the activation directive carries the six autonomy behaviours in order' asserts the ordered positions (TRIAGE FIRST < GATE < TEAM WHEN WARRANTED < LOOP TO COMPLETION < FIX ON SIGHT < CLOSE OUT ON PROOF) and the required phrases: agent_teams_create(approval=\"automatic\", profile=\"mpd\"), 'explicit `team:`/`!team` flag OR any matched signal A-D', 'no user confirmation', 'never stop early to ask the user', 'never report-and-wait', 'verification gate and the quality-gate ledger both approve', and startsWith(ULW_ACTIVATION_DIRECTIVE) for the stable head."
+    },
+    {
+      "criterion": "B3 ruling: label-shaped occurrences removed (mpd_ulw description, src file-header label, package.json suffix); the explanatory README sentence stays in both language files; the test comment reworded",
+      "status": "passed",
+      "evidence": "gates.log: `grep -rn \"B3\" packages/mpd-ulw-plugin --exclude-dir=dist` returns ONLY README.md:5 and README.zh-CN.md:4 (the explanatory history the captain ruling keeps); 'B3-shaped' has no match in src; package.json description suffix gone; engine.test.ts comment reworded. dist/index.js still carries the retired string — S5, owned by integration (T-88)."
+    },
+    {
+      "criterion": "The engine DIRECTIVE carries the autonomy policy and README.md + README.zh-CN.md document both commands, the autonomy policy and the canonical repo-root build command (package-directory form gone from both)",
+      "status": "passed",
+      "evidence": "The injected activation directive is the engine's user-facing policy text (exported, tested). Per requirements contract §3 the child-round DIRECTIVE deliberately does NOT carry the autonomy clauses, and engine.test.ts asserts it (round prompt contains ULTRAWORK DISCIPLINE but neither approval=\"automatic\" nor TRIAGE FIRST). README.md:64 and README.zh-CN.md:46 carry `bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js`; `grep -rn \"bun build src/index.ts --outdir dist\"` has NO match in either file; bun run verify:docs PASS (38 pairs, 0 failed, 0 violations)."
+    },
+    {
+      "criterion": "Test coverage: both names registered via the seam, usage on empty input, directive text carrying the autonomy clauses, turn submission observed, gesture recognition, and no direct ctx.on / host import in the plugin source",
+      "status": "passed",
+      "evidence": "8 new tests in test/commands.test.ts (registration, usage, submission, directive clauses, gesture injection, gesture negative controls, source discipline, degradation without command registry/event bus) + 2 assertions added to engine.test.ts (child directive exclusion). bun test packages/mpd-ulw-plugin: 11 pass / 0 fail, exit 0."
+    }
+  ],
+  "commandsRun": [
+    { "command": "bun test packages/mpd-ulw-plugin", "status": "passed", "exitCode": 0, "evidence": "11 pass / 0 fail (162 files scanned; engine.test.ts 3 + commands.test.ts 8); output.log" },
+    { "command": "bun run typecheck", "status": "passed", "exitCode": 0, "evidence": "tsgo --noEmit, no diagnostics; output.log" },
+    { "command": "bun run verify:docs", "status": "passed", "exitCode": 0, "evidence": "pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS; verify-docs.log" },
+    { "command": "node scripts/verify-dist-fresh.mjs", "status": "reported", "exitCode": 1, "reason": "EXPECTED RED until integration rebuilds: 18 of 20 targets are stale wave-wide because every lane edited src/** while dist/** is out of every lane's scope (requirements contract §6.3 / T-88, S5). Mine: committed dist/index.js (37044 B, 24122dae82a78f8f) != fresh build of my new src (43662 B, 4b036c7ae8ab89b8). No lane may rebuild dist; t8 does it and re-runs this gate.", "evidence": "verify-dist-fresh.log (STALE line 19/38 names packages/mpd-ulw-plugin/dist/index.js)" }
+  ],
+  "honestNotes": [
+    "NO live boot in this lane: the mount-instrumented boot that lists both registered names from the real registry is the stated evidence carrier of t2/t7 (requirements contract §2.4). This lane proves registration, submission, gesture injection and source discipline at the unit level against the adapter seam, using the adapter's own binding path.",
+    "dist/index.js is NOT rebuilt here (hard rule: no dist edits; T-88). The retired B3 description therefore still exists in the committed dist artifact until t8's rebuild; the src half is fixed and the S5 table assigns the rebuilt copy to integration.",
+    "verify-dist-fresh is red wave-wide (18/20) for the same rebuild reason — recorded as a labelled 'reported' entry, never as a green it did not observe.",
+    "The autonomy policy deliberately lives in the ACTIVATION directive, not in the child-round DIRECTIVE (requirements contract §3: a child session is never gate-qualified, so team-autonomy text there would instruct a subagent to do what the platform forbids). engine.test.ts asserts the exclusion.",
+    "Attempt 6 resumed from a clean lane: no edits from the earlier attempts remained (git status showed packages/mpd-ulw-plugin untouched at claim time)."
+  ]
+}
