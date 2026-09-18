@@ -145,10 +145,12 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
    **逐次调用文件读取**。保存的编辑会回写到
    当前会话工作区的 `<workspace>/.mpd/mpd.jsonc`，并保留注释与键顺序，配置层立即对所有工作区
    生效。**本区块的每个开关对插件行为的影响都需要重启**，因为 mpd 消费方在
-   `apply()` 时读取配置——界面上同样如此说明：每个字段提示为 `mpd.jsonc <键> — a
+   `apply()` 时读取配置——界面上同样如此说明：每个字段提示都写出自己的 mpd.jsonc 键并携带 `a
    save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and
    takes effect for the mpd plugins after a restart (this knob is read at plugin
-   mount)`，并附上「仅存于设置中的保存不会丢失」的说明。当目标不明确时回写会
+   mount)`，并附上「仅存于设置中的保存不会丢失」的说明。九个团队模型槽位的提示**以该开关自身的
+   人类语句开头**（写明该槽位路由哪个成员分组，例如 `槽位 2 提供商（分析型成员）`，以及配置它的
+   影响），之后才写出键与上述披露。当目标不明确时回写会
    **明确拒绝且不写文件**（无活动会话 `no-live-session`；多个活动工作区
    `ambiguous-multi-root` 并列出全部候选；只读/不可解析/冲突的文件），而设置值仍然
    生效；状态行会显示对应的运行时提示。不声明：某个具体前门的渲染效果（Web 卡片的

@@ -59,10 +59,13 @@ existing `team-page.js` pattern, never a declared inject — and when a probe is
 is bound, or `directoryFor` throws, the card falls back to the DECLARED option lists and the
 section still renders. Nothing about a slot is settable only by typing. A browser module cannot
 import the TS declaration, so the card mirrors it and a test pins the declared metadata (path,
-label, zh, kind, declared options) element-wise. The two doors' HINT strings differ on purpose
-and both name the dotted `mpd.jsonc` key and carry the disclosure plus the not-lost clause: the
-TUI builds `mpd.jsonc <key> — <disclosure> <not-lost>`, the card mirrors the shared `knobHint`
-and additionally appends a knob's own semantics sentence where it declares one.
+label, zh, kind, declared options, human sentences) element-wise. Each slot row LEADS with its
+group and its own human sentence: the label names the group (`Slot 2 provider (analysis members)`),
+a group heading with a one-line impact sits above each slot's three rows, and the human sentence
+renders at full readability with the mandatory disclosure line dimmer beneath it. Both doors name
+the dotted `mpd.jsonc` key and carry the disclosure plus the not-lost clause AFTER that human
+sentence: the TUI builds `<human sentence> mpd.jsonc <key> — <disclosure> <not-lost>`, and the card
+mirrors the same declaration in the same order.
 
 ## Config
 

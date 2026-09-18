@@ -14,7 +14,12 @@ import {
   TEAM_MODEL_FALLBACK_OPTIONS,
   TEAM_MODEL_SLOTS,
   TEAM_MODEL_SLOT_DEFAULTS,
+  TEAM_MODEL_SLOT_GROUPS,
+  TEAM_MODEL_SLOT_IMPACT,
   knobHint,
+  teamModelLeafSentence,
+  teamModelMembers,
+  teamModelSlotHeading,
 } from "../src/settings-schema"
 
 const temps: string[] = []
@@ -112,16 +117,48 @@ describe("A3 — nine knobs in the ONE declaration, in slot order", () => {
       expect(knob.zh.length).toBeGreaterThan(0)
     }
     // The exact labels/zh the two front doors mirror (the card's FIELDS must match these element-wise).
+    // Each label names the GROUP the slot routes, so a row says what the slot IS without a hint.
     expect(slotKnobs.map((knob) => knob.label)).toEqual([
-      "Slot 1 provider", "Slot 1 model", "Slot 1 reasoning effort",
-      "Slot 2 provider", "Slot 2 model", "Slot 2 reasoning effort",
-      "Slot 3 provider", "Slot 3 model", "Slot 3 reasoning effort",
+      "Slot 1 provider (heavy members)", "Slot 1 model (heavy members)", "Slot 1 reasoning effort (heavy members)",
+      "Slot 2 provider (analysis members)", "Slot 2 model (analysis members)", "Slot 2 reasoning effort (analysis members)",
+      "Slot 3 provider (execution members)", "Slot 3 model (execution members)", "Slot 3 reasoning effort (execution members)",
     ])
     expect(slotKnobs.map((knob) => knob.zh)).toEqual([
-      "槽位 1 提供商", "槽位 1 模型", "槽位 1 推理强度",
-      "槽位 2 提供商", "槽位 2 模型", "槽位 2 推理强度",
-      "槽位 3 提供商", "槽位 3 模型", "槽位 3 推理强度",
+      "槽位 1 提供商（重推理成员）", "槽位 1 模型（重推理成员）", "槽位 1 推理强度（重推理成员）",
+      "槽位 2 提供商（分析型成员）", "槽位 2 模型（分析型成员）", "槽位 2 推理强度（分析型成员）",
+      "槽位 3 提供商（执行型成员）", "槽位 3 模型（执行型成员）", "槽位 3 推理强度（执行型成员）",
     ])
+  })
+
+  test("the slot copy states the group and its members: heading, impact and per-leaf sentences", () => {
+    // The group table is the ONE input the copy interpolates — the member list in the group's own order.
+    expect(TEAM_MODEL_SLOT_GROUPS.slot1.members).toEqual(["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"])
+    expect(TEAM_MODEL_SLOT_GROUPS.slot2.members).toEqual(["Researcher", "Explorer", "Plan Reviewer"])
+    expect(TEAM_MODEL_SLOT_GROUPS.slot3.members).toEqual(["Deep Worker", "Junior Engineer"])
+    expect(teamModelMembers("slot2", "zh")).toBe("Researcher、Explorer、Plan Reviewer")
+    expect(teamModelMembers("slot2", "en")).toBe("Researcher, Explorer, Plan Reviewer")
+    // The heading renders above a slot's three rows; the impact line is the one-line consequence.
+    expect(teamModelSlotHeading("slot1", "en")).toBe("Slot 1 — heavy members (Architect, Planner, Reviewer, Lead, Senior Engineer)")
+    expect(teamModelSlotHeading("slot2", "zh")).toBe("槽位 2 —— 分析型成员（Researcher、Explorer、Plan Reviewer）")
+    expect(teamModelSlotHeading("slot3", "en")).toBe("Slot 3 — execution members (Deep Worker, Junior Engineer)")
+    expect(TEAM_MODEL_SLOT_IMPACT.zh).toContain("点名成员与槽位")
+    expect(TEAM_MODEL_SLOT_IMPACT.en).toContain("fails team creation loudly")
+    // The nine knobs carry their OWN sentence per leaf, in both languages, and the composed hint
+    // LEADS with the English one.
+    for (const knob of slotKnobs) {
+      const slot = String(knob.path[1]) as "slot1" | "slot2" | "slot3"
+      const leaf = String(knob.path[2]) as "provider" | "model" | "reasoningEffort"
+      expect(knob.semantics).toBe(teamModelLeafSentence(slot, leaf, "en"))
+      expect(knob.semanticsZh).toBe(teamModelLeafSentence(slot, leaf, "zh"))
+      expect(String(knob.hint).startsWith(String(knob.semantics))).toBe(true)
+      expect(String(knob.hint).indexOf("mpd.jsonc ")).toBeGreaterThan(String(knob.semantics).length - 1)
+    }
+    // A slot's sentence names ITS OWN group's members, not another slot's.
+    const slot2Provider = String(slotKnobs[3].semantics)
+    expect(slot2Provider).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
+    expect(slot2Provider).not.toContain("Architect")
+    // and the zh sentence names the zh group.
+    expect(String(slotKnobs[3].semanticsZh)).toContain("分析型成员（Researcher、Explorer、Plan Reviewer）")
   })
 
   test("every hint names its dotted mpd.jsonc key, the disclosure, the not-lost clause and its member class", () => {

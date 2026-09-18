@@ -12,7 +12,7 @@
 
 **TUI 对应面。** 本客户端注册的设置卡片，与 TUI 版本渲染的 `/settings` 区块是**同一个** `mpd` settings 命名空间的两半（`packages/mpd-tui-plugin/src/settings.ts`）：两个前门的标签、提示与中文描述互为镜像，并有测试断言两份列表保持一致；两者也陈述同一句桥接披露——保存会写入 `<workspace>/.mpd/mpd.jsonc`（针对当时处于 live 的会话工作区），mpd 插件在重启后按其生效。浏览器只通过公开的 settings 接缝抵达该桥；回写本身属于 `packages/mpd-config-plugin`。改动任一半后请重建合并客户端（`node scripts/build-mpd-client.mjs`）。
 
-**Web 卡片的团队模型选择器。** 卡片镜像 `packages/mpd-config-plugin` 中**唯一**的 22 行 knob 声明（原有 13 个 knob 加九个 `teamModels` 槽位叶子），并把每个槽位渲染为**联动的、只可选择**的选择器：模型控件的选项是目录中的 provider/model 组合（provider 作为分组显示），推理强度控件的选项是**所选模型自身**的 effort，并在模型变化时重新推导。目录通过**受保护的探针** `ctx.get("sessions")` + `ctx.get("modelDirectories")` 获取 —— 沿用 `team-page.js` 的既有模式，绝不新增必需注入 —— 当探针缺失、没有绑定会话，或 `directoryFor` 抛错时，卡片回退到**声明**的选项列表，区块照常渲染。槽位的任何一项都不能只靠输入来设置。浏览器模块无法 import TS 声明，因此卡片镜像它，并由测试逐项固定声明元数据（path、label、zh、kind、声明选项）。两个前门的**提示字符串刻意不同**，但都写出点号形式的 `mpd.jsonc` key 并携带披露与"不会丢失"条款：TUI 构造 `mpd.jsonc <key> — <披露> <不会丢失>`，卡片则镜像共享的 `knobHint`，并在 knob 自己声明了语义句时追加该句。
+**Web 卡片的团队模型选择器。** 卡片镜像 `packages/mpd-config-plugin` 中**唯一**的 22 行 knob 声明（原有 13 个 knob 加九个 `teamModels` 槽位叶子），并把每个槽位渲染为**联动的、只可选择**的选择器：模型控件的选项是目录中的 provider/model 组合（provider 作为分组显示），推理强度控件的选项是**所选模型自身**的 effort，并在模型变化时重新推导。目录通过**受保护的探针** `ctx.get("sessions")` + `ctx.get("modelDirectories")` 获取 —— 沿用 `team-page.js` 的既有模式，绝不新增必需注入 —— 当探针缺失、没有绑定会话，或 `directoryFor` 抛错时，卡片回退到**声明**的选项列表，区块照常渲染。槽位的任何一项都不能只靠输入来设置。浏览器模块无法 import TS 声明，因此卡片镜像它，并由测试逐项固定声明元数据（path、label、zh、kind、声明选项、人类语句）。每个槽位行**以所属分组和自身的人类语句开头**：标签写明分组（`槽位 2 提供商（分析型成员）`），每个槽位的三行之上有一行分组标题与一句影响说明，人类语句以正常字号/不透明度渲染，强制披露行更暗地跟在下方。两个前门都写出点号形式的 `mpd.jsonc` key，并在该人类语句**之后**携带披露与"不会丢失"条款：TUI 构造 `<人类语句> mpd.jsonc <key> — <披露> <不会丢失>`，卡片镜像同一份声明、同一顺序。
 
 ## 配置
 

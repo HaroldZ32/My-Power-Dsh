@@ -70,13 +70,16 @@ export { BRIDGE_NOT_LOST }
 export const BRIDGE_NO_WORKSPACE_NOTICE = "saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)"
 
 /**
- * One field hint: the real mpd.jsonc key PLUS both on-screen statements — the bridge+restart
- * truth AND the clause that keeps a settings-only save from reading as a lost one (captain's
- * ruling 1: with 0 or N live roots the value persists in the host settings document and the
- * read-in layer applies it to every workspace immediately).
+ * One field hint, HUMAN SENTENCE FIRST: the knob's own human sentence (what it is and what
+ * configuring it does) leads, then the real mpd.jsonc key PLUS both on-screen statements — the
+ * bridge+restart truth AND the clause that keeps a settings-only save from reading as a lost one
+ * (captain's ruling 1: with 0 or N live roots the value persists in the host settings document and
+ * the read-in layer applies it to every workspace immediately). A knob with no human sentence
+ * (every knob but the nine team-model slot leaves) keeps the disclosure-only hint byte-for-byte.
  */
-function knobHint(key: string): string {
-  return `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
+function knobHint(key: string, semantics?: string): string {
+  const disclosure = `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
+  return semantics === undefined || semantics.length === 0 ? disclosure : `${semantics} ${disclosure}`
 }
 
 // ── the nine team-model slot knobs: a SELECT with a live option list (A4) ─────
@@ -232,7 +235,7 @@ function declaredField(knob: (typeof SETTINGS_KNOBS)[number]): TuiSettingsFieldL
     path: [...knob.path],
     label: knob.label,
     descriptions: { zh: knob.zh },
-    hint: knobHint(knob.path.join(".")),
+    hint: knobHint(knob.path.join("."), knob.semantics),
     kind: knob.kind,
     ...(knob.options === undefined ? {} : { options: knob.options.map((value) => ({ value, label: value })) }),
   }
@@ -260,7 +263,9 @@ export function settingsFields(lists: TeamModelOptionLists): readonly TuiSetting
  * Every `hint` is built by {@link knobHint} and therefore carries
  * {@link BRIDGE_DISCLOSURE}: the user reading `/settings` learns at the point of
  * use that an edit here is written to the workspace file AND that its behaviour
- * change waits for a restart.
+ * change waits for a restart. The nine team-model slot hints additionally LEAD with the
+ * knob's own human sentence (which member group the slot routes and what configuring it
+ * does) from the shared declaration (`knob.semantics`); the label carries the group name.
  *
  * This is the DECLARED shape (cloned per registration, with the slot options replaced by
  * the catalog projection). It is exported so the declared baseline stays inspectable.

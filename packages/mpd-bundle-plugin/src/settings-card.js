@@ -67,11 +67,74 @@
 
   /**
    * The twenty-two knobs — the SAME fields the TUI `/settings` section declares (the thirteen
-   * scalar knobs, then the nine team-model slot leaves). `hint` is the knob's mpd.jsonc key + the
-   * shared disclosure, exactly as the TUI builds it; a knob whose effect is not self-evident from
-   * its label also carries a `semantics` sentence the row renders (w16). The slot leaves take
-   * their option lists from the live catalog at render time instead.
+   * scalar knobs, then the nine team-model slot leaves). The composed hint LEADS with the knob's
+   * human sentence (`semantics`/`semanticsZh`) and then states its mpd.jsonc key + the shared
+   * disclosure, exactly as the TUI builds it; a scalar knob keeps its declared metadata (the two
+   * watchdog rows carry the sentence they always had). The slot leaves take their option lists
+   * from the live catalog at render time instead.
    */
+  const SLOT_SLOTS = ["slot1", "slot2", "slot3"]
+  const SLOT_LEAVES = [
+    { leaf: "provider", label: "provider", zh: "提供商", options: ["deepseek-official"] },
+    { leaf: "model", label: "model", zh: "模型", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
+    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度", options: ["off", "low", "high", "max"] },
+  ]
+  /**
+   * What each slot IS — the member group it routes, in the group's own order (mirror of
+   * `TEAM_MODEL_SLOT_GROUPS`). The group name and the member list are the only inputs the nine
+   * human sentences interpolate, so the card cannot drift from the declaration by accident: the
+   * parity test compares every sentence and heading below with the shared declaration's own
+   * builders.
+   */
+  const SLOT_GROUPS = {
+    slot1: { en: "heavy members", zh: "重推理成员", members: "Architect, Planner, Reviewer, Lead, Senior Engineer", membersZh: "Architect、Planner、Reviewer、Lead、Senior Engineer" },
+    slot2: { en: "analysis members", zh: "分析型成员", members: "Researcher, Explorer, Plan Reviewer", membersZh: "Researcher、Explorer、Plan Reviewer" },
+    slot3: { en: "execution members", zh: "执行型成员", members: "Deep Worker, Junior Engineer", membersZh: "Deep Worker、Junior Engineer" },
+  }
+  /** The one-line impact under a slot's group heading (same text for all three slots). */
+  const SLOT_IMPACT = {
+    en: "When a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.",
+    zh: "建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。",
+  }
+  /** The HUMAN sentence of one slot leaf in both locales: what it IS, then what configuring it DOES. */
+  function slotSentence(slot, leaf) {
+    const group = SLOT_GROUPS[slot]
+    if (leaf === "provider") {
+      return {
+        en: `The provider half of this slot. The three slots are the default model route of team members: when a team is created, the ${group.en} (${group.members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst belongs to no slot: it keeps its own fixed vision route.`,
+        zh: `这一档的提供商。三档合起来是 team 成员的默认模型路由：建队时，${group.zh}（${group.membersZh}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 不属任何档位，它固定使用自己的视觉模型路由。`,
+      }
+    }
+    if (leaf === "model") {
+      return {
+        en: `This slot's model. Together with the provider above, it decides the model the ${group.en} (${group.members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.`,
+        zh: `这一档的模型。与上面的提供商共同决定 ${group.zh}（${group.membersZh}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。`,
+      }
+    }
+    return {
+      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.`,
+      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。`,
+    }
+  }
+  /** The group heading a slot renders above its three rows, e.g. `Slot 2 — analysis members (…)`. */
+  function slotHeading(slot, index) {
+    const group = SLOT_GROUPS[slot]
+    return { en: `Slot ${index} — ${group.en} (${group.members})`, zh: `槽位 ${index} —— ${group.zh}（${group.membersZh}）` }
+  }
+  /** The nine slot rows: the same order, paths and DECLARED option lists as the shared declaration. */
+  const SLOT_FIELDS = SLOT_SLOTS.flatMap((slot, index) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
+    const sentence = slotSentence(slot, leaf)
+    return {
+      path: ["teamModels", slot, leaf],
+      label: `Slot ${index + 1} ${label} (${SLOT_GROUPS[slot].en})`,
+      zh: `槽位 ${index + 1} ${zh}（${SLOT_GROUPS[slot].zh}）`,
+      kind: "select",
+      options,
+      semantics: sentence.en,
+      semanticsZh: sentence.zh,
+    }
+  }))
+
   const FIELDS = [
     { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
     { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -90,22 +153,23 @@
     // packages/mpd-config-plugin/src/settings-schema.ts). Every slot leaf is a `select`: the
     // options come from the live catalog at render time (see optionsFor) and fall back to the
     // declared lists below, so no slot value is ever typed. The DECLARED lists are the parity
-    // surface with the TUI; the LIVE lists are a different source by construction.
-    { path: ["teamModels", "slot1", "provider"], label: "Slot 1 provider", zh: "槽位 1 提供商", kind: "select", options: ["deepseek-official"] },
-    { path: ["teamModels", "slot1", "model"], label: "Slot 1 model", zh: "槽位 1 模型", kind: "select", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
-    { path: ["teamModels", "slot1", "reasoningEffort"], label: "Slot 1 reasoning effort", zh: "槽位 1 推理强度", kind: "select", options: ["off", "low", "high", "max"] },
-    { path: ["teamModels", "slot2", "provider"], label: "Slot 2 provider", zh: "槽位 2 提供商", kind: "select", options: ["deepseek-official"] },
-    { path: ["teamModels", "slot2", "model"], label: "Slot 2 model", zh: "槽位 2 模型", kind: "select", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
-    { path: ["teamModels", "slot2", "reasoningEffort"], label: "Slot 2 reasoning effort", zh: "槽位 2 推理强度", kind: "select", options: ["off", "low", "high", "max"] },
-    { path: ["teamModels", "slot3", "provider"], label: "Slot 3 provider", zh: "槽位 3 提供商", kind: "select", options: ["deepseek-official"] },
-    { path: ["teamModels", "slot3", "model"], label: "Slot 3 model", zh: "槽位 3 模型", kind: "select", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
-    { path: ["teamModels", "slot3", "reasoningEffort"], label: "Slot 3 reasoning effort", zh: "槽位 3 推理强度", kind: "select", options: ["off", "low", "high", "max"] },
+    // surface with the TUI; the LIVE lists are a different source by construction. The labels and
+    // the human sentences are built from SLOT_GROUPS below, so a slot's copy is stated once here
+    // exactly as the shared declaration states it (a test compares the two element-wise).
+    ...SLOT_FIELDS,
   ]
 
-  // The per-row hint: the real mpd.jsonc key, the bridge disclosure, the not-lost clause and (for
-  // a knob whose effect is not self-evident) its semantics sentence — byte-identical to the hint
-  // the TUI section builds for the same knob, so the two front doors state the same thing.
-  const hintOf = (field) => `mpd.jsonc ${field.path.join(".")} — ${BRIDGE_DISCLOSURE} ${NOT_LOST}${field.semantics === undefined ? "" : " " + field.semantics}`
+  // The per-row hint, HUMAN SENTENCE FIRST: the knob's own `semantics` (what it is and what
+  // configuring it does) leads in the row's locale, then the real mpd.jsonc key with the bridge
+  // disclosure and the not-lost clause — byte-identical to the hint the TUI section builds for the
+  // same knob, so the two front doors state the same thing in the same order. A knob with no
+  // human sentence keeps the disclosure-only hint it always had.
+  const disclosureOf = (field) => `mpd.jsonc ${field.path.join(".")} — ${BRIDGE_DISCLOSURE} ${NOT_LOST}`
+  const hintOf = (field, lang = "en") => {
+    const sentence = lang === "zh" ? field.semanticsZh : field.semantics
+    const disclosure = disclosureOf(field)
+    return sentence === undefined || sentence.length === 0 ? disclosure : `${sentence} ${disclosure}`
+  }
   const fieldKey = (field) => field.path.join(".")
   const leafOf = (value, path) => path.reduce((acc, part) => (acc === null || acc === undefined ? undefined : acc[part]), value)
 
@@ -780,6 +844,20 @@
         const label = t(key)
         // The nine slot rows carry the fallback marker; the thirteen scalar rows are untouched.
         const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
+        // HUMAN SENTENCE FIRST, at full readability; the mandatory key+disclosure line sits BENEATH
+        // it, dimmer. A knob with no human sentence renders the single dim disclosure line it always
+        // had, so the thirteen scalar rows are byte-unchanged.
+        const disclosureAt = hint.indexOf("mpd.jsonc " + key)
+        const human = disclosureAt > 0 ? hint.slice(0, disclosureAt).trim() : ""
+        const disclosure = disclosureAt < 0 ? hint : hint.slice(disclosureAt)
+        const hintNode = human.length === 0
+          ? createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.7, marginBottom: 2 } }, disclosure)
+          : createElement(
+              "span",
+              { style: { display: "block", marginBottom: 2 } },
+              createElement("span", { style: { display: "block", fontSize: 12, opacity: 0.95 }, "data-mpd-row-human": key }, human),
+              createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.6 }, "data-mpd-row-disclosure": key }, disclosure),
+            )
         const options = field.kind === "select" ? optionsFor(field, groups, state.controls) : []
         const input = field.kind === "select" && options.length > 0
           ? createElement(
@@ -798,7 +876,7 @@
           "label",
           { key, style: { display: "block", margin: "8px 0" } },
           createElement("span", { style: { display: "block", fontSize: 13, fontWeight: 600 } }, label),
-          createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.7, marginBottom: 2 } }, hint),
+          hintNode,
           input,
           createElement(
             "span",
@@ -820,6 +898,27 @@
         { style: { margin: "12px 0 4px", fontSize: 12, opacity: 0.75 }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
         catalogNotice(catalog),
       )
+      // Above each slot's THREE rows: the group heading and its one-line impact, so a reader sees
+      // who the slot routes before reading a single hint. The rows stay DIRECT children of the card
+      // (the heading/impact are siblings, not a wrapper), so every existing row lookup still holds.
+      const slotChildren = []
+      for (let index = 0; index < slotRows.length; index++) {
+        const slot = String(fields[slotStart + index].path[1])
+        const previous = index === 0 ? "" : String(fields[slotStart + index - 1].path[1])
+        if (slot !== previous) {
+          slotChildren.push(createElement(
+            "div",
+            { key: "group." + slot, style: { marginTop: 10, fontSize: 13, fontWeight: 700 }, "data-mpd-slot-group": slot },
+            t("teamModels." + slot + ".heading"),
+          ))
+          slotChildren.push(createElement(
+            "p",
+            { key: "impact." + slot, style: { margin: "2px 0 0", fontSize: 11, opacity: 0.75 }, "data-mpd-slot-impact": slot },
+            t("teamModels." + slot + ".impact"),
+          ))
+        }
+        slotChildren.push(slotRows[index])
+      }
       return createElement(
         "div",
         { style: { border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: 12 } },
@@ -840,7 +939,7 @@
         ),
         ...scalarRows,
         slotLine,
-        ...slotRows,
+        ...slotChildren,
         createElement(
           "div",
           { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 10 } },
@@ -888,8 +987,17 @@
       const key = fieldKey(field)
       en[key] = field.label
       zh[key] = field.zh
-      en[key + ".hint"] = hintOf(field)
-      zh[key + ".hint"] = hintOf(field)
+      en[key + ".hint"] = hintOf(field, "en")
+      zh[key + ".hint"] = hintOf(field, "zh")
+    }
+    // The group heading and its one-line impact, per slot, in BOTH locales: the card renders them
+    // above each slot's three rows, so a reader learns the group without parsing a hint sentence.
+    for (const [index, slot] of SLOT_SLOTS.entries()) {
+      const heading = slotHeading(slot, index + 1)
+      en["teamModels." + slot + ".heading"] = heading.en
+      zh["teamModels." + slot + ".heading"] = heading.zh
+      en["teamModels." + slot + ".impact"] = SLOT_IMPACT.en
+      zh["teamModels." + slot + ".impact"] = SLOT_IMPACT.zh
     }
     return { en, zh }
   }

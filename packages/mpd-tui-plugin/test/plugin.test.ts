@@ -12,7 +12,7 @@ import { describe, expect, test } from "bun:test"
 import * as mod from "../src/index"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { Context, Service } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
-import { TEAM_MODEL_FALLBACK_OPTIONS } from "../../mpd-config-plugin/src/settings-schema"
+import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
 import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SETTINGS_FIELDS, teamModelOptionLists } from "../src/settings"
 import { createLog } from "../src/log"
@@ -716,6 +716,54 @@ describe("settings section disclosure (t21)", () => {
       expect(field.hint).toBeString()
       expect(field.hint).toContain("mpd.jsonc")
       expect(field.hint).toContain(BRIDGE_DISCLOSURE)
+    }
+  })
+
+  test("every slot hint LEADS with the knob's human sentence, then the key + disclosure", () => {
+    // The nine team-model rows are the flat list's only rows with a human sentence: the label
+    // carries the group (`槽位 2 提供商（分析型成员）`), the hint carries what the slot IS and what
+    // configuring it DOES, and only then the mandatory key + disclosure + not-lost clause.
+    const slotFields = SETTINGS_FIELDS.filter((field) => field.path[0] === "teamModels")
+    expect(slotFields).toHaveLength(9)
+    for (const field of slotFields) {
+      const knob = SETTINGS_KNOBS.find((candidate) => [...candidate.path].join(".") === field.path.join("."))
+      expect(knob).toBeDefined()
+      expect(field.label).toBe(knob?.label)
+      expect(field.label).toContain(String(TEAM_MODEL_SLOT_GROUPS[field.path[1] as "slot1"].en))
+      expect(field.descriptions?.zh).toBe(knob?.zh)
+      expect(field.descriptions?.zh).toContain(String(TEAM_MODEL_SLOT_GROUPS[field.path[1] as "slot1"].zh))
+      // human sentence FIRST
+      expect(field.hint.startsWith(String(knob?.semantics))).toBe(true)
+      // ...then the dotted key, the disclosure and the not-lost clause
+      expect(field.hint).toContain(`mpd.jsonc ${field.path.join(".")}`)
+      expect(field.hint).toContain(BRIDGE_DISCLOSURE)
+      expect(field.hint).toContain(BRIDGE_NOT_LOST)
+      expect(field.hint.indexOf(`mpd.jsonc ${field.path.join(".")}`)).toBeGreaterThan(String(knob?.semantics).length - 1)
+      // the sentence names THIS slot's members, in the group's own order
+      expect(field.hint).toContain(teamModelMembers(field.path[1] as "slot1", "en"))
+    }
+    expect(String(slotFields[3].hint)).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
+    expect(String(slotFields[3].hint)).not.toContain("Architect")
+    expect(String(slotFields[3].hint)).toContain("Vision Analyst")
+    // the thirteen scalar hints keep the disclosure-only shape they always had (no invented copy)
+    for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] !== "teamModels")) {
+      expect(field.hint.startsWith(`mpd.jsonc ${field.path.join(".")}`)).toBe(true)
+    }
+  })
+
+  test("the registered section's 22 rows mirror the declaration: labels, zh, and human-first hints", async () => {
+    const { calls } = await applyWithAdapter(async () => ({ providers: [], degraded: true }))
+    const section = calls.sections[0]
+    expect(section.fields).toHaveLength(SETTINGS_KNOBS.length)
+    for (const [index, field] of section.fields.entries()) {
+      const knob = SETTINGS_KNOBS[index]
+      expect([...(field.path as string[])]).toEqual([...knob.path])
+      expect(field.label).toBe(knob.label)
+      expect(field.descriptions?.zh).toBe(knob.zh)
+      expect(String(field.hint).startsWith(knob.semantics ?? `mpd.jsonc ${knob.path.join(".")}`)).toBe(true)
+      expect(field.hint).toContain(`mpd.jsonc ${knob.path.join(".")}`)
+      expect(field.hint).toContain(BRIDGE_DISCLOSURE)
+      expect(field.hint).toContain(BRIDGE_NOT_LOST)
     }
   })
 

@@ -125,33 +125,97 @@ export const BRIDGE_NO_WORKSPACE_NOTICE = "saved to settings — not yet written
 export const BRIDGE_AMBIGUOUS_NOTICE = "saved to settings — not written to any file: several live workspaces, so the target is ambiguous (see the log for the candidates)"
 
 /**
- * One knob hint: the real mpd.jsonc key, the bridge disclosure and the not-lost clause, plus —
- * for a knob whose effect is not self-evident — one sentence of semantics. The TUI section builds
- * the SAME prefix with its local `knobHint` (`packages/mpd-tui-plugin/src/settings.ts`) for every
- * knob it renders, so a hint declared HERE is byte-compatible with what a front door shows for the
- * same path, and a slot knob's semantics sentence (which member class the slot feeds) has exactly
- * one declaration.
+ * One knob hint, HUMAN SENTENCE FIRST: `semantics` (what the knob is and what configuring it does)
+ * leads, then the real mpd.jsonc key, the bridge disclosure and the not-lost clause. Without
+ * `semantics` the hint is the disclosure half alone, byte-identical to what every front door
+ * emitted before the human half existed. The TUI section builds the same string with its local
+ * `knobHint` (`packages/mpd-tui-plugin/src/settings.ts`) for every knob it renders, so a hint
+ * declared HERE is byte-compatible with what a front door shows for the same path, and a slot
+ * knob's human sentence (which member group the slot feeds) has exactly one declaration.
  */
 export function knobHint(key: string, semantics?: string): string {
-  return `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}${semantics === undefined ? "" : " " + semantics}`
+  const disclosure = `mpd.jsonc ${key} — ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
+  return semantics === undefined || semantics.length === 0 ? disclosure : `${semantics} ${disclosure}`
+}
+
+/** One team-model slot's human identity: its group name in both languages and its members, in the group's own order. */
+export interface TeamModelSlotGroup {
+  /** The group name as the zh label and heading render it, e.g. `重推理成员`. */
+  readonly zh: string
+  /** The group name as the EN label and heading render it, e.g. `heavy members`. */
+  readonly en: string
+  /** The members this slot routes, in the group's own order — the order every sentence names them in. */
+  readonly members: readonly string[]
 }
 
 /**
- * One sentence of SEMANTICS per slot, naming the member class the slot feeds (A3). The sentence
- * rides all three leaves of a slot because the SLOT routes the class while the LEAF names the
- * value; the leaf is identified by the label and by the dotted key inside the hint.
+ * What each slot IS: one member group per slot (A3). The group name and the member list are the
+ * ONLY inputs the per-leaf sentences interpolate, so a slot's copy is declared once here and both
+ * front doors mirror it (the Web card cannot import this module).
  */
-const TEAM_MODEL_SLOT_SEMANTICS: Readonly<Record<(typeof TEAM_MODEL_SLOTS)[number], string>> = {
-  slot1:
-    "slot 1 is the default route of the slot-1 members (Architect, Planner, Reviewer, Lead, Senior Engineer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort",
-  slot2:
-    "slot 2 is the default route of the slot-2 analysts (Researcher, Explorer, Plan Reviewer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort, while Vision Analyst keeps its own explicit vision route",
-  slot3:
-    "slot 3 is the default route of the slot-3 executors (Deep Worker, Junior Engineer): a member of that class that declares no explicit route of its own is staged on this provider/model/effort",
+export const TEAM_MODEL_SLOT_GROUPS: Readonly<Record<(typeof TEAM_MODEL_SLOTS)[number], TeamModelSlotGroup>> = {
+  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
+  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
+  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
+}
+
+/**
+ * The HUMAN sentence of one slot leaf, as a template: `{group}` is the slot's group name and
+ * `{members}` its member list in the group's own order. The sentence states what the slot IS and
+ * what configuring it DOES; it always renders BEFORE the mandatory disclosure, in both languages.
+ */
+const TEAM_MODEL_LEAF_TEMPLATES: Readonly<Record<keyof typeof TEAM_MODEL_FALLBACK_OPTIONS, { readonly en: string; readonly zh: string }>> = {
+  provider: {
+    en: "The provider half of this slot. The three slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst belongs to no slot: it keeps its own fixed vision route.",
+    zh: "这一档的提供商。三档合起来是 team 成员的默认模型路由：建队时，{group}（{members}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 不属任何档位，它固定使用自己的视觉模型路由。",
+  },
+  model: {
+    en: "This slot's model. Together with the provider above, it decides the model the {group} ({members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.",
+    zh: "这一档的模型。与上面的提供商共同决定 {group}（{members}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。",
+  },
+  reasoningEffort: {
+    en: "This slot's reasoning effort (off / low / high / max). It sets how much the {group} ({members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
+    zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+  },
+}
+
+/** The one-line IMPACT sentence a front door renders under a slot's group heading (same text for all three). */
+export const TEAM_MODEL_SLOT_IMPACT: Readonly<Record<"en" | "zh", string>> = {
+  en: "When a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.",
+  zh: "建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。",
+}
+
+/** One slot's members, joined in the group's own order with the separator the language uses. */
+export function teamModelMembers(slot: (typeof TEAM_MODEL_SLOTS)[number], lang: "en" | "zh"): string {
+  return TEAM_MODEL_SLOT_GROUPS[slot].members.join(lang === "zh" ? "、" : ", ")
+}
+
+/** One slot leaf's HUMAN sentence in `lang` — the sentence a front door renders BEFORE the disclosure. */
+export function teamModelLeafSentence(
+  slot: (typeof TEAM_MODEL_SLOTS)[number],
+  leaf: keyof typeof TEAM_MODEL_FALLBACK_OPTIONS,
+  lang: "en" | "zh",
+): string {
+  return TEAM_MODEL_LEAF_TEMPLATES[leaf][lang]
+    .split("{group}")
+    .join(TEAM_MODEL_SLOT_GROUPS[slot][lang])
+    .split("{members}")
+    .join(teamModelMembers(slot, lang))
+}
+
+/** The group heading a front door renders ABOVE a slot's three rows, e.g. `Slot 2 — analysis members (…)`. */
+export function teamModelSlotHeading(slot: (typeof TEAM_MODEL_SLOTS)[number], lang: "en" | "zh"): string {
+  const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1
+  const group = TEAM_MODEL_SLOT_GROUPS[slot]
+  return lang === "zh"
+    ? `槽位 ${index} —— ${group.zh}（${teamModelMembers(slot, "zh")}）`
+    : `Slot ${index} — ${group.en} (${teamModelMembers(slot, "en")})`
 }
 
 /** The nine team-model knobs: every slot leaf, in slot order, each a `select` with a declared fallback list. */
-const TEAM_MODEL_KNOBS: readonly SettingsKnob[] = TEAM_MODEL_SLOTS.flatMap((slot, index) => {
+const TEAM_MODEL_KNOBS: readonly SettingsKnob[] = TEAM_MODEL_SLOTS.flatMap((slot) => {
+  const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1
+  const group = TEAM_MODEL_SLOT_GROUPS[slot]
   const leaves: readonly { leaf: keyof typeof TEAM_MODEL_FALLBACK_OPTIONS; label: string; zh: string }[] = [
     { leaf: "provider", label: "provider", zh: "提供商" },
     { leaf: "model", label: "model", zh: "模型" },
@@ -159,11 +223,13 @@ const TEAM_MODEL_KNOBS: readonly SettingsKnob[] = TEAM_MODEL_SLOTS.flatMap((slot
   ]
   return leaves.map(({ leaf, label, zh }) => ({
     path: ["teamModels", slot, leaf] as const,
-    label: `Slot ${index + 1} ${label}`,
-    zh: `槽位 ${index + 1} ${zh}`,
+    label: `Slot ${index} ${label} (${group.en})`,
+    zh: `槽位 ${index} ${zh}（${group.zh}）`,
     kind: "select" as const,
     options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
-    hint: knobHint(`teamModels.${slot}.${leaf}`, TEAM_MODEL_SLOT_SEMANTICS[slot]),
+    semantics: teamModelLeafSentence(slot, leaf, "en"),
+    semanticsZh: teamModelLeafSentence(slot, leaf, "zh"),
+    hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en")),
   }))
 })
 
@@ -174,6 +240,14 @@ export interface SettingsKnob {
   readonly zh: string
   readonly kind: "number" | "boolean" | "select" | "text"
   readonly options?: readonly string[]
+  /**
+   * The knob's HUMAN sentence (EN): what the knob IS and what configuring it DOES. A front door
+   * renders it BEFORE the disclosure half of {@link hint}; a knob with no non-obvious effect
+   * leaves it undefined and keeps the disclosure-only hint.
+   */
+  readonly semantics?: string
+  /** The same sentence in zh, for a front door rendering the zh locale (the Web card mirrors it). */
+  readonly semanticsZh?: string
   /**
    * One sentence of SEMANTICS for a knob whose effect is not self-evident from its label
    * (w16). A front door renders it next to the row when it has room for a second line; the
