@@ -1,0 +1,125 @@
+=== t12 re-verification (O2 comment fix) — 2026-09-19T12:00:32Z — verifier: Plan Reviewer (attempt 5cb76cca-f29e-4132-b25e-d1f03f86902b) ===
+=== revision under judgement: scripts/verify-docs-parity.mjs NEW sha256 06ee71ae… (supersedes t8's 1cb83b13…)
+--- hashes BEFORE ---
+06ee71ae8fdf4cbb7ffc0b87465cd3aca99cd71dd3a5c48fb8e1610aa1a1a8b8  scripts/verify-docs-parity.mjs
+62288be4a23c8ebb3fed267e2f6e6530ab6f3a279dff6721b734c43cf9146d68  AGENTS.md
+9e86dd852cdf995a8e3ae1b43b7d373cb0e2145ecbc8668110fe1aba784a212f  .gitignore
+af5ec159114e51a7a34d531bd1a8c62c02de7c306bbe1ee9ba55976ce9948de0  agent-references/troubleshooting.md
+62bd827a9449aa58900f0baf6df23ddf4fdfdc636641a4106b50f57d3c946228  docs/design.md
+9a824fe66982a3554906bc6085a68ca1cbebd060a61881b995ebb3ca7bf22089  docs/index.md
+--- earlier passes preserved (hash before) ---
+300768b615bb6639e7db0bb6a8e20746cbd1f72888bd832fca934c35fbfc4762  evidence/process-fixes/verify-hardening.json
+a06c84e5b4105a8ba18905330af6bd24e180659f049a20f56be9e915d4515b25  evidence/process-fixes/verify-hardening.log
+067f24d61f586da3ba19f6d6557a3086941dd32ff26e3d24b3fdfa2b101ba263  evidence/process-fixes/verify-hardening-reverify.json
+534930243fc7ed3a9cf290a044f6ab6974dfebf262409a1630603c8f31b4586d  evidence/process-fixes/verify-hardening-reverify.log
+
+### VERIFY 1: node scripts/verify-docs-parity.mjs  ($ 12:00:32Z)
+note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+[verify-docs-parity] links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 files=92
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS
+exit=0
+
+### VERIFY 2: node scripts/verify-docs-parity.mjs --self-test  ($ 12:00:33Z)
+ok   links POSITIVE: an existing relative target resolves and the checker RAN — {"files":6,"links":13,"checked":10,"resolved":10,"dead":0,"skippedProvenance":0,"absentSite":0,"external":2,"anchorOnly":1}
+ok   links IGNORED: external, protocol-relative, mailto, anchor, empty, code-span and fenced targets are counted but never resolved — {"files":7,"links":18,"checked":10,"resolved":10,"dead":0,"skippedProvenance":0,"absentSite":0,"external":5,"anchorOnly":3}
+ok   links NEGATIVE: a link to a missing file REDDENS and NAMES source + target — FAIL link-missing:docs/guide.md:./does-not-exist.md — docs/guide.md:17 links "./does-not-exist.md" but neither a file nor a directory exists at /tmp/mpd-docs-links-selftest-VHXzJP/full/docs/does-not-exist.md — this gate resolves relative link TARGETS (two rounds of dead links to the retired docs/architecture.md passed it green BEFORE this row); fix the link or retire the target in the same change
+ok   links PACKED: no AGENTS.md -> an absent target is a LINK NOTE (not a failure) while a present target is still checked — {"counters":{"files":6,"links":13,"checked":10,"resolved":7,"dead":0,"skippedProvenance":0,"absentSite":3,"external":2,"anchorOnly":1},"notes":[{"path":"docs/guide.md","reason":"link-absent-site:docs/guide.md:../AGENTS.md — target not present in this root (packed artifact / partial copy); link target not resolved"}]}
+ok   links PROVENANCE: a dead link in the VERBATIM file stays green and is REPORTED as EXEMPT, while the SAME dead link in a non-exempt README reddens (the skip is FILE-scoped) — {"violations":["link-missing:packages/mpd-fixture-pkg/README.md:./dead.md"],"counters":{"files":9,"links":22,"checked":14,"resolved":12,"dead":1,"skippedProvenance":1,"absentSite":0,"external":5,"anchorOnly":3},"provenanceNote":{"path":"packages/mpd-agent-teams-plugin/README.md","reason":"EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 1 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/usage.md"}}
+ok   links ROOT-RELATIVE: a `/`-prefixed target resolves against the REPO ROOT (existing file + directory count as RESOLVED), while a missing one still REDDENS with its id — {"resolvedBefore":12,"resolvedWithTwoLiveTargets":14,"deadBefore":1,"deadWithMissingTarget":2,"finding":"link-missing:docs/root-relative.md:/nowhere/absent.md"}
+[verify-docs-parity self-test] 34/34 checks passed — PASS
+exit=0
+
+### VERIFY 3: node scripts/verify-gates.mjs  ($ 12:00:33Z)
+[verify-gates] docs-parity out| [verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS
+[verify-gates] member docs-parity: exit=0 PASS - 101ms
+[verify-gates] member preset-conformance :: node ./skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+[verify-gates] preset-conformance out| [preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+[verify-gates] member preset-conformance: exit=0 PASS - 575ms
+[verify-gates] PASS - 5/5 member gate(s) green
+exit=0
+
+--- hashes AFTER (settle window end) ---
+06ee71ae8fdf4cbb7ffc0b87465cd3aca99cd71dd3a5c48fb8e1610aa1a1a8b8  scripts/verify-docs-parity.mjs
+62288be4a23c8ebb3fed267e2f6e6530ab6f3a279dff6721b734c43cf9146d68  AGENTS.md
+9e86dd852cdf995a8e3ae1b43b7d373cb0e2145ecbc8668110fe1aba784a212f  .gitignore
+af5ec159114e51a7a34d531bd1a8c62c02de7c306bbe1ee9ba55976ce9948de0  agent-references/troubleshooting.md
+--- earlier passes preserved (hash after) ---
+300768b615bb6639e7db0bb6a8e20746cbd1f72888bd832fca934c35fbfc4762  evidence/process-fixes/verify-hardening.json
+a06c84e5b4105a8ba18905330af6bd24e180659f049a20f56be9e915d4515b25  evidence/process-fixes/verify-hardening.log
+067f24d61f586da3ba19f6d6557a3086941dd32ff26e3d24b3fdfa2b101ba263  evidence/process-fixes/verify-hardening-reverify.json
+534930243fc7ed3a9cf290a044f6ab6974dfebf262409a1630603c8f31b4586d  evidence/process-fixes/verify-hardening-reverify.log
+--- settled end 2026-09-19T12:00:36Z ---
+
+================================================================================
+APPENDIX — t12 raw outputs (Plan Reviewer, read-only lane, 2026-09-19)
+================================================================================
+
+[A] COMMENT-ONLY PROOF WITHOUT THE OLD BYTES (evidence/process-fixes/.t12-comment-proof.mjs)
+    Method: copy the shipped script, replace EVERY comment BODY with "X" (newlines, line
+    count and string literals preserved), run both, compare stdout byte-for-byte.
+      shipped   sha256 06ee71ae8fdf4cbb7ffc0b87465cd3aca99cd71dd3a5c48fb8e1610aa1a1a8b8
+      mutated   sha256 321a38f518f56c55a25efd5cf1d8ef813e17434558e61995d313096b5da813c2
+      differsInBytes true | sameLineCount true | everyChangedLineIsCommentOrBlank true
+      node --check on the mutated copy: exit 0
+    Behaviour comparison on the SHIPPED tree:
+      verify-docs-parity --root <repo>:  shipped exit 0, mutated exit 0, stdout BYTE-IDENTICAL
+        [verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0
+        exempt=19 derived=3 links=234 dead=0 — PASS
+      --self-test: both exit 0, 34/34 PASS; raw stdout differs in ONE line only —
+        the printed RANDOM sandbox path /tmp/mpd-docs-links-selftest-<random>
+    Seven copy probes (docs/design.md in a full-tree copy, restored after each): EVERY probe
+    byte-identical between shipped and comment-mutated script, exits included:
+      P0 baseline          exit 0  links=234 checked=217 resolved=210 dead=0
+      P1 [x](/docs/index.md)   exit 0  links=235 checked=218 resolved=211 dead=0  PASS
+      P2 [x](/nowhere/absent.md) exit 1  links=235 checked=218 resolved=210 dead=1  FAIL
+         FAIL link-missing:docs/design.md:/nowhere/absent.md — docs/design.md:587 links
+         "/nowhere/absent.md" but neither a file nor a directory exists at
+         /tmp/t12/tree/nowhere/absent.md
+      P3 [x](./t12-injected-dead-link.md) exit 1
+         FAIL link-missing:docs/design.md:./t12-injected-dead-link.md — … at
+         /tmp/t12/tree/docs/t12-injected-dead-link.md
+      P4 [x](./index.md#no-such-anchor)   exit 0  resolved=211 dead=0  (t5-F2 bound stands)
+      P5 [x](./no-such-file.md#x)         exit 1
+         FAIL link-missing:docs/design.md:./no-such-file.md#x — … at
+         /tmp/t12/tree/docs/no-such-file.md
+      P6 restore control   exit 0  links=234 checked=217 resolved=210 dead=0
+
+[B] SELF-TEST NONDETERMINISM ISOLATED (same identical script, two runs)
+      raw stdout byte-identical: false — exactly 1 differing line
+      after normalizing /tmp/mpd-docs-links-selftest-<random>: byte-identical, 0 diff lines
+      samples: /tmp/mpd-docs-links-selftest-fcBZLs vs /tmp/mpd-docs-links-selftest-lm8OHl
+      => the self-test stdout is NOT byte-stable across runs of the SAME script; the
+         difference is a printed random temp path, not a behaviour change.
+
+[C] WHY THE PREVIOUS REVISION'S BYTES WERE NOT USED (disclosed, not hidden)
+      git HEAD holds the ORIGINAL pre-t3 file: sha256
+        2bbe584a5906537460138adb2f5997bf573ceccf50fda8488c91a7ebe428ce6e, and it carries no
+        "It ALSO resolves" text — HEAD cannot serve as the pre-O2 revision.
+      Reversing t11's inserted comment block (the exact bytes between the anchors
+        "resolved from the LINKING file's own directory" and "while external") produced
+        7b94d92fc0a2d0b0c16499dffcea8d25e386d10b2864ba758177abddeec6c945 — NOT t8's
+        1cb83b13… — so t11's "reversal reproduces 1cb83b13…" claim is NOT corroborated by
+        this route and was not relied on. Criterion 1 is therefore proved by EQUIVALENCE
+        (section A), which needs no claim from the implementing lane.
+
+[D] CONTRACT COMMANDS (12:00:32Z–12:00:36Z) — full text in the body of this log
+      verify-docs-parity        exit 0  links=234 checked=217 resolved=210 dead=0
+                                       exemptProvenance=7 absentSite=0 ignoredExternal=13
+                                       ignoredAnchorOnly=4 files=92 | pairs=38 failed=0 — PASS
+      verify-docs-parity --self-test exit 0  34/34 checks passed — PASS (all 5 link arms ok)
+      verify-gates              exit 0  member docs-parity PASS; member preset-conformance PASS;
+                                       PASS - 5/5 member gate(s) green
+
+[E] HASH SANDWICH (closed on the NEW revision)
+      scripts/verify-docs-parity.mjs 06ee71ae8fdf4cbb7ffc0b87465cd3aca99cd71dd3a5c48fb8e1610aa1a1a8b8
+        identical at 11:58:26Z, 11:58:55Z, 12:00:12Z, 12:00:19Z, 12:00:32Z, 12:00:36Z, 12:00:40Z
+      AGENTS.md 62288be4a23c8ebb3fed267e2f6e6530ab6f3a279dff6721b734c43cf9146d68 — stable (t10's revision)
+      .gitignore 9e86dd85… — stable    agent-references/troubleshooting.md af5ec159… — stable
+      docs/design.md 62bd827a… and docs/index.md 9a824fe6… — stable (only COPIES mutated)
+
+[F] BOTH EARLIER PASSES PRESERVED (hash-checked before and after this pass)
+      verify-hardening.json            300768b615bb6639e7db0bb6a8e20746cbd1f72888bd832fca934c35fbfc4762
+      verify-hardening.log             a06c84e5b4105a8ba18905330af6bd24e180659f049a20f56be9e915d4515b25
+      verify-hardening-reverify.json   067f24d61f586da3ba19f6d6557a3086941dd32ff26e3d24b3fdfa2b101ba263
+      verify-hardening-reverify.log    534930243fc7ed3a9cf290a044f6ab6974dfebf262409a1630603c8f31b4586d

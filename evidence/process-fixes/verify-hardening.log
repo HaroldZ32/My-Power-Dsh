@@ -1,0 +1,330 @@
+=== t5 verification log — 2026-09-19T11:43:31Z — verifier: Plan Reviewer (attempt a301908a-267d-427c-bd45-6d2eea2959d3) ===
+--- hashes BEFORE (settle window start) ---
+c97c6520f92b85630acaaa8f1e4b4f919ba730540cb796f514ed850e23d59453  scripts/verify-docs-parity.mjs
+d49bb23c8d9c6eab26281e3194e3df6179543c879a0f53fd9867c174076f266b  AGENTS.md
+9e86dd852cdf995a8e3ae1b43b7d373cb0e2145ecbc8668110fe1aba784a212f  .gitignore
+af5ec159114e51a7a34d531bd1a8c62c02de7c306bbe1ee9ba55976ce9948de0  agent-references/troubleshooting.md
+62bd827a9449aa58900f0baf6df23ddf4fdfdc636641a4106b50f57d3c946228  docs/design.md
+9a824fe66982a3554906bc6085a68ca1cbebd060a61881b995ebb3ca7bf22089  docs/index.md
+
+### VERIFY 1: node scripts/verify-docs-parity.mjs
+$ 11:43:31Z
+ok   README.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/index.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **123**/10 vs derived 123/10 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): packages/mpd-agent-teams-plugin/lib/quality-gates.js: registry 18 id(s), live 18 id(s) — agree; packages/mpd-agent-teams-plugin/lib/tools.js: registry 65 id(s), live 65 id(s) — agree; packages/mpd-agent-teams-plugin/lib/session-start.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/state.js: registry 11 id(s), live 11 id(s) — agree; packages/mpd-agent-teams-plugin/lib/scheduler.js: registry 16 id(s), live 16 id(s) — agree; packages/mpd-agent-teams-plugin/lib/command.js: registry 1 id(s), live 1 id(s) — agree; packages/mpd-agent-teams-plugin/lib/index.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/members.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/profiles.js: registry 4 id(s), live 4 id(s) — agree; packages/mpd-agent-teams-plugin/lib/types.js: registry 1 id(s), live 1 id(s) — agree
+note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+[verify-docs-parity] links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 files=92
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS
+exit=0
+
+### VERIFY 2: node scripts/verify-docs-parity.mjs --self-test
+$ 11:43:31Z
+ok   T-75 arm 3 (NEGATIVE CONTROL): a stale region count REDDENS and NAMES the deltas doc — derived-value:region-count:agent-references/agent-teams-deltas.md:9 — agent-references/agent-teams-deltas.md:9 claims **65** regions across **9** adopted files but packages/mpd-agent-teams-plugin/lib/mpd-deltas.js derives 3 regions across 2 files — the registry is the AUTHORITY (it is what the applier heals from; regenerate it with: node scripts/patch-agent-teams-fixes.mjs --write-registry), so UPDATE THIS SENTENCE to the derived pair in the same change that moves the registry
+ok   T-75 zero-subject guard: a site whose claim is GONE is a VIOLATION, not a silent pass — [{"id":"derived-value:delta-range:AGENTS.md:missing-claim","detail":"AGENTS.md carries NO \"A1–D<n>\" registry pointer while agent-references/agent-teams-deltas.md derives \"A1–D7\" (zero-subject run: refusing to report PASS with nothing compared). If the pointer was deliberately removed, update this rule in the same change."}]
+ok   T-75 bound: registry-vs-LIVE-marker drift is REPORTED (note, naming the file AND the ids), never a violation — the applier's --check owns it — [{"path":"AGENTS.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/index.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): adopted/a.js: registry 2 id(s), live 2 id(s) — agree; adopted/b.js: registry 1 id(s), live 2 id(s) — MISMATCH (registered but not on the tree: [mpd-delta fixture-2]; on the tree but unregistered: [mpd-delta fixture-0, mpd-delta fixture-1]) — the mismatch is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   T-57: a region NESTED inside another span counts as its OWN region and surfaces as a NAMED mismatch (the old walk counted 2, this counts 3) — [{"path":"AGENTS.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/index.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): adopted/a.js: registry 2 id(s), live 3 id(s) — MISMATCH (registered but not on the tree: []; on the tree but unregistered: [mpd-delta fixture-extra]); adopted/b.js: registry 1 id(s), live 1 id(s) — MISMATCH (registered but not on the tree: [mpd-delta fixture-2]; on the tree but unregistered: [mpd-delta fixture-0]) — the mismatch is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   T-75 bound: an ABSENT site file (packed artifact, no AGENTS.md) is a NOTE while the PRESENT index site is still checked — [{"path":"AGENTS.md","reason":"site file not present in this root (packed artifact / partial copy) — delta-range claims skipped"},{"path":"agent-references/index.md","reason":"1 delta-range claim(s) A1–D7 checked against \"A1–D7\" derived from agent-references/agent-teams-deltas.md"},{"path":"agent-references/agent-teams-deltas.md","reason":"region-count claim checked: carried **3**/2 vs derived 3/2 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): adopted/a.js: registry 2 id(s), live 2 id(s) — agree; adopted/b.js: registry 1 id(s), live 1 id(s) — MISMATCH (registered but not on the tree: [mpd-delta fixture-2]; on the tree but unregistered: [mpd-delta fixture-0]) — the mismatch is the applier's `--check` territory, not this gate's: an in-flight region edit is expected to be unregistered until --write-registry runs"}]
+ok   links POSITIVE: an existing relative target resolves and the checker RAN — {"files":6,"links":13,"checked":10,"resolved":10,"dead":0,"skippedProvenance":0,"absentSite":0,"external":2,"anchorOnly":1}
+ok   links IGNORED: external, protocol-relative, mailto, anchor, empty, code-span and fenced targets are counted but never resolved — {"files":7,"links":18,"checked":10,"resolved":10,"dead":0,"skippedProvenance":0,"absentSite":0,"external":5,"anchorOnly":3}
+ok   links NEGATIVE: a link to a missing file REDDENS and NAMES source + target — FAIL link-missing:docs/guide.md:./does-not-exist.md — docs/guide.md:17 links "./does-not-exist.md" but neither a file nor a directory exists at /tmp/mpd-docs-links-selftest-5BEOLo/full/docs/does-not-exist.md — this gate resolves relative link TARGETS (two rounds of dead links to the retired docs/architecture.md passed it green BEFORE this row); fix the link or retire the target in the same change
+ok   links PACKED: no AGENTS.md -> an absent target is a LINK NOTE (not a failure) while a present target is still checked — {"counters":{"files":6,"links":13,"checked":10,"resolved":7,"dead":0,"skippedProvenance":0,"absentSite":3,"external":2,"anchorOnly":1},"notes":[{"path":"docs/guide.md","reason":"link-absent-site:docs/guide.md:../AGENTS.md — target not present in this root (packed artifact / partial copy); link target not resolved"}]}
+ok   links PROVENANCE: a dead link in the VERBATIM file stays green and is REPORTED as EXEMPT, while the SAME dead link in a non-exempt README reddens (the skip is FILE-scoped) — {"violations":["link-missing:packages/mpd-fixture-pkg/README.md:./dead.md"],"counters":{"files":9,"links":22,"checked":14,"resolved":12,"dead":1,"skippedProvenance":1,"absentSite":0,"external":5,"anchorOnly":3},"provenanceNote":{"path":"packages/mpd-agent-teams-plugin/README.md","reason":"EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 1 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/usage.md"}}
+
+[verify-docs-parity self-test] 33/33 checks passed — PASS
+exit=0
+
+### VERIFY 3: node scripts/verify-gates.mjs
+$ 11:43:31Z
+[verify-gates] running 5 member gate(s) (declared table)
+[verify-gates] member vendor :: node ./scripts/verify-vendor.mjs
+[verify-gates] vendor out| [verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-gates] vendor out| [verify-vendor] version OK: 5.0.0-beta.20
+[verify-gates] vendor out| [verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-gates] vendor out| [verify-vendor] asset OK: skills 326 files
+[verify-gates] vendor out| [verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-gates] vendor out| [verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-gates] vendor out| [verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-gates] vendor out| [verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-gates] vendor out| [verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-gates] vendor out| [verify-vendor] PASS
+[verify-gates] member vendor: exit=0 PASS - 7822ms
+[verify-gates] member dist-fresh :: node ./scripts/verify-dist-fresh.mjs
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha d21368536f44… 65ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 686e4a879403… 23ms  <- packages/mpd-boulder-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 16ms  <- packages/mpd-bundle-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 35024651166a… 19ms  <- packages/mpd-codegraph-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha d881f285d8b2… 19ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-config-plugin/dist/index.js  sha 566af9ee7539… 26ms  <- packages/mpd-config-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha 7dffbdf454a8… 17ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-ext-plugin/dist/index.js  sha cac8e4dd08d5… 25ms  <- packages/mpd-ext-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 14ms  <- packages/mpd-ext-plugin/src/sdk.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 7c58a1f700d3… 22ms  <- packages/mpd-hashline-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-memory-plugin/dist/index.js  sha a9eb3f6ea4c5… 20ms  <- packages/mpd-memory-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha cbef3e3e94af… 19ms  <- packages/mpd-modelchain-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha 210cdb02b923… 20ms  <- packages/mpd-qa-roles-probe/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-roles-plugin/dist/index.js  sha 98180ed1c3f7… 22ms  <- packages/mpd-roles-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha f2dfa9ab2987… 21ms  <- packages/mpd-team-compact-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha b9a855469c80… 27ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-tools-plugin/dist/index.js  sha 248dbf383aea… 18ms  <- packages/mpd-tools-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-tui-plugin/dist/index.js  sha 56977370b78b… 27ms  <- packages/mpd-tui-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-ulw-plugin/dist/index.js  sha c116f6aaeb23… 20ms  <- packages/mpd-ulw-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 23817a9b2c80… 23ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-gates] dist-fresh out| [verify-dist-fresh] root: /root/dshProj/my-power-dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-gates] dist-fresh out| [verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+[verify-gates] dist-fresh out|   packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+[verify-gates] dist-fresh out|   packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-gates] dist-fresh out|   packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-gates] dist-fresh out|   packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+[verify-gates] dist-fresh out|   packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-gates] dist-fresh out|   packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+[verify-gates] dist-fresh out|   packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-gates] dist-fresh out| [verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 497ms
+[verify-gates] member dist-fresh: exit=0 PASS - 544ms
+[verify-gates] member rows-parity :: node ./scripts/verify-rows-parity.mjs
+[verify-gates] rows-parity out| [verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+[verify-gates] member rows-parity: exit=0 PASS - 99ms
+[verify-gates] member docs-parity :: node ./scripts/verify-docs-parity.mjs
+[verify-gates] docs-parity out| ok   README.md
+[verify-gates] docs-parity out| ok   docs/design.md
+[verify-gates] docs-parity out| ok   docs/development.md
+[verify-gates] docs-parity out| ok   docs/extension-adaptation-report.md
+[verify-gates] docs-parity out| ok   docs/extension-authoring-guide.md
+[verify-gates] docs-parity out| ok   docs/extensions.md
+[verify-gates] docs-parity out| ok   docs/feature-audit.md
+[verify-gates] docs-parity out| ok   docs/index.md
+[verify-gates] docs-parity out| ok   docs/tui-parity.md
+[verify-gates] docs-parity out| ok   docs/tui.md
+[verify-gates] docs-parity out| ok   docs/upstream-parity-ledger.md
+[verify-gates] docs-parity out| ok   docs/user-guide.md
+[verify-gates] docs-parity out| ok   extensions/README.md
+[verify-gates] docs-parity out| ok   templates/mpd-extension/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-bootstrap-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-boulder-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-bundle/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-bundle-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-codegraph-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-comment-checker-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-config-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-dsh-adapter-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-ext-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-hashline-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-astgrep/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-codegraph/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-gitbash/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-lsp/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-memory-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-modelchain-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-qa-roles-probe/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-roles-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-team-compact-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-team-watchdog-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-tools-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-tui-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-ulw-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-workmate-plugin/README.md
+[verify-gates] docs-parity out| skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+[verify-gates] docs-parity out| skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker
+[verify-gates] docs-parity out| skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+[verify-gates] docs-parity out| skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+[verify-gates] docs-parity out| skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+[verify-gates] docs-parity out| note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+[verify-gates] docs-parity out| note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+[verify-gates] docs-parity out| note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **123**/10 vs derived 123/10 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): packages/mpd-agent-teams-plugin/lib/quality-gates.js: registry 18 id(s), live 18 id(s) — agree; packages/mpd-agent-teams-plugin/lib/tools.js: registry 65 id(s), live 65 id(s) — agree; packages/mpd-agent-teams-plugin/lib/session-start.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/state.js: registry 11 id(s), live 11 id(s) — agree; packages/mpd-agent-teams-plugin/lib/scheduler.js: registry 16 id(s), live 16 id(s) — agree; packages/mpd-agent-teams-plugin/lib/command.js: registry 1 id(s), live 1 id(s) — agree; packages/mpd-agent-teams-plugin/lib/index.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/members.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/profiles.js: registry 4 id(s), live 4 id(s) — agree; packages/mpd-agent-teams-plugin/lib/types.js: registry 1 id(s), live 1 id(s) — agree
+[verify-gates] docs-parity out| note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+[verify-gates] docs-parity out| [verify-docs-parity] links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 files=92
+[verify-gates] docs-parity out| 
+[verify-gates] docs-parity out| [verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS
+[verify-gates] member docs-parity: exit=0 PASS - 104ms
+[verify-gates] member preset-conformance :: node ./skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+[verify-gates] preset-conformance out| [preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+[verify-gates] member preset-conformance: exit=0 PASS - 1037ms
+[verify-gates] PASS - 5/5 member gate(s) green
+exit=0
+
+--- hashes AFTER (settle window end) ---
+c97c6520f92b85630acaaa8f1e4b4f919ba730540cb796f514ed850e23d59453  scripts/verify-docs-parity.mjs
+d49bb23c8d9c6eab26281e3194e3df6179543c879a0f53fd9867c174076f266b  AGENTS.md
+9e86dd852cdf995a8e3ae1b43b7d373cb0e2145ecbc8668110fe1aba784a212f  .gitignore
+af5ec159114e51a7a34d531bd1a8c62c02de7c306bbe1ee9ba55976ce9948de0  agent-references/troubleshooting.md
+62bd827a9449aa58900f0baf6df23ddf4fdfdc636641a4106b50f57d3c946228  docs/design.md
+9a824fe66982a3554906bc6085a68ca1cbebd060a61881b995ebb3ca7bf22089  docs/index.md
+
+================================================================================
+APPENDIX — t5 raw probe outputs (Plan Reviewer, read-only lane, 2026-09-19)
+================================================================================
+
+[A] FULL-TREE COPY + INJECTION (evidence/process-fixes/.t5-inject.mjs, run 11:42:30Z)
+    copy root /tmp/t5-copy/tree — copiedFiles=58286, skippedSpecial=82,
+    .git / node_modules / evidence excluded, symlinks preserved as symlinks.
+    baseline (untouched copy):   exit 0  pairs=38 failed=0 violations=0 exempt=19
+      derived=3 links=234 dead=0 — PASS
+    injected into the COPY's docs/design.md:
+      ## t5 injection probe
+      [probe](./t5-injected-dead-link.md)
+      [stale]( ./architecture.md )
+    red run: exit 1  links=236 checked=219 resolved=210 dead=2 exemptProvenance=7
+      absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 files=92 | pairs=38
+      failed=3 violations=2 — FAIL
+      FAIL link-missing:docs/design.md:./t5-injected-dead-link.md — docs/design.md:589 links "./t5-injected-dead-link.md" but neither a file nor a directory exists at /tmp/t5-copy/tree/docs/t5-injected-dead-link.md — this gate resolves relative link TARGETS (two rounds of dead links to the retired docs/architecture.md passed it green BEFORE this row); fix the link or retire the target in the same change
+      FAIL link-missing:docs/design.md:./architecture.md — docs/design.md:591 links "./architecture.md" but neither a file nor a directory exists at /tmp/t5-copy/tree/docs/architecture.md — (same remedy text)
+    restored run: exit 0  pairs=38 failed=0 violations=0 exempt=19 derived=3
+      links=234 dead=0 — PASS
+    copy target sha256 before == after restore:
+      62bd827a9449aa58900f0baf6df23ddf4fdfdc636641a4106b50f57d3c946228
+
+[B] FALSIFIABILITY MUTANTS (evidence/process-fixes/.t5-mutants.mjs, run 11:42:46Z)
+    control (pristine script copy, /tmp/t5-mutants/control.mjs):
+      exit 0  33/33 checks passed — PASS   32 named ok arms
+    each mutant = one targeted token change on a COPY; all ran
+    `node <mutant>.mjs --self-test`:
+      whole-checker-dormant    -> 28/33 FAIL  arm 'links NEGATIVE' FAIL (all 5 link arms red)
+      violation-not-emitted    -> 31/33 FAIL  arm 'links NEGATIVE' FAIL (PROVENANCE red too)
+      dead-counter-lies        -> 32/33 FAIL  arm 'links NEGATIVE' FAIL (exactly one arm)
+      packed-note-suppressed   -> 32/33 FAIL  arm 'links PACKED'   FAIL (exactly one arm)
+      provenance-skip-dropped  -> 32/33 FAIL  arm 'links PROVENANCE' FAIL (exactly one arm)
+    arm semantics (quoted from scripts/verify-docs-parity.mjs):
+      ok: bad.ok === false && badFinding !== undefined &&
+          bad.linkChecks.checked >= 1 && bad.linkChecks.dead >= 1
+    pristine --self-test arm lines (excerpt):
+      ok   links NEGATIVE: a link to a missing file REDDENS and NAMES source + target —
+           FAIL link-missing:docs/guide.md:./does-not-exist.md — docs/guide.md:17 links
+           "./does-not-exist.md" but neither a file nor a directory exists at
+           /tmp/mpd-docs-links-selftest-ov8UfA/full/docs/does-not-exist.md …
+      ok   links PACKED: no AGENTS.md -> an absent target is a LINK NOTE (not a failure)
+           while a present target is still checked — {"counters":{"files":6,"links":13,
+           "checked":10,"resolved":7,"dead":0,"skippedProvenance":0,"absentSite":3,
+           "external":2,"anchorOnly":1},"notes":[{"path":"docs/guide.md","reason":
+           "link-absent-site:docs/guide.md:../AGENTS.md — target not present in this root
+           (packed artifact / partial copy); link target not resolved"}]}
+      ok   links PROVENANCE: … {"violations":["link-missing:packages/mpd-fixture-pkg/
+           README.md:./dead.md"],…,"skippedProvenance":1,…,"provenanceNote":{"path":
+           "packages/mpd-agent-teams-plugin/README.md", …}}
+      [verify-docs-parity self-test] 33/33 checks passed — PASS
+
+[C] SCANNER COVERAGE PROBE (evidence/process-fixes/.t5-covprobe.mjs; the scanner and
+    LINK_INLINE/LINK_SCHEME are extracted VERBATIM from the shipped script)
+      resolves ./, bare, ../, nested      -> ["./x.md","y.md","../z.md","sub/deep/y.md"]
+      fragment kept in the string, file judged -> ["./x.md#section","#anchor","#"]
+      ignored schemes extracted (caller classifies) -> https, http, mailto, tel, data, //host
+      code span + fenced block excluded   -> only ["./x.md"] survived
+      title-only / empty                  -> ["","",""]
+      angle form + title                  -> ["./x.md","./x.md"]
+      root-relative                       -> ["/docs/index.md","/AGENTS.md"]
+      reference-style definition          -> []
+      autolink                            -> []
+    band composition (shipped run, JSON report):
+      linkChecks = {"files":92,"links":234,"checked":217,"resolved":210,"dead":0,
+                    "skippedProvenance":7,"absentSite":0,"external":13,"anchorOnly":4}
+      210 = 217 checked − 7 skippedProvenance  (the provenance skip is counted as skipped,
+      never as resolved)
+      band = 38 pairs × 2 halves (76) + 16 existing exempt-note *.md (docs/plan-*.md,
+      prior-phase reports); agent-references/*.md OUT of the band (T-28) and that tree
+      carries no ./-style targets, so its exclusion is invisible to the counters.
+
+[D] DEFECT PROBES (clean run without heading drift; /tmp/t5-copy2)
+      P1  /docs/index.md (root-relative, target EXISTS)   -> exit 1
+          links=235 checked=218 resolved=210 dead=1 | violations=1 — FAIL
+          FAIL link-missing:docs/design.md:/docs/index.md — docs/design.md:586 links
+          "/docs/index.md" but neither a file nor a directory exists at /docs/index.md
+          ==> t5-F1: undeclared false-positive class (zero impact today: no such target
+              exists anywhere in the band)
+      P2  ./index.md#no-such-anchor (fragment absent)     -> exit 0
+          links=235 checked=218 resolved=211 dead=0 | violations=0 — PASS
+          ==> t5-F2: fragments are stripped and never validated — exactly as the policy
+              sentence and the script header state
+      P3  ./no-such.md#x (file missing, fragment present) -> exit 1
+          FAIL link-missing:docs/design.md:./no-such.md#x — "/tmp/t5-copy2/tree/docs/no-such.md"
+          ==> the file half is still judged when a fragment is present
+      P4  restored control                               -> exit 0
+          links=234 checked=217 resolved=210 dead=0 — PASS
+
+[E] HYGIENE (shipped tree, 11:43:12Z)
+      git check-ignore -v evidence/web-card-catalog/20260918T073000Z/sandbox
+        .gitignore:56:evidence/**/sandbox	evidence/web-card-catalog/20260918T073000Z/sandbox
+        exit=0
+      git check-ignore -v evidence/mpd-bridge/dual-path/sandbox
+        .gitignore:56:evidence/**/sandbox	evidence/mpd-bridge/dual-path/sandbox
+        exit=0
+      .gitignore lines 48-56 carry the comment naming the symlink case and the
+      deliberate absence of the trailing slash.
+      git diff HEAD -- agent-references/troubleshooting.md = 27 insertions, 0 deletions
+      (purely additive: no pre-existing row regressed).
+
+[F] HASH SANDWICH (settled revision) — identical at 11:41:11Z, 11:43:12Z, 11:43:31Z
+    (before the commands), 11:43:36Z (after) and 11:45:29Z
+      c97c6520f92b85630acaaa8f1e4b4f919ba730540cb796f514ed850e23d59453  scripts/verify-docs-parity.mjs
+      d49bb23c8d9c6eab26281e3194e3df6179543c879a0f53fd9867c174076f266b  AGENTS.md
+      9e86dd852cdf995a8e3ae1b43b7d373cb0e2145ecbc8668110fe1aba784a212f  .gitignore
+      af5ec159114e51a7a34d531bd1a8c62c02de7c306bbe1ee9ba55976ce9948de0  agent-references/troubleshooting.md

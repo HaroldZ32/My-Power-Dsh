@@ -49,7 +49,11 @@ evidence/**/raw/scratch/
 # hundreds of MB that a lane regenerates on every run (measured 2026-09-15: 291 MB / 5308 files
 # under evidence/mpd-bridge/dual-path/sandbox alone). The EVIDENCE is REPORT.md + raw/ beside it,
 # never this: committing a store snapshot would bloat the repository for no information.
-evidence/**/sandbox/
+# NO trailing slash, on purpose: a `sandbox` that is a SYMLINK (measured 2026-09-19:
+# evidence/web-card-catalog/20260918T073000Z/sandbox -> ../20260918T055042Z/sandbox) is not a
+# directory to git, so the directory-only `evidence/**/sandbox/` left it untracked and one
+# `git add -A` would have committed a link into machine state that is itself ignored.
+evidence/**/sandbox
 
 # Packed-tree BUILD PRODUCTS that a lane regenerates on demand. The t70 packer harness writes a FULL
 # artifact (18 MB / 1190 files) under its own evidence dir to prove the closure gate against a fresh

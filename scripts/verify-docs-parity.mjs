@@ -26,6 +26,24 @@
 // zh-only document is reported as `zh-CN file has no EN twin` (an exempt path stays a reported
 // exemption instead of a violation).
 //
+// It ALSO resolves the relative link TARGETS of the band it discovers (the class that hid the dead
+// `architecture.md` links): `[x](./y.md)`, `![x](y.png)`, `../AGENTS.md`, a DIRECTORY target — each
+// resolved from the LINKING file's own directory, and a ROOT-relative target (a leading `/`, e.g.
+// `/docs/index.md`) resolved against the REPO ROOT with that leading slash stripped explicitly —
+// never the filesystem root (t5-F1) — with a `#fragment` stripped, while external
+// (`http(s):`, `mailto:`, `tel:`, `data:`, `//host`), in-page anchors, empty targets and text inside
+// fenced blocks / inline code spans are IGNORED. Why this row exists: until it landed, the only link
+// logic in this file was `switchLinkUnderTitle` — a SPELLING test against the twin's basename that
+// never captured a path and never asserted a target — so two rounds of dead links to the retired
+// `docs/architecture.md` passed this gate GREEN and were found only by hand-written per-lane sweeps
+// (`evidence/docs-overhaul/SUMMARY.md`, "Problems found and fixed" row 3). Two bounds reuse existing
+// machinery instead of a new mode flag: the T-75 discriminator (no `AGENTS.md` at the root = a
+// packed/partial copy, where an unresolved target is a NOTE, never a failure) and `EXEMPT_PROVENANCE`
+// (a file kept VERBATIM is never link-policed — an absent target there is reported as EXEMPT
+// PROVENANCE, never as a pass and never as a violation, which is what keeps today's tree green: the
+// adopted upstream README holds the band's only dead relative links, upstream repository paths that
+// were deliberately not vendored).
+//
 // It ALSO checks the hand-carried DERIVED values (T-75): the delta-table pointer in the manual
 // (`AGENTS.md`) AND in the on-demand index that repeats it (`agent-references/index.md`), plus the
 // registry's own region/file count statement, are compared against the value the ARTIFACT derives
@@ -52,9 +70,9 @@
 // Exit: 0 when every checked pair passes and no violation is reported (exemptions are printed,
 // never silent), 1 otherwise.
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -300,6 +318,157 @@ function checkDerivedValues(root) {
   return { violations, notes };
 }
 
+// ── link TARGET resolution ────────────────────────────────────────────────────────────────────
+// The class this closes: two rounds of dead links to the retired `docs/architecture.md` passed this
+// gate GREEN, because the only link logic here was `switchLinkUnderTitle` — a spelling test against
+// the twin's basename that discards the matched group and never `stat`s a target. The scanner below
+// reads the target OUT of every inline link/image and resolves it against the linking file's own
+// directory. Decisions, so they are not re-litigated per link:
+//   * RESOLVED: `./x`, bare `x`, `../x`, nested `a/b.md`, a `#fragment` (stripped before resolution;
+//     the fragment itself is never checked in v1), an optional link title and the `<...>` form.
+//   * A target that ESCAPES the band resolves against the whole tree root (`../AGENTS.md` is live),
+//     and a ROOT-relative target (a leading `/`, e.g. `/docs/index.md`) resolves against the REPO
+//     ROOT too — the leading slash is stripped explicitly, because passing it through would escape to
+//     the FILESYSTEM root and report a target that exists in the tree as dead (t5-F1).
+//     A DIRECTORY target counts as existing (`statSync` follows symlinks, so a DANGLING symlink
+//     is dead — the intended strictness).
+//   * IGNORED (counted, never resolved): absolute URLs of any scheme, protocol-relative `//host`,
+//     pure in-page anchors, empty targets, and text inside fenced blocks or INLINE code spans — docs
+//     carry copy-paste markdown templates that only LOOK like links.
+//   * A duplicate (source, target) pair collapses into ONE violation, so `./docs/usage.md` twice in
+//     one file cannot redden twice; the COUNTERS count OCCURRENCES (the occurrence-based profile the
+//     t1 census uses too — it agrees with this scanner PER FILE; its headline total is understated,
+//     see `evidence/process-fixes/gate-links.md` §9).
+const LINK_INLINE = /!?\[[^\]\n]*\]\(\s*([^)]*?)\s*\)/g;
+const LINK_SCHEME = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
+
+/** Inline link/image targets of `text` with their 1-based line, minus fenced blocks and code spans. */
+function linkTargets(text) {
+  const out = [];
+  let fenced = false;
+  const lines = text.split("\n");
+  for (let at = 0; at < lines.length; at += 1) {
+    // The same fence tracker `headingTree` uses, so a link inside a fenced block is not a link.
+    if (/^\s*(```|~~~)/.test(lines[at])) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
+    for (const match of lines[at].replace(/`[^`]*`/g, "").matchAll(LINK_INLINE)) {
+      const raw = match[1].trim();
+      const untitled = raw.startsWith("<") && raw.endsWith(">") ? raw.slice(1, -1).trim() : raw;
+      // A title-only target `[x]( "t")` carries no path; it is the EMPTY class (ignored, counted).
+      const target = untitled.startsWith('"') || untitled.startsWith("'") ? "" : (untitled.split(/\s+/)[0] ?? "");
+      out.push({ target, line: at + 1 });
+    }
+  }
+  return out;
+}
+
+/**
+ * The FILES whose relative targets are resolved: the doc band this gate ALREADY discovers — both
+ * halves of every discovered pair, PLUS every existing `*.md` it reports as a lone-file exemption
+ * (the process records and the verbatim-provenance README). No new discovery: `agent-references/**`
+ * stays out of this gate (T-28), and the anticipatory exemption paths are filtered by existence.
+ */
+function linkBand(root, pairs, exemptNotes) {
+  const band = new Set();
+  for (const { en, zh } of pairs) for (const rel of [en, zh]) if (rel.endsWith(".md") && existsSync(join(root, rel))) band.add(rel);
+  for (const note of exemptNotes) if (note.path.endsWith(".md") && existsSync(join(root, note.path))) band.add(note.path);
+  return [...band].sort();
+}
+
+/** Resolve every relative link target of the band; violations in a full checkout, notes when packed. */
+function checkLinkTargets(root, band) {
+  const violations = [];
+  const notes = [];
+  const counters = { files: band.length, links: 0, checked: 0, resolved: 0, dead: 0, skippedProvenance: 0, absentSite: 0, external: 0, anchorOnly: 0 };
+  // T-75's discriminator, reused verbatim: a root WITHOUT the manual is the packed artifact (it ships
+  // no `AGENTS.md` while `docs/index.md` links `../AGENTS.md`), so an unresolved target there is a
+  // reported NOTE. The run stays honest — it neither invents failures nor silently skips the check.
+  const packedCopy = !existsSync(join(root, MANUAL_REL));
+  const probed = new Map();
+  const seenViolation = new Set();
+  const seenNote = new Set();
+  const exemptAbsent = new Map();
+  for (const rel of band) {
+    const text = readIf(join(root, rel));
+    if (text === null) continue;
+    for (const { target, line } of linkTargets(text)) {
+      counters.links += 1;
+      if (target.startsWith("#")) {
+        counters.anchorOnly += 1;
+        continue;
+      }
+      if (target.startsWith("//") || LINK_SCHEME.test(target)) {
+        counters.external += 1;
+        continue;
+      }
+      const filePart = target.split("#")[0];
+      if (filePart === "") {
+        counters.anchorOnly += 1;
+        continue;
+      }
+      // A ROOT-relative target (a leading `/`) resolves against the REPO ROOT, never the filesystem
+      // root: `resolve(root, dirname(rel), "/x")` escapes to `/x` and reports a target that EXISTS in
+      // this tree as dead (t5-F1 measured exactly that: `[x](/docs/index.md)`). The normalization is
+      // EXPLICIT — the leading slash is stripped before the join — not an existsSync retry, which
+      // would also silently accept a genuinely wrong path.
+      const rootRelative = filePart.startsWith("/");
+      const cleaned = rootRelative ? filePart.replace(/^\/+/, "") : filePart;
+      const base = rootRelative ? root : dirname(rel);
+      const abs = resolve(root, base, cleaned);
+      let exists = probed.get(abs);
+      if (exists === undefined) {
+        try {
+          const stat = statSync(abs);
+          exists = stat.isFile() || stat.isDirectory();
+        } catch {
+          exists = false;
+        }
+        probed.set(abs, exists);
+      }
+      if (exists) {
+        counters.resolved += 1;
+        continue;
+      }
+      if (EXEMPT_PROVENANCE.has(rel)) {
+        counters.skippedProvenance += 1;
+        if (!exemptAbsent.has(rel)) exemptAbsent.set(rel, []);
+        exemptAbsent.get(rel).push(target);
+        continue;
+      }
+      if (packedCopy) {
+        counters.absentSite += 1;
+        const key = `${rel}\u0000${target}`;
+        if (seenNote.has(key)) continue;
+        seenNote.add(key);
+        notes.push({ path: rel, reason: `link-absent-site:${rel}:${target} — target not present in this root (packed artifact / partial copy); link target not resolved` });
+        continue;
+      }
+      counters.dead += 1;
+      const key = `${rel}\u0000${target}`;
+      if (seenViolation.has(key)) continue;
+      seenViolation.add(key);
+      violations.push({
+        id: `link-missing:${rel}:${target}`,
+        detail: `${rel}:${line} links "${target}" but neither a file nor a directory exists at ${abs} — this gate resolves relative link TARGETS (two rounds of dead links to the retired docs/architecture.md passed it green BEFORE this row); fix the link or retire the target in the same change`,
+      });
+    }
+  }
+  for (const [rel, targets] of exemptAbsent) {
+    notes.push({
+      path: rel,
+      reason: `EXEMPT_PROVENANCE (${EXEMPT_PROVENANCE.get(rel)}): ${targets.length} relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ${targets.join(", ")}`,
+    });
+  }
+  // Invariants, stated so the counters cannot drift: every probed occurrence lands in exactly ONE of
+  // the four buckets (resolved / dead / skippedProvenance / absentSite), and `links` additionally
+  // counts the IGNORED classes. `checked` is what the design spec's self-test arms assert.
+  counters.checked = counters.resolved + counters.dead + counters.skippedProvenance + counters.absentSite;
+  return { violations, notes, counters };
+}
+
 /** Every FILE under `<root>/<dir>`, recursively (symlinks and dot/node_modules dirs skipped). */
 function walkFiles(root, dir, out = []) {
   let entries;
@@ -416,6 +585,10 @@ export function verifyDocsParity(root) {
   // `violations` surface the pair checks use (one red gate, one report).
   const derived = checkDerivedValues(root);
   for (const violation of derived.violations) violations.push(violation);
+  // The link-target check runs over the SAME band discovery produced, so a violation lands in the
+  // one `violations` surface the pair checks and the derived-value rules use.
+  const links = checkLinkTargets(root, linkBand(root, pairs, exemptNotes));
+  for (const violation of links.violations) violations.push(violation);
   const checks = [];
   const add = (pair, id, ok, detail) => checks.push({ pair, id, ok: Boolean(ok), detail: String(detail) });
   const summaries = [];
@@ -446,6 +619,8 @@ export function verifyDocsParity(root) {
     checks,
     exemptNotes,
     derivedNotes: derived.notes,
+    linkNotes: links.notes,
+    linkChecks: links.counters,
     ok: summaries.every((s) => s.ok) && violations.length === 0,
   };
 }
@@ -456,10 +631,15 @@ function printReport(result, root) {
   for (const violation of result.violations) console.log(`FAIL ${violation.id} — ${violation.detail}`);
   for (const note of result.exemptNotes) console.log(`skip ${note.path} — EXEMPT: ${note.reason}`);
   for (const note of result.derivedNotes ?? []) console.log(`note ${note.path} — DERIVED: ${note.reason}`);
+  for (const note of result.linkNotes ?? []) console.log(`note ${note.path} — LINK: ${note.reason}`);
   const pairs = result.pairs.length;
   const failed = result.pairs.filter((s) => !s.ok).length + result.violations.length;
+  const links = result.linkChecks ?? {};
   console.log(
-    `\n[verify-docs-parity] root=${root} pairs=${pairs} failed=${failed} violations=${result.violations.length} exempt=${result.exemptNotes.length} derived=${(result.derivedNotes ?? []).length} — ${result.ok ? "PASS" : "FAIL"}`,
+    `[verify-docs-parity] links=${links.links ?? 0} checked=${links.checked ?? 0} resolved=${links.resolved ?? 0} dead=${links.dead ?? 0} exemptProvenance=${links.skippedProvenance ?? 0} absentSite=${links.absentSite ?? 0} ignoredExternal=${links.external ?? 0} ignoredAnchorOnly=${links.anchorOnly ?? 0} files=${links.files ?? 0}`,
+  );
+  console.log(
+    `\n[verify-docs-parity] root=${root} pairs=${pairs} failed=${failed} violations=${result.violations.length} exempt=${result.exemptNotes.length} derived=${(result.derivedNotes ?? []).length} links=${links.links ?? 0} dead=${links.dead ?? 0} — ${result.ok ? "PASS" : "FAIL"}`,
   );
 }
 
@@ -643,6 +823,7 @@ function selfTest() {
     rmSync(sandbox, { recursive: true, force: true });
   }
   cases.push(...selfTestDerivedValues());
+  cases.push(...selfTestLinks());
   for (const item of cases) console.log(`${item.ok ? "ok  " : "FAIL"} ${item.case}${item.detail ? " — " + item.detail : ""}`);
   const ok = cases.every((c) => c.ok);
   console.log(`\n[verify-docs-parity self-test] ${cases.filter((c) => c.ok).length}/${cases.length} checks passed — ${ok ? "PASS" : "FAIL"}`);
@@ -793,6 +974,160 @@ function selfTestDerivedValues() {
         packedResult.derivedNotes.some((note) => note.path === "agent-references/index.md" && note.reason.includes("checked against")),
       detail: JSON.stringify(packedResult.derivedNotes),
     });
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+  return cases;
+}
+
+/**
+ * LINK-TARGET arms: the POSITIVE control (an existing relative target resolves AND the checker is
+ * proven to RUN), the IGNORED-classes arm, the mandatory NEGATIVE control (a missing target REDDENS,
+ * naming source + target), the T-75 packed-copy arm (an absent site file turns an unresolved target
+ * into a NOTE while a present target is still checked) and the EXEMPT_PROVENANCE arm (a dead link in
+ * the verbatim file stays green and is REPORTED, while the SAME dead link in a non-exempt README
+ * reddens — the control that stops the skip from becoming "ignore every package README").
+ *
+ * Every arm runs on a FIXTURE root, never on `--root dist/mpd-package`: a real packed root would
+ * also have to satisfy every OTHER rule (pairs, exemptions, the T-75 sites) and its outcome would no
+ * longer isolate the property under test. The full-checkout half needs `AGENTS.md` PRESENT — that is
+ * the packed discriminator — which also arms the T-75 derived-value rules, so the fixture carries a
+ * MINIMAL valid manual + delta artifact; without it an unrelated derived-value violation would
+ * satisfy `ok === false` and hide a link checker that never ran (the vacuity these arms exist to
+ * prevent).
+ */
+function selfTestLinks() {
+  const cases = [];
+  const sandbox = mkdtempSync(join(tmpdir(), "mpd-docs-links-selftest-"));
+  const write = (root, rel, text) => {
+    const abs = join(root, rel);
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, text);
+  };
+  const skeleton = (root, { manual }) => {
+    if (manual) write(root, MANUAL_REL, "# Manual\n\nPointer: the authoritative A1–D2 adaptation table.\n");
+    write(root, "agent-references/index.md", "# agent-references\n\n| File | Holds |\n|---|---|\n| `agent-teams-deltas.md` | the adopted agent-teams delta registry — the A1–D2 table, registry mechanics |\n");
+    write(root, DELTAS_DOC_REL, "# Deltas\n\n| Id | File | Marker | Purpose |\n|---|---|---|---|\n| A1 | `adopted/a.js` | none | first |\n| D2 | `adopted/a.js` | `mpd-delta fixture-0` | second |\n\nThe live registry is **1** regions across **1** adopted files — the count MEASURED at this edit.\n");
+    write(root, REGISTRY_REL, `export const MPD_DELTAS = [\n    {\n        file: "adopted/a.js",\n        id: "mpd-delta fixture-0",\n        beforeContext: [],\n        afterContext: [],\n        block: "",\n    },\n];\n`);
+    write(root, "adopted/a.js", "//#region mpd-delta fixture-0 (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\nexport const fixture0 = 0;\n//#endregion mpd-delta fixture-0\n");
+    // The registry path above puts a PACKAGE directory in the fixture, and an undocumented package is
+    // a violation in its own right — so the fixture also carries the provenance README (link-free).
+    write(root, "packages/mpd-agent-teams-plugin/README.md", "# Upstream verbatim fixture\n\nno relative links here\n");
+  };
+  const fixture = (root, { manual }) => {
+    rmSync(root, { recursive: true, force: true });
+    skeleton(root, { manual });
+    write(root, "README.md", "# Root\n\n**English** | [中文](./README.zh-CN.md)\n\n## One\n\n- [guide](docs/guide.md)\n\n```\n[fenced decoy](./decoy.md)\n```\n");
+    write(root, "README.zh-CN.md", "# 根\n\n[English](./README.md)\n\n## 一\n\n文本\n");
+    write(root, "docs/guide.md", "# Guide\n\n**English** | [中文](./guide.zh-CN.md)\n\n## One\n\n- [manual](../AGENTS.md)\n- [titled](../AGENTS.md \"the manual\")\n- [angled](<../AGENTS.md>)\n- [index](../agent-references/index.md)\n- [directory](../agent-references)\n- [external](https://example.invalid/x)\n- [mail](mailto:someone@example.invalid)\n- [anchor](#one)\n- an inline-code decoy: `[decoy](./decoy.md)`\n");
+    write(root, "docs/guide.zh-CN.md", "# 指南\n\n[English](./guide.md)\n\n## 一\n\n正文\n");
+    write(root, "docs/marked.md", "<!-- docs-parity: exempt fixture process record -->\n# Marked\n\nno twin demanded\n");
+  };
+  try {
+    const full = join(sandbox, "full");
+    const packed = join(sandbox, "packed");
+    fixture(full, { manual: true });
+    fixture(packed, { manual: false });
+
+    // Arm 1 — POSITIVE control. `checked >= 1` is load-bearing: a checker that is not wired in
+    // leaves the counters absent/zero and FAILS this arm even though `ok` is true.
+    const clean = verifyDocsParity(full);
+    cases.push({
+      case: "links POSITIVE: an existing relative target resolves and the checker RAN",
+      ok:
+        clean.ok === true &&
+        clean.linkChecks.checked >= 1 &&
+        clean.linkChecks.dead === 0 &&
+        clean.linkChecks.resolved >= 5 &&
+        clean.linkChecks.external >= 2 &&
+        clean.linkChecks.anchorOnly >= 1,
+      detail: JSON.stringify(clean.linkChecks),
+    });
+
+    // Arm 2 — the IGNORED classes: counted, never resolved (a scanner that resolved them would
+    // report `./code-span.md` / `./fenced.md` as dead and redden this arm).
+    write(full, "docs/ignores.md", "<!-- docs-parity: exempt fixture ignore classes -->\n# Ignores\n\n- [external](https://example.invalid/a)\n- [protocol relative](//example.invalid/b)\n- [mail](mailto:x@example.invalid)\n- [anchor](#one)\n- [empty]()\n- inline `[code span](./code-span.md)` decoy\n\n```\n[fenced](./fenced.md)\n```\n");
+    const ignored = verifyDocsParity(full);
+    cases.push({
+      case: "links IGNORED: external, protocol-relative, mailto, anchor, empty, code-span and fenced targets are counted but never resolved",
+      ok: ignored.ok === true && ignored.violations.every((v) => !v.id.startsWith("link-missing:")) && ignored.linkChecks.external >= 3 && ignored.linkChecks.anchorOnly >= 3,
+      detail: JSON.stringify(ignored.linkChecks),
+    });
+
+    // Arm 3 — NEGATIVE control (mandatory). It asserts a NEGATIVE gate result AND the specific
+    // violation id AND a non-zero `dead` counter; a checker that is not wired in produces a PASSING
+    // gate, no `link-missing:*` violation and a zero counter — all three clauses fail. The restore
+    // matters: the arms share one fixture, so a leaked dead link would redden every later arm.
+    const guideRel = "docs/guide.md";
+    const before = readFileSync(join(full, guideRel), "utf8");
+    writeFileSync(join(full, guideRel), `${before}\n[missing](./does-not-exist.md)\n`);
+    const bad = verifyDocsParity(full);
+    const badFinding = bad.violations.find((v) => v.id === `link-missing:${guideRel}:./does-not-exist.md`);
+    cases.push({
+      case: "links NEGATIVE: a link to a missing file REDDENS and NAMES source + target",
+      ok: bad.ok === false && badFinding !== undefined && bad.linkChecks.checked >= 1 && bad.linkChecks.dead >= 1,
+      detail: badFinding === undefined ? JSON.stringify(bad.violations) : `FAIL ${badFinding.id} — ${badFinding.detail}`,
+    });
+    writeFileSync(join(full, guideRel), before);
+
+    // Arm 4 — T-75 packed copy. `ok === true` alone is satisfiable by a dead scanner, so the arm
+    // ALSO requires the note (naming the absent target) and `resolved >= 1`, which proves packed
+    // mode did not disable resolution wholesale.
+    const packedResult = verifyDocsParity(packed);
+    cases.push({
+      case: "links PACKED: no AGENTS.md -> an absent target is a LINK NOTE (not a failure) while a present target is still checked",
+      ok:
+        packedResult.ok === true &&
+        packedResult.violations.every((v) => !v.id.startsWith("link-missing:")) &&
+        packedResult.linkNotes.some((n) => n.path === "docs/guide.md" && n.reason.includes("link-absent-site") && n.reason.includes("AGENTS.md")) &&
+        packedResult.linkChecks.resolved >= 1 &&
+        packedResult.linkChecks.absentSite >= 1 &&
+        packedResult.linkChecks.dead === 0,
+      detail: JSON.stringify({ counters: packedResult.linkChecks, notes: packedResult.linkNotes }),
+    });
+
+    // Arm 5 — EXEMPT_PROVENANCE, file-scoped. Half (a) is the verbatim path with a dead link: still
+    // green, reported as EXEMPT. Half (b) is the SAME kind of dead link in a NON-exempt package
+    // README (with its zh twin, so the pair rule is satisfied): exactly ONE link violation, naming
+    // that file — the control against "ignore every packages/*/README.md".
+    write(full, "packages/mpd-agent-teams-plugin/README.md", "# Upstream\n\n[dead](./docs/usage.md)\n");
+    write(full, "packages/mpd-fixture-pkg/README.md", "# Pkg\n\n**English** | [中文](./README.zh-CN.md)\n\n## One\n\n[dead](./dead.md)\n");
+    write(full, "packages/mpd-fixture-pkg/README.zh-CN.md", "# 包\n\n[English](./README.md)\n\n## 一\n\n正文\n");
+    const prov = verifyDocsParity(full);
+    const provLinkViolations = prov.violations.filter((v) => v.id.startsWith("link-missing:"));
+    cases.push({
+      case: "links PROVENANCE: a dead link in the VERBATIM file stays green and is REPORTED as EXEMPT, while the SAME dead link in a non-exempt README reddens (the skip is FILE-scoped)",
+      ok:
+        prov.ok === false &&
+        prov.violations.length === 1 &&
+        provLinkViolations.length === 1 &&
+        provLinkViolations[0].id === "link-missing:packages/mpd-fixture-pkg/README.md:./dead.md" &&
+        prov.linkChecks.skippedProvenance === 1 &&
+        prov.linkNotes.some((n) => n.path === "packages/mpd-agent-teams-plugin/README.md" && n.reason.includes("EXEMPT_PROVENANCE") && n.reason.includes("./docs/usage.md")),
+      detail: JSON.stringify({ violations: prov.violations.map((v) => v.id), counters: prov.linkChecks, provenanceNote: prov.linkNotes.find((n) => n.path === "packages/mpd-agent-teams-plugin/README.md") ?? null }),
+    });
+
+    // Arm 6 — ROOT-relative targets (t5-F1): a `/`-prefixed target resolves against the REPO ROOT, so
+    // one that EXISTS in this tree must not be reported dead, while one that does NOT exist must still
+    // redden (the normalization is not "ignore anything starting with /"). The counts are compared
+    // against a baseline taken on the spot, so the arm cannot be satisfied by other arms' state.
+    const beforeRootRel = verifyDocsParity(full).linkChecks;
+    const rootRelDoc = (targets) => `<!-- docs-parity: exempt fixture root-relative class -->\n# Root relative\n\n${targets.map((t) => `- [target](${t})`).join("\n")}\n`;
+    write(full, "docs/root-relative.md", rootRelDoc(["/docs/guide.md", "/packages"]));
+    const rootRelOk = verifyDocsParity(full);
+    write(full, "docs/root-relative.md", rootRelDoc(["/docs/guide.md", "/nowhere/absent.md"]));
+    const rootRelBad = verifyDocsParity(full);
+    const rootRelFinding = rootRelBad.violations.find((v) => v.id === "link-missing:docs/root-relative.md:/nowhere/absent.md");
+    cases.push({
+      case: "links ROOT-RELATIVE: a `/`-prefixed target resolves against the REPO ROOT (existing file + directory count as RESOLVED), while a missing one still REDDENS with its id",
+      ok:
+        rootRelOk.linkChecks.resolved === beforeRootRel.resolved + 2 &&
+        rootRelOk.linkChecks.dead === beforeRootRel.dead &&
+        rootRelBad.linkChecks.dead === beforeRootRel.dead + 1 &&
+        rootRelFinding !== undefined,
+      detail: JSON.stringify({ resolvedBefore: beforeRootRel.resolved, resolvedWithTwoLiveTargets: rootRelOk.linkChecks.resolved, deadBefore: beforeRootRel.dead, deadWithMissingTarget: rootRelBad.linkChecks.dead, finding: rootRelFinding === undefined ? null : rootRelFinding.id }),
+    });
+    rmSync(join(full, "docs/root-relative.md"), { force: true });
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }

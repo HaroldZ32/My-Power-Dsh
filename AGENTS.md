@@ -9,7 +9,7 @@ repository is English-only (see Language Policy).
 - **Human-facing documentation is BILINGUAL**: every doc a person reads — `README.md`,
   `docs/*.md`, and every `packages/*/README.md` — ships BOTH an English file and a
   **简体中文** (`*.zh-CN.md`) translation. Both versions must exist and stay in sync.
-- The policy is executable: `bun run verify:docs` (`scripts/verify-docs-parity.mjs`) enforces the pair, the switch link, the heading tree and real CJK content for every pair it discovers — every `*.md` under `docs/` at any depth, `extensions/**/README.md`, `templates/**/README.md`, `packages/*/README.md` and the root README — reports a zh-CN document with no EN twin or a non-exempt package with no README as a violation, and prints the documented exemptions (see §4). Classification is DECLARED, not directory-sensitive: a `*.md` carrying `<!-- docs-parity: doc -->` is a doc wherever it lives, so a misplaced doc reddens instead of escaping.
+- The policy is executable: `bun run verify:docs` (`scripts/verify-docs-parity.mjs`) enforces the pair, the switch link, the heading tree, real CJK content and the RESOLUTION of relative link targets across the band it discovers — every `*.md` under `docs/` at any depth, `extensions/**/README.md`, `templates/**/README.md`, `packages/*/README.md` and the root README — where a `./x`, `x` or `../x` target resolves from the LINKING file's own directory and a ROOT-relative `/x` target resolves against the REPO ROOT (`/docs/index.md` means `docs/index.md` in this tree, never the filesystem root), with a `#fragment` stripped first (a directory counts; external URLs, in-page anchors and code spans are ignored); it reports a zh-CN document with no EN twin, a non-exempt package with no README or a link target that does not resolve as a violation, and prints the documented exemptions (see §4). A file kept VERBATIM as provenance is exempt from the link check too (its dead targets are reported as EXEMPT, never as passes), and in a packed copy with no root `AGENTS.md` an unresolved target is a NOTE rather than a failure (T-75). Classification is DECLARED, not directory-sensitive: a `*.md` carrying `<!-- docs-parity: doc -->` is a doc wherever it lives, so a misplaced doc reddens instead of escaping.
 - **The agent-facing band is deliberately OUT of that discovery.** `agent-references/**` is agent-facing content, so it is English-only and ships no `*.zh-CN.md` twin; the docs gate **does not discover that tree** (T-28). Read this as a POLICY SENTENCE, not an omission: an English-only agent document belongs OUTSIDE `docs/` — never inside a band whose every `*.md` is policed. The register's literal `docs/agent/**` suggestion is NOT the shape this repository uses; `agent-references/**` is the band, and its files are exempt BY POLICY.
 - **A lone file exempts ITSELF, not by a hand-maintained list.** The gate derives the process-record exemptions from the file: a doc carrying `<!-- docs-parity: exempt <reason> -->` is reported with that reason, and the same doc without the marker is a normal policed file (T-30). The AGENTS.md §3 policy classes that are named by GLOB (`docs/plan-*.md`) stay a declared pattern, and the two ANTICIPATORY paths (`docs/adder4.md`, `docs/cnt8.md`) are kept by design and printed as their own class so an exemption for a file that does not exist can never rot silently.
 - **Every bilingual doc carries a language switch link directly under its title**:
@@ -495,6 +495,13 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   verification pass ran while a revert was in flight and measured a half-reverted tree (a failure
   that no longer existed minutes later). Pin the revision by hash, re-check it after a short settle
   window (wave 2 used 50 s), then run the contract — and anchor every verdict to the hashes you measured.
+- **Quote a hash WITH its measurement moment.** A bare `sha256` is provenance that cannot be
+  re-anchored: a citation or verdict that quotes one also states the instant it was read (UTC,
+  second precision), and a verifier SANDWICHES its read — hash → work → re-hash, with start == end
+  after the settle window — so "settled" is distinguishable from "another lane edited the file
+  while I sampled". The cost of omitting the moment is measured: four "stale reading" rounds in
+  the docs wave, where a lane and the captain sampled the same moving file at different instants
+  (`evidence/docs-overhaul/SUMMARY.md`, "Process notes worth carrying").
 - Shell caveat: long-lived MCP children hold inherited fds — run dsh with stdio to FILES
   (`spawnSync` with `stdio: ['ignore', fd, fd]`) or background + log-file redirection, never pipes.
 
@@ -554,7 +561,8 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   commit as the change that invalidated it (§11). Two writers therefore force two coupled
   commits, a mid-wave re-pin, and a `verify-vendor` failure on anyone who commits in between.
   Serialize all `skills/**` edits of a wave through a single writer and re-pin exactly once;
-  wave 3 has exactly one re-pin (t3), and that is the invariant a reviewer checks.
+  exactly ONE re-pin per wave — landing in the same commit as the change that invalidated that
+  `treeSha` — is the invariant a reviewer checks.
 
 ---
 

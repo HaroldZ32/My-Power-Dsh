@@ -1,0 +1,94 @@
+{
+  "task": "t9",
+  "kind": "verification",
+  "verifier": "Plan Reviewer",
+  "attemptId": "9bb59f9a-4550-48e5-9032-1569502cbe43",
+  "generatedAt": "2026-09-19T11:51:20Z",
+  "verdict": "pass",
+  "supersedes": "evidence/process-fixes/verify-hardening.json (t5, first pass) — PRESERVED UNCHANGED as history, not overwritten: sha256 300768b615bb6639e7db0bb6a8e20746cbd1f72888bd832fca934c35fbfc4762 at 11:50:15Z and 11:51:16Z, identical.",
+  "revisionStatement": "The script revision this verdict verifies is the REPAIR's new hash 1cb83b1394df66e148c44d3c322bcbbf470ffdd0c959068b24af793ee5163f4e — NOT c97c6520f92b85630acaaa8f1e4b4f919ba730540cb796f514ed850e23d59453 (the pre-repair revision t5 judged, now superseded). That new hash is the one the review gate will judge, and it held unchanged through every measurement of this pass.",
+  "hashSandwich": {
+    "closed": true,
+    "measurementMoments": ["2026-09-19T11:50:15Z (open, before any probe)", "2026-09-19T11:50:50Z (copy harness)", "2026-09-19T11:51:09Z (verify commands, start)", "2026-09-19T11:51:16Z (verify commands, after)", "2026-09-19T11:51:20Z (close)"],
+    "scriptUnchangedThroughAll": true,
+    "oneFileMovedMidPass": {
+      "file": "AGENTS.md",
+      "atOpen": "d49bb23c8d9c6eab26281e3194e3df6179543c879a0f53fd9867c174076f266b (11:50:15Z)",
+      "atClose": "62288be4a23c8ebb3fed267e2f6e6530ab6f3a279dff6721b734c43cf9146d68 (11:51:20Z)",
+      "whatMoved": "the language-policy gate-description sentence, which now also states that a ROOT-relative `/x` target resolves against the REPO ROOT (`/docs/index.md` means `docs/index.md` in this tree, never the filesystem root) — i.e. the docs half of the same repair t8 made in the script. No other file changed.",
+      "whyItIsNotAStaleReading": "this is the exact condition AGENTS.md §7 now warns about, observed live: the value read at open was superseded during the pass, so the verdict anchors on the CLOSE-time hash and both moments are reported. The moved sentence is a DOCUMENTATION of the behaviour this pass proved by execution, and I checked it against the measured behaviour rather than against the other lane's summary (a `/docs/index.md` target now PASSES, a `/nowhere/absent.md` target still FAILS — see criteria 1).",
+      "doesNotAffect": "the script under judgement (byte-identical throughout), the gate's counters, or any probe result"
+    }
+  },
+  "judgedHashes": [
+    { "file": "scripts/verify-docs-parity.mjs", "sha256": "1cb83b1394df66e148c44d3c322bcbbf470ffdd0c959068b24af793ee5163f4e", "measuredAt": "2026-09-19T11:50:15Z", "recheckedAt": "2026-09-19T11:51:20Z", "stable": true },
+    { "file": "AGENTS.md", "sha256": "62288be4a23c8ebb3fed267e2f6e6530ab6f3a279dff6721b734c43cf9146d68", "measuredAt": "2026-09-19T11:50:15Z as d49bb23c…", "recheckedAt": "2026-09-19T11:51:20Z as 62288be4…", "stable": false, "note": "docs half of the repair landed mid-pass; verdict anchored on the 11:51:20Z value" },
+    { "file": ".gitignore", "sha256": "9e86dd852cdf995a8e3ae1b43b7d373cb0e2145ecbc8668110fe1aba784a212f", "measuredAt": "2026-09-19T11:50:15Z", "recheckedAt": "2026-09-19T11:51:16Z", "stable": true },
+    { "file": "agent-references/troubleshooting.md", "sha256": "af5ec159114e51a7a34d531bd1a8c62c02de7c306bbe1ee9ba55976ce9948de0", "measuredAt": "2026-09-19T11:50:15Z", "recheckedAt": "2026-09-19T11:51:16Z", "stable": true },
+    { "file": "docs/design.md (probe subject, shipped bytes)", "sha256": "62bd827a9449aa58900f0baf6df23ddf4fdfdc636641a4106b50f57d3c946228", "measuredAt": "2026-09-19T11:50:15Z", "recheckedAt": "2026-09-19T11:51:16Z", "stable": true, "note": "only its COPY was mutated" },
+    { "file": "docs/index.md (probe subject, shipped bytes)", "sha256": "9a824fe66982a3554906bc6085a68ca1cbebd060a61881b995ebb3ca7bf22089", "measuredAt": "2026-09-19T11:50:15Z", "recheckedAt": "2026-09-19T11:51:16Z", "stable": true, "note": "only its COPY was mutated" }
+  ],
+  "acceptance": [
+    {
+      "criterion": 1,
+      "name": "repair verified by EXECUTION on the NEW revision: an EXISTING root-relative target PASSES, a MISSING one still FAILS, shipped run green with counters unchanged",
+      "status": "passed",
+      "method": "full-tree copy at /tmp/t9-copy/tree (58287 files copied; .git / node_modules / evidence excluded, symlinks preserved); probes injected into the COPY's docs/design.md and restored after each",
+      "probes": [
+        { "injected": "(none — baseline)", "exit": 0, "summary": "links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 ignoredExternal=13 ignoredAnchorOnly=4 files=92 — PASS" },
+        { "injected": "[x](/docs/index.md) — root-relative target that EXISTS (file)", "exit": 0, "summary": "links=235 checked=218 resolved=211 dead=0 exemptProvenance=7 — PASS", "interpretation": "the target went into RESOLVED; before the repair this same probe produced exit 1 and `neither a file nor a directory exists at /docs/index.md` (t5-F1)" },
+        { "injected": "[x](/docs) — root-relative target that EXISTS (directory)", "exit": 0, "summary": "links=235 checked=218 resolved=211 dead=0 — PASS" },
+        { "injected": "[x](/nowhere/absent.md) — root-relative target that DOES NOT exist", "exit": 1, "summary": "links=235 checked=218 resolved=210 dead=1 — FAIL", "violation": "FAIL link-missing:docs/design.md:/nowhere/absent.md — docs/design.md:586 links \"/nowhere/absent.md\" but neither a file nor a directory exists at /tmp/t9-copy/tree/nowhere/absent.md", "interpretation": "the resolution is against the TREE root (/tmp/t9-copy/tree/nowhere/absent.md), and the normalization is not an ignore rule" },
+        { "injected": "[x](//docs/index.md) — double-slash form", "exit": 0, "summary": "links=235 checked=217 resolved=210 dead=0 ignoredExternal=14 — PASS", "interpretation": "the protocol-relative class still absorbs it and is counted (+1 ignoredExternal), unchanged from the pre-repair behaviour" },
+        { "injected": "(none — restore control)", "exit": 0, "summary": "links=234 checked=217 resolved=210 dead=0 — PASS" }
+      ],
+      "shippedTreeRun": "node scripts/verify-docs-parity.mjs at 11:51:09Z: `[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS`, exit 0; counters `links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 files=92` — IDENTICAL to the t5 baseline, so the repair moved no shipped counter (no new resolved, no new dead, no reclassification)."
+    },
+    {
+      "criterion": 2,
+      "name": "falsifiability of the NEW arm: a one-token mutant disabling the root-relative normalization turns that arm red; arm count reported",
+      "status": "passed",
+      "armCount": "33 named arms → the harness reports 34 checks (33 arms + the summary line); control run `[verify-docs-parity self-test] 34/34 checks passed — PASS`, exit 0. The new arm is the 6th of the link group: `links ROOT-RELATIVE: a `/`-prefixed target resolves against the REPO ROOT (existing file + directory count as RESOLVED), while a missing one still REDDENS with its id`.",
+      "mutants": [
+        { "mutant": "root-relative-normalization-off (`const base = rootRelative ? root : dirname(rel)` → `false ? root : dirname(rel)`; the t5-F1 defect reintroduced)", "summary": "33/34 — FAIL, exit 1", "redArms": ["links ROOT-RELATIVE:"] },
+        { "mutant": "root-relative-slash-not-stripped (`cleaned = rootRelative ? filePart.replace(/^\\/+/, \"\") : filePart` → `cleaned = filePart`)", "summary": "33/34 — FAIL, exit 1", "redArms": ["links ROOT-RELATIVE:"] }
+      ],
+      "armSemantics": "the arm compares three things against a baseline taken on the spot: `resolved === before + 2` for two live targets, `dead === before` for those, and `dead === before + 1` plus the exact finding id `link-missing:docs/root-relative.md:/nowhere/absent.md` for the missing one. Both directions are therefore load-bearing — a normalization that merely IGNORES `/` targets fails the missing-target clause, and the `//` double-slash form is separately covered by the IGNORED-class arm.",
+      "noCollateral": "in both mutants the other 33 checks stayed green, so the arm is specific to the repaired behaviour rather than reddened by a global break."
+    },
+    {
+      "criterion": 3,
+      "name": "previously verified classes not regressed on the new revision",
+      "status": "passed",
+      "deadRelativeLink": "copy probe `[x](./t9-injected-dead-link.md)` on the new revision: exit 1, `link-missing:docs/design.md:./t9-injected-dead-link.md — docs/design.md:586 links \"./t9-injected-dead-link.md\" but neither a file nor a directory exists at /tmp/t9-copy/tree/docs/t9-injected-dead-link.md` — source AND target named, exit code non-zero.",
+      "provenanceSkip": "shipped run counters `checked=217 resolved=210 dead=0 skippedProvenance=7` → 210 = 217 − 7, unchanged. The self-test PROVENANCE arm still passes and still shows the FILE-scoped behaviour (non-exempt fixture reddens with `link-missing:packages/mpd-fixture-pkg/README.md:./dead.md` while the verbatim file is reported as EXEMPT).",
+      "packedCopy": "self-test PACKED arm still ok: `{\"counters\":{\"files\":6,\"links\":13,\"checked\":10,\"resolved\":7,\"dead\":0,\"absentSite\":3,...},\"notes\":[{\"path\":\"docs/guide.md\",\"reason\":\"link-absent-site:docs/guide.md:../AGENTS.md — target not present in this root (packed artifact / partial copy); link target not resolved\"}]}` — a NOTE, no violation.",
+      "fragmentBound_stands": "copy probe `[x](./index.md#no-such-anchor)`: exit 0, resolved=211 dead=0 — the fragment is still stripped and never validated. The stronger half also holds: `[x](./no-such-file.md#x)` still reddens (exit 1, `link-missing:docs/design.md:./no-such-file.md#x`, target `/tmp/t9-copy/tree/docs/no-such-file.md`), so the file half is still judged when a fragment is present.",
+      "classLevelFalsifiabilityReConfirmed": "four class-level mutants on the NEW revision each redden exactly their guard: violation-not-emitted → 31/34 (NEGATIVE, PROVENANCE, ROOT-RELATIVE), packed-note-suppressed → 33/34 (PACKED), provenance-skip-dropped → 33/34 (PROVENANCE), dead-counter-lies → 32/34 (NEGATIVE, ROOT-RELATIVE). No arm was silently defused by the repair."
+    },
+    {
+      "criterion": 4,
+      "name": "verdict names every judged file's sha256 WITH its moment on a closed sandwich, and states that the verified revision is the repair's new hash",
+      "status": "passed",
+      "evidence": "see `judgedHashes` and `revisionStatement` above. Sandwich closed on the script: 1cb83b1394df66e148c44d3c322bcbbf470ffdd0c959068b24af793ee5163f4e identical at 11:50:15Z, 11:50:50Z, 11:51:09Z, 11:51:16Z and 11:51:20Z. Stated plainly: the revision verified here is 1cb83b13… (t8's repair), NOT c97c6520… (t5's pre-repair revision, now superseded); 1cb83b13… matches the hash t8 reported and is the one the review gate will judge. One mid-pass move is reported rather than papered over: AGENTS.md went d49bb23c… (11:50:15Z) → 62288be4… (11:51:20Z) when the docs half of the repair landed; the disagreement is disclosed, the close-time value is the verdict's anchor, and the script under judgement never moved."
+    },
+    {
+      "criterion": 5,
+      "name": "evidence written to verify-hardening-reverify.json + .log, with the first pass's artifact preserved as history",
+      "status": "passed",
+      "evidence": "New files: evidence/process-fixes/verify-hardening-reverify.json (this file) and evidence/process-fixes/verify-hardening-reverify.log (three verify commands with timestamps, hash sandwich at both ends, raw-probe appendix). Preservation proven by hash: evidence/process-fixes/verify-hardening.json sha256 300768b615bb6639e7db0bb6a8e20746cbd1f72888bd832fca934c35fbfc4762 and evidence/process-fixes/verify-hardening.log sha256 a06c84e5b4105a8ba18905330af6bd24e180659f049a20f56be9e915d4515b25 — both identical at 11:50:15Z (before this pass) and 11:51:16Z (after), and t5's .t5-* harnesses were left in place. No file of the first pass was rewritten; the append-only friction was handled by writing a NEW artifact pair instead of appending to the old one."
+    }
+  ],
+  "commandsRun": [
+    { "command": "node scripts/verify-docs-parity.mjs", "at": "2026-09-19T11:51:09Z", "exitCode": 0, "summary": "pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS; counters identical to the t5 baseline (checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0)" },
+    { "command": "node scripts/verify-docs-parity.mjs --self-test", "at": "2026-09-19T11:51:09Z", "exitCode": 0, "summary": "34/34 checks passed — PASS (33 named arms, including all 5 t5 arms and the NEW links ROOT-RELATIVE arm)" },
+    { "command": "node scripts/verify-gates.mjs", "at": "2026-09-19T11:51:09Z", "exitCode": 0, "summary": "member docs-parity exit=0 PASS; member preset-conformance exit=0 PASS (31 rows); final line `[verify-gates] PASS - 5/5 member gate(s) green`" }
+  ],
+  "findings": [],
+  "notesForIntegration": [
+    "t5-F1 is CLOSED by execution: an existing root-relative target resolves to the tree root (resolved +1, exit 0) and a missing one still reddens with `link-missing:…:/nowhere/absent.md` resolved against the tree root. The normalization is explicit (`const base = rootRelative ? root : dirname(rel)` with the leading slashes stripped before the join) — no fallback.",
+    "t5-F2 remains an intentional declared bound: fragments are stripped and never validated (a dead anchor passes). AGENTS.md's updated sentence still says 'stripped first', so the documentation does not overclaim; if anchor validation is ever wanted it is a new feature, not a repair.",
+    "The repair's docs half landed while this pass was running: AGENTS.md is now 62288be4… and states the root-relative rule in the language-policy gate description. I verified that sentence against the script's measured behaviour, not against the lane's summary.",
+    "Read-only lane honoured: every mutation ran on copies under /tmp (the workspace is writable only at its root and a copy inside the repo is refused by node with ERR_FS_CP_EINVAL); the shipped tree shows only the four lane files modified plus the untracked evidence/process-fixes/ directory."
+  ]
+}

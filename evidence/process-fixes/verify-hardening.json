@@ -1,0 +1,147 @@
+{
+  "task": "t5",
+  "kind": "verification",
+  "verifier": "Plan Reviewer",
+  "attemptId": "a301908a-267d-427c-bd45-6d2eea2959d3",
+  "generatedAt": "2026-09-19T11:45:29Z",
+  "verdict": "pass",
+  "settleWindow": { "start": "2026-09-19T11:41:11Z", "end": "2026-09-19T11:45:29Z", "hashStableFrom": "t4 11:34:40Z", "verifierSandwich": "identical at 11:41:11Z, 11:43:12Z, 11:43:31Z (pre-commands), 11:43:36Z (post-commands), 11:45:29Z", "withinOneBashCall": true },
+  "judgedHashes": [
+    { "file": "scripts/verify-docs-parity.mjs", "sha256": "c97c6520f92b85630acaaa8f1e4b4f919ba730540cb796f514ed850e23d59453", "measuredAt": "2026-09-19T11:41:11Z", "recheckedAt": "2026-09-19T11:45:29Z" },
+    { "file": "AGENTS.md", "sha256": "d49bb23c8d9c6eab26281e3194e3df6179543c879a0f53fd9867c174076f266b", "measuredAt": "2026-09-19T11:41:11Z", "recheckedAt": "2026-09-19T11:45:29Z" },
+    { "file": ".gitignore", "sha256": "9e86dd852cdf995a8e3ae1b43b7d373cb0e2145ecbc8668110fe1aba784a212f", "measuredAt": "2026-09-19T11:41:11Z", "recheckedAt": "2026-09-19T11:45:29Z" },
+    { "file": "agent-references/troubleshooting.md", "sha256": "af5ec159114e51a7a34d531bd1a8c62c02de7c306bbe1ee9ba55976ce9948de0", "measuredAt": "2026-09-19T11:41:11Z", "recheckedAt": "2026-09-19T11:45:29Z" },
+    { "file": "docs/design.md (injection subject)", "sha256": "62bd827a9449aa58900f0baf6df23ddf4fdfdc636641a4106b50f57d3c946228", "measuredAt": "2026-09-19T11:41:11Z", "recheckedAt": "2026-09-19T11:45:29Z", "note": "unmodified in the shipped tree; only its COPY was mutated" },
+    { "file": "docs/index.md (fragment-probe subject)", "sha256": "9a824fe66982a3554906bc6085a68ca1cbebd060a61881b995ebb3ca7bf22089", "measuredAt": "2026-09-19T11:41:11Z", "recheckedAt": "2026-09-19T11:45:29Z", "note": "unmodified in the shipped tree; only its COPY was mutated" }
+  ],
+  "acceptance": [
+    {
+      "criterion": 1,
+      "name": "gate change verified by EXECUTION (inject -> RED with source+target named; remove -> GREEN)",
+      "status": "passed",
+      "method": "Full-tree copy at /tmp/t5-copy/tree (58286 files, .git/node_modules/evidence excluded, symlinks preserved). Injected into the COPY's docs/design.md: '[probe](./t5-injected-dead-link.md)' and '[stale]( ./architecture.md )' (spaced form).",
+      "copiedTreeBaseline": "[verify-docs-parity] root=/tmp/t5-copy/tree pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS (exit 0)",
+      "injectedLinkText": "[probe](./t5-injected-dead-link.md) ; [stale]( ./architecture.md )",
+      "copiedTreeRed": "exit 1 — 'links=236 checked=219 resolved=210 dead=2 ... violations=2 — FAIL'",
+      "violationsQuoted": [
+        "link-missing:docs/design.md:./t5-injected-dead-link.md — docs/design.md:589 links \"./t5-injected-dead-link.md\" but neither a file nor a directory exists at /tmp/t5-copy/tree/docs/t5-injected-dead-link.md",
+        "link-missing:docs/design.md:./architecture.md — docs/design.md:591 links \"./architecture.md\" but neither a file nor a directory exists at /tmp/t5-copy/tree/docs/architecture.md"
+      ],
+      "copiedTreeGreenAfterRestore": "[verify-docs-parity] root=/tmp/t5-copy/tree pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS (exit 0)",
+      "copyByteIdenticalAfterRestore": "sha256 62bd827a9449aa58900f0baf6df23ddf4fdfdc636641a4106b50f57d3c946228 before == after (the shipped docs/design.md was never touched: git status shows only the four lane files)",
+      "alsoShippedTreeOnDirtyLanes": "node scripts/verify-docs-parity.mjs on the real tree (11:43:31Z): pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS, exit 0"
+    },
+    {
+      "criterion": 2,
+      "name": "mandatory --self-test negative control is FALSIFIABLE",
+      "status": "passed",
+      "pristineControl": "node scripts/verify-docs-parity.mjs --self-test → exit 0, '[verify-docs-parity self-test] 33/33 checks passed — PASS' (32 named ok arms + 1 summary), 28 pre-existing arms still green",
+      "method": "five independently targeted one-token mutants written to COPIES in /tmp/t5-mutants (the shipped script is byte-untouched); each mutant run: node <mutant> --self-test",
+      "mutants": [
+        { "mutant": "whole-checker-dormant (checkLinkTargets call replaced by an empty result)", "summary": "28/33 — FAIL", "armUnderTest": "links NEGATIVE → FAIL", "collateral": "all 5 new link arms red" },
+        { "mutant": "violation-not-emitted (violations.push becomes a sink; counters and resolution intact — the exact 'silent pass' shape)", "summary": "31/33 — FAIL", "armUnderTest": "links NEGATIVE → FAIL", "collateral": "links PROVENANCE red (it asserts a violation for the non-exempt fixture package)" },
+        { "mutant": "dead-counter-lies (violation emitted, counters.dead += 0)", "summary": "32/33 — FAIL", "armUnderTest": "links NEGATIVE → FAIL", "collateral": "exactly one arm red — the counter clause is load-bearing" },
+        { "mutant": "packed-note-suppressed (packed branch disabled)", "summary": "32/33 — FAIL", "armUnderTest": "links PACKED → FAIL", "collateral": "one arm" },
+        { "mutant": "provenance-skip-dropped (EXEMPT_PROVENANCE.has() → false)", "summary": "32/33 — FAIL", "armUnderTest": "links PROVENANCE → FAIL", "collateral": "one arm" }
+      ],
+      "armSemanticsQuotedFromSource": "ok: bad.ok === false && badFinding !== undefined && bad.linkChecks.checked >= 1 && bad.linkChecks.dead >= 1 — the arm asserts a NEGATIVE gate result AND the exact violation id AND a non-zero dead counter, not merely that code ran"
+    },
+    {
+      "criterion": 3,
+      "name": "provenance exemption is a real skip, not a silent pass",
+      "status": "passed",
+      "gateOutputOnShippedTree": "note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md",
+      "counterEvidence": "links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 — the 7 occurrences are counted in skippedProvenance, NOT in resolved (210 = 217 checked − 7 skipped), so the gate cannot be reading them as passes",
+      "fileScopedProof": "the script's own PROVENANCE arm (and the mutant that removes the skip) shows a dead link to ./dead.md in a NON-exempt fixture package still reddens (link-missing:packages/mpd-fixture-pkg/README.md:./dead.md) while the verbatim file stays green and reported",
+      "whatTheGateDoesAndDoesNotCoverThere": "COVERS: parses the verbatim README and attempts resolution — a target that started resolving would move into `resolved` instead. DOES NOT COVER: the 7 targets are unresolved by construction (upstream-only paths) and are permanent exceptions, so a dead link is DETECTED but never FAILS; a swapped target string inside packages/mpd-agent-teams-plugin/README.md would not fail this gate (it is guarded as verbatim provenance by policy, not by this gate)."
+    },
+    {
+      "criterion": 4,
+      "name": "packed-copy behaviour exercised (absent AGENTS.md ⇒ NOTE, not failure)",
+      "status": "passed",
+      "artifactThatDemonstratedIt": "scripts/verify-docs-parity.mjs --self-test arm 'links PACKED: no AGENTS.md -> an absent target is a LINK NOTE (not a failure) while a present target is still checked' — ok, running against the script's own T-75 fixture (a skeleton root with no MANUAL_REL)",
+      "notePayloadQuoted": "{\"counters\":{\"files\":6,\"links\":13,\"checked\":10,\"resolved\":7,\"dead\":0,\"skippedProvenance\":0,\"absentSite\":3,\"external\":2,\"anchorOnly\":1},\"notes\":[{\"path\":\"docs/guide.md\",\"reason\":\"link-absent-site:docs/guide.md:../AGENTS.md — target not present in this root (packed artifact / partial copy); link target not resolved\"}]}",
+      "independenceFromTheAttribute": "the arm also requires resolved >= 1 and the note naming the absent target, so packed mode cannot pass by a dead scanner; verified falsifiable by mutant 4",
+      "honestLimit": "a shipped dist/mpd-package/ tree exists in this repo, but I exercised the behaviour through the self-test fixture rather than a real packed copy — the discriminator is existsSync(root/AGENTS.md), which the fixture sets exactly as a packed artifact would."
+    },
+    {
+      "criterion": 5,
+      "name": "hygiene edits verified on disk (symlink ignore + three AGENTS.md passages true of the tree)",
+      "status": "passed",
+      "gitignoreCheck": {
+        "command": "git check-ignore -v evidence/web-card-catalog/20260918T073000Z/sandbox",
+        "exitCode": 0,
+        "output": ".gitignore:56:evidence/**/sandbox\tevidence/web-card-catalog/20260918T073000Z/sandbox",
+        "realDirectoryStillMatches": "git check-ignore -v evidence/mpd-bridge/dual-path/sandbox → .gitignore:56:evidence/**/sandbox (exit 0)",
+        "commentRead": ".gitignore lines 52-54: 'NO trailing slash, on purpose: a `sandbox` that is a SYMLINK … is not a directory to git, so the directory-only `evidence/**/sandbox/` left it untracked' — confirmed by the exit-0 pattern match above"
+      },
+      "passages": [
+        {
+          "passage": "re-pin invariant",
+          "file": "AGENTS.md",
+          "quote": "Serialize all `skills/**` edits of a wave through a single writer and re-pin exactly once;\nexactly ONE re-pin per wave — landing in the same commit as the change that invalidated that\n`treeSha` — is the invariant a reviewer checks.",
+          "trueOfShippedTree": "TRUE and wave-agnostic: the stale 'wave 3 has exactly one re-pin (t3)' claim is gone (grep for 'wave 3 has exactly one' is empty) and the §11 release-checklist line now reads the same invariant. Discriminator checked: at this moment skills/** carries no edit in the working tree (git status shows only the four lane files), so no re-pin is due yet — consistent with 'exactly one per wave, in the same commit as the invalidating change'. Not falsifiable to a higher degree without a wave that actually touches skills/**."
+        },
+        {
+          "passage": "timestamped-hash rule",
+          "file": "AGENTS.md",
+          "quote": "**Quote a hash WITH its measurement moment.** A bare `sha256` is provenance that cannot be\nre-anchored: a citation or verdict that quotes one also states the instant it was read (UTC,\nsecond precision), and a verifier SANDWICHES its read — hash → work → re-hash, with start == end\nafter the settle window — so \"settled\" is distinguishable from \"another lane edited the file\nwhile I sampled\".",
+          "trueOfShippedTree": "TRUE and executable: t3/t4 reports state hashes WITH moments, and this verification applied it — four files hashed at 11:41:11Z, re-hashed at 11:43:12Z, 11:43:31Z/11:43:36Z (command window) and 11:45:29Z, start == end for all four."
+        },
+        {
+          "passage": "gate description (Language policy bullet)",
+          "file": "AGENTS.md",
+          "quote": "… enforces the pair, the switch link, the heading tree, real CJK content and the RESOLUTION of relative link targets across the band it discovers … where a `./x`, `x` or `../x` target resolves from the LINKING file's own directory with a `#fragment` stripped (a directory counts; external URLs, in-page anchors and code spans are ignored); it reports a zh-CN document with no EN twin, a non-exempt package with no README or a link target that does not resolve as a violation … A file kept VERBATIM as provenance is exempt from the link check too (its dead targets are reported as EXEMPT, never as passes), and in a packed copy with no root `AGENTS.md` an unresolved target is a NOTE rather than a failure (T-75).",
+          "trueOfShippedTree": "TRUE against the SCRIPT'S BEHAVIOUR, clause by clause: `./x`/`x`/`../x` resolve from dirname(source) (probe: ./x.md, y.md, ../z.md, sub/deep/y.md extracted; ../AGENTS.md resolves); `#fragment` stripped before resolution (probe: ./x.md#section → file judged, ./no-such.md#x still reddens); a directory counts (self-test POSITIVE arm and the band's ../agent-references target); external URLs (https/http/mailto/tel/data/`//host`) ignored and counted (probe extracted 6/6; shipped counters ignoredExternal=13); in-page anchors ignored (anchorOnly=4); code spans and fenced blocks excluded (probe: only ./x.md survived from a decoy+fence+bare-link line); unresolved target = violation (mutation test); verbatim file exempt and REPORTED (see criterion 3); absent root AGENTS.md = NOTE (criterion 4). Band composition also matched: files=92 = 76 pair halves + 16 existing exempt-note markdown files (docs/plan-*.md, prior-phase reports), and agent-references/*.md stay OUT of the band — that tree carries no ./-style links at all, so its exclusion is invisible to the counts (the policy sentence asserts this exclusion)."
+        }
+      ],
+      "regressionCheckOfTheReferenceLaneOnly": "agent-references/troubleshooting.md: git diff HEAD shows 27 INSERTIONS and 0 deletions — purely additive, so no pre-existing row could have been regressed; the new '## Platform frictions measured in the process-hardening wave (2026-09-19)' section documents six frictions and is outside this task's brief beyond regression (not re-reviewed here)."
+    },
+    {
+      "criterion": 6,
+      "name": "verdict with findings, hashes and moments; evidence on disk",
+      "status": "passed",
+      "evidencePaths": [
+        "evidence/process-fixes/verify-hardening.json (this file)",
+        "evidence/process-fixes/verify-hardening.log (28,318 B: the three verify commands with timestamps and the hash sandwich at both ends, plus the appendix of probe outputs)"
+      ],
+      "reproHarnesses": [
+        "evidence/process-fixes/.t5-inject.mjs (full-tree copy + inject + restore)",
+        "evidence/process-fixes/.t5-mutants.mjs (five falsifiability mutants)",
+        "evidence/process-fixes/.t5-covprobe.mjs (scanner-class coverage probe)"
+      ]
+    }
+  ],
+  "commandsRun": [
+    { "command": "node scripts/verify-docs-parity.mjs", "at": "2026-09-19T11:43:31Z", "exitCode": 0, "summary": "pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS" },
+    { "command": "node scripts/verify-docs-parity.mjs --self-test", "at": "2026-09-19T11:43:33Z", "exitCode": 0, "summary": "33/33 checks passed — PASS" },
+    { "command": "node scripts/verify-gates.mjs", "at": "2026-09-19T11:43:36Z", "exitCode": 0, "summary": "PASS - 5/5 member gate(s) green (vendor, dist-fresh, rows-parity, docs-parity, preset-conformance)" }
+  ],
+  "findings": [
+    {
+      "id": "t5-F1",
+      "severity": "low",
+      "status": "not a blocker; no present-day impact",
+      "file": "scripts/verify-docs-parity.mjs",
+      "symbol": "checkLinkTargets",
+      "problem": "A ROOT-relative target (leading '/') is resolved against the FILESYSTEM root, not the tree root, so a link that DOES exist in the tree is reported dead: probing the copy with '[x](/docs/index.md)' produced exit 1 and 'link-missing:docs/design.md:/docs/index.md — … neither a file nor a directory exists at /docs/index.md'. The policy sentence names only ./x, x and ../x as resolved forms and does not declare '/'-prefixed targets an ignored class either, so this is an undeclared FALSE POSITIVE class rather than an intended strictness.",
+      "impact": "zero today: no '](/…)' or '](/x' target exists anywhere in the band (grep over docs/, README.md, packages/*/README.md, extensions/, templates/ returns nothing), and the gates are green — verified live. It bites only if such a target is introduced.",
+      "requiredFix": "not required for this task (the contract is verification and this does not falsify any acceptance item). If the captain wants it closed cheaply: in checkLinkTargets, treat a leading '/' as the tree root (resolve(root, filePart.slice(1))) or add it to the IGNORED class with a counter, and add one self-test arm. Any change must repin the script hash and re-run this verification."
+    },
+    {
+      "id": "t5-F2",
+      "severity": "low",
+      "status": "documented bound, not a defect",
+      "file": "AGENTS.md",
+      "symbol": "Language policy bullet (gate description)",
+      "problem": "A fragment is stripped and never validated: '[x](./index.md#no-such-anchor)' PASSES (exit 0, resolved=211) even though the anchor does not exist in docs/index.md. The policy sentence states 'a `#fragment` stripped', and the script's own header comment says 'the fragment itself is never checked in v1' — so the coverage is declared exactly and the wording does not overclaim. Recording it only so an integrator does not read 'resolves link targets' as 'validates anchors'.",
+      "impact": "a dead in-page anchor is invisible to every gate in this repo (recorded, no action requested).",
+      "requiredFix": "none for this wave; the sentence already says 'stripped'."
+    }
+  ],
+  "notesForIntegration": [
+    "The task summary's phrase 'the three AGENTS.md passages' maps to: §9 re-pin invariant, §7 hash+moment rule, and the language-policy gate description; a fourth touched passage (§11 release checklist) is a consequence of the §9 wording and is consistent with it.",
+    "Verification write-boundary: the plan reviewer lane is read-only, and the two defects above were probed on COPIES outside the workspace (a copy inside the repo is refused by node: ERR_FS_CP_EINVAL 'subdirectory of self'), so no shipped file changed during this task. git status shows exactly the four lane files plus the untracked evidence/process-fixes/ directory.",
+    "If the captain wants the F1 fix inside this wave, it is a one-line normalization plus one self-test arm in scripts/verify-docs-parity.mjs, which is out of this task's scope and would invalidate the hash c97c6520… and require a fresh verification pass."
+  ]
+}
