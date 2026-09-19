@@ -1,0 +1,96 @@
+{
+  "copy_note": "CLEAN SINGLE-DOCUMENT COPY of the t7 attempt-8 re-verify. The same verdict was appended as document 2 of evidence/docs-overhaul/verify-design.json, which is append-only and therefore holds two concatenated top-level JSON objects (document 1 = the attempt-2 verdict on revision 3e792155.../060a6f61...). This file is the parseable form of the current verdict.",
+  "document": 2,
+  "task": "t7",
+  "kind": "verification",
+  "attempt": 8,
+  "attempt_id": "acc90b38-71ca-43c2-89d0-127fa004a503",
+  "verifier": "Explorer (read-only team member)",
+  "method": "Files on disk only; own extraction, never the implementation's script; every sampled claim checked against the patch, package.json, plugin sources or the filesystem; hash-sandwiched with the gates run LAST.",
+  "hash_sandwich": {
+    "start": {
+      "docs/design.md": "62bd827a9449aa58900f0baf6df23ddf4fdfdc636641a4106b50f57d3c946228",
+      "docs/design.zh-CN.md": "e964888bbb626f5e6ab3483f77a69efdf1955c4fe3c953bc6d8142c831726e6a",
+      "packages/mpd-bundle/cordis.patch.yml": "d141f70771c18cc06dd2492aae0cab92423929ab554a3c1031e2bbb9d3c1c23a"
+    },
+    "end": "IDENTICAL to start for all three files",
+    "stable": true,
+    "window_utc": "2026-09-19T10:41:40Z -> 2026-09-19T10:41:56Z",
+    "significance": "start == end proves the pair did not move while it was sampled, so this verdict describes bytes that exist."
+  },
+  "verified_revision": {
+    "docs/design.md": { "lines": 584, "sha256": "62bd827a9449aa58900f0baf6df23ddf4fdfdc636641a4106b50f57d3c946228" },
+    "docs/design.zh-CN.md": { "lines": 495, "sha256": "e964888bbb626f5e6ab3483f77a69efdf1955c4fe3c953bc6d8142c831726e6a" }
+  },
+  "patch_hash_caveat": {
+    "before_first_pass": "d12dc97f6fda53691e1d2abfd7c3b95ee001673da14078d1d86599d7927f91d4",
+    "now": "d141f70771c18cc06dd2492aae0cab92423929ab554a3c1031e2bbb9d3c1c23a",
+    "caveat": "t12's comment-only edit to cordis.patch.yml HAS landed, so the patch hash moved. The ID CENSUS DID NOT: my own extractor re-run on the new bytes still reports 2 top-level id-targets + 25 inserts = 27, and verify-rows-parity still exits 0."
+  },
+  "commands": [
+    { "command": "node scripts/verify-docs-parity.mjs", "exitCode": 0, "result": "pairs=38 failed=0 violations=0 exempt=19 derived=3 - PASS, with docs/design.md and docs/design.zh-CN.md both ok" },
+    { "command": "node scripts/verify-rows-parity.mjs", "exitCode": 0, "result": "ok: 25 row ids match the bundle patch insert list" },
+    { "command": "node -e '<own patch/doc id differ>'", "exitCode": 0, "result": "patch: topLevelIdTargets=2 + inserts=25; docs/design.md rows=27 MISSING=[] INVENTED=[]; docs/design.zh-CN.md rows=27 MISSING=[] INVENTED=[]" },
+    { "command": "sha256sum <pair> <patch> (start and end)", "exitCode": 0, "result": "identical at both ends -> revision stable across the window" },
+    { "command": "grep '^## ' <file> | sed section-token extraction + grep -c '^## '/'^### '", "exitCode": 0, "result": "EN and ZH token sequences identical (0 0b 1 2 3 4 5 6 6b 6c 7 7b 8 8b); 14 '##' and 5 '###' in each" }
+  ],
+  "point1_switch_links": {
+    "status": "pass",
+    "en": "# Design + '**English** | [中文](design.zh-CN.md)' on line 3, target present (495 lines)",
+    "zh": "# 详细设计 + '**中文** | [English](design.md)' on line 3, target present (584 lines)",
+    "real_content": "EN English prose; ZH 7477 CJK characters counted in-file"
+  },
+  "point2_row_coverage": {
+    "status": "pass",
+    "patch": { "top_level_id_targets": ["agent-presets", "dsh-tui-agent-presets"], "inserts": 25, "total": 27 },
+    "docs/design.md": { "inventory_rows": 27, "missing": [], "invented": [] },
+    "docs/design.zh-CN.md": { "inventory_rows": 27, "missing": [], "invented": [] },
+    "insert_ids": ["agent-teams", "mcp-astgrep", "mcp-codegraph", "mcp-context7", "mcp-gitbash", "mcp-grepapp", "mcp-lsp", "mpd-bootstrap", "mpd-boulder", "mpd-codegraph", "mpd-comment-checker", "mpd-config", "mpd-dsh-adapter", "mpd-ext", "mpd-hashline", "mpd-memory", "mpd-modelchain", "mpd-roles", "mpd-team-compact", "mpd-team-watchdog", "mpd-tools", "mpd-tui", "mpd-ulw", "mpd-web-compat", "mpd-workmate"],
+    "notes": "Both directions: no insert id missing from either document, no inventory row absent from the patch. verify-rows-parity covers the 25 inserts only, so this census is the completeness bound."
+  },
+  "point3_sampled_claims": {
+    "status": "pass",
+    "samples": 16,
+    "items": [
+      { "id": "S1", "claim": "25 inserted rows: 6 MCP (one disabled), 17 mpd-*, mpd-web-compat self-row, adopted agent-teams", "checked_against": "cordis.patch.yml", "result": "pass" },
+      { "id": "S2", "claim": "2 id-targets (agent-presets web/base, dsh-tui-agent-presets dsh-tui)", "checked_against": "cordis.patch.yml structure", "result": "pass" },
+      { "id": "S3", "claim": "repo root is the bundle; dsh.bundle.patch -> ./packages/mpd-bundle/cordis.patch.yml", "checked_against": "package.json", "result": "pass" },
+      { "id": "S4", "claim": "§4 inventory carries 27 id rows", "checked_against": "both documents", "result": "pass - 27 each" },
+      { "id": "S5", "claim": "F1 EN: guard in lib/harness-compat.js (wrapping registerContinuableSetup), members.js merely calls it", "checked_against": "docs/design.md L351-353", "result": "pass - verbatim" },
+      { "id": "S6", "claim": "F1 ZH: same attribution in Chinese", "checked_against": "docs/design.zh-CN.md L299-301", "result": "pass - faithful mirror" },
+      { "id": "S7", "claim": "F1 SOURCE-TRUE, not just reworded", "checked_against": "lib/harness-compat.js + lib/members.js", "result": "pass - harness-compat.js:66 defines installContinuableMemberSetup (L68/L72 use runtime.registerContinuableSetup); members.js:21 imports and :323 calls it" },
+      { "id": "S8", "claim": "F2: the §8b scratch-directory bullet is gone", "checked_against": "both documents", "result": "pass - grep -n '_work/' prints nothing (was 1 per file)" },
+      { "id": "S9", "claim": "§8b keeps only durable bullets", "checked_against": "docs/design.md L558-584", "result": "pass - rename/role (L558-562) + composition-evidence-not-load (L569) + hash-perishable fact base (L575) + knob-count/slot authority (L580)" },
+      { "id": "S10", "claim": "the deletion damaged no protected content", "checked_against": "both documents", "result": "pass - grep -c 'mpd_workmate_' = 10 in EACH file" },
+      { "id": "S11", "claim": "mpd-workmate serves the six documented routes", "checked_against": "packages/mpd-workmate-plugin/src/index.ts", "result": "pass - L823/835/853/868/888/902" },
+      { "id": "S12", "claim": "watchdog tools session-watchdog-hold/-resume/-status", "checked_against": "packages/mpd-team-watchdog-plugin/src/actions.ts", "result": "pass - L26-28, registered L158/200/225" },
+      { "id": "S13", "claim": "skills registered at rank 600 'bundled'", "checked_against": "packages/mpd-bootstrap-plugin/src/index.ts", "result": "pass - L47 / L312" },
+      { "id": "S14", "claim": "AgentTeams tab id mpd-agent-teams, order 85", "checked_against": "packages/mpd-bundle-plugin/src/team-page.js", "result": "pass - L36-37" },
+      { "id": "S15", "claim": "zh is a translation with the same section tree", "checked_against": "both documents", "result": "pass - identical ## tokens, 14/14 and 5/5, 7477 CJK chars vs English" },
+      { "id": "S16", "claim": "no non-existent slash command claimed", "checked_against": "both documents", "result": "pass - grep '`/roster`' exits 1 in both" }
+    ]
+  },
+  "point4_twin": {
+    "status": "pass",
+    "section_tokens": "EN 0 0b 1 2 3 4 5 6 6b 6c 7 7b 8 8b == ZH (identical sequence)",
+    "counts": { "##": "14 / 14", "###": "5 / 5" },
+    "language": "EN English; ZH 7477 CJK chars; the changed F1 region is mirrored faithfully in both"
+  },
+  "point5_fixes_verified": {
+    "F1": "FIXED and SOURCE-TRUE (EN L351-353 / ZH L299-301; proof S7). Closed.",
+    "F2": "FIXED by deletion of the §8b bullet from both languages; protected mpd_workmate_ content untouched (10 per file). Closed. The deletion is a stronger fix than my report suggested (repoint/or drop); the raw/ files I verified in pass 1 remain the real content and the document no longer asserts anything about a scratch directory it does not control."
+  },
+  "acceptance": {
+    "switch_links_and_real_content": "passed",
+    "row_coverage_both_directions": "passed (27/27 both documents)",
+    "sampled_claims_checked_with_evidence": "passed (16 samples, all clean on this revision)",
+    "twin_is_a_translation_and_trees_compared": "passed",
+    "evidence_written": "passed"
+  },
+  "limits": [
+    "Read-only seat: no document was edited; only evidence was written.",
+    "No boot, no dump-config, therefore NO LOAD CLAIM anywhere in this verdict.",
+    "Harness-version behaviour claims are not verifiable from any local file and were not sampled.",
+    "Anchored to the hashes in hash_sandwich; any later edit to the pair supersedes this verdict."
+  ]
+}

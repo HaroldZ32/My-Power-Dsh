@@ -3,7 +3,7 @@
 [English](user-guide.md) | **中文**
 
 按使用顺序，覆盖安装 my-power-dsh bundle 并在日常工作中使用它所需的一切。想先看简版请看
-[README](../README.zh-CN.md)；想了解内部原理请看 [architecture.zh-CN.md](architecture.zh-CN.md)。
+[README](../README.zh-CN.md)；想了解内部原理请看 [详细设计文档](design.zh-CN.md)。
 
 ## 1. 安装
 
@@ -108,7 +108,7 @@ node scripts/install-profile.mjs            # --dry-run 只打印计划，不写
 
 | 你想做的事 | 工具 | 说明 |
 |---|---|---|
-| 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（定义、引用、诊断、重命名）、`mcp__codegraph__*`（项目代码图）、`mcp__git_bash__*`（shell） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现 |
+| 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（定义、引用、诊断、重命名）、`mcp__codegraph__*`（项目代码图） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现。第四个家族 `mcp__git_bash__*` **默认不可用**：它的行自带 `disabled: true`（上游服务器仅支持原生 Windows），因此普通会话里不会出现这类工具 —— 想启用就在 `packages/mpd-bundle/cordis.patch.yml` 中把该行的 `disabled:` 改成 `false`，然后重新安装 bundle。 |
 | 安全地修改 | 写入守卫与输出截断（无需配置）、`mpd_hashline_read/edit/format/restore`、`mpd_comment_check` | 哈希锚定编辑在锚点过期时会拒绝写入，而不是写到错误的行 |
 | 推进长任务 | `mpd_ulw`（轻量）/ `mpd_ultrawork`（完整纪律：计划关卡、执行轮次、验证关卡），或等价的 `/ulw <objective>` / `/ultrawork <objective>` 命令、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | 两个命令会注入 ULW 自治指令 —— 该运行不向用户提问，并在工作确需团队时自行建队；`mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
 | 保存记忆 | `mpd_memory_write/read/reflect/reflect_complete/status`、`mpd_memory_save/recall` | 版本库后端可以是 git 或 svn；`mpd_memory_save/recall` 是简单的键值层 |
@@ -119,6 +119,8 @@ node scripts/install-profile.mjs            # --dry-run 只打印计划，不写
 | 扩展本 bundle | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` | 见 §10 |
 | 解析模型路由 | `mpd_modelchain_resolve` | 解析某位专家会使用的 provider/model |
 | 查看已结束团队 | `mpd_team_compact_run`、`mpd_team_compact_status` | 已完结团队的压缩审计 |
+
+上表中每个家族在 §13 都有可直接照抄的调用示例，全部斜杠命令列在 §12。
 
 ## 4. 专家（名册）
 
@@ -223,6 +225,27 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
   workmate，而不是硬用。
 - **扩展 role 不是团队成员**：扩展可以贡献一个能被 `mpd_role_spawn` / `mpd_role_persona` 使用
   的 role，但团队成员列表是静态的 patch 配置，所以扩展 role 永远不会成为队友（见 §10）。
+
+### 调用形态
+
+两种批准模式就是两条入口，它们的差别只在 `approval` 这一个字段：
+
+```text
+# 两阶段（推荐）：先暂存计划、审阅后再批准 —— 在此之前什么都不会运行
+agent_teams_create { "name": "docs-wave", "description": "README + 使用者指南 overhaul", "profile": "mpd", "approval": "required" }
+agent_teams_approve { "confirmation": "approved — go ahead" }   # 只在你批准之后调用
+# 无人值守：同一次调用里既暂存又 spawn（省略 `approval` 时的默认值）
+agent_teams_create { "name": "quick-fix", "description": "修掉失效的文档链接", "profile": "mpd", "approval": "automatic" }
+```
+
+计划处于暂存状态时，captain 用 `agent_teams_add_member`、`agent_teams_create_task` 与
+`agent_teams_edit_plan`（一个有序的 `operations` 批次）来塑造它；计划开始运行后，队长用
+`agent_teams_status`、`agent_teams_send_message` 与 `agent_teams_reassign_task` 推动它。§13.1 是
+可照抄的完整走法 —— 覆盖每一种批准模式、成员/任务编辑、改派、换波以及收尾路径。
+
+**`agent_teams_halt` 不是一个工具。** 暂停是 Web 上 **Stop-team** 控件触达的机制（看门狗的
+`session-watchdog-*` 是一套独立的内层暂停实现），被暂停的团队用
+`agent_teams_resume { "reason": "…" }` 继续。
 
 ## 7. DSH-TUI 版本（终端界面）
 
@@ -336,6 +359,37 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 `codegraph.*` 键。它的行在 `packages/mpd-bundle/cordis.patch.yml` 中自带 `autoInit: true` 与
 `initTimeoutMs: 60000`。
 
+### 9.1 保存的旋钮何时生效
+
+这是使用者最容易搞错的一点，所以逐个旋钮说清楚。总规则：消费方在 **挂载**（`apply()`）时通过
+`mpdConfig` 服务读取配置，因此一个变化了的值 —— 无论是手工编辑 `.mpd/mpd.jsonc` 或
+`$DSH_HOME/mpd.jsonc`，还是通过 **设置 → MPD** / TUI 的 `/settings` 界面保存 —— 要等
+**`dsh` 重启**之后才会改变插件的**行为**。
+
+有两件事不必等这次重启，而且都很有用：
+
+- **回读永远是即时的。** `mpd_config_get` 与 `mpd_config_reload` 每次调用都重新读取各层并立刻报告
+  新的解析值 —— 这是你确认编辑确实落地的办法，即使已挂载的插件仍持有它挂载时捕获的值。
+- **`watchdog.*` 是实时重读的。** 看门狗在挂载时、收到 settings 文档更新时、以及每个 tick 都会
+  重新解析自己的旋钮，所以文件改动在**本进程内**即可生效、无需重启；
+  `session-watchdog-status` 会打印每个旋钮的 LIVE vs FILE 取值以及 `restartRequired` 标志。
+
+| 旋钮 | 谁读取 | 何时读取 | 何时生效 |
+|---|---|---|---|
+| `hashline.*` | mpd-hashline | 挂载时 | `dsh` 重启后 |
+| `commentChecker.*` | mpd-comment-checker | 挂载时 | 重启后 |
+| `ulw.*` | mpd-ulw | 挂载时 | 重启后 |
+| `memory.*` | mpd-memory | 挂载时 | 重启后 |
+| `boulder.dir` | mpd-boulder | 挂载时 | 重启后 |
+| `modelchain.*` | mpd-modelchain | 挂载时 | 重启后 |
+| `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
+| `team.stateDir` | 本 bundle 自己的 web 路由，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。agent-teams 插件自身的状态目录来自 patch 行选项 `stateDir: .mpd/team` —— 改**它**需要改行并重启 |
+| `teamModels.slot{1,2,3,4}.*` | agent-teams，在团队**暂存**时解析 | 每次 `agent_teams_create` | 你创建的下一个团队：设置保存会建立文件监听并重新读取，因此无需重启；如果是手工编辑文件，先调用一次 `mpd_config_reload`（或重启）让服务重新读取再暂存 |
+| `watchdog.*` | mpd-team-watchdog | 挂载时、settings 更新时、每个 tick | 实时生效 —— 无需重启 |
+
+`mpd-codegraph` 的旋钮是反证这条规则的例外：它们是 patch 行选项（`autoInit`、`initTimeoutMs`、
+`cooldownMs`、`binary`），只能改行并重新安装。
+
 ## 10. 从使用者视角看扩展
 
 扩展接口让一个包 —— 或一个普通目录 —— 在不改动 bundle 的前提下，为你的 DSH 环境增加 skill、
@@ -431,3 +485,218 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # 从一个可工作的骨�
   → 已安装的 harness 改变了 `dsh-persona` 契约（它接受 `prefix`，而不是已退休的 `text`），于是
   拒绝挂载整个 preset。更新 bundle（`git pull`，然后 `dsh plugin --profile <p> add <repo>`）
   —— 这是 harness 版本兼容性修复，不是你这边配置的问题。
+- **缺少 `mcp__git_bash__*` 工具** → 这是预期行为而非故障：`mcp-gitbash` 行自带
+  `disabled: true`（上游服务器仅支持原生 Windows）。请改用 harness 自带的 `bash` 工具，或把该行
+  改成 `disabled: false` 并重新安装 bundle。
+- **保存的旋钮没有生效** → 插件在挂载时捕获配置：重启会话。`mpd_config_get` 显示新值**不等于**
+  正在运行的插件已经在按它行动（§9.1 说明了哪些旋钮是实时生效的）。
+- **升级后某个文档链接 404** → 本次发布**重命名**了设计文档（它原名 `architecture.md`，
+  `docs/design.zh-CN.md` 是当前名称的中文版），因此旧版文档副本指向的文件已不存在。重新安装 bundle
+  （`git pull`，然后 `dsh plugin --profile <p> add <repo>`）即可拿到重新指向后的文档对。
+
+## 12. 命令参考
+
+会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的六条命令**
+（`mpd-ulw` 注册 `/ulw` 与 `/ultrawork`，`mpd-codegraph` 注册 `/mpd-codegraph`，`mpd-tui` 注册
+`/mpd`，采纳的 `agent-teams` 插件注册 `/agent-teams` 与 `/agent-teams-mpd`），以及本 bundle 只是
+**记录**的两条 **宿主命令** —— `/settings`（宿主 TUI 设置界面，其 MPD 区块由本 bundle 扩展）与
+`/goal`（宿主 goal 命令，由 `mpd` preset 挂载）。除此之外没有别的命令 —— 特别地，**不存在
+`/roster` 命令**：名册要通过 `mpd_roles_list` 工具访问。
+
+| 命令 | 作用 | 可用位置 |
+|---|---|---|
+| `/ulw <objective>` | 针对该目标启动 ultrawork 循环 —— 与 `mpd_ulw` 同一引擎，使用较轻的默认档位 | Web + TUI |
+| `/ultrawork <objective>` | 与 `/ulw` 完全相同（两者都会把 ULW 激活指令作为你的下一条用户消息提交） | Web + TUI |
+| `/mpd-codegraph` | 解析 codegraph 二进制并在 `.codegraph/` 下初始化/刷新项目索引 | Web + TUI |
+| `/agent-teams` | 驱动本会话的团队界面 —— 与 AgentTeams 标签页同一个领域 | Web + TUI |
+| `/agent-teams-mpd` | 为 `mpd` profile 键生成的同一条命令：暂存一个由 captain 规划的团队 | Web + TUI |
+| `/mpd` | TUI 上覆盖 bundle 状态的命令树：裸 `/mpd` 打开选择器，`/mpd <value>` 直接进入，`/mpd status` 打印摘要 | **仅 TUI** —— 在 Web 下注册被拒绝，什么都不会暴露 |
+| `/settings` | 宿主的设置界面；MPD 区块编辑你的 `mpd.jsonc` | **仅 TUI** |
+| `/goal` | 宿主的 goal 命令，由 `mpd` preset 挂载（Web overlay 会禁用宿主自带的 `tool-goal` / `command-goal` 行，因此由 preset 承载） | Web + TUI |
+
+命令名之后是自由文本形式的目标。不带目标的裸 `/ulw` 会打印用法、不会启动任何东西；在无法裁决命令
+的表面（headless 运行）上，同样的文本会作为指令提交。
+
+## 13. 配方：可直接照抄的调用
+
+下列每一段都是你或你的智能体真正输入的原文；工具参数是 JSON，工具名是稳定的。这就是"到底怎么
+调用"的那一节：当你需要某种具体行为时，直接照着要这个调用。
+
+### 13.1 团队：覆盖每一种批准模式
+
+```text
+# (a) 两阶段 —— 先暂存计划，在 Web 计划面板审阅，然后批准
+agent_teams_create { "name": "docs-wave", "description": "README + user-guide overhaul", "profile": "mpd", "approval": "required" }
+agent_teams_add_member { "name": "Senior Engineer", "role": "Senior Engineer" }
+agent_teams_create_task { "subject": "重写安装章节", "description": "覆盖两个 profile 与打包产物。", "kind": "implementation", "assignee": "Senior Engineer", "objective": "用户能用一条命令从检出目录安装。", "inScope": ["README.md"], "outOfScope": ["docs/**"], "acceptance": ["安装命令是可直接照抄的字面命令。"], "verify": ["bun run verify:docs"] }
+agent_teams_edit_plan { "operations": [ { "action": "update_task", "task_id": "t1", "assignee": "Deep Worker" }, { "action": "add_task", "subject": "验证 README 文档对", "kind": "verification" }, { "action": "remove_member", "member_name": "Researcher" } ] }
+agent_teams_approve { "confirmation": "approved — go ahead" }   # 只在你批准之后调用
+
+# (b) 无人值守 —— 同一次调用里既暂存又 spawn（省略 `approval` 时的默认值）
+agent_teams_create { "name": "quick-fix", "description": "修掉失效的文档链接", "profile": "mpd", "approval": "automatic" }
+
+# (c) 推动一个正在运行的团队
+agent_teams_status {}
+agent_teams_send_message { "to": "Senior Engineer", "content": "先落 README 的修改，再做使用者指南。" }
+agent_teams_reassign_task { "task_id": "t4", "assignee": "Deep Worker", "reason": "Senior Engineer 正在做设计文档" }
+agent_teams_remove_member { "name": "Junior Engineer" }
+agent_teams_rollover { "wave_label": "w2", "reason": "wave 1 已合并" }
+
+# (d) 收尾
+# AgentTeams 标签页里的 Stop-team 会暂停一个运行中的团队；`agent_teams_halt` 不是可调用的工具。
+agent_teams_resume { "reason": "用户重新批准了计划" }
+agent_teams_delete {}
+```
+
+`kind` 取值是 `work`、`requirements`、`implementation`、`verification`、`review`、`repair`、
+`integration` 之一。质量类任务必须同时给出契约（`objective` + `acceptance`，实现/修复还要
+`inScope` 与 `verify`），否则调用会被拒绝；每个任务的 `subject` 都不能为空。
+`agent_teams_edit_plan` 只接受**一个**有序的 `operations` 批次，其 `action` 为 `update_member`、
+`update_task`、`add_task`、`remove_task`、`remove_member` —— 先改下游的依赖/负责人，再删除任何东西。
+
+### 13.2 ULW 循环与它的关卡
+
+```text
+mpd_ulw { "objective": "Make every link in the doc pair resolve" }
+mpd_ultrawork { "objective": "Rewrite the install chapter", "tier": "heavy", "strictReview": true, "maxRounds": 4 }
+/ulw Make every documented command resolve to a real registration
+```
+
+`mpd_ulw` 是轻量别名（档位 `light`、不写计划文件）；`mpd_ultrawork` 跑完整纪律：可选的对抗式
+hyperplan 波、使用计划文件时的**计划关卡**（planner + plan review）、按标准逐项推进的执行轮次
+（PIN → RED → GREEN → SURFACE → CLEAN）、当存在计划且（`tier: "heavy"` 或 `strictReview`）时的
+**验证关卡**（momus 复审，最多 2 次再复审），最后是带逐泳道台账的**最终质量关卡**。状态与台账位于
+`.mpd/ulw/<id>`。被激活的运行不会向你提问：它先做三角定位，在工作确需团队时自行建队，然后走完
+各道关卡才收尾。
+
+### 13.3 专家（一次性子智能体）
+
+```text
+mpd_roles_list {}
+mpd_role_spawn { "role": "Reviewer", "task": "按契约审查 docs/user-guide.md，只报告问题。", "context": "契约要求每个工具家族都有字面调用示例。" }
+mpd_role_persona { "role": "Architect" }
+```
+
+`role` 按功能**名字**应答（`Architect`、`deep worker`、`plan-reviewer`）。只读角色在 spawn 时会
+带上针对恰好 `write`、`edit`、`mpd_hashline_edit`、`bash`、`mcp__ast_grep__rewrite`、
+`mcp__ast_grep__scan`、`mcp__lsp__rename` 的禁用过滤 —— 这套纪律是机械强制的，不是口头约定。
+
+### 13.4 workmate 库
+
+```text
+mpd_workmate_match { "task": "review a bilingual doc pair for parity" }
+mpd_workmate_init { "base": "Reviewer", "name": "doc-reviewer", "note": "bilingual doc parity reviews" }
+mpd_workmate_spawn { "name": "doc-reviewer", "task": "审查这份使用者指南对。", "context": "EN 与 zh-CN 必须逐节一致。" }
+mpd_workmate_reflect { "name": "doc-reviewer", "task": "guide review", "outcome": "发现 2 个失效链接；双语文档一致" }
+mpd_workmate_list {}
+mpd_workmate_rename { "name": "doc-reviewer", "new_name": "docs-reviewer" }
+mpd_workmate_delete { "name": "docs-reviewer" }                       # 先归档
+mpd_workmate_delete { "name": "docs-reviewer", "purge": true, "confirm": "docs-reviewer" }
+```
+
+`base` 是功能名；`name` 可省（会据此自动生成）。`mpd_workmate_match` 匹配很弱就意味着新建一个
+workmate —— 绝不硬用弱匹配。workmate 正被团队或进行中的 spawn 使用时，这两个变更操作都会被拒绝。
+
+### 13.5 哈希锚定编辑
+
+```text
+mpd_hashline_read { "path": "docs/user-guide.md" }        # 每个源文件行打印一行 LINE#HASH|content
+mpd_hashline_edit { "path": "docs/user-guide.md", "edits": [ { "op": "replace", "pos": "7#ab12", "lines": "…" }, { "op": "replace", "pos": "9#cd34", "end": "11#ef56", "lines": ["…", "…"] }, { "op": "append", "pos": "20#0a1b", "lines": "…" } ] }
+mpd_hashline_format { "path": "docs/user-guide.md" }      # 把该文件登记进这套纪律
+mpd_hashline_restore { "path": "docs/user-guide.md" }     # 取消登记（文件本身不被改动）
+```
+
+锚点来自 `mpd_hashline_read`，也是 `mpd_hashline_edit` 唯一接受的东西：如果自那次读取之后文件变了，
+编辑会被**拒绝**并给出重新映射后的引用，而不是写到错误的行上。`pos`/`end` 形如 `LINE#HASH`；
+`lines` 可以是字符串或字符串数组。
+
+### 13.6 boulder 台账
+
+```text
+mpd_boulder_plans {}
+mpd_boulder_start { "planPath": ".mpd/plans/docs-wave.md" }
+mpd_boulder_task_timer { "workId": "<work id>", "taskKey": "1", "action": "start", "taskTitle": "重写 README" }
+mpd_boulder_plan_progress { "planPath": ".mpd/plans/docs-wave.md" }
+mpd_boulder_status {}
+mpd_boulder_complete { "workId": "<work id>" }
+```
+
+一次 boulder 把会话绑定到某个计划 markdown 文件，让长任务能跨重启存活；`workId` 默认是当前活跃的
+work，`taskKey` 是计划自己的清单编号（`1`、`F1`……），`action` 取 `start` 或 `end`。
+
+### 13.7 记忆
+
+```text
+mpd_memory_save { "key": "docs-wave-branch", "value": "feature/docs-wave" }
+mpd_memory_recall { "key": "docs-wave-branch" }
+mpd_memory_write { "title": "文档波次的决策", "content": "设计文档现在就是架构章节", "kind": "note", "tags": ["docs"] }
+mpd_memory_read { "query": "doc wave", "limit": 5 }
+mpd_memory_status {}
+mpd_memory_reflect {}
+mpd_memory_reflect_complete { "title": "文档波次", "content": "…" }
+```
+
+`mpd_memory_write` / `mpd_memory_read` 是版本库后端的存储（§9 中的 `memory.vcs`）；
+`mpd_memory_save` / `mpd_memory_recall` 是简单的键值层。`mpd_memory_status` 打印计数器，待办的反思
+用 `mpd_memory_reflect_complete` 收尾。
+
+### 13.8 扩展
+
+```text
+mpd_ext_list {}
+mpd_ext_show { "id": "mpd-ext-example" }
+mpd_flow_list {}
+mpd_flow_show { "id": "<flow id>" }
+```
+
+```bash
+bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example    # 退出码 1 + 每个问题一行
+bun scripts/mpd-ext.mjs list
+bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp --with-mcp
+```
+
+### 13.9 `agent_teams_*` 的调用回路（队长与成员）
+
+```text
+# 队长 / captain
+agent_teams_status {}
+agent_teams_task_contract { "task_id": "t5" }                    # 单个 id，或用 "t5,t6,t8" 批量读取
+agent_teams_path_owner { "path": "docs/user-guide.md", "open_only": true }
+agent_teams_move_path { "path": "docs/user-guide.md", "to_task": "t5" }
+agent_teams_send_message { "to": "captain", "content": "t5 需要设计文档的链接目标。" }
+agent_teams_mailbox_check { "recipient": "captain", "content": "…" }   # 发送前的重复检查
+agent_teams_mailbox_clear { "watermark": 1758276000000, "agent": "captain" }
+agent_teams_interject_request { "summary": "…", "reason": "…", "location": "docs/user-guide.md:7" }
+agent_teams_interject_decide { "request_id": "<id>", "decision": "approved" }
+
+# 成员
+agent_teams_claim_task { "task_id": "t5" }                       # 返回 attempt id
+agent_teams_update_task { "task_id": "t5", "status": "in_progress", "attempt_id": "<attempt id>" }
+agent_teams_update_task { "task_id": "t5", "status": "completed", "attempt_id": "<attempt id>", "changedPaths": ["docs/user-guide.md"], "acceptanceResults": [ { "criterion": "…", "status": "passed", "evidence": "…" } ], "commandsRun": [ { "command": "bun run verify:docs", "status": "passed", "exitCode": 0 } ] }
+```
+
+每次更新都要带上 `agent_teams_claim_task` 返回的 `attempt_id`；任务被改派后旧 id 会被拒绝。工作结果
+要申报自己改动的路径（`changedPaths`），质量类任务还要按契约顺序提交 `acceptanceResults` 与
+`commandsRun` —— 审查类任务只有 `verdict: "pass"` 才能完成。`agent_teams_claim_task` 是成员用的，
+队长用 `agent_teams_reassign_task` 分配。
+
+## 14. 这些能力的来源
+
+给使用者看的归属事实，说清楚哪些是别人的工作、哪些是本项目的。带完整许可证正文的权威记录是
+[`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md)。
+
+| 你使用的功能 | 来源 | 许可 / 版本 | 记录位置 |
+|---|---|---|---|
+| 团队模式 —— `agent_teams_*`、调度器、AgentTeams 标签页 | **dsh-agent-teams**，作者 程序员阿江（Relakkes）—— 整体采纳，作为一等主代码 | MIT；采纳版本 `0.1.16-rc.3-mpd`（`0.1.14` 主体 + 回移的 `0.1.16-rc.3` 增量） | `LICENSE-NOTICES.md`；许可证正文在 `packages/mpd-agent-teams-plugin/LICENSE`；patch 行 `agent-teams` |
+| 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20） | SUL-1.0 —— 本仓库继承的许可证 | `LICENSE-NOTICES.md` §1；`VENDOR_LOCK.json` |
+| 随包服务的技能语料（18 个技能、326 个有指纹的文件） | 从上游 oh-my-openagent 整体搬运 | SUL-1.0 | `VENDOR_LOCK.json` `assets.skills` |
+| `mcp__ast_grep__*` | **ast-grep** —— 可选依赖 `@ast-grep/cli` | MIT；`0.45.2`；运行时解析，不再分发 | `package.json` 的 `optionalDependencies`；`MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
+| `mcp__codegraph__*` 与 `mpd-codegraph` 行 | **codegraph**，作者 Yeongyu Kim —— 可选依赖 `@colbymchenry/codegraph` | MIT；`1.5.0`；预构建服务器已搬运并做 sha256 固定 | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`；`VENDOR_LOCK.json` |
+| `mpd_comment_check` | **comment-checker**，作者 code-yeongyu（`@code-yeongyu/comment-checker`） | MIT；`0.8.0`；**不**随包分发 —— 按需安装到 `.toolchain`（`--with-comment-checker`） | `LICENSE-NOTICES.md`；`MPD_DSH_COMMENT_CHECKER_BIN` |
+| 插件系统、工具 / 技能 / preset / agent 接缝、模型 provider、Web 外壳 | DeepSeek Harness —— **`@deepseek-ai/*`** 包 | MIT；仅作为依赖引用 | `LICENSE-NOTICES.md` |
+| AgentTeams 与 Workmates 两个侧边栏标签页 | 由社区 bundle **`dsh-better-sidebar`** 承载；没有它两个页面各打印一条警告且什么都不注册，但工具仍然可用 | — | 见上文 §8 |
+| DSH 接线（adapter、运行时插件、`mpd` preset、合并后的 Web 客户端）、TUI 版本、QA 套件、文档、扩展接口 | 本项目自己编写 | SUL-1.0 | `README.md`（鸣谢）；`LICENSE.md` |
+
+有两条值得记住的结论：组件即使在 bundle 内也各自保留**自己的**许可证（被采纳的 `agent-teams`
+主代码是 MIT，而本仓库是 SUL-1.0）；本 bundle 也从不配置你的 provider 凭据 ——
+`MISSING_CREDENTIAL` 属于你的 DSH 凭据存储，而不是这些文档该负责的事。

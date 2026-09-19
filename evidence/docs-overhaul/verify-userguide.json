@@ -1,0 +1,99 @@
+{
+  "task": "t8 — Verify the user guide pair: commands callable, links resolve, twin consistent, README non-contradicting",
+  "kind": "verification",
+  "verifier": "Plan Reviewer",
+  "attempt": 3,
+  "attempt_id": "f0e10df6-7c23-49fe-bd08-f24cbd3c50a7",
+  "subjects": ["docs/user-guide.md", "docs/user-guide.zh-CN.md"],
+  "pinned_hashes": {
+    "docs/user-guide.md": "sha256:0a3b269046167e06f116f713196440d4451cc15955c2eec00dd473b5e04465f3 (762 lines)",
+    "docs/user-guide.zh-CN.md": "sha256:49664178531496c29e65f18ad03bf7c6c1248dd2501fbc613503e943472673f7 (698 lines)"
+  },
+  "settle_recheck": "Both hashes re-read after a 50 s settle window: UNCHANGED (identical byte-for-byte). All checks below are anchored to these two hashes.",
+  "gates_run": [
+    {"command": "node scripts/verify-docs-parity.mjs", "exit": 0, "observed": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS; docs/user-guide.md ok"},
+    {"command": "node scripts/verify-rows-parity.mjs", "exit": 0, "observed": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams ... mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)"}
+  ],
+  "check_1_twin_and_language": {
+    "verdict": "passed",
+    "switch_links": ["docs/user-guide.md:3 -> user-guide.zh-CN.md (exists)", "docs/user-guide.zh-CN.md:3 -> user-guide.md (exists)"],
+    "heading_trees": "35 headings each (title + 14 numbered sections + 20 subsections), level-for-level and number-for-number identical; computed with code fences excluded (a fence-inclusive grep over-counts: 8 '# ...' shell comments per file)",
+    "structure_parity_signals": {"table_rows": "92 / 92", "code_fences": "46 / 46", "token_sets": "349 EN vs 352 ZH backticked tokens; the only differences are the twin FILENAMES (tui.md vs tui.zh-CN.md) and two multi-line-span artifacts of the EN troubleshooting bullet"},
+    "own_language_content": "ZH body is Chinese prose (checked §1-§14 in place); the docs gate (exit 0) independently enforces real CJK content per pair"
+  },
+  "check_2_names_against_repository": {
+    "verdict": "failed",
+    "why": "ONE documented name does not exist in the repository: the tool-argument key 'memberName' in the §13.1 literal agent_teams_edit_plan recipe (both twins). Every other documented command/tool/settings name was found.",
+    "commands": [
+      {"documented": "/ulw", "where": "user-guide.md:122,558,567,615", "registered_at": "packages/mpd-ulw-plugin/src/index.ts (registerCommand name 'ulw', paired with 'ultrawork')", "verdict": "present"},
+      {"documented": "/ultrawork", "where": "user-guide.md:559,614", "registered_at": "packages/mpd-ulw-plugin/src/index.ts (same call site)", "verdict": "present"},
+      {"documented": "/mpd-codegraph", "where": "user-guide.md:560", "registered_at": "packages/mpd-codegraph-plugin/src/index.ts (registerCommand name 'mpd-codegraph')", "verdict": "present"},
+      {"documented": "/agent-teams", "where": "user-guide.md:561", "registered_at": "packages/mpd-agent-teams-plugin/lib/command.js (AGENT_TEAMS_COMMAND = 'agent-teams')", "verdict": "present"},
+      {"documented": "/agent-teams-mpd", "where": "user-guide.md:562", "registered_at": "packages/mpd-agent-teams-plugin/lib/command.js (generated per configured profile key); this team's live status reports Profile: mpd, so the generated key is mpd", "verdict": "present"},
+      {"documented": "/mpd", "where": "user-guide.md:336-342,563", "registered_at": "packages/mpd-tui-plugin/src/command-trees.ts (COMMAND_ROOT = 'mpd'; COMMAND_ACTIONS = board|team|plan|workmates|status — matches 'bare opens the picker, <value> goes direct, status prints the summary')", "verdict": "present"},
+      {"documented": "/settings", "where": "user-guide.md:564", "registered_at": "host TUI screen owned by the host, exactly as the table states; the bundle contributes the namespace and the section (packages/mpd-tui-plugin/src/settings.ts, registerSettingsSection / SETTINGS_SECTION)", "verdict": "present (host-owned)"},
+      {"documented": "/goal", "where": "user-guide.md:565", "registered_at": "host command mounted by the preset: presets/mpd/agent.cordis.yml rows 'command-goal' (@deepseek-ai/dsh-command-goal) and 'tool-goal' — matching the doc's 'the Web overlay disables the host rows, so the preset carries both'", "verdict": "present"},
+      {"documented": "/roster (NEGATIVE claim: 'there is no /roster command')", "where": "user-guide.md:554", "registered_at": "verified absent: no registerCommand in packages/*/src names roster. The only roster surface is the WEB ROUTE /plugins/mpd-workmate/roster (packages/mpd-bundle-plugin/src/team-page.js), not a slash command", "verdict": "correctly reported absent"}
+    ],
+    "tools": {
+      "mpd_*": "39 documented, 39 registered: hashline(4), comment_check(1), ulw/ultrawork(2), boulder(6), memory(5), memory_save/recall(2), roles(3), workmate(7), config(2), ext/flow(4), modelchain_resolve(1), team_compact(2) — all found by name: 'mpd_*' in packages/*/src (no documented mpd_* name missing, no registered mpd_* tool undocumented)",
+      "session-watchdog-*": "3 documented (hold/resume/status) and 3 registered in packages/mpd-team-watchdog-plugin/src",
+      "agent_teams_*": "21 documented, 21 registered: lib/tool-names.js TEAM_TOOL_NAMES + the three delta-region tools agent_teams_interject_request (tools.js:3097), agent_teams_interject_decide (tools.js:3158), agent_teams_mailbox_clear (tools.js:3229)",
+      "agent_teams_halt": "documented as NOT a callable tool (user-guide.md:269-271,598) — VERIFIED: it is the PAUSE MECHANISM constant and status text (lib/tools.js PAUSE_MECHANISM), not a registered tool name in tool-names.js or tools.js",
+      "mcp__git_bash__*": "documented as not available by default (user-guide.md:120,540-542) — VERIFIED: row '- id: mcp-gitbash' in packages/mpd-bundle/cordis.patch.yml carries disabled: true",
+      "mcp__ast_grep__* / mcp__lsp__* / mcp__codegraph__*": "rows mcp-astgrep / mcp-lsp / mcp-codegraph are three of the 25 inserted rows asserted by verify-rows-parity (exit 0)"
+    },
+    "settings_keys": {
+      "verdict": "every documented key exists in source",
+      "checked": ["hashline.maxDiffChars/guardEditTools/registryFile", "commentChecker.autoCheck/bin/timeoutMs/maxMessageChars", "ulw.maxRounds/planDir/stateDir/reviewerModel/maxReReviews", "memory.vcs/dir/agentSlug/reflectionEvery", "boulder.dir", "team.stateDir", "modelchain.*", "teamModels.slot1..slot4.{provider,model,reasoningEffort}", "extensions.enable/disable/mcp.connectTimeoutMs/toolCallTimeoutMs", "watchdog.{enabled,warnSilenceMs,tickIntervalMs,warnStreakToEscalate,actionOnEscalate,toolInFlightMaxMs,holdTtlMs}"],
+      "evidence": "each key name resolves in packages/*/src (e.g. warnSilenceMs 6 files, toolInFlightMaxMs 7, maxDiffChars 4, agentSlug/reflectionEvery 2 each); the schema itself is packages/mpd-config-plugin/src/settings-schema.ts (SettingsSchema + SETTINGS_KNOBS)",
+      "25_knob_claim": "VERIFIED CORRECT: SettingsSchema declares 6 single-key sections + 7 watchdog leaves + teamModels 4x3 = 25; SETTINGS_KNOBS holds 13 base entries + the 12 TEAM_MODEL_KNOBS = 25 (settings-schema.ts:304-320)",
+      "four_slot_claim": "VERIFIED CORRECT: TEAM_MODEL_SLOTS = ['slot1','slot2','slot3','slot4'] (settings-schema.ts:15), slot4 = deepseek-v4-flash-vision-exp @ high",
+      "codegraph_negative_claim": "VERIFIED: no codegraph key is read by the config layer (grep of packages/mpd-config-plugin/src is empty), matching the doc's 'deliberately absent' note"
+    },
+    "finding": "T8-F1 (the failed item)"
+  },
+  "check_3_links": {
+    "verdict": "passed",
+    "links_per_file": 11,
+    "unresolved": 0,
+    "design_document_link": "docs/user-guide.md:7 -> design.md (exists); docs/user-guide.zh-CN.md:6 -> design.zh-CN.md (exists)",
+    "en_targets": ["user-guide.zh-CN.md", "../README.md", "design.md", "./tui.md", "tui.md x4", "extensions.md", "../LICENSE-NOTICES.md"],
+    "zh_targets": ["user-guide.md", "../README.zh-CN.md", "design.zh-CN.md", "./tui.zh-CN.md", "tui.zh-CN.md x4", "extensions.zh-CN.md", "../LICENSE-NOTICES.md"],
+    "method": "every markdown target resolved against the filesystem from the file's own directory (external schemes excluded; none present)"
+  },
+  "check_4_readme_cross_check": {
+    "verdict": "passed — 0 contradictions",
+    "compared": [
+      {"topic": "install commands", "guide": "user-guide.md:14-15,31,56-60,79-80", "readme": "README.md:51,66,92-94,103-104", "result": "identical commands and profiles"},
+      {"topic": "--profile required on every dsh plugin command", "guide": "user-guide.md:23-26", "readme": "README.md:99-100", "result": "same statement, same quoted host error text"},
+      {"topic": "uninstall residue", "guide": "user-guide.md:83-89 (nothing copied to DSH_HOME; workmate library + workspace .mpd/ survive)", "readme": "README.md:107-109", "result": "consistent"},
+      {"topic": "dsh-tui real-terminal requirement", "guide": "user-guide.md:48-51", "readme": "README.md:83-84", "result": "consistent (same error text)"},
+      {"topic": "third patch layer / dsh.profile.bundles", "guide": "user-guide.md:34-40,287-288", "readme": "README.md:69-74", "result": "consistent"},
+      {"topic": "state locations", "guide": "user-guide.md:165,206-211,360-361 (workmate library under ~/.mpd/workmate; workspace .mpd/ state)", "readme": "README.md:630-648", "result": "no contradiction; the guide is a subset of the README table"},
+      {"topic": "skill corpus size", "guide": "user-guide.md:751 (18 skills, 326 fingerprinted files)", "readme": "README.md:55 (18-skill corpus)", "result": "consistent; VENDOR_LOCK.json assets.skills.fileCount = 326"}
+    ],
+    "note": "The host-side claim 'error: required option \"--profile <name>\" not specified' is quoted identically in both documents; it is a host CLI message and is not falsified by anything in this repository (commander-style wording). Recorded as reported, not as independently measured."
+  },
+  "check_5_evidence": {
+    "verdict": "passed",
+    "output": "evidence/docs-overhaul/verify-userguide.json (this file), carrying the per-command check table"
+  },
+  "findings": [
+    {
+      "id": "T8-F1",
+      "severity": "high",
+      "file": "docs/user-guide.md:584 / docs/user-guide.zh-CN.md:528",
+      "problem": "The §13.1 literal recipe for agent_teams_edit_plan documents the parameter key 'memberName' in its remove_member operation. That key exists nowhere: the tool's schema declares 'member_name' and marks the operation object additionalProperties: false, and the executor reads only operation.member_name (packages/mpd-agent-teams-plugin/lib/tools.js — the remove_member branch reads member_name and throws '<label> requires member_name' when it is empty). §13 opens with 'Each block below is literally what you or your agent type', so the documented call is not callable: a user or agent pasting it gets a validation refusal or the plugin's 'requires member_name' error. The same line correctly uses snake_case 'task_id', which shows the file is otherwise following the schema.",
+      "requiredFix": "In BOTH twins replace \"memberName\": \"Researcher\" with \"member_name\": \"Researcher\" in the agent_teams_edit_plan example (docs/user-guide.md:584, docs/user-guide.zh-CN.md:528). Do not change the tool schema: 'member_name' is the frozen contract, and the same example line already uses 'task_id'."
+    },
+    {
+      "id": "T8-F2",
+      "severity": "low",
+      "file": "docs/user-guide.md:553 / docs/user-guide.zh-CN.md:499",
+      "problem": "The §12 preamble says 'Every slash command this bundle registers ... Nothing else exists', but the table it introduces also lists two commands the bundle does NOT register — /settings (host TUI screen, the bundle contributes only the namespace + section) and /goal (host command mounted by the preset). Each row is individually correct and attributive; only the preamble's scope sentence over-claims.",
+      "requiredFix": "Reword the preamble in both twins to name the two classes, e.g. 'Every slash command this bundle registers, plus the two host commands the mpd preset mounts, with where each one works. Nothing else exists — in particular there is no /roster command.'"
+    }
+  ],
+  "verdict": "failed — 1 high finding (T8-F1) blocks sign-off; the other four acceptance criteria pass, and the twin, the links and the README cross-check are clean"
+}

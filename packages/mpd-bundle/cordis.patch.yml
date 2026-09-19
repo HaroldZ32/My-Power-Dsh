@@ -252,7 +252,7 @@
     # four model-facing tools (mpd_ext_list / mpd_ext_show / mpd_flow_list / mpd_flow_show).
     # POSITION (bundle-patch change, plan [REV3] §1.4): after mpd-dsh-adapter and mpd-config,
     # directly above mpd-roles — its first consumer. Row order is deliberately NOT the
-    # dependency mechanism here (docs/architecture.md: a sibling-provided service is read
+    # dependency mechanism here (docs/design.md: a sibling-provided service is read
     # lazily at tool-execute time; the dependency mechanism that exists is `inject`), so the
     # row works anywhere in this band and the band documents the intended direction:
     #   · ABOVE mpd-dsh-adapter the row's apply-time `ctx.get("mpdDsh")` finds no mounted

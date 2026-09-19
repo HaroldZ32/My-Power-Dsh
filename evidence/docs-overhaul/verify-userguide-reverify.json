@@ -1,0 +1,61 @@
+{
+  "task": "t18 — Re-verify the repaired user-guide pair: recipe callable, §12 accurate, no regression",
+  "kind": "verification",
+  "verifier": "Plan Reviewer",
+  "attempt": 1,
+  "attempt_id": "045f643d-c469-4a1a-9e19-3d2ae476dcda",
+  "supersedes": "nothing — this is a NEW file; the first pass's failed verdict stays at evidence/docs-overhaul/verify-userguide.json (12499 B, sha256 2c3767ede16acbc3223093030692f577badf52ecbefe6304aec73ac85866aa77, mtime 2026-09-19 18:44:13 +0800, i.e. BEFORE the t17 repair), preserved as history",
+  "subjects": ["docs/user-guide.md", "docs/user-guide.zh-CN.md"],
+  "pinned_hashes": {
+    "docs/user-guide.md": "sha256:235d01eeb63da62d5792d47d9e06d03dee60fb02c8785fafd4f1f88579c84fb7 (767 lines, 50699 B, mtime 2026-09-19 18:46:06.973463928 +0800)",
+    "docs/user-guide.zh-CN.md": "sha256:5a4b1b6b2ce4f0ec8339b0408656cf69822883e37d72f6cd11e076c62bc8acb1 (702 lines, 50395 B, mtime 2026-09-19 18:46:17.310726822 +0800)"
+  },
+  "settle_and_sandwich": {
+    "T0": "2026-09-19T10:49:59Z",
+    "T1_after_60s_settle": "2026-09-19T10:50:59Z",
+    "T2_after_gates": "2026-09-19T10:52Z (re-hash immediately after both gates)",
+    "result": "sha256 AND size AND mtime IDENTICAL at all three samples for both files — the bytes judged are the bytes shipped, and they did not move during the read or during the gates"
+  },
+  "gates": [
+    {"command": "node scripts/verify-docs-parity.mjs", "exit": 0, "observed": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS; the pair line is `ok   docs/user-guide.md`"},
+    {"command": "node scripts/verify-rows-parity.mjs", "exit": 0, "observed": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)"}
+  ],
+  "T8_F1_closure": {
+    "criterion": "confirmed CLOSED by checking the SCHEMA, not the prose",
+    "schema_evidence": "packages/mpd-agent-teams-plugin/lib/tools.js — agent_teams_edit_plan parameters.operations.items declares `additionalProperties: false` (L856) and the property `member_name` (L863, 'Member name for update_member or remove_member'); the executor reads `operation.member_name` and refuses the operation when it is empty",
+    "document_evidence": {
+      "docs/user-guide.md": "L589 — ... { \"action\": \"remove_member\", \"member_name\": \"Researcher\" } ] }",
+      "docs/user-guide.zh-CN.md": "L532 — the same key, `member_name`",
+      "negative_check": "grep -n \"memberName\" docs/user-guide*.md → NO MATCHES (and a whole-docs/** sweep for the token also returns no matches)"
+    },
+    "verdict": "CLOSED — the documented key is exactly the schema key; the recipe is callable as written"
+  },
+  "T8_F2_closure": {
+    "criterion": "the §12 preamble names both command classes and does not claim that everything listed is bundle-registered",
+    "docs/user-guide.md": "L553-559: 'Every slash command a session can use ... The table carries two classes: the SIX commands this bundle contributes (mpd-ulw registers /ulw and /ultrawork, mpd-codegraph registers /mpd-codegraph, mpd-tui registers /mpd, and the adopted agent-teams plugin registers /agent-teams and /agent-teams-mpd), and the TWO HOST-provided commands the bundle only documents — /settings ... and /goal ...' + the /roster negative claim retained",
+    "docs/user-guide.zh-CN.md": "L499-504: the same two classes and the same negative claim in Chinese",
+    "supporting_source_rechecks": ["presets/mpd/agent.cordis.yml rows `command-goal` (L242) and `tool-goal` present → /goal is host-provided and preset-mounted, as the preamble says", "packages/mpd-tui-plugin/src/settings.ts provides SETTINGS_SECTION (L273) and registerSettingsSection (L309) → /settings is the host screen the bundle EXTENDS, as the preamble says"],
+    "verdict": "CLOSED — the over-claim is gone; the table rows themselves are unchanged (8 rows) and each row's 'Where' column still states its plane"
+  },
+  "regression_rechecks": {
+    "verdict": "clean — no regression introduced by the t17 repair",
+    "heading_trees": "35 headings in EACH file; the level sequence is IDENTICAL (level-for-level, order-for-order); 14 numbered top-level sections (1..14) in both",
+    "twin_parity": {"table_rows": "92 / 92", "code_fences": "46 / 46", "numbered_sections": "14 / 14"},
+    "links": "11 link instances per file, 0 dead in either (each target resolved against the filesystem from the file's own directory); the repointed design-document links (design.md / design.zh-CN.md) still resolve",
+    "switch_links": "docs/user-guide.md:3 -> user-guide.zh-CN.md and docs/user-guide.zh-CN.md:3 -> user-guide.md both resolve"
+  },
+  "per_command_table_changed_rows": [
+    {"command": "/ulw", "changed_by_t17": false, "row_state": "unchanged; registered by mpd-ulw-plugin (name 'ulw')", "verdict": "ok"},
+    {"command": "/ultrawork", "changed_by_t17": false, "row_state": "unchanged; same registration call site as /ulw", "verdict": "ok"},
+    {"command": "/mpd-codegraph", "changed_by_t17": false, "row_state": "unchanged; mpd-codegraph-plugin registerCommand name 'mpd-codegraph'", "verdict": "ok"},
+    {"command": "/agent-teams", "changed_by_t17": false, "row_state": "unchanged; agent-teams plugin command.js", "verdict": "ok"},
+    {"command": "/agent-teams-mpd", "changed_by_t17": false, "row_state": "unchanged; generated per configured profile key (this team runs profile 'mpd')", "verdict": "ok"},
+    {"command": "/mpd", "changed_by_t17": false, "row_state": "unchanged; TUI command tree root (mpd-tui-plugin command-trees.ts, actions board|team|plan|workmates|status)", "verdict": "ok"},
+    {"command": "/settings", "changed_by_t17": true, "row_state": "the preamble now explicitly classes it as HOST-provided (the bundle only extends its MPD section); the ROW text is unchanged and still says '**TUI only**'", "verdict": "ok — class now stated; row accurate"},
+    {"command": "/goal", "changed_by_t17": true, "row_state": "the preamble now explicitly classes it as HOST-provided and preset-mounted; the ROW text is unchanged ('mounted by the `mpd` preset')", "verdict": "ok — class now stated; row accurate"},
+    {"row_type": "recipe (not a command)", "changed_by_t17": true, "subject": "§13.1 agent_teams_edit_plan remove_member operation", "row_state": "key changed memberName -> member_name in both twins", "verdict": "ok — matches the frozen schema (T8_F1_closure above)"},
+    {"command": "/roster", "changed_by_t17": false, "row_state": "the NEGATIVE claim is retained verbatim in the repaired preamble ('there is no /roster command; the roster is reached with the mpd_roles_list tool')", "verdict": "ok — the repair did not drop the corrected claim"}
+  ],
+  "findings": [],
+  "verdict": "pass — T8-F1 and T8-F2 are both closed against source, the twin/heading/link checks are clean, both gates exit 0 on the settled bytes, and no regression was introduced"
+}

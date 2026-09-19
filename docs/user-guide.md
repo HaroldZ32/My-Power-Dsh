@@ -3,8 +3,8 @@
 **English** | [中文](user-guide.zh-CN.md)
 
 Everything you need to install the my-power-dsh bundle and use it day to day, in workflow order.
-For the short version, see the [README](../README.md); for how it works inside, see
-[architecture.md](architecture.md).
+For the short version, see the [README](../README.md); for how it works inside, see the
+[detailed design document](design.md).
 
 ## 1. Install
 
@@ -117,7 +117,7 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 
 | You want to… | Tools | Notes |
 |---|---|---|
-| Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (definitions, references, diagnostics, rename), `mcp__codegraph__*` (project graph), `mcp__git_bash__*` (shell) | MCP tool servers; their tools appear as `mcp__<server>__<tool>` |
+| Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (definitions, references, diagnostics, rename), `mcp__codegraph__*` (project graph) | MCP tool servers; their tools appear as `mcp__<server>__<tool>`. A fourth family, `mcp__git_bash__*`, is **not available by default**: its row ships `disabled: true` (the upstream server is native-Windows-only), so no such tool appears in a normal session — enable it by flipping that row's `disabled:` to `false` in `packages/mpd-bundle/cordis.patch.yml` and reinstalling the bundle. |
 | Edit safely | the write guard and output truncation (no configuration needed), `mpd_hashline_read/edit/format/restore`, `mpd_comment_check` | hash-anchored edits reject a stale anchor instead of writing to the wrong line |
 | Drive long work | `mpd_ulw` (light) / `mpd_ultrawork` (full discipline: plan gate, execution rounds, verification gate), or the equivalent `/ulw <objective>` / `/ultrawork <objective>` commands, `mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | the commands inject the ULW autonomy directive — a run asks the user nothing and stages its own team when the work warrants one; `mpd_boulder_*` tracks progress of a plan markdown file across sessions |
 | Keep memory | `mpd_memory_write/read/reflect/reflect_complete/status`, `mpd_memory_save/recall` | the VCS-backed store can be git or svn; `mpd_memory_save/recall` is the simple key/value layer |
@@ -128,6 +128,9 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 | Extend the bundle | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` | see §10 |
 | Resolve a model route | `mpd_modelchain_resolve` | resolves the provider/model a specialist would use |
 | Inspect retired teams | `mpd_team_compact_run`, `mpd_team_compact_status` | compaction audit for finished teams |
+
+Every family above has a literal, copy-pasteable call in §13, and the slash commands are listed in
+full in §12.
 
 ## 4. Specialists (the roster)
 
@@ -245,6 +248,27 @@ agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
 - **Extension roles are not team members**: an extension can contribute a role usable by
   `mpd_role_spawn` / `mpd_role_persona`, but the team member list is fixed patch configuration, so
   extension roles never become teammates (see §10).
+
+### The call shapes
+
+The two approval modes are the two ways in, and they differ in exactly one field:
+
+```text
+# two-phase (recommended): stage the plan, review it, then approve — nothing runs before that
+agent_teams_create { "name": "docs-wave", "description": "README + user-guide overhaul", "profile": "mpd", "approval": "required" }
+agent_teams_approve { "confirmation": "approved — go ahead" }   # only in response to YOUR approval
+# unattended: stage AND spawn in the same call (the default when you omit `approval`)
+agent_teams_create { "name": "quick-fix", "description": "Fix the dead doc links", "profile": "mpd", "approval": "automatic" }
+```
+
+While a plan is staged, the captain shapes it with `agent_teams_add_member`, `agent_teams_create_task`
+and `agent_teams_edit_plan` (one ordered `operations` batch); once it runs, the leader drives it with
+`agent_teams_status`, `agent_teams_send_message` and `agent_teams_reassign_task`. §13.1 is the literal
+walkthrough — every approval mode, member/task edits, reassignment, rollover and the finish path.
+
+**`agent_teams_halt` is not a tool.** The pause is a mechanism reached through the Web **Stop-team**
+control (the watchdog's `session-watchdog-*` tools are a separate, internal pause layer), and a halted
+team is continued with `agent_teams_resume { "reason": "…" }`.
 
 ## 7. DSH-TUI edition (the terminal UI)
 
@@ -373,6 +397,39 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 reads a `codegraph.*` key through `mpd.jsonc`. Its row ships `autoInit: true` and
 `initTimeoutMs: 60000` in `packages/mpd-bundle/cordis.patch.yml`.
 
+### 9.1 When a saved knob takes effect
+
+This is the part users get wrong, so it is stated per knob. The general rule: a consumer reads its
+configuration through the `mpdConfig` service when it **mounts** (`apply()`), so a value that changed
+— hand-edited in `.mpd/mpd.jsonc` or `$DSH_HOME/mpd.jsonc`, or saved through **Settings → MPD** /
+the TUI `/settings` screen — changes plugin **behaviour** after a **`dsh` restart**.
+
+Two things do not wait for that restart, and both are useful:
+
+- **The read-back is always immediate.** `mpd_config_get` and `mpd_config_reload` re-read the layers
+  on every call and report the new resolved value right away. That is how you verify an edit landed,
+  even while the already-mounted plugin still holds its captured value.
+- **`watchdog.*` is re-read live.** The watchdog re-resolves its knobs at mount, on a settings-document
+  update and once per tick, so a file edit reaches it in THIS process with no restart;
+  `session-watchdog-status` prints the per-knob LIVE vs FILE value with its `restartRequired` flag.
+
+| Knob | Who reads it | Read when | Takes effect |
+|---|---|---|---|
+| `hashline.*` | mpd-hashline | at mount | after a `dsh` restart |
+| `commentChecker.*` | mpd-comment-checker | at mount | after a restart |
+| `ulw.*` | mpd-ulw | at mount | after a restart |
+| `memory.*` | mpd-memory | at mount | after a restart |
+| `boulder.dir` | mpd-boulder | at mount | after a restart |
+| `modelchain.*` | mpd-modelchain | at mount | after a restart |
+| `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | when the plugin starts (process-level) | after a restart |
+| `team.stateDir` | the bundle's own web routes, through the live service | per call | right after the service re-reads the file (`mpd_config_reload`, or any settings save). The agent-teams plugin's own state dir is the patch-row option `stateDir: .mpd/team` — changing THAT needs a row edit and a restart |
+| `teamModels.slot{1,2,3,4}.*` | agent-teams, resolved when a team is STAGED | per `agent_teams_create` | the next team you create: a settings save establishes the file watcher and re-reads, so no restart is needed; after a hand edit, call `mpd_config_reload` once (or restart) so the service re-reads before you stage |
+| `watchdog.*` | mpd-team-watchdog | at mount, on a settings update, and every tick | live — no restart |
+
+`mpd-codegraph`'s knobs are the exception that proves the rule: they are patch-row options
+(`autoInit`, `initTimeoutMs`, `cooldownMs`, `binary`), so they change only by editing the row and
+reinstalling.
+
 ## 10. Extensions, from your side
 
 The extension interface lets a package — or a plain directory — add skills, flows, MCP servers
@@ -480,3 +537,231 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # start from a working skel
   not the retired `text`) and refuses to mount the whole preset. Update the bundle (`git pull`,
   then `dsh plugin --profile <p> add <repo>`) — this is a harness-version compatibility fix, not a
   configuration problem on your side.
+- **`mcp__git_bash__*` tools are missing** → expected, not a fault: the `mcp-gitbash` row ships
+  `disabled: true` (the upstream server is native-Windows-only). Use the harness's own `bash` tool,
+  or enable that row (`disabled: false`) and reinstall the bundle.
+- **A knob you saved does not apply** → the plugins capture their configuration at mount: restart the
+  session. `mpd_config_get` proving the new value is NOT proof that the running plugin acts on it
+  (§9.1 says which knobs are live instead).
+- **A document link 404s after an upgrade** → the design document was RENAMED in this release (it used
+  to be `architecture.md`, and `docs/design.zh-CN.md` is the Chinese twin of the current name), so an
+  older copy of these docs points at a file that no longer exists. Reinstall the bundle (`git pull`,
+  then `dsh plugin --profile <p> add <repo>`) to pick up the repointed pair.
+
+## 12. Command reference
+
+Every slash command a session can use, with where each one works. The table carries two classes: the
+**six commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
+`mpd-codegraph` registers `/mpd-codegraph`, `mpd-tui` registers `/mpd`, and the adopted `agent-teams`
+plugin registers `/agent-teams` and `/agent-teams-mpd`), and the **two HOST-provided commands the
+bundle only documents** — `/settings`, the host's TUI settings screen (whose MPD section the bundle
+extends), and `/goal`, the host goal command the `mpd` preset mounts. Nothing else exists — in
+particular **there is no `/roster` command**: the roster is reached with the `mpd_roles_list` tool.
+
+| Command | What it does | Where |
+|---|---|---|
+| `/ulw <objective>` | starts the ultrawork loop on the objective — the same engine as `mpd_ulw`, at the lighter default tier | Web + TUI |
+| `/ultrawork <objective>` | identical to `/ulw` (both submit the ULW activation directive as your own next turn) | Web + TUI |
+| `/mpd-codegraph` | resolves the codegraph binary and initialises/refreshes the project index under `.codegraph/` | Web + TUI |
+| `/agent-teams` | drives the team surface for this conversation — the same domain the AgentTeams tab shows | Web + TUI |
+| `/agent-teams-mpd` | the same command generated for the `mpd` profile key: stages a captain-planned team | Web + TUI |
+| `/mpd` | the TUI command tree over bundle state: a bare `/mpd` opens the picker, `/mpd <value>` goes direct, `/mpd status` prints the summary | **TUI only** — under Web the registration is refused and nothing is exposed |
+| `/settings` | the host's settings screen; the MPD section edits your `mpd.jsonc` | **TUI only** |
+| `/goal` | the host's goal command, mounted by the `mpd` preset (the Web overlay disables the host's own `tool-goal` / `command-goal` rows, so the preset carries both) | Web + TUI |
+
+The objective is free text after the command name. A bare `/ulw` with no objective prints usage and
+starts nothing; on surfaces without command adjudication (a headless run) the same text is submitted
+as a directive instead.
+
+## 13. Recipes: literal calls
+
+Each block below is literally what you or your agent type; tool arguments are JSON, and the tool names
+are stable. This is the "how do I call this" section: when you want a specific behaviour, ask for the
+exact call.
+
+### 13.1 Teams, in every approval mode
+
+```text
+# (a) two-phase — stage the plan, review it in the Web plan panel, then approve
+agent_teams_create { "name": "docs-wave", "description": "README + user-guide overhaul", "profile": "mpd", "approval": "required" }
+agent_teams_add_member { "name": "Senior Engineer", "role": "Senior Engineer" }
+agent_teams_create_task { "subject": "Rewrite the install chapter", "description": "Cover both profiles and the packed package.", "kind": "implementation", "assignee": "Senior Engineer", "objective": "A user can install from a checkout in one command.", "inScope": ["README.md"], "outOfScope": ["docs/**"], "acceptance": ["The install command is literal and copy-pasteable."], "verify": ["bun run verify:docs"] }
+agent_teams_edit_plan { "operations": [ { "action": "update_task", "task_id": "t1", "assignee": "Deep Worker" }, { "action": "add_task", "subject": "Verify the README pair", "kind": "verification" }, { "action": "remove_member", "member_name": "Researcher" } ] }
+agent_teams_approve { "confirmation": "approved — go ahead" }   # only after the user says so
+
+# (b) unattended — stages and spawns in the same call (the default when `approval` is omitted)
+agent_teams_create { "name": "quick-fix", "description": "Fix the dead doc links", "profile": "mpd", "approval": "automatic" }
+
+# (c) driving a team that is running
+agent_teams_status {}
+agent_teams_send_message { "to": "Senior Engineer", "content": "Land the README edit before the guide." }
+agent_teams_reassign_task { "task_id": "t4", "assignee": "Deep Worker", "reason": "Senior Engineer is on the design doc" }
+agent_teams_remove_member { "name": "Junior Engineer" }
+agent_teams_rollover { "wave_label": "w2", "reason": "wave 1 is merged" }
+
+# (d) finishing
+# Stop-team in the AgentTeams tab pauses a live team; `agent_teams_halt` is NOT a callable tool.
+agent_teams_resume { "reason": "the user re-approved the plan" }
+agent_teams_delete {}
+```
+
+`kind` is one of `work`, `requirements`, `implementation`, `verification`, `review`, `repair`,
+`integration`. A quality kind needs its contract with it (`objective` + `acceptance`, plus `inScope`
+and `verify` for implementation/repair) or the call is refused; every task needs a non-empty
+`subject`. `agent_teams_edit_plan` takes ONE ordered `operations` batch whose `action` is
+`update_member`, `update_task`, `add_task`, `remove_task` or `remove_member` — update downstream
+dependencies/assignees before removing anything.
+
+### 13.2 The ULW loop and its gates
+
+```text
+mpd_ulw { "objective": "Make every link in the doc pair resolve" }
+mpd_ultrawork { "objective": "Rewrite the install chapter", "tier": "heavy", "strictReview": true, "maxRounds": 4 }
+/ulw Make every documented command resolve to a real registration
+```
+
+`mpd_ulw` is the light alias (tier `light`, no plan file); `mpd_ultrawork` runs the full discipline:
+the optional adversarial hyperplan wave, the **plan gate** (planner + plan review) when a plan file is
+used, execution rounds driven per criterion (PIN → RED → GREEN → SURFACE → CLEAN), the **verification
+gate** (momus reviewer, at most 2 re-reviews) when a plan exists AND (`tier: "heavy"` or
+`strictReview`), then the **final quality gate** with a per-lane ledger. State and ledger live under
+`.mpd/ulw/<id>`. An activated run asks you nothing: it triages first, stages its own team when the
+work warrants one, and closes out through the gates.
+
+### 13.3 Specialists (one-shot subagents)
+
+```text
+mpd_roles_list {}
+mpd_role_spawn { "role": "Reviewer", "task": "Review docs/user-guide.md against its contract; report findings only.", "context": "The contract requires a literal invocation for every tool family." }
+mpd_role_persona { "role": "Architect" }
+```
+
+`role` answers to the functional NAME (`Architect`, `deep worker`, `plan-reviewer`). A read-only role
+is spawned with a deny filter over exactly `write`, `edit`, `mpd_hashline_edit`, `bash`,
+`mcp__ast_grep__rewrite`, `mcp__ast_grep__scan` and `mcp__lsp__rename` — the discipline is mechanical,
+not advisory.
+
+### 13.4 The workmate library
+
+```text
+mpd_workmate_match { "task": "review a bilingual doc pair for parity" }
+mpd_workmate_init { "base": "Reviewer", "name": "doc-reviewer", "note": "bilingual doc parity reviews" }
+mpd_workmate_spawn { "name": "doc-reviewer", "task": "Review the guide pair.", "context": "EN and zh-CN must match section for section." }
+mpd_workmate_reflect { "name": "doc-reviewer", "task": "guide review", "outcome": "2 dead links found; parity OK" }
+mpd_workmate_list {}
+mpd_workmate_rename { "name": "doc-reviewer", "new_name": "docs-reviewer" }
+mpd_workmate_delete { "name": "docs-reviewer" }                       # archive-first
+mpd_workmate_delete { "name": "docs-reviewer", "purge": true, "confirm": "docs-reviewer" }
+```
+
+`base` is the functional name; `name` is optional (auto-derived from it). A weak `mpd_workmate_match`
+means initialize a NEW workmate — never force the match. Both mutations are refused while the workmate
+is in use by a team or an in-flight spawn.
+
+### 13.5 Hash-anchored edits
+
+```text
+mpd_hashline_read { "path": "docs/user-guide.md" }        # prints one LINE#HASH|content line per source line
+mpd_hashline_edit { "path": "docs/user-guide.md", "edits": [ { "op": "replace", "pos": "7#ab12", "lines": "…" }, { "op": "replace", "pos": "9#cd34", "end": "11#ef56", "lines": ["…", "…"] }, { "op": "append", "pos": "20#0a1b", "lines": "…" } ] }
+mpd_hashline_format { "path": "docs/user-guide.md" }      # register the file for the discipline
+mpd_hashline_restore { "path": "docs/user-guide.md" }     # unregister it (the file itself is untouched)
+```
+
+The anchors come from `mpd_hashline_read` and are the only thing `mpd_hashline_edit` accepts: if the
+file moved since that read, the edit is REFUSED with remapped refs instead of landing on the wrong
+line. `pos`/`end` are `LINE#HASH`; `lines` is a string or an array of strings.
+
+### 13.6 The boulder ledger
+
+```text
+mpd_boulder_plans {}
+mpd_boulder_start { "planPath": ".mpd/plans/docs-wave.md" }
+mpd_boulder_task_timer { "workId": "<work id>", "taskKey": "1", "action": "start", "taskTitle": "Rewrite the README" }
+mpd_boulder_plan_progress { "planPath": ".mpd/plans/docs-wave.md" }
+mpd_boulder_status {}
+mpd_boulder_complete { "workId": "<work id>" }
+```
+
+A boulder binds a session to a plan markdown file so long work survives a restart; `workId` defaults
+to the active work, and `taskKey` is the plan's own checklist id (`1`, `F1`, …). `action` is `start`
+or `end`.
+
+### 13.7 Memory
+
+```text
+mpd_memory_save { "key": "docs-wave-branch", "value": "feature/docs-wave" }
+mpd_memory_recall { "key": "docs-wave-branch" }
+mpd_memory_write { "title": "Doc wave decisions", "content": "The design document is the architecture chapter now", "kind": "note", "tags": ["docs"] }
+mpd_memory_read { "query": "doc wave", "limit": 5 }
+mpd_memory_status {}
+mpd_memory_reflect {}
+mpd_memory_reflect_complete { "title": "Doc wave", "content": "…" }
+```
+
+`mpd_memory_write` / `mpd_memory_read` are the VCS-backed store (`memory.vcs` in §9);
+`mpd_memory_save` / `mpd_memory_recall` are the simple key/value layer. `mpd_memory_status` prints the
+counters, and a pending reflection is closed with `mpd_memory_reflect_complete`.
+
+### 13.8 Extensions
+
+```text
+mpd_ext_list {}
+mpd_ext_show { "id": "mpd-ext-example" }
+mpd_flow_list {}
+mpd_flow_show { "id": "<flow id>" }
+```
+
+```bash
+bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example    # exit 1 + one line per problem
+bun scripts/mpd-ext.mjs list
+bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp --with-mcp
+```
+
+### 13.9 The `agent_teams_*` loop (leader and member)
+
+```text
+# leader / captain
+agent_teams_status {}
+agent_teams_task_contract { "task_id": "t5" }                    # one id, or "t5,t6,t8" for a batch
+agent_teams_path_owner { "path": "docs/user-guide.md", "open_only": true }
+agent_teams_move_path { "path": "docs/user-guide.md", "to_task": "t5" }
+agent_teams_send_message { "to": "captain", "content": "t5 needs the design-doc link target." }
+agent_teams_mailbox_check { "recipient": "captain", "content": "…" }   # pre-send duplicate check
+agent_teams_mailbox_clear { "watermark": 1758276000000, "agent": "captain" }
+agent_teams_interject_request { "summary": "…", "reason": "…", "location": "docs/user-guide.md:7" }
+agent_teams_interject_decide { "request_id": "<id>", "decision": "approved" }
+
+# member
+agent_teams_claim_task { "task_id": "t5" }                       # returns the attempt id
+agent_teams_update_task { "task_id": "t5", "status": "in_progress", "attempt_id": "<attempt id>" }
+agent_teams_update_task { "task_id": "t5", "status": "completed", "attempt_id": "<attempt id>", "changedPaths": ["docs/user-guide.md"], "acceptanceResults": [ { "criterion": "…", "status": "passed", "evidence": "…" } ], "commandsRun": [ { "command": "bun run verify:docs", "status": "passed", "exitCode": 0 } ] }
+```
+
+Every update carries the `attempt_id` returned by `agent_teams_claim_task`; a stale one is refused
+after the task is reassigned. A work result claims the paths it changed (`changedPaths`) and, for a
+quality kind, submits `acceptanceResults` and `commandsRun` in contract order — a review task
+completes only with `verdict: "pass"`. `agent_teams_claim_task` is for members; a captain assigns with
+`agent_teams_reassign_task`.
+
+## 14. Where these capabilities come from
+
+The attribution facts a user needs, so it is clear which parts are this project's work and which are
+other people's. The authoritative record, with the full licence texts, is
+[`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md).
+
+| What you use | Where it comes from | Licence / version | Recorded in |
+|---|---|---|---|
+| Team mode — `agent_teams_*`, the scheduler, the AgentTeams tab | **dsh-agent-teams** by 程序员阿江 (Relakkes) — adopted outright as first-class main code | MIT; adopted package version `0.1.16-rc.3-mpd` (a `0.1.14` body with the audited `0.1.16-rc.3` deltas backported) | `LICENSE-NOTICES.md`; licence text at `packages/mpd-agent-teams-plugin/LICENSE`; row `agent-teams` |
+| The 11-specialist roster, the model-chain vocabulary, the teammate / workmate BASE templates | **oh-my-openagent** by code-yeongyu, pinned at commit `8c57e46` (v5.0.0-beta.20) | SUL-1.0 — the licence this repository inherits | `LICENSE-NOTICES.md` §1; `VENDOR_LOCK.json` |
+| The served skill corpus (18 skills, 326 fingerprinted files) | vendored from upstream oh-my-openagent | SUL-1.0 | `VENDOR_LOCK.json` `assets.skills` |
+| `mcp__ast_grep__*` | **ast-grep** — the optional dependency `@ast-grep/cli` | MIT; `0.45.2`; resolved at runtime, not redistributed | `package.json` `optionalDependencies`; `MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
+| `mcp__codegraph__*` and the `mpd-codegraph` row | **codegraph** by Yeongyu Kim — the optional dependency `@colbymchenry/codegraph` | MIT; `1.5.0`; the prebuilt server is vendored and sha256-pinned | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`; `VENDOR_LOCK.json` |
+| `mpd_comment_check` | **comment-checker** by code-yeongyu (`@code-yeongyu/comment-checker`) | MIT; `0.8.0`; **not** redistributed — installed on demand into `.toolchain` (`--with-comment-checker`) | `LICENSE-NOTICES.md`; `MPD_DSH_COMMENT_CHECKER_BIN` |
+| The plugin system, the tool / skill / preset / agent seams, the model providers, the Web shell | DeepSeek Harness — the **`@deepseek-ai/*`** packages | MIT; referenced as dependencies only | `LICENSE-NOTICES.md` |
+| The AgentTeams and Workmates sidebar tabs | hosted by the community bundle **`dsh-better-sidebar`**; without it both pages log one warning and register nothing, while the tools keep working | — | §8 above |
+| The DSH plumbing (adapter, runtime plugins, `mpd` preset, combined web client), the TUI edition, the QA suite, the documentation, the extension interface | written here | SUL-1.0 | `README.md` (Acknowledgements); `LICENSE.md` |
+
+Two consequences worth carrying away: a component keeps its **own** licence even inside this bundle
+(the adopted `agent-teams` main code is MIT while the repository is SUL-1.0), and nothing here
+configures your provider credentials — a `MISSING_CREDENTIAL` error belongs to your DSH credential
+store, not to these docs.

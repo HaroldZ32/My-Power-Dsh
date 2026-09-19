@@ -1,9 +1,56 @@
-# 架构
+# 详细设计
 
-**中文** | [English](architecture.md)
+**中文** | [English](design.md)
 
-my-power-dsh 如何挂载进 DeepSeek Harness (DSH)、每个部件做什么、它们如何交互。
-阅读顺序：bundle 组装 → 启动链路 → 插件清单 → 交互流程 → 状态布局 → web client 接线。
+my-power-dsh 的详细设计：它设计什么、遵循哪些设计原则、如何组装并挂载进 DeepSeek Harness
+(DSH)、每个部件做什么、部件之间如何交互。
+
+**本文档面向工程师，不是用户手册。** 安装 bundle、要输入的命令、设置项和操作配方都在
+[`README.zh-CN.md`](../README.zh-CN.md) 与面向任务的[用户指南](user-guide.zh-CN.md)里——当某个
+功能背后的机制值得深究时，那两份文档会指向本文档。
+
+阅读顺序：设计范围 → 设计原则 → bundle 与包结构 → patch 层与启动链路 → 插件清单 → 交互流程 →
+状态布局 → web client 接线 → TUI 接线 → 已知限制。
+
+## 0. 本文档设计的对象
+
+**被设计的系统是 bundle，而不是 host。** DSH（DeepSeek Harness）是 Cordis 插件 host：loader、
+会话/代理运行时、模型路由、Web 与 TUI 外壳以及基础行集合都由它提供。`@mpd-dsh/mpd` 设计的是
+**在这一 host 之上**新增的内容，以及新增的方式：
+
+- 一层 **patch**：把 bundle 的各行插入到安装该 bundle 的任意 profile 中；并用两个 id-target 让
+  bundle 自带的 `mpd` 预设成为这些 composition 的默认预设，
+- **25 个插件行**（6 个 MCP client 行、17 个 `mpd-*` 插件行、`mpd-web-compat` 自引用行，以及
+  采纳的 `agent-teams` 行），以及每一行各自拥有的服务、工具、命令、路由与状态（§4），
+- 在 host 自有外壳中渲染 bundle 界面的 **web client** 与 **TUI 界面**（§7、§7b），
+- bundle 写入会话工作区与用户 home 的**状态布局**（§6），以及让 QA 与这两处保持隔离的规则（§8）。
+
+本文档**不**设计：host 自身的接缝与行集合、模型供应商，以及本 bundle 所依赖的上游成果——这些
+出处记录在 [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md)，并在 README 中概述。
+
+## 0b. 设计原则
+
+以下是塑造下文各部件形态的规则；违反其中任何一条的改动即使"能跑"，也是缺陷。
+
+1. **代理才是执行者。** 所有界面的存在都是为了让"冷启动阅读本仓库"的代理行为正确：明确的约定、
+   可执行的关卡、落盘的证据。名册以数据 + persona 而非散文形式交付、本文档明确写出自身限制
+   （§8b）而非留待被发现，都源于此。
+2. **唯一接缝接触面。** 只有一个包（`mpd-dsh-adapter`）接触 host 的工具/代理/skill/preset 接缝；
+   其他所有行都经由 `mpdDsh` 服务调用。host 版本重塑接缝时，只需在该处吸收，而不必全树修改（§6b）。
+   唯一例外是采纳的上游主代码，它保留自己的 `ctx.*` 调用，并在 §6b 中明确标注为例外。
+3. **插件形态、按引用配置。** 每个能力都是 Cordis 插件行或配置好的 host 插件实例；profile 与脚本里
+   不放逻辑。资产（skill 语料、`mpd` 预设）由 bundle 直接供给而非复制进 `$DSH_HOME`，因此卸载不留
+   残留（§2、§6c）。
+4. **状态按工作区归属，且每次调用重新解析。** 状态落在调用方会话的工作区下（`.mpd/…`），每次调用
+   都经由适配器解析——绝不用模块级常量、绝不 `chdir`、绝不从行里设置 `$DSH_WORKSPACE_ROOT`（§6）。
+   唯一有意的例外是用户级的 workmate 库 `~/.mpd/workmate`（§6）。
+5. **没有证据的改动不算完成。** 行为性主张需要关卡或真实工具调用来支撑，而不是 composition 转储：
+   `--dump-config` 只组合行、从不执行插件代码，因此永远不能作为加载证据（§4）。本文档的每项主张都
+   写明其证据。
+6. **QA 隔离。** QA 在临时 `DSH_HOME`、沙箱 `HOME` 与沙箱工作区中启动，绝不触碰真实的 `~/.dsh`
+   或 `~/.mpd/workmate`（§8）。
+7. **基线纪律与最小 diff。** 上游资产被固定并校验（`VENDOR_LOCK.json`），不追新；能满足需求的最小
+   改动优先。
 
 ## 1. 全局图景
 
@@ -12,18 +59,19 @@ scope provide/consume，模型路由由会话的 request header 解析。my-powe
 bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch`
 （`packages/mpd-bundle/cordis.patch.yml`）向它安装到的任意 profile 添加行。它贡献：
 
-- 8 个 MCP 服务器（ast-grep、git-bash [默认禁用]、LSP、codegraph + 远端 context7 / grep.app），
+- **25 个插入行**，全部位于同一层增量 patch 中：6 个 MCP client 行（本地 ast-grep、git-bash
+  [默认禁用]、LSP、codegraph；远端 context7、grep.app）、17 个 `mpd-*` 插件行、使 bundle 成为
+  loader entry 的 `mpd-web-compat` 自引用行，以及采纳的 `agent-teams` 插件行——§4 逐一列出，
+- **2 个 id-target**（不是插入行）：让 bundle 自带预设成为各 composition 默认的 `agent-presets`
+  行（web/base 面）与 `dsh-tui-agent-presets`（dsh-tui 面）（§2、§6c），
 - Harness 适配器（`mpd-dsh-adapter`）：所有其他行都经由它调用，
-- 13 个 host 插件（adapter、config、tools、modelchain、roles、ulw、hashline、boulder、
-  comment-checker、memory、codegraph、workmate、bootstrap）+ 采纳的 agent-teams
-  插件 + bundle 自己的 web-compat/client 插件，
 - 一个 agent 预设（`mpd`）和一份 skill 语料，由 bundle 直接供给（不复制到 home），
 - 一个合并的 web client（AgentTeams 侧边栏页 + workmate 库）。
 
 专家名册中的 11 个专家**不是预设**：它们作为专家名册（`mpd-roles-plugin`）存在，
 也作为采纳的 `agent-teams` `mpd` profile 中的队友实例化模板存在。
 
-## 2. Bundle 组装
+## 2. Bundle 与包结构
 
 **仓库根目录就是 bundle 包。** `package.json` 名为 `@mpd-dsh/mpd`，声明了
 `dsh.bundle.patch`（`./packages/mpd-bundle/cordis.patch.yml`）、`dsh.client`、各行解析所依赖的
@@ -52,7 +100,7 @@ Manifest 不变式（为什么存在）：
 
 `scripts/build-mpd-client.mjs` 组合出合并 client（见 §7）。
 
-## 3. 启动链路与 web-compat 自引用行
+## 3. patch 层、启动链路与 web-compat 自引用行
 
 1. `dsh --profile <p>` 通过 `dsh-app-boot` 加载 `dsh.profile.bundles`（base、
    web-app/headless、`@mpd-dsh/mpd`）：每个 bundle 贡献它的 `cordis.patch.yml` 行，
@@ -86,25 +134,58 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 
 ## 4. 插件清单
 
-| 行 id | 包 | 用途 | 工具 / 服务 | 关键配置 |
-|---|---|---|---|---|
-| `mpd-config` | mpd-config-plugin | 最小 `mpd.jsonc` 运行时配置层（工程 `.mpd/mpd.jsonc` 覆盖用户 `$DSH_HOME/mpd.jsonc`） | `mpd_config_get`、`mpd_config_reload`；服务 `mpdConfig` | `projectFile`、`userFile` |
-| `mpd-tools` | mpd-tools-plugin | 写保护（禁止静默覆盖）、工具输出截断（token 预算）、编辑错误恢复提示 | 仅 waterfall | `writeGuard`、`truncateMaxBytes`、`recoveryHint` |
-| `mpd-modelchain` | mpd-modelchain-plugin | roster 角色的 DeepSeek 路由解析 + 键值记忆注释 | `mpd_modelchain_resolve`、`mpd_memory_save`、`mpd_memory_recall` | — |
-| `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | 与 Harness 接缝的**唯一**接触面：工具注册/guard/post-execute/execute、子代理 spawn、skill provider + 目录、preset 解析、能力探测 | 服务 `mpdDsh` | `defaultTimeoutMs`、`quiet` |
-| `mpd-ext` | mpd-ext-plugin | 扩展接口：一份冻结的描述符契约、两个面（代码 `register()` + 数据面 `mpd-ext.json`）、按生命周期划分的发现、skills/flows provider、运行时 stdio MCP 桥、扩展 role | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show`；服务 `mpdExtensions` | `quiet` + 惰性 `mpd.jsonc` 层（`extensions.enable`、`extensions.disable`、`extensions.mcp.*`） |
-| `mpd-roles` | mpd-roles-plugin | 专家名册中的 11 个专家（正常名字/persona/模型链/只读），并在每次调用时与扩展贡献的 role 合并 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona`；服务 `mpdRoles` | `personasDir` |
-| `mpd-ulw` | mpd-ulw-plugin | 固定 plan→execute→verify 循环纪律（C2 ultrawork v2） | `mpd_ultrawork`、`mpd_ulw`（轻量别名）；命令 `/ulw`、`/ultrawork` | `maxRounds`、`maxReReviews`、`provider/model/reviewerModel`、`planDir`、`stateDir` |
-| `mpd-hashline` | mpd-hashline-plugin | 哈希锚定编辑纪律（`LINE#HASH` 锚点） | `mpd_hashline_read`、`mpd_hashline_edit`、`mpd_hashline_format`、`mpd_hashline_restore` | `guardEditTools`、`maxDiffChars`、`registryFile` |
-| `mpd-boulder` | mpd-boulder-plugin | 绑定计划 markdown 文件的持久化工作台账 | `mpd_boulder_status`、`mpd_boulder_start`、`mpd_boulder_complete`、`mpd_boulder_task_timer`、`mpd_boulder_plan_progress`、`mpd_boulder_plans` | `boulderDir` |
-| `mpd-comment-checker` | mpd-comment-checker-plugin | 注释/docstring 检测（可选二进制） | `mpd_comment_check` | `autoCheck`、`binary`、`timeoutMs`、`maxMessageChars` |
-| `mpd-memory` | mpd-memory-plugin | VCS 支撑的记忆（git/svn）+ 反思状态机 | `mpd_memory_write`、`mpd_memory_read`、`mpd_memory_reflect`、`mpd_memory_reflect_complete`、`mpd_memory_status` | `vcs`、`dir`、`agentSlug`、`reflectionEvery` |
-| `mpd-codegraph` | mpd-codegraph-plugin | codegraph 二进制解析 + 工程索引初始化 | effect（自动初始化）+ `/mpd-codegraph` 命令 | `autoInit`、`initTimeoutMs`、`cooldownMs`、`binary` |
-| `mpd-workmate` | mpd-workmate-plugin | `~/.mpd/workmate/` 下的持久化可演化代理库（变更操作 rename/delete，删除默认先归档） | `mpd_workmate_list/init/spawn/reflect/match/rename/delete`；服务 `mpdWorkmate`（`list`/`get`/`read`/`rename`/`delete`）；web 路由 `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}` | — |
-| `mpd-bootstrap` | mpd-bootstrap-plugin | 按引用供给：经由适配器把 `<bundle>/skills` 注册为 skill provider（rank 600 `bundled`），并清理 bundle <= 0.2.6 写入 home 的带版本戳副本 | 仅 effect | `skillsDir`、`skipSkills`、`skipPresets`、`skipLegacyCleanup` |
-| `mpd-web-compat` | mpd-bundle-plugin | web-compat 自引用行：使 `@mpd-dsh/mpd` 成为 loader entry；承载合并 web client | no-op apply；`./client` | — |
-| `agent-teams` | mpd-agent-teams-plugin（采纳，MIT） | 多代理团队协作（captain、成员、任务、调度器；其视图为 AgentTeams 侧边栏 Tab 提供内容） | `agent_teams_*` | `stateDir`、`memberProvider`、`memberMaxDepth`、`maxMembers`、`profiles` |
-| `mcp-astgrep/gitbash/lsp/codegraph/context7/grepapp` | dsh-mcp-client 实例 | 工具服务器 | `mcp__*` | 每行 |
+**`packages/mpd-bundle/cordis.patch.yml` 的每一行，按 composition 列出。** patch 层是增量的，
+共携带 **25 个 `insert` 行**；`node scripts/verify-rows-parity.mjs` 断言这份列表与本仓库自身的行
+账目一致（退出码 0，并逐一列出全部 25 个 id）。另有两条 **id-target**（不是插入行）——它们**替换**
+某个 composition 已有的行——因此单独列在下面的表里。
+
+`Composition` 列回答"该行进入哪个 composition"：`insert` 行进入安装该 bundle 的每一个 profile
+（`web + dsh-tui`）。两条 id-target 各自只进入一个 composition，因为它们所替换的名册行各自只由
+那一个 composition 铸造。**仅证明 composition 的证据**：
+`evidence/tui/composition/20260915T053445Z/raw/web-dump-config-final.txt` 与
+`…/raw/dsh-tui-dump-config.txt` 在两个 composition 中列出同一批 bundle 行；该快照早于
+`mpd-team-watchdog`，后者由 patch 以同区段的 `insert` 加入。转储只证明 **composition 本身**——
+它从不执行插件代码，因此永远不是加载证据（§8b）。
+
+| 行 id | 包 | Composition | 用途 | 工具 / 服务 | 关键配置 |
+|---|---|---|---|---|---|
+| `mcp-astgrep` | dsh-mcp-client | web + dsh-tui | 本地 ast-grep stdio 服务器；`launch.mjs` 按 bundle 相对路径解析二进制（env pin → `$MPD_AST_GREP_BIN_DIR` → createRequire 可选依赖 → `<bundle>/.toolchain/node_modules/.bin`） | `mcp__ast_grep__*`（search / rewrite / scan） | `serverName: ast_grep`、`toolCallTimeoutMs: 60000` |
+| `mcp-gitbash` | dsh-mcp-client | web + dsh-tui，**默认禁用** | 本地 git-bash stdio 服务器；上游按 Windows 专属设计，因此该行自带 `disabled: true` | 启用后为 `mcp__git_bash__*` | 改 `disabled: false` 启用 |
+| `mcp-lsp` | dsh-mcp-client | web + dsh-tui | 本地 LSP 桥（`…/mpd-mcp-lsp/dist/cli.js mcp`） | `mcp__lsp__*` | `serverName: lsp`、`toolCallTimeoutMs: 60000` |
+| `mcp-codegraph` | dsh-mcp-client | web + dsh-tui | 本地 codegraph stdio 服务器；`launch.mjs` 按 bundle 相对路径解析二进制，并且只在调用方未设置时写入 `MPD_CODEGRAPH_BIN` | `mcp__codegraph__*` | `serverName: codegraph`、`toolCallTimeoutMs: 60000` |
+| `mcp-context7` | dsh-mcp-client | web + dsh-tui（需网络） | 远端 streamable-http MCP 服务器（公共服务，按需使用） | `mcp__context7__*` | `url: https://mcp.context7.com/mcp` |
+| `mcp-grepapp` | dsh-mcp-client | web + dsh-tui（需网络） | 远端 streamable-http MCP 服务器（公共服务，按需使用） | `mcp__grep_app__*` | `url: https://mcp.grep.app` |
+| `mpd-web-compat` | mpd-bundle-plugin | web + dsh-tui | web-compat 自引用行：使 `@mpd-dsh/mpd` 成为 loader entry（只有存在该确切名字的 entry，web client 才会加载）；承载合并 web client | no-op apply；`./client` | — |
+| `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | web + dsh-tui | 与 Harness 接缝的**唯一**接触面：工具注册/guard/post-execute/execute、子代理 spawn、skill provider + 目录、preset 解析、能力探测 | 服务 `mpdDsh` | `defaultTimeoutMs`、`quiet` |
+| `mpd-config` | mpd-config-plugin | web + dsh-tui | 最小 `mpd.jsonc` 运行时配置层（工程 `.mpd/mpd.jsonc` 覆盖用户 `$DSH_HOME/mpd.jsonc`）；持有设置回写（§7b） | `mpd_config_get`、`mpd_config_reload`；服务 `mpdConfig` | `projectFile`、`userFile` |
+| `mpd-team-watchdog` | mpd-team-watchdog-plugin | web + dsh-tui | 面向成员**与** captain 的逐步/逐工具心跳存储、基于 `watchdog.*` 旋钮的 WARN→ESCALATE 状态机、可原子恢复的场景快照，以及写在采纳的 `team.json` **旁边**的持久 hold/incident 边车文件（`team.json` 仍只有一个写入者）；有意挂载在 HOST 面，使预设作用域的心跳不可能漏看被卡住的 captain | `session-watchdog-status`、`session-watchdog-hold`、`session-watchdog-resume` | `stateDir`、`warnSilenceMs`、`tickIntervalMs`、`warnStreakToEscalate`、`actionOnEscalate`、`toolInFlightMaxMs`、`holdTtlMs` |
+| `mpd-tools` | mpd-tools-plugin | web + dsh-tui | 写保护（禁止静默覆盖）、工具输出截断（token 预算）、编辑错误恢复提示 | 仅 waterfall | `writeGuard`、`truncateMaxBytes`、`recoveryHint` |
+| `mpd-modelchain` | mpd-modelchain-plugin | web + dsh-tui | roster 角色的 DeepSeek 路由解析 + 键值记忆注释 | `mpd_modelchain_resolve`、`mpd_memory_save`、`mpd_memory_recall` | — |
+| `mpd-ext` | mpd-ext-plugin | web + dsh-tui | 扩展接口：一份冻结的描述符契约、两个面（代码 `register()` + 数据面 `mpd-ext.json`）、按生命周期划分的发现、skills/flows provider、运行时 stdio MCP 桥、扩展 role | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show`；服务 `mpdExtensions` | `quiet` + 惰性 `mpd.jsonc` 层（`extensions.enable`、`extensions.disable`、`extensions.mcp.*`） |
+| `mpd-roles` | mpd-roles-plugin | web + dsh-tui | 专家名册中的 11 个专家（正常名字/persona/模型链/只读），并在每次调用时与扩展贡献的 role 合并 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona`；服务 `mpdRoles` | `personasDir` |
+| `mpd-ulw` | mpd-ulw-plugin | web + dsh-tui | 固定 plan→execute→verify 循环纪律（C2 ultrawork v2） | `mpd_ultrawork`、`mpd_ulw`（轻量别名）；命令 `/ulw`、`/ultrawork` | `maxRounds`、`maxReReviews`、`provider/model/reviewerModel`、`planDir`、`stateDir` |
+| `mpd-hashline` | mpd-hashline-plugin | web + dsh-tui | 哈希锚定编辑纪律（`LINE#HASH` 锚点） | `mpd_hashline_read`、`mpd_hashline_edit`、`mpd_hashline_format`、`mpd_hashline_restore` | `guardEditTools`、`maxDiffChars`、`registryFile` |
+| `mpd-boulder` | mpd-boulder-plugin | web + dsh-tui | 绑定计划 markdown 文件的持久化工作台账 | `mpd_boulder_status`、`mpd_boulder_start`、`mpd_boulder_complete`、`mpd_boulder_task_timer`、`mpd_boulder_plan_progress`、`mpd_boulder_plans` | `boulderDir` |
+| `mpd-comment-checker` | mpd-comment-checker-plugin | web + dsh-tui | 注释/docstring 检测（可选二进制） | `mpd_comment_check` | `autoCheck`、`binary`、`timeoutMs`、`maxMessageChars` |
+| `mpd-codegraph` | mpd-codegraph-plugin | web + dsh-tui | codegraph 二进制解析 + 工程索引初始化 | effect（自动初始化）+ `/mpd-codegraph` 命令 | `autoInit`、`initTimeoutMs`、`cooldownMs`、`binary` |
+| `mpd-memory` | mpd-memory-plugin | web + dsh-tui | VCS 支撑的记忆（git/svn）+ 反思状态机 | `mpd_memory_write`、`mpd_memory_read`、`mpd_memory_reflect`、`mpd_memory_reflect_complete`、`mpd_memory_status` | `vcs`、`dir`、`agentSlug`、`reflectionEvery` |
+| `mpd-workmate` | mpd-workmate-plugin | web + dsh-tui | `~/.mpd/workmate/` 下的持久化可演化代理库（变更操作 rename/delete，删除默认先归档） | `mpd_workmate_list/init/spawn/reflect/match/rename/delete`；服务 `mpdWorkmate`（`list`/`get`/`read`/`rename`/`delete`）；web 路由 `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}` | — |
+| `mpd-team-compact` | mpd-team-compact-plugin | web + dsh-tui | 对**已结束**的团队做成员压缩（所有任务终态且所有成员 idle），经由每个成员**自己的**作用域上下文执行；captain 交由人类 `/compact` 处理；审计落在 `<workspace>/.mpd/team-compact/`，该行从不写 `.mpd/team` | `mpd_team_compact_run`、`mpd_team_compact_status` | — |
+| `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | 按引用供给：经由适配器把 `<bundle>/skills` 注册为 skill provider（rank 600 `bundled`），并清理 bundle <= 0.2.6 写入 home 的带版本戳副本 | 仅 effect | `skillsDir`、`skipSkills`、`skipPresets`、`skipLegacyCleanup` |
+| `mpd-tui` | mpd-tui-plugin | web + dsh-tui（在 dsh-tui 中生效，其他 composition 降级） | dsh-tui 版本的原生界面：绑定 host 的激活门控 TUI 接缝，并用 `ctx.get(id, false)` + warn-once 降级逐个探测，因此 web/headless composition 失去的是 TUI 界面而不是启动（§7b） | 无面向模型的工具；TUI 状态行 / 设置区块 / 看板 / 命令树 / 快捷键 / 对话框 / 转录渲染器 | — |
+| `agent-teams` | mpd-agent-teams-plugin（采纳，MIT） | web + dsh-tui | 多代理团队协作（captain、成员、任务、调度器；其视图为 AgentTeams 侧边栏 Tab 提供内容） | `agent_teams_*` | `stateDir`、`memberProvider`、`memberMaxDepth`、`maxMembers`、`profiles` |
+
+**两条 id-target**（各自替换某个 composition 自带的名册行；id-target 是按 key 的浅覆盖，因此 host
+行其余 key 会保留；没有该行的 composition 只记录 `patch: entry … not found` 并跳过）：
+
+| entry id | 目标 | Composition | 本文档中它承载的内容 |
+|---|---|---|---|
+| `agent-presets` | `dsh-web-app` 插入的名册行 | web / base 面 | `default: mpd` + bundle 自带的 `presets/` 根（`trust: system`），因此一条 `dsh plugin add` 就让 `mpd` 预设可选；没有该行的 headless profile 跳过它（headless 从来没有名册） |
+| `dsh-tui-agent-presets` | dsh-tui 铸造的名册行 | dsh-tui 面 | 同样的两个 key，供 TUI composition 使用（其名册行是另一个 loader entry）；**有意不**复述 stock 行的旧式回退根分支（已固定的包本身就带 presets，那条分支是死代码） |
+
+有两行在不同的 composition 里**故意**表现不同，二者都不是缺陷：`mpd-tui` 绑定 TUI 接缝，在没有这些
+接缝处（web / headless）warn-once 降级；`mpd-web-compat` 负责把 bundle 的 web client 放进启动图
+（§3、§7），在其他 composition 中保持惰性。
 
 ## 5. 交互流程
 
@@ -118,8 +199,9 @@ key**。
 ### Roster → workmate → team
 - `mpd_workmate_init`（base + 可选 name）把 roster base 复制到
   `~/.mpd/workmate/<name>/`（meta/persona/memory/note，上限 8/8/1.5 KiB）—— base
-  保持原样。base 只按**功能名**寻址（名册 id 会被拒绝，并给出只列名称的错误；`/roster`
-  同样不再返回 id）；省略 `name` 时由该功能名自动生成（`Deep Worker` → `deep-worker-1`）。
+  保持原样。base 只按**功能名**寻址（名册 id 会被拒绝，并给出只列名称的错误；名册界面是
+  `mpd_roles_list` **工具**，它与任何其他已注册界面都从不返回 roster id）；
+  省略 `name` 时由该功能名自动生成（`Deep Worker` → `deep-worker-1`）。
   `meta.json` 保留内部 `baseId` 作为溯源，而所有工具输出、路由与界面都会剥离它。
 - 工作后 `mpd_workmate_reflect` 追加有界 memory 条目（最旧淘汰）、合并 persona 修订、
   重生成 note（保留特长 + 最新任务）、`uses` 加一。
@@ -214,8 +296,9 @@ key**。
   快照与 `ADAPTER_TOOL_CALL=ok`（通过归一化路径真实调用一次 `mpd_config_get`）。
 - **边界：** 采纳的 `agent-teams` 插件（`packages/mpd-agent-teams-plugin`，MIT，升级时从上游重新
   vendor）**不**经过适配器——其 `lib/` 是上游主代码，重新 vendor 会覆盖改动。它保留自己的
-  `ctx.*` 调用，外加唯一一处本地适配：`lib/members.js` 中的 `registerContinuableSetup`
-  启动安全守卫（见 LICENSE-NOTICES.md）。
+  `ctx.*` 调用，外加唯一一处本地适配：`lib/harness-compat.js` 中的
+  `installContinuableMemberSetup` 启动安全守卫（包装宿主的 `registerContinuableSetup`），
+  `lib/members.js` 至多是它的调用方（见 LICENSE-NOTICES.md）。
 
 ## 6c. Agent 预设层（`mpd` 预设）
 
@@ -359,3 +442,54 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —�
 - QA 永不动真实的 `~/.dsh` 或真实的 `~/.mpd/workmate`（HOME 被沙箱化）。
 - 采纳的代码保留其 MIT 许可 + 来源声明（`LICENSE-NOTICES.md`）；运行时二进制是
   optional 依赖，绝不打包进去。
+
+## 8b. 设计的已知限制
+
+本设计对自己"不承诺什么"是明确的。以下是读者应随身带着的限制——写出来，而不是留待被发现：
+
+- **composition 转储不是加载证据。** `dsh --profile <p> --dump-config` 只组合行、从不执行插件
+  代码，因此永远无法见证插件加载、schema 中止或接缝缺失。本文档的每项行为性主张都改用关卡或真实
+  工具调用来支撑（§4）。
+- **预设层只能靠真实挂载启动来验证。** 某行的 `config` 缺少**必填** key 时该行失败，
+  `dsh-agent-presets` 随即拒绝**整个**预设（`agent-preset/invalid: … row(s) did not activate`）；
+  而**未知** key 会被 schemastery 静默保留，行照常生效、那个设置却悄悄失效。`agentPresets.list` /
+  `resolve` 两类都看不见；只有 `skills/dsh-qa/scripts/preset-conformance.mjs`（含其反向对照）能看见
+  （§6c）。
+- **插件模块没有热重载。** ESM 在会话开始时缓存模块，所以插件改动在 `dsh` 重启前不可见；会话中途
+  应用的改动必须在下次启动时验证。
+- **两条配置路径，生效时机不同。** `mpd.jsonc` 各层（schema 默认值 → patch 行的 `config` → 文件）
+  在插件挂载时读取一次，因此 `.mpd/mpd.jsonc` 的改动在下次启动时生效；设置文档路径（TUI
+  `/settings` 界面、回写与 `settings/document-updated` 重读）才是实时路径（§6c、§7b）。
+- **watchdog hold 目前是契约，还不是互锁。** 该行拥有 `session-watchdog-hold` / `-resume` 与持久
+  hold 记录；让采纳的派发门控真正遵守 hold 是后续任务。在此之前 hold 只被记录与上报，真正停止派发的
+  是平台暂停（`agent_teams_halt`）（§4）。
+- **采纳的团队插件是唯一不经过适配器的行。** 它的 `lib/` 是上游主代码，vendor 刷新会覆盖它，只有
+  一处本地启动安全适配（§6b）；其 client 部分严格作为视图库使用，它自己的 `apply` 从不被调用（§7）。
+- **web client 只做侧边栏。** 没有会话内回退：mpd 的两个页面都是侧边栏 Tab；可选接缝必须用
+  `ctx.inject([...])` 挂载，而不是用一次性 `ctx.get` 探测——探测既看不见别的插件拥有的服务，也无法
+  在该提供方晚挂载时恢复（§7）。
+- **有两行按设计是惰性或降级的。** `mcp-gitbash` 默认禁用（上游为 Windows 专属），`mpd-tui` 在没有
+  TUI 接缝的 composition 中 warn-once 降级，因此"该行已被组合"与"该能力已存在"是两个不同的陈述
+  （§4）。
+- **vendored skill 语料是固定快照。** `skills/**` 的指纹记录在 `VENDOR_LOCK.json`；语料改动会使该
+  指纹失效，因此每波改动都串行经过唯一写入者，且重新固定（re-pin）与改动落在同一个提交里。
+- **本次改名与本文档的角色。** 本文档**就是** bundle 所引用的详细设计文档（`docs/design.md`，
+  其孪生为 `docs/design.zh-CN.md`）；这一对自身的切换链接与对内链接由本文档维护。早于改名的记录
+  ——`docs/decisions.md` 与各阶段报告——**有意**保留旧文件名：它们是历史记录，而不是现行文档。
+
+### 从事实基线与基线度量中带过来的残留缺口
+
+本文档定稿前阅读了两份波次前的证据产物；它们自述的限制在此如实带过来，而不是丢弃：
+
+- **Composition 列是"组合"证据，不是"加载"证据。** 事实基线的 composition 章节依据的是 patch、两份已
+  安装 profile 的 manifest 与会话实时工具列表——它自己的 `dump-config` 运行因文件系统只读而失败——因此
+  §4 引用的是存档的 `evidence/tui/composition/20260915T053445Z` 产物。**本文档没有运行隔离
+  `DSH_HOME` 中的挂载启动**；`skills/dsh-qa/scripts/preset-conformance.mjs` 与 `bundle-lifecycle.mjs`
+  仍是能够证明"加载"的关卡。
+- **事实基线以哈希锚定，因而会过期。** 它是在本文档改写期间测量的，所以其行号指向的是改写前的字节——但
+  它所报告的问题（§4 表缺少 `mpd-team-watchdog`、`mpd-team-compact` 与 `mpd-tui`；把名册界面说成一个
+  在 bundle 中毫无注册的斜杠命令；8 与 6 的 MCP 计数）在本文档中均已修复。
+- **设置项数量有意不在本文档复述。** 基线度量已审计过它（`25 = 13 个非 slot 键 + 12 个 teamModels
+  叶`，与 schema 声明一致），并且在本文件与其前身中都未发现过期副本；该计数属于 README / 用户指南 /
+  schema 注释。给该计数的读者：那 13 是 6 个单键小节 + 7 个 `watchdog.*` 字段（不是 13 个小节），而
+  `teamModels` 权威地是**四**个槽（不是三个）。

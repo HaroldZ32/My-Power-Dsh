@@ -147,7 +147,7 @@ function loadConfig(config: Config, root: string, settingsSection?: unknown): { 
 export { stripJsonc, parseJsonc, deepMerge }
 
 /**
- * The RESOLVED view for readers (A2): the raw merged file config with the three `teamModels` slots
+ * The RESOLVED view for readers (A2): the raw merged file config with all four `teamModels` slots
  * MATERIALISED over their schema defaults, so a workspace whose `.mpd/mpd.jsonc` has no
  * `teamModels` block at all still answers `get("teamModels.slot<N>")` with a complete
  * provider/model/reasoningEffort slot — which is what makes the slots the default route of the
@@ -165,7 +165,7 @@ export function withTeamModelsDefaults(config: any): any {
   const teamModels: any = {}
   for (const slot of TEAM_MODEL_SLOTS) {
     // Slot-level merge: a file that sets only `slot2.model` keeps the other two slot2 leaves and
-    // leaves slot1/slot3 wholly at their defaults. Extra keys inside a slot are preserved.
+    // leaves every other slot wholly at its defaults. Extra keys inside a slot are preserved.
     teamModels[slot] = { ...TEAM_MODEL_SLOT_DEFAULTS[slot], ...(isPlainObject(declared[slot]) ? declared[slot] : {}) }
   }
   return { ...raw, teamModels }
@@ -626,7 +626,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_config_get",
-    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, teamModels.slot1|slot2|slot3.provider/model/reasoningEffort.",
+    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a: unknown, v: any) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args: any, exec: any) => {
@@ -634,7 +634,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // workspace is visible even when it differs from the dsh process cwd.
       reload(exec)
       // The diagnostic dump is the RESOLVED view: the team-model slots are materialised over their
-      // schema defaults, so a sandbox workspace with no `teamModels` block still shows the three
+      // schema defaults, so a sandbox workspace with no `teamModels` block still shows the four
       // complete slots this tool reports (A2's observable artifact).
       const resolved = withTeamModelsDefaults(state.config)
       const key = args?.key ? String(args.key) : undefined

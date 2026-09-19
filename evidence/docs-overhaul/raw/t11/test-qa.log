@@ -1,0 +1,280 @@
+$ for f in skills/dsh-qa/scripts/*.mjs; do echo "[test:qa] $f"; bun "$f" --self-test || { echo "[test:qa] FAILED: $f"; exit 1; }; done; bun scripts/mpd-ext.mjs --self-test || { echo "[test:qa] FAILED: scripts/mpd-ext.mjs --self-test"; exit 1; }; bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example || { echo "[test:qa] FAILED: scripts/mpd-ext.mjs validate extensions/mpd-ext-example"; exit 1; }; echo "[test:qa] all self-tests passed"
+[test:qa] skills/dsh-qa/scripts/agent-teams-adopt.mjs
+[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.16-rc.3-mpd + _deps + AGENTS.md + installer self-test verified
+[test:qa] skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+  ok   installed host exposes no subagent followup member
+  ok   installed host owns the public subagent prompt seam
+  ok   installed host face declares the prompt request/receipt contract
+  ok   member delivery uses the audited boundary
+  ok   no call site uses ctx.subagents.followup
+  ok   modern delivery prefers the public prompt seam
+  ok   modern member setup receives the live Agent instead of reading childCtx.agent
+  ok   legacy followup/queue remain only as older-generation fallbacks
+  ok   task mutations kick the whole team
+  ok   member idle edges kick that member
+  ok   delivery failure rolls the claim back instead of stranding it
+  ok   capabilities deny all captain-only tools for members
+  ok   members receive member instructions, not the captain protocol
+  ok   real run asserts the wake on the dependent task's assignee only
+[agent-teams-dispatch self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/agent-teams-messaging.mjs
+[agent-teams-messaging self-test] ok: R1 exports + SHIPPED send/clear/interject wiring + this case drives the tool surface + scheduler exclusion on both reads + RED-arm transform applies (member revert consumed by its stable head) + VENDOR_LOCK skills pin current (326 files/e944e320b3ff) + treeSha falsifiability probe on a temp COPY (nothing written under <repoRoot>/skills) + SKILL.md row + test:qa glob
+[test:qa] skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+[agent-teams-sidebar self-test] ok: 17 checks (mpd-agent-teams,mpd-workmate; @nanmicoder/dsh-agent-teams,@mpd-dsh/team-page,@mpd-dsh/settings-card,@mpd-dsh/mpd)
+[test:qa] skills/dsh-qa/scripts/bundle-lifecycle.mjs
+[bundle-lifecycle self-test] ok: repo root IS the bundle + bundle-served preset row + provider wiring + probe + pnpm
+[test:qa] skills/dsh-qa/scripts/codegraph-smoke.mjs
+[codegraph-smoke self-test] ok: project-path precondition + composed codegraph server name (mcp__codegraph__codegraph_explore) verified on fixtures
+[test:qa] skills/dsh-qa/scripts/dual-track-smoke.mjs
+[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand verified
+[test:qa] skills/dsh-qa/scripts/explicit-team-trigger.mjs
+[explicit-team-trigger self-test] ok: resolver + both entry points + disabled-surface warning present
+[test:qa] skills/dsh-qa/scripts/extension-isolation.mjs
+[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verified
+[test:qa] skills/dsh-qa/scripts/extension-lifecycle.mjs
+[self-test] live packer route = flag (recorded, not asserted)
+[extension-lifecycle self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD, no false success) + packed predicate falsifiable (closed vs. three broken fixture trees) + T-85 scratch-pack patcher (two anchors rewritten, a drifted packer REFUSED) + fixtures verified
+[test:qa] skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+[extension-mcp-bridge self-test] ok: lsp server + row + public-name collision premise + fixture scenarios (incl. the stderr flood and the cap it must exceed) + example server verified
+[test:qa] skills/dsh-qa/scripts/extension-template.mjs
+[extension-template self-test] ok: shipped template loads with all four kinds + ships disabled + scaffold emits the four-kind copy this case boots (ids, flow cross-reference, persona and MCP name pinned) + SKILL.md row present
+[test:qa] skills/dsh-qa/scripts/mcp-call.mjs
+[mcp-call self-test] ok: tool-name detection + composed ast_grep server name + fixture content verified on fixtures
+[test:qa] skills/dsh-qa/scripts/memory-smoke.mjs
+[memory-smoke self-test] ok: bundle row + dist symbols + unit suite verified
+[test:qa] skills/dsh-qa/scripts/mount-assert.mjs
+[mount-assert self-test] ok: presence/absence detection verified on fixture
+[test:qa] skills/dsh-qa/scripts/plan-c-smoke.mjs
+[plan-c-smoke self-test] ok: rows + unit suites verified
+[test:qa] skills/dsh-qa/scripts/preset-conformance.mjs
+[preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+[test:qa] skills/dsh-qa/scripts/preset-register.mjs
+[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root/MCP-operand normalization verified
+[test:qa] skills/dsh-qa/scripts/readonly-deny.mjs
+[readonly-deny self-test] ok: 23 checks
+[test:qa] skills/dsh-qa/scripts/relocate-smoke.mjs
+[relocate-smoke self-test] ok: staged patch is path-clean
+[test:qa] skills/dsh-qa/scripts/session-start-team.mjs
+[session-start-team self-test] ok: gate module + advisory/provision notices + bundle patch + installer + persona + THREE-WAY prompt directions + always-advise control + attribution/evaluator fixtures (plugin vs model vs unattributable) verified
+[test:qa] skills/dsh-qa/scripts/skill-catalog-probe.mjs
+[skill-catalog-probe self-test] ok: staged skill corpus present + provider wiring verified
+[test:qa] skills/dsh-qa/scripts/software-smoke.mjs
+[software-smoke self-test] ok: fixture semantics + deterministic self-play (winner P1, 11 plies) + 4 oracle probes green, mutation control RED (9 violation(s))
+[test:qa] skills/dsh-qa/scripts/team-route-rewire.mjs
+[team-route-rewire self-test] ok: 13 checks; staged pack usable
+[test:qa] skills/dsh-qa/scripts/team-watchdog-boot.mjs
+[self-test] ok   C1: a completed turn passes as `completed`
+[self-test] ok   C2: a MODEL-level error passes as `model-error` (the turn reached the model call)
+[self-test] ok   C3: the veto signature FAILS as `veto` (veto)
+[self-test] ok   C4: an empty session log FAILS as `no-turn`
+[self-test] ok   C5: a boot without the row's apply line FAILS
+[self-test] ok   C6: a session not created on `mpd` FAILS
+[self-test] ok   C10: the GUI-activation checks pass on a clean boot (served 200, both tab ids, bridge, mirrored composition)
+[self-test] ok   C11: a boot log carrying `did not activate` REDDENS B8 (["B8"])
+[self-test] ok   C12: a `pending (waiting for service` line REDDENS B8
+[self-test] ok   C13: a `failed to apply loader entry` line REDDENS B8
+[self-test] ok   C14: a client route that 404s REDDENS B9
+[self-test] ok   C15: served bytes missing the workmate tab id REDDEN B10
+[self-test] ok   C16: served bytes without the export bridge REDDEN B11
+[self-test] ok   C17: a boot outside the user's composition REDDENS B12
+[self-test] ok   C7: the vendored cordis REALLY vetoes on the retired shape: the listener's return value became the decision ({"kind":"step","at":1})
+[self-test] ok   C8: the fixed shape (`return next()`) composes the fallback decision unchanged ({"kind":"enter","messages":["claimed-user-message"]})
+[self-test] ok   C9: the cordis control ran against the REAL vendored implementation at packages/mpd-agent-teams-plugin/_deps/cordis/lib/index.js
+[self-test] PASS — team-watchdog-boot (17 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/team-watchdog-config.mjs
+[self-test] ok   live-live: pass/0
+[self-test] ok   live-restart-needed: fail/1
+[self-test] ok   live-not-same-instance: fail/1
+[self-test] ok   healthy-observation: 10 checks passed on the healthy observation
+[self-test] ok   negative:missing-knob: the mutated observation FAILED its own check(s) ["C4"] — a knob missing from one front door
+[self-test] ok   negative:two-declarations: the mutated observation FAILED its own check(s) ["C2"] — a second declaration (the doors would drift)
+[self-test] ok   negative:row-ignored: the mutated observation FAILED its own check(s) ["C6"] — a row config that is not the effective default
+[self-test] ok   negative:namespace-loses: the mutated observation FAILED its own check(s) ["C7"] — a namespace that does not outrank the row config
+[self-test] ok   negative:restart-needed: the mutated observation FAILED its own check(s) ["C8"] — a re-read that only a restart could deliver
+[self-test] ok   negative:no-clamp: the mutated observation FAILED its own check(s) ["C9"] — an unclamped cadence beyond the silence threshold
+[self-test] ok   negative:halt-action: the mutated observation FAILED its own check(s) ["C10"] — an escalation wired to the halt path
+[self-test] PASS — team-watchdog-config (8 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/team-watchdog-fault.mjs
+[self-test] ok   healthy-observation: 15 checks passed on the healthy observation
+[self-test] ok   negative:non-stale-case-failed: the mutated observation FAILED its own check(s) ["F2"] — a fixture case that is NOT declared stale failing
+[self-test] ok   negative:stale-case-passes: the mutated observation FAILED its own check(s) ["F2b"] — a declared-stale case that now PASSES (the declaration must be re-checked)
+[self-test] ok   negative:stale-signature-lost: the mutated observation FAILED its own check(s) ["F2b"] — a stale case whose reading no longer matches its declared signature
+[self-test] ok   negative:warn-boundary: the mutated observation FAILED its own check(s) ["F3"] — a WARN below the 90 s threshold
+[self-test] ok   negative:label-regressed: the mutated observation FAILED its own check(s) ["F13"] — the pre-redesign tuple re-advertised as the product's frozen defaults (t65/S2)
+[self-test] ok   negative:product-defaults-wrong: the mutated observation FAILED its own check(s) ["F13"] — a lane that reports the injected tuple as the §3 product default
+[self-test] ok   negative:no-escalation-arm: the mutated observation FAILED its own check(s) ["F4"] — a §1 arm that never escalates (§1.2 of the contract)
+[self-test] ok   negative:arm-not-fold: the mutated observation FAILED its own check(s) ["F4"] — a §1 arm whose suppression came from the §4 fallback instead of the fold
+[self-test] ok   negative:arm-no-hold: the mutated observation FAILED its own check(s) ["F4"] — a §1 escalation that applied no hold (no scene leg either)
+[self-test] ok   negative:warn-only-holds: the mutated observation FAILED its own check(s) ["F4b"] — a hold applied while `actionOnEscalate` is warn-only
+[self-test] ok   negative:report-only-escalates: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm that escalates
+[self-test] ok   negative:report-only-warns-twice: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm warning more than once per task+attempt generation
+[self-test] ok   negative:report-only-holds: the mutated observation FAILED its own check(s) ["F12"] — a §4 report-only arm that held a team
+[self-test] ok   negative:report-only-cause: the mutated observation FAILED its own check(s) ["F12"] — a §4 warn not attributed to the heartbeat fallback
+[self-test] ok   negative:scene-hold-mismatch: the mutated observation FAILED its own check(s) ["F9"] — a scene pointer whose hold disagrees with the sidecar
+[self-test] ok   negative:scene-not-escalate: the mutated observation FAILED its own check(s) ["F9"] — a scene pointer that does not come from the escalation
+[self-test] ok   negative:not-preserving: the mutated observation FAILED its own check(s) ["F6"] — a pause that mutated the team record
+[self-test] ok   negative:deliveries: the mutated observation FAILED its own check(s) ["F6"] — a dispatch that reached a held team
+[self-test] ok   negative:no-contrast: the mutated observation FAILED its own check(s) ["F8"] — a halt control that no longer shows AC-17 going red
+[self-test] ok   negative:captain-missed: the mutated observation FAILED its own check(s) ["F5"] — a captain wedge that was not attributed
+[self-test] ok   negative:not-claimed-dropped: the mutated observation FAILED its own check(s) ["F10"] — a lane that silently dropped a NOT_CLAIMED entry
+[self-test] PASS — team-watchdog-fault (22 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+[self-test] ok   healthy-observation: 13 checks passed on the healthy observation
+[self-test] ok   negative:install: the mutated observation FAILED its own check(s) ["H1"] — a row that installed no writers
+[self-test] ok   negative:event: the mutated observation FAILED its own check(s) ["H2:tools/post-execute"] — a missing tool hook
+[self-test] ok   negative:tool-stamp: the mutated observation FAILED its own check(s) ["H4"] — a tool stamp that is not post-completion-success
+[self-test] ok   negative:captain: the mutated observation FAILED its own check(s) ["H8"] — no captain stamp (AC-2 needs both)
+[self-test] ok   negative:fresh-read: the mutated observation FAILED its own check(s) ["H9"] — a read that did not come from a fresh process
+[self-test] ok   negative:pre-hook-absent: the mutated observation FAILED its own check(s) ["H5"] — the built bytes lost the pre-dispatch hook
+[self-test] ok   negative:pre-hook-not-subscribed: the mutated observation FAILED its own check(s) ["H5"] — the row never subscribed tools/pre-execute
+[self-test] ok   negative:observe-only-veto: the mutated observation FAILED its own check(s) ["H5"] — a hook that REPLACES the gate decision (veto)
+[self-test] ok   negative:observe-only-mutates: the mutated observation FAILED its own check(s) ["H5"] — a live execution object handed to the listener (it could mutate the call)
+[self-test] ok   negative:observe-only-write-lands: the mutated observation FAILED its own check(s) ["H5"] — a listener write that was not rejected by the frozen copy
+[self-test] ok   negative:observe-only-throws: the mutated observation FAILED its own check(s) ["H5"] — a throwing listener that breaks the call it observes
+[self-test] ok   negative:observe-only-after-body: the mutated observation FAILED its own check(s) ["H5"] — a pre stamp that arrived after the tool body started
+[self-test] PASS — team-watchdog-heartbeat (13 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/team-watchdog-notify.mjs
+[self-test] ok   healthy-observation: 18 checks passed on the healthy observation
+[self-test] ok   negative:web-record-missing: the mutated observation FAILED its own check(s) ["W2"] — a payload with no activity record
+[self-test] ok   negative:web-not-top: the mutated observation FAILED its own check(s) ["W4"] — a banner that is not the panel's first child
+[self-test] ok   negative:web-no-first-poll: the mutated observation FAILED its own check(s) ["W3"] — a replay that needed a user action
+[self-test] ok   negative:web-ack-other-reader: the mutated observation FAILED its own check(s) ["W6"] — an acknowledge that clobbered the OTHER reader's key
+[self-test] ok   negative:web-replay-continues: the mutated observation FAILED its own check(s) ["W7"] — a replay that survived the acknowledge
+[self-test] ok   negative:tui-reader: the mutated observation FAILED its own check(s) ["T1","T5"] — a TUI front door using the web reader key
+[self-test] ok   negative:tui-dialog: the mutated observation FAILED its own check(s) ["T4"] — a dialog with no acknowledge action
+[self-test] ok   negative:tui-compose: the mutated observation FAILED its own check(s) ["T3"] — a notice that never reaches the status line
+[self-test] ok   negative:tui-ack: the mutated observation FAILED its own check(s) ["T5"] — a TUI acknowledge that did not advance its watermark
+[self-test] ok   negative:tui-ack-other: the mutated observation FAILED its own check(s) ["T5"] — a TUI acknowledge that clobbered the web reader's key
+[self-test] ok   negative:tui-replay-continues: the mutated observation FAILED its own check(s) ["T6"] — a TUI replay that survived the acknowledge
+[self-test] ok   negative:bytes: the mutated observation FAILED its own check(s) ["T7"] — built TUI bytes with no notice/dialog wiring
+[self-test] ok   negative:bytes-unchanged: the mutated observation FAILED its own check(s) ["N1"] — a watermark file whose bytes never changed
+[self-test] ok   negative:fallback-hidden: the mutated observation FAILED its own check(s) ["N2"] — a lane that hides the permanent-redisplay fallback
+[self-test] PASS — team-watchdog-notify (15 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/team-watchdog-scene.mjs
+[self-test] ok   healthy-observation: 10 checks passed on the healthy observation
+[self-test] ok   negative:field-set: the mutated observation FAILED its own check(s) ["S2","S5"] — a snapshot missing a contracted field
+[self-test] ok   negative:member-fields: the mutated observation FAILED its own check(s) ["S6"] — a member row without its liveness field
+[self-test] ok   negative:hold-mismatch: the mutated observation FAILED its own check(s) ["S4"] — a snapshot hold that disagrees with the sidecar
+[self-test] ok   negative:log-shorter: the mutated observation FAILED its own check(s) ["S7"] — an incident log with fewer records than the snapshot claims
+[self-test] ok   negative:pointer: the mutated observation FAILED its own check(s) ["S9"] — a latest.json pointer that is not the newest scene
+[self-test] ok   negative:fresh-process: the mutated observation FAILED its own check(s) ["S1"] — a read that was not made from a fresh process
+[self-test] PASS — team-watchdog-scene (7 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/tool-output-validation.mjs
+[tool-output-validation self-test] ok: bundle rows + dist symbols + unit suites verified
+[test:qa] skills/dsh-qa/scripts/tui-admission.mjs
+[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided
+[test:qa] skills/dsh-qa/scripts/tui-distribution.mjs
+[tui-distribution self-test] ok: descriptor rules + CLI plan are two-sided
+[test:qa] skills/dsh-qa/scripts/tui-mount.mjs
+[tui-mount self-test] ok: layering, crash-scan, boot-face and isolation predicates are two-sided
+[test:qa] skills/dsh-qa/scripts/tui-panels.mjs
+[tui-panels self-test] ok: 7 surfaces asserted, negative controls fail as required
+[test:qa] skills/dsh-qa/scripts/tui-settings-bridge.mjs
+[tui-settings-bridge self-test] ok: 18 web-arm + 7 TUI-arm + 4 client-shape injected faults each flip their own check; all three synthetic green artifacts pass
+[test:qa] skills/dsh-qa/scripts/tui-spec-conformance.mjs
+[tui-spec-conformance self-test] ok: matrix mapping two-sided, identity table reproduces on 8 files
+[test:qa] skills/dsh-qa/scripts/tui-team-surface.mjs
+[tui-team-surface self-test] ok: fixture, parser, assertion falsifiability and the dist invariants all hold
+[test:qa] skills/dsh-qa/scripts/ultrawork-smoke.mjs
+[ultrawork-smoke self-test] ok: engine symbols + bundle row verified
+[test:qa] skills/dsh-qa/scripts/ulw-command.mjs
+[ulw-command self-test] ok: registry listing + usage + activation + directive order/objective + command lifecycle predicates, each with a negative control; shipped directive literal and SKILL.md row verified
+[test:qa] skills/dsh-qa/scripts/vision-smoke.mjs
+[vision-e2e self-test] ok: fixture generator verified (155 bytes)
+[test:qa] skills/dsh-qa/scripts/watchdog-redesign.mjs
+[self-test] ok   healthy-observation: 21 checks passed on the healthy observation
+[self-test] ok   negative:row-silent-on-red: the mutated observation FAILED its own check(s) ["R-a"] — a RED row that reproduced nothing (the contrast is the contract's whole point)
+[self-test] ok   negative:green-warns: the mutated observation FAILED its own check(s) ["G-d"] — a GREEN ladder that warns below 600 000 and holds
+[self-test] ok   negative:early-warn: the mutated observation FAILED its own check(s) ["G-d"] — a first WARN before the frozen threshold
+[self-test] ok   negative:vacuous-hold-row: the mutated observation FAILED its own check(s) ["G-c"] — a hold row whose success could not be falsified (the re-injection control did not refuse)
+[self-test] ok   negative:guard-read-from-tools: the mutated observation FAILED its own check(s) ["G-c"] — a tool-boundary hold read that survived the redesign
+[self-test] ok   negative:pin-broken: the mutated observation FAILED its own check(s) ["G-e"] — the r6 pin repeating the tool-expired bound or applying a hold
+[self-test] ok   negative:red-drifted: the mutated observation FAILED its own check(s) ["PIN-RED"] — a RED tree that no longer matches the contract's frozen hashes
+[self-test] ok   negative:settle-moved: the mutated observation FAILED its own check(s) ["SETTLED"] — a tree that changed under the run
+[self-test] ok   negative:fold-not-authoritative: the mutated observation FAILED its own check(s) ["FOLD-AUTHORITY"] — a GREEN reading whose suppression came from the §4 fallback, not the fold
+[self-test] ok   negative:knobs-drifted: the mutated observation FAILED its own check(s) ["KNOBS"] — a working tree still carrying the legacy tuple
+[self-test] ok   negative:replay-missing: the mutated observation FAILED its own check(s) ["REPLAY"] — no incident replay (contract §9 item 3)
+[self-test] ok   negative:replay-regression: the mutated observation FAILED its own check(s) ["REPLAY"] — a fold predicate that would have reproduced every historical hold
+[self-test] ok   negative:report-only-escalates: the mutated observation FAILED its own check(s) ["REPLAY"] — a §4 report-only replay that escalates (the fallback is not permitted to)
+[self-test] ok   negative:replay-unfaithful: the mutated observation FAILED its own check(s) ["REPLAY"] — a reconstruction that cannot even reproduce the recorded escalations
+[self-test] ok   negative:row-missing: the mutated observation FAILED its own check(s) ["CLEAN","R-b","G-b","FOLD-AUTHORITY"] — a contract row that never ran
+[self-test] PASS — watchdog-redesign (16 checks, 0 failed)
+[test:qa] skills/dsh-qa/scripts/wave2b-lane-d.mjs
+[self-test] ok   t69-fixture-reddens — a fixture carrying a raw invocation is DETECTED by the scanner's own pattern
+[self-test] ok   t80-seeded-mismatch-reddens — a scratch copy claiming one key too many exits 1 with 1 violation(s)
+[self-test] ok   t25-two-frame-container — frames=2, naive read=first-frame-only
+[self-test] ok   t77-shape-and-near-miss — shape ignored=true, near-miss ignored=false
+[self-test] ok   t89-dot-slash-discovers — `./skills/dsh-qa/scripts` discovers 56 file(s)
+[self-test] ok   t69-json-stream-contract — live (profile headless): exit 1, stdout is the JSON envelope=true, banner on stderr=true, banner on stdout=false, MERGED capture parses=false | fixture child via --bin: envelope=true, child stdout reachable only through the field=true, merged parses=false
+[self-test] ok   t69-binding-reddens-and-spares — fixtures: 5, flagged: fixture-unbound.mjs (declared/imported/parameter/prose fixtures must NOT flag)
+[self-test] ok   t74-rule-sentence — the SKILL.md rule sentence is present byte-for-byte
+[self-test] PASS — wave2b-lane-d (8/8 arms)
+[test:qa] skills/dsh-qa/scripts/web-client-adapt.mjs
+[web-client-adapt self-test] ok: 14 checks
+[test:qa] skills/dsh-qa/scripts/web-settings-bridge.mjs
+[web-settings-bridge self-test] ok: 18 web-arm + 7 TUI-arm + 4 client-shape injected faults each flip their own check; all three synthetic green artifacts pass
+[test:qa] skills/dsh-qa/scripts/workmate-library.mjs
+[workmate-library self-test] ok: 19 checks
+[test:qa] skills/dsh-qa/scripts/workmate-team-member.mjs
+[workmate-team-member self-test] ok: 6 checks
+  ok the shared validator exposes the four surfaces the CLI uses (source mode)
+  ok validate accepts templates/mpd-extension (got 0): 
+  ok the template declares all four contribution kinds
+  ok scaffold --with-mcp exits 0 (got 0): 
+  ok scaffold wrote mpd-ext.json
+  ok scaffold wrote skills/demo-ext-skill/SKILL.md
+  ok scaffold wrote flows/demo-ext-flow.json
+  ok scaffold wrote personas/demo-ext-reviewer.md
+  ok scaffold wrote server.mjs
+  ok validate accepts the scaffold (got 0): 
+  ok the --with-mcp copy is the template modulo the token rewrite, file by file
+  ok scaffold (no flag) exits 0 (got 0): 
+  ok the default copy drops server.mjs
+  ok the default copy drops the manifest mcp entry
+  ok the default copy wrote skills/demo-ext-plain-skill/SKILL.md
+  ok the default copy wrote flows/demo-ext-plain-flow.json
+  ok the default copy wrote personas/demo-ext-plain-reviewer.md
+  ok validate accepts the default copy (got 0): 
+  ok the default copy contributes three kinds
+  ok the default copy is the template modulo the token rewrite and the mcp drop, file by file
+  ok scaffold accepts an id longer than the serverName bound (got 0): mpd-ext scaffold: warning: ^[A-Za-z0-9_-]{1,32}$ caps serverName at 32 characters, so the copy declares "demo-ext-with-a-very-long-identi" instead of "demo-ext-with-a-very-long-identifier-1234"
+  ok the long-id fixture (41 chars) really is longer than the contract bound (32)
+  ok the copied serverName is capped at the contract bound (32), not at a literal
+  ok the cap is WARNED on stderr, never silent
+  ok the long-id copy still validates
+  ok scaffold refuses an id that violates the id grammar
+  ok the refusal names the id grammar
+  ok scaffold refuses an existing target
+  ok the refusal says the target exists
+  ok scaffold refuses the base-roster role collision for id "plan" (got 1)
+  ok the refusal is a CONTRACT refusal, not a CLI-defect message
+  ok the refusal quotes the roster's own collision sentence
+  ok the refusal states that nothing was written
+  ok a refused scaffold leaves nothing at the target
+  ok a refused scaffold leaves no staging container behind
+  ok validate exits 1 on a broken extension (got 1)
+  ok the broken run reports "typoKey"
+  ok the broken run reports "serverName"
+  ok the broken run reports "contributes.skills[0].root"
+  ok the broken run reports "escapes are rejected"
+  ok the broken run reports "surprise"
+  ok the broken run reports "persona file does not exist"
+  ok validate exits 1 on a deliberately broken copy of the template (got 1)
+  ok the broken copy reports "typoKey"
+  ok the broken copy reports "surprise"
+  ok the broken copy reports "serverName"
+  ok the broken copy reports "persona file does not exist"
+  ok the broken copy reports "frontmatter"
+  ok validate accepts extensions/mpd-ext-example (got 0): 
+  ok list exits 0 (got 0)
+  ok list names the bundle plane
+  ok list sees the shipped example
+  ok no command prints usage or fails
+[mpd-ext] --self-test passed (53 checks) [validator: source]
+[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+[test:qa] all self-tests passed
+EXIT=0

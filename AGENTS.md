@@ -197,7 +197,10 @@ mpd-dsh/
 │   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate): base→instance, self-reflect (persona+memory capped), short note, reuse via mpd_workmate_* (no forced weak matches); rename/delete (archive-first, refused while in use)
 │   ├── mpd-bootstrap-plugin/     # bundle provisioning BY REFERENCE: serves <bundle>/skills via the adapter; cleans legacy (<=0.2.6) home copies
 │   ├── mpd-agent-teams-plugin/   # adopted dsh-agent-teams (MIT, first-class main code): agent_teams_* + Web panel; memberPersona injects workmate backing
+│   ├── mpd-team-watchdog-plugin/ # stall detection for team lanes: the member record-stream fold (OUTSTANDING/IN-FLIGHT/ALIVE/PARKED) + heartbeat store under `<workspace>/.mpd/team/watchdog/`, the WARN→ESCALATE ladder, and the preserving hold (which stops NEW DISPATCH only, never a claim/update/kick)
+│   ├── mpd-team-compact-plugin/  # compaction for FINISHED teams: compacts the members' contexts once (the captain is never compacted) and keeps an audit ledger under `<workspace>/.mpd/team-compact/<teamId>/`, never in `.mpd/team`
 │   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client (client.js = adopted agent-teams panel + the workmate library registered as a DSH-better-sidebar tab, with the bundle floater as fallback; built by scripts/build-mpd-client.mjs)
+│   ├── mpd-tui-plugin/           # the DSH-TUI edition's surface package: binds the `ctx.tui*` seams (status line, renderers, settings section, board/scenes, command trees, shortcuts, dialogs) and degrades warn-once — one diagnostic per missing seam — where they are absent
 │   ├── mpd-ext-plugin/           # the extension interface (row `mpd-ext`, service `mpdExtensions`): frozen descriptor contract v1, code + data planes, lifecycle-split discovery (project per call = skills/flows only; user + bundle at apply = all four kinds), skills/flows providers, the runtime stdio MCP bridge (`mcp__<server>__<raw>` naming parity, connect-at-apply, two-phase swap with full rollback, keep-or-drop on the SCHEMA never the tool, object-root normalization of a foreign `inputSchema`), extension roles resolved per call by mpd-roles, the four inspection tools (mpd_ext_list/show, mpd_flow_list/show — including a catalog-backed `skillServing` check and `env` redaction) and the author SDK
 │   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster (overlay-mounted)
 ├── extensions/                  # bundle-shipped extension discovery root: <bundle>/extensions/*/mpd-ext.json (host-wide plane, all four kinds) + the DISABLED reference extension mpd-ext-example (skill, flow, role, working dependency-free stdio MCP server)
@@ -206,7 +209,7 @@ mpd-dsh/
 │   ├── overlays/                 # QA patch overlays (keep empty when rows live in the bundle)
 │   ├── golden/                   # golden fixtures + Prometheus plan artifacts
 │   └── prompt-adaptation-log.md  # persona adaptation iterations
-├── docs/                         # human-facing docs (BILINGUAL EN + zh-CN): index.md (hub) / user-guide.md / architecture.md / development.md; historical plan records (plan-*.md, decisions.md) and internal QA/golden reference docs are process records exempt from bilingual
+├── docs/                         # human-facing docs (BILINGUAL EN + zh-CN): index.md (hub) / user-guide.md / design.md / development.md; historical plan records (plan-*.md, decisions.md) and internal QA/golden reference docs are process records exempt from bilingual
 ├── agent-references/             # ON-DEMAND agent-facing reference (English-only, NOT auto-injected; index in the manual's "Reference Index (on-demand)"): troubleshooting.md (former §12 body) + agent-teams-deltas.md (former §6 delta registry)
 └── evidence/                     # QA evidence: <domain>/<slug>/<timestamp>/ (records, language as produced)
 ```

@@ -16,7 +16,7 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
 | [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) | 编写扩展的智能体 | **新增**：机器契约（仅有英文）—— 逐类型要求、每次文档检查都会校验的清单骨架、平面合法性、错误特征、拒绝清单与 v1 硬性边界。 |
 | [`extension-adaptation-report.zh-CN.md`](extension-adaptation-report.zh-CN.md) | 技术决策者 | **新增**：外部插件适配的现状报告 —— 两条路径及各自适合谁、扩展接口清单、运行时与隔离姿态、本棵代码树上真实验证过的内容、风险与缺口，以及按 P0/P1/P2 排序的建议。 |
 | [`tui.zh-CN.md`](tui.zh-CN.md) | TUI 会话使用者 | **新增**：DSH-TUI 版本 —— 安装命令、TUI 原生界面、准入与分发产物、逐包兼容性台账，以及明确的 NOT-CLAIMED 清单。 |
-| [`architecture.zh-CN.md`](architecture.zh-CN.md) | 工程师、好奇的使用者 | bundle 如何组装与挂载：补丁层、启动链、插件清单、交互流程、状态布局、web 客户端接线、TUI 版本接线。 |
+| [`design.zh-CN.md`](design.zh-CN.md) | 工程师、好奇的使用者 | bundle 如何组装与挂载：补丁层、启动链、插件清单、交互流程、状态布局、web 客户端接线、TUI 版本接线。 |
 | [`development.zh-CN.md`](development.zh-CN.md) | 开发者 | 仓库布局、构建/测试命令、QA 用例目录、关卡、打包/安装、vendor、git 模型、常见坑。 |
 | [`../AGENTS.md`](../AGENTS.md) | 智能体 + 维护者 | 有约束力的仓库手册（英文）：约定、关卡、git 模型、故障排查。 |
 | [`../extensions/README.zh-CN.md`](../extensions/README.zh-CN.md) | 扩展作者 | bundle 自带的发现根目录：三个根、各自的生命周期，以及随包提供的参考扩展。 |

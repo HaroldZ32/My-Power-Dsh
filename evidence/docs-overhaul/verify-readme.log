@@ -1,0 +1,255 @@
+{
+  "files": {
+    "README.md": {
+      "sha256": "9d58873d602a94259ea5777e2524edfc45ba3294c41e084dcc0303ff2767e8db",
+      "bytes": 44472,
+      "lines": 735,
+      "mtime": "2026-09-19T10:31:15.486Z"
+    },
+    "README.zh-CN.md": {
+      "sha256": "61f7dadf721b0514f153cd5faf0efa789b6496316f291cc15a589cb26c42c68a",
+      "bytes": 44181,
+      "lines": 674,
+      "mtime": "2026-09-19T10:31:30.316Z"
+    }
+  },
+  "links": {
+    "status": "passed",
+    "perFile": {
+      "README.md": {
+        "total": 24,
+        "dead": 0
+      },
+      "README.zh-CN.md": {
+        "total": 24,
+        "dead": 0
+      }
+    },
+    "dead": []
+  },
+  "sectionTrees": {
+    "status": "passed",
+    "counts": {
+      "README.md": {
+        "1": 1,
+        "2": 17,
+        "3": 19
+      },
+      "README.zh-CN.md": {
+        "1": 1,
+        "2": 17,
+        "3": 19
+      }
+    },
+    "onlyEn": [],
+    "onlyZh": [],
+    "levelMismatch": []
+  },
+  "claims": {
+    "status": "passed",
+    "registryCounts": {
+      "tools": 60,
+      "teamTools": 18,
+      "commands": [
+        "agent-teams",
+        "goal",
+        "mpd",
+        "mpd-codegraph",
+        "settings",
+        "ultrawork",
+        "ulw"
+      ]
+    },
+    "absentTools": [],
+    "absentCommands": [],
+    "familyPrefixes": [
+      "mpd_workmate_*",
+      "mpd_boulder_*",
+      "mpd_memory_*",
+      "mpd_hashline_*",
+      "mpd_ext_*",
+      "mcp__ast_grep__*",
+      "mcp__git_bash__*",
+      "mcp__lsp__*",
+      "mcp__codegraph__*",
+      "mcp__context7__*",
+      "mcp__grep_app__*"
+    ],
+    "exemptNonTools": [
+      "agent_teams_halt (name of the pause MECHANISM (the external Stop-team route), explicitly stated in the README as not a callable tool)"
+    ],
+    "gitBashMentions": 0,
+    "patch": {
+      "inserts": 25,
+      "idTargets": 2,
+      "total": 27,
+      "gitbashDisabled": true
+    },
+    "slots": {
+      "declared": 4,
+      "names": [
+        "slot1",
+        "slot2",
+        "slot3",
+        "slot4"
+      ]
+    }
+  },
+  "claimLedger": {
+    "status": "passed",
+    "installRowCheck": {
+      "status": "passed",
+      "patchInsertCount": 25,
+      "patchIdTargetCount": 2,
+      "readmeRowCountEn": 27,
+      "readmeRowCountZh": 27,
+      "readmeEnEqualsZh": true,
+      "absentFromReadme": [],
+      "rowsNotInPatch": [],
+      "readmeRows": [
+        "mpd-web-compat",
+        "mpd-dsh-adapter",
+        "mpd-config",
+        "mpd-team-watchdog",
+        "mpd-tools",
+        "mpd-modelchain",
+        "mpd-ext",
+        "mpd-roles",
+        "mpd-ulw",
+        "mpd-hashline",
+        "mpd-boulder",
+        "mpd-comment-checker",
+        "mpd-codegraph",
+        "mpd-memory",
+        "mpd-workmate",
+        "mpd-team-compact",
+        "mpd-bootstrap",
+        "mpd-tui",
+        "mcp-astgrep",
+        "mcp-gitbash",
+        "mcp-lsp",
+        "mcp-codegraph",
+        "agent-teams",
+        "mcp-context7",
+        "mcp-grepapp",
+        "agent-presets",
+        "dsh-tui-agent-presets"
+      ]
+    },
+    "depsCheck": {
+      "status": "passed",
+      "declared": {
+        "@ast-grep/cli": "0.45.2",
+        "@colbymchenry/codegraph": "1.5.0",
+        "@code-yeongyu/comment-checker": "0.8.0"
+      },
+      "documented": [
+        {
+          "name": "@ast-grep/cli",
+          "version": "0.45.2"
+        },
+        {
+          "name": "@colbymchenry/codegraph",
+          "version": "1.5.0"
+        },
+        {
+          "name": "@code-yeongyu/comment-checker",
+          "version": "0.8.0"
+        }
+      ]
+    },
+    "knobsCheck": {
+      "status": "passed",
+      "coreKnobs": 13,
+      "teamModelLeaves": 12,
+      "total": 25,
+      "readmeClaim": "25 editable knobs"
+    },
+    "credits": {
+      "status": "passed",
+      "items": [
+        {
+          "credit": "oh-my-openagent @ code-yeongyu",
+          "inReadme": true,
+          "pinnedCommitInReadme": true,
+          "repoKnowsCommit": true,
+          "repoKnowsVersion": true
+        },
+        {
+          "credit": "dsh-agent-teams (MIT) @ NanmiCoder / 程序员阿江 (Relakkes)",
+          "inReadme": true,
+          "repoNotices": true,
+          "adoptedVersionInReadme": true,
+          "adoptedVersionInNotices": true
+        },
+        {
+          "credit": "optional tool engines",
+          "allThreeInReadme": true
+        }
+      ],
+      "licenseAgrees": true
+    }
+  },
+  "sectionPairing": [
+    "1. EN: What you get\n    ZH: 一次安装，你得到什么",
+    "2. EN: Install\n    ZH: 安装",
+    "3. EN: Quick start\n    ZH: 快速上手",
+    "4. EN: The main agent and your project rules\n    ZH: 主智能体与你的项目规则",
+    "5. EN: Commands\n    ZH: 命令",
+    "6. EN: Tools, by job\n    ZH: 按用途划分的工具",
+    "7. EN: Specialists: the roster\n    ZH: 专家：名册",
+    "8. EN: Team mode\n    ZH: 团队模式",
+    "9. EN: Web GUI\n    ZH: Web GUI",
+    "10. EN: The DSH-TUI edition\n    ZH: DSH-TUI 版本",
+    "11. EN: Settings (`.mpd/mpd.jsonc`)\n    ZH: 设置（`.mpd/mpd.jsonc`）",
+    "12. EN: Where your state lives\n    ZH: 你的状态存放在哪里",
+    "13. EN: Troubleshooting\n    ZH: 故障排查",
+    "14. EN: Documentation map\n    ZH: 文档地图",
+    "15. EN: Architecture, in one pointer\n    ZH: 架构：只留一条指引",
+    "16. EN: Acknowledgements\n    ZH: 鸣谢",
+    "17. EN: License\n    ZH: 许可证"
+  ],
+  "translation": {
+    "status": "passed",
+    "perFile": {
+      "README.md": {
+        "cjkChars": 7,
+        "cjkRatio": 0.0002,
+        "headings": 37,
+        "headingsWithCjk": 0,
+        "asciiOnlyHeadings": 37
+      },
+      "README.zh-CN.md": {
+        "cjkChars": 6786,
+        "cjkRatio": 0.2387,
+        "headings": 37,
+        "headingsWithCjk": 35,
+        "asciiOnlyHeadings": 2
+      }
+    }
+  },
+  "gates": {
+    "node scripts/verify-docs-parity.mjs": {
+      "exitCode": 0,
+      "summary": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 — PASS",
+      "readmePairLines": [
+        "ok   README.md"
+      ],
+      "failLines": []
+    },
+    "node scripts/verify-rows-parity.mjs": {
+      "exitCode": 0,
+      "summary": "[verify-rows-parity] ok: 25 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)",
+      "readmePairLines": [],
+      "failLines": []
+    }
+  },
+  "observations": [
+    "docs-parity history during THIS verification: RED (exit 1, pairs=38 failed=1) on the two runs at 18:34-18:35Z, the sole failing pair being docs/user-guide.md (owned by t5, being rewritten: its zh heading tree changed between two consecutive runs seconds apart, which is the signature of an in-flight write, not a README defect); GREEN (exit 0, pairs=38 failed=0) on this final run at 2026-09-19T10:37:46.427Z. The root README pair was `ok` in every run: ok   README.md.",
+    "The bytes on disk are NEWER than the revision t4's completion note records (t4: README.md 718 lines sha256 3927c7f7…, README.zh-CN.md 658 lines f0534f0b…; disk: 735/9d58873d… and 674/61f7dadf…). This verification is anchored to the DISK revision recorded in files{}, which is what a reviewer must judge.",
+    "The t1 fact-base mismatches M-1/M-2/M-3/M-4 were re-checked against the disk revision: git_bash is presented as disabled in 4 contexts (patch row `disabled: true`), no /roster command claim, 6 MCP rows (4 in-repo + 2 remote), four team-model slots.",
+    "Family prefixes (`mpd_workmate_*`, `mcp__ast_grep__*`, …) are counted separately and are NOT treated as tool names; `agent_teams_halt` is exempted as a mechanism name, with the README's own sentence quoted as the reason."
+  ],
+  "failures": [],
+  "findings": []
+}

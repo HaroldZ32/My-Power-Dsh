@@ -1,10 +1,70 @@
-# Architecture
+# Design
 
-**English** | [中文](architecture.zh-CN.md)
+**English** | [中文](design.zh-CN.md)
 
-How my-power-dsh mounts inside the DeepSeek Harness (DSH), what each piece does, and
-how the pieces talk to each other. Reading order: bundle assembly → boot chain →
-plugin inventory → interaction flows → state layout → web client wiring.
+The detailed design of my-power-dsh: what it designs, the principles it is built on, how it is
+assembled and mounts inside the DeepSeek Harness (DSH), what each piece does, and how the pieces
+talk to each other.
+
+**This document is for engineers; it is not the user manual.** Installing the bundle, the commands
+to type, the settings knobs and the recipes live in [`README.md`](../README.md) and the
+task-oriented [user guide](user-guide.md) — this is the document those two link to when the
+mechanism behind a feature matters.
+
+Reading order: what is designed → design principles → bundle and package structure → patch layer
+and boot chain → plugin inventory → interaction flows → state layout → web client wiring → TUI
+wiring → known limits.
+
+## 0. What this document designs
+
+**The system under design is the bundle, not the host.** DSH (the DeepSeek Harness) is a Cordis
+plugin host: it owns the loader, the session/agent runtime, the model routing, the Web and TUI
+shells and the base row set. `@mpd-dsh/mpd` designs what is added ON TOP of that host, and how it
+is added:
+
+- a **patch layer** that inserts the bundle's rows into any profile the bundle is installed into,
+  and two id-targets that make the bundle's own `mpd` preset the default there,
+- **25 plugin rows** (6 MCP client rows, 17 `mpd-*` plugin rows, the `mpd-web-compat` self-row and
+  the adopted `agent-teams` row), and the services, tools, commands, routes and state each one owns
+  (§4),
+- a **web client** and a **TUI surface** that render the bundle's surfaces inside the host's own
+  shells (§7, §7b),
+- the **state layout** the bundle writes under the session workspace and under the user home (§6),
+  and the isolation rules that keep QA away from both (§8).
+
+What is NOT designed here: the host's own seams and row set, the model providers, and the upstream
+work this bundle builds on — that provenance is credited in
+[`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) and summarized in the README.
+
+## 0b. Design principles
+
+These are the rules the pieces below are shaped by; a change that violates one of them is a defect
+even when it works on the happy path.
+
+1. **The agent is the worker.** Every surface exists so that an agent that reads the repository
+   cold behaves correctly: explicit conventions, executable gates, evidence on disk. This is why
+   the roster ships as data + personas rather than prose, and why the design documents its own
+   limits (§8b) instead of leaving them to be discovered.
+2. **One seam contact surface.** Exactly one package (`mpd-dsh-adapter`) touches the host's
+   tool/agent/skill/preset seams; every other row calls through the `mpdDsh` service. A host
+   release that reshapes a seam is absorbed there instead of across the tree (§6b). The one
+   exception is adopted upstream main code, which keeps its own `ctx.*` calls and is named as an
+   exception (§6b).
+3. **Plugin form, config by reference.** Every capability is a Cordis plugin row or a configured
+   host plugin instance; no logic lives in profiles or scripts. Assets (the skill corpus, the
+   `mpd` preset) are SERVED by the bundle rather than copied into `$DSH_HOME`, so uninstall leaves
+   no residue (§2, §6c).
+4. **Workspace-scoped state, resolved per call.** State lands under the calling session's
+   workspace (`.mpd/…`), resolved through the adapter on every call — never a module-level
+   constant, never `chdir`, never `$DSH_WORKSPACE_ROOT` set from a row (§6). The only deliberate
+   exception is the user-scoped workmate library under `~/.mpd/workmate` (§6).
+5. **Evidence without evidence is incomplete.** A behavioral claim needs a gate or a real tool
+   call, not a composition dump: `--dump-config` composes rows and never executes plugin code,
+   so it can never witness a load (§4). Claims in this document name their evidence.
+6. **Isolation in QA.** QA boots in a temp `DSH_HOME` with a sandbox `HOME` and a sandbox
+   workspace, and never touches the real `~/.dsh` or `~/.mpd/workmate` (§8).
+7. **Baseline discipline and minimal diffs.** Upstream assets are pinned and verified
+   (`VENDOR_LOCK.json`), not chased; the smallest change that satisfies the requirement wins.
 
 ## 1. Big picture
 
@@ -14,12 +74,14 @@ session's request header. my-power-dsh ships as an **npm bundle** (`@mpd-dsh/mpd
 `dsh.bundle.patch` (`packages/mpd-bundle/cordis.patch.yml`) adds rows to any profile it
 is installed into. It contributes:
 
-- 8 MCP servers (ast-grep, git-bash [disabled by default], LSP, codegraph + remote
-  context7 / grep.app),
+- **25 inserted rows** in ONE additive patch layer: 6 MCP client rows (local ast-grep,
+  git-bash [disabled by default], LSP, codegraph; remote context7, grep.app), 17 `mpd-*`
+  plugin rows, the `mpd-web-compat` self-row that makes the bundle a loader entry, and the
+  adopted `agent-teams` plugin row — §4 lists every one of them,
+- **2 id-targets** (not inserts) that make the bundle's own preset the default in each
+  composition: the `agent-presets` row on the web/base plane and `dsh-tui-agent-presets` on
+  the dsh-tui plane (§2, §6c),
 - the harness adapter (`mpd-dsh-adapter`) every other row calls through,
-- 13 host plugins (adapter, config, tools, modelchain, roles, ulw, hashline, boulder,
-  comment-checker, memory, codegraph, workmate, bootstrap) + the adopted agent-teams
-  plugin and the bundle's own web-compat/client plugin,
 - one agent preset (`mpd`) and a skill corpus, served from the bundle (no home copy),
 - a combined web client (the AgentTeams sidebar page + the workmate library).
 
@@ -27,7 +89,7 @@ The specialist roster's 11 specialists are **not presets**: they live as a speci
 (`mpd-roles-plugin`) and as teammate instantiation templates in the adopted
 `agent-teams` `mpd` profile.
 
-## 2. Bundle assembly
+## 2. Bundle and package structure
 
 **The repo root IS the bundle package.** `package.json` is named `@mpd-dsh/mpd` and
 declares `dsh.bundle.patch` (`./packages/mpd-bundle/cordis.patch.yml`), `dsh.client`,
@@ -59,7 +121,7 @@ Manifest invariants (why they exist):
 
 `scripts/build-mpd-client.mjs` composes the combined client (see §7).
 
-## 3. Boot chain & the web-compat self-row
+## 3. Patch layer, boot chain & the web-compat self-row
 
 1. `dsh --profile <p>` loads `dsh.profile.bundles` (base, web-app/headless,
    `@mpd-dsh/mpd`) via `dsh-app-boot`: each bundle contributes its `cordis.patch.yml`
@@ -98,25 +160,60 @@ to bare package names.
 
 ## 4. Plugin inventory
 
-| Row id | Package | Purpose | Tools / service | Key config |
-|---|---|---|---|---|
-| `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | THE single contact surface with harness seams: tool registration/guard/post-execute/execute, subagent spawn, skill provider + catalog, preset resolve, capability probing | service `mpdDsh` | `defaultTimeoutMs`, `quiet` |
-| `mpd-config` | mpd-config-plugin | minimal `mpd.jsonc` runtime config layer (project `.mpd/mpd.jsonc` merged over user `$DSH_HOME/mpd.jsonc`) | `mpd_config_get`, `mpd_config_reload`; service `mpdConfig` | `projectFile`, `userFile` |
-| `mpd-tools` | mpd-tools-plugin | write guard (no silent clobber), tool-output truncation (token budget), edit-error recovery guidance | waterfalls only | `writeGuard`, `truncateMaxBytes`, `recoveryHint` |
-| `mpd-modelchain` | mpd-modelchain-plugin | DeepSeek route resolution for roster roles + key/value memory notes | `mpd_modelchain_resolve`, `mpd_memory_save`, `mpd_memory_recall` | — |
-| `mpd-ext` | mpd-ext-plugin | the extension interface: one frozen descriptor contract, two planes (code `register()` + data-plane `mpd-ext.json`), lifecycle-split discovery, skills/flows providers, the runtime stdio MCP bridge, extension roles | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show`; service `mpdExtensions` | `quiet` + the lazy `mpd.jsonc` layer (`extensions.enable`, `extensions.disable`, `extensions.mcp.*`) |
-| `mpd-roles` | mpd-roles-plugin | the specialist roster's 11 specialists as a roster (normal names/personas/model chains/read-only), merged per call with extension-contributed roles | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona`; service `mpdRoles` | `personasDir` |
-| `mpd-ulw` | mpd-ulw-plugin | fixed plan→execute→verify loop discipline (C2 ultrawork v2) | `mpd_ultrawork`, `mpd_ulw` (light alias); commands `/ulw`, `/ultrawork` | `maxRounds`, `maxReReviews`, `provider/model/reviewerModel`, `planDir`, `stateDir` |
-| `mpd-hashline` | mpd-hashline-plugin | hash-anchored edit discipline (`LINE#HASH` anchors) | `mpd_hashline_read`, `mpd_hashline_edit`, `mpd_hashline_format`, `mpd_hashline_restore` | `guardEditTools`, `maxDiffChars`, `registryFile` |
-| `mpd-boulder` | mpd-boulder-plugin | durable work ledger bound to plan markdown files | `mpd_boulder_status`, `mpd_boulder_start`, `mpd_boulder_complete`, `mpd_boulder_task_timer`, `mpd_boulder_plan_progress`, `mpd_boulder_plans` | `boulderDir` |
-| `mpd-comment-checker` | mpd-comment-checker-plugin | comment/docstring detection (opt-in binary) | `mpd_comment_check` | `autoCheck`, `binary`, `timeoutMs`, `maxMessageChars` |
-| `mpd-memory` | mpd-memory-plugin | VCS-backed memory (git/svn) + reflection state machine | `mpd_memory_write`, `mpd_memory_read`, `mpd_memory_reflect`, `mpd_memory_reflect_complete`, `mpd_memory_status` | `vcs`, `dir`, `agentSlug`, `reflectionEvery` |
-| `mpd-codegraph` | mpd-codegraph-plugin | codegraph binary resolve + project index init | effect (auto init) + `/mpd-codegraph` command | `autoInit`, `initTimeoutMs`, `cooldownMs`, `binary` |
-| `mpd-workmate` | mpd-workmate-plugin | durable evolving agent library under `~/.mpd/workmate/` (mutations rename/delete, archive-first) | `mpd_workmate_list/init/spawn/reflect/match/rename/delete`; service `mpdWorkmate` (`list`/`get`/`read`/`rename`/`delete`); web routes `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}` | — |
-| `mpd-bootstrap` | mpd-bootstrap-plugin | provisioning BY REFERENCE: registers `<bundle>/skills` as a skill provider through the adapter (rank 600 `bundled`) and removes the version-stamped home copies written by bundle <= 0.2.6 | effect only | `skillsDir`, `skipSkills`, `skipPresets`, `skipLegacyCleanup` |
-| `mpd-web-compat` | mpd-bundle-plugin | web-compat self-row: makes `@mpd-dsh/mpd` a loader entry; hosts the combined web client | no-op apply; `./client` | — |
-| `agent-teams` | mpd-agent-teams-plugin (adopted, MIT) | multi-agent team collaboration (captain, members, tasks, scheduler; its views back the AgentTeams sidebar tab) | `agent_teams_*` | `stateDir`, `memberProvider`, `memberMaxDepth`, `maxMembers`, `profiles` |
-| `mcp-astgrep/gitbash/lsp/codegraph/context7/grepapp` | dsh-mcp-client instances | tool servers | `mcp__*` | per-row |
+**Every row of `packages/mpd-bundle/cordis.patch.yml`, by composition.** The patch layer is
+additive and carries **25 `insert` rows**; `node scripts/verify-rows-parity.mjs` asserts that this
+list and the repository's own row bookkeeping agree (exit 0, all 25 ids named). Two further entries
+are **id-targets**, not inserts — they REPLACE a row that exactly one composition already owns — so
+they are listed in their own table below.
+
+The `Composition` column answers "which composition does this row reach": an `insert` row reaches
+every profile the bundle is installed into (`web + dsh-tui`). The two id-targets reach exactly one
+composition each, because the roster rows they replace are minted by exactly one composition each.
+**Composition-only evidence**: `evidence/tui/composition/20260915T053445Z/raw/web-dump-config-final.txt`
+and `…/raw/dsh-tui-dump-config.txt` list the same bundle rows in both compositions; that snapshot
+predates `mpd-team-watchdog`, which the patch adds as an `insert` in the same band. A dump proves
+COMPOSITION ONLY — it never executes plugin code, so it is never load evidence (§8b).
+
+| Row id | Package | Composition | Purpose | Tools / service | Key config |
+|---|---|---|---|---|---|
+| `mcp-astgrep` | dsh-mcp-client | web + dsh-tui | local ast-grep stdio server; `launch.mjs` resolves the binary bundle-relatively (env pin → `$MPD_AST_GREP_BIN_DIR` → createRequire of the optional dependency → `<bundle>/.toolchain/node_modules/.bin`) | `mcp__ast_grep__*` (search / rewrite / scan) | `serverName: ast_grep`, `toolCallTimeoutMs: 60000` |
+| `mcp-gitbash` | dsh-mcp-client | web + dsh-tui, **disabled by default** | local git-bash stdio server; upstream designs it as Windows-only, so the row ships `disabled: true` | `mcp__git_bash__*` once enabled | flip `disabled: false` to enable |
+| `mcp-lsp` | dsh-mcp-client | web + dsh-tui | local LSP bridge (`…/mpd-mcp-lsp/dist/cli.js mcp`) | `mcp__lsp__*` | `serverName: lsp`, `toolCallTimeoutMs: 60000` |
+| `mcp-codegraph` | dsh-mcp-client | web + dsh-tui | local codegraph stdio server; `launch.mjs` resolves the binary bundle-relatively and sets `MPD_CODEGRAPH_BIN` only when the caller left it unset | `mcp__codegraph__*` | `serverName: codegraph`, `toolCallTimeoutMs: 60000` |
+| `mcp-context7` | dsh-mcp-client | web + dsh-tui (network) | remote streamable-http MCP server (public service, optional per use) | `mcp__context7__*` | `url: https://mcp.context7.com/mcp` |
+| `mcp-grepapp` | dsh-mcp-client | web + dsh-tui (network) | remote streamable-http MCP server (public service, optional per use) | `mcp__grep_app__*` | `url: https://mcp.grep.app` |
+| `mpd-web-compat` | mpd-bundle-plugin | web + dsh-tui | web-compat self-row: makes `@mpd-dsh/mpd` a loader entry (the web client loads only for an entry of that exact name); hosts the combined web client | no-op apply; `./client` | — |
+| `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | web + dsh-tui | THE single contact surface with harness seams: tool registration/guard/post-execute/execute, subagent spawn, skill provider + catalog, preset resolve, capability probing | service `mpdDsh` | `defaultTimeoutMs`, `quiet` |
+| `mpd-config` | mpd-config-plugin | web + dsh-tui | minimal `mpd.jsonc` runtime config layer (project `.mpd/mpd.jsonc` merged over user `$DSH_HOME/mpd.jsonc`); owns the settings write-back (§7b) | `mpd_config_get`, `mpd_config_reload`; service `mpdConfig` | `projectFile`, `userFile` |
+| `mpd-team-watchdog` | mpd-team-watchdog-plugin | web + dsh-tui | per-step/per-tool heartbeat store for members AND the captain, the WARN→ESCALATE machine over the `watchdog.*` knobs, the atomic restorable scene snapshot, and the durable hold/incident sidecars written BESIDE the adopted `team.json` (which keeps its single writer); mounted on the HOST plane on purpose, so a preset-scoped tick cannot fail to witness a wedged captain | `session-watchdog-status`, `session-watchdog-hold`, `session-watchdog-resume` | `stateDir`, `warnSilenceMs`, `tickIntervalMs`, `warnStreakToEscalate`, `actionOnEscalate`, `toolInFlightMaxMs`, `holdTtlMs` |
+| `mpd-tools` | mpd-tools-plugin | web + dsh-tui | write guard (no silent clobber), tool-output truncation (token budget), edit-error recovery guidance | waterfalls only | `writeGuard`, `truncateMaxBytes`, `recoveryHint` |
+| `mpd-modelchain` | mpd-modelchain-plugin | web + dsh-tui | DeepSeek route resolution for roster roles + key/value memory notes | `mpd_modelchain_resolve`, `mpd_memory_save`, `mpd_memory_recall` | — |
+| `mpd-ext` | mpd-ext-plugin | web + dsh-tui | the extension interface: one frozen descriptor contract, two planes (code `register()` + data-plane `mpd-ext.json`), lifecycle-split discovery, skills/flows providers, the runtime stdio MCP bridge, extension roles | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show`; service `mpdExtensions` | `quiet` + the lazy `mpd.jsonc` layer (`extensions.enable`, `extensions.disable`, `extensions.mcp.*`) |
+| `mpd-roles` | mpd-roles-plugin | web + dsh-tui | the specialist roster's 11 specialists as a roster (normal names/personas/model chains/read-only), merged per call with extension-contributed roles | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona`; service `mpdRoles` | `personasDir` |
+| `mpd-ulw` | mpd-ulw-plugin | web + dsh-tui | fixed plan→execute→verify loop discipline (C2 ultrawork v2) | `mpd_ultrawork`, `mpd_ulw` (light alias); commands `/ulw`, `/ultrawork` | `maxRounds`, `maxReReviews`, `provider/model/reviewerModel`, `planDir`, `stateDir` |
+| `mpd-hashline` | mpd-hashline-plugin | web + dsh-tui | hash-anchored edit discipline (`LINE#HASH` anchors) | `mpd_hashline_read`, `mpd_hashline_edit`, `mpd_hashline_format`, `mpd_hashline_restore` | `guardEditTools`, `maxDiffChars`, `registryFile` |
+| `mpd-boulder` | mpd-boulder-plugin | web + dsh-tui | durable work ledger bound to plan markdown files | `mpd_boulder_status`, `mpd_boulder_start`, `mpd_boulder_complete`, `mpd_boulder_task_timer`, `mpd_boulder_plan_progress`, `mpd_boulder_plans` | `boulderDir` |
+| `mpd-comment-checker` | mpd-comment-checker-plugin | web + dsh-tui | comment/docstring detection (opt-in binary) | `mpd_comment_check` | `autoCheck`, `binary`, `timeoutMs`, `maxMessageChars` |
+| `mpd-codegraph` | mpd-codegraph-plugin | web + dsh-tui | codegraph binary resolve + project index init | effect (auto init) + `/mpd-codegraph` command | `autoInit`, `initTimeoutMs`, `cooldownMs`, `binary` |
+| `mpd-memory` | mpd-memory-plugin | web + dsh-tui | VCS-backed memory (git/svn) + reflection state machine | `mpd_memory_write`, `mpd_memory_read`, `mpd_memory_reflect`, `mpd_memory_reflect_complete`, `mpd_memory_status` | `vcs`, `dir`, `agentSlug`, `reflectionEvery` |
+| `mpd-workmate` | mpd-workmate-plugin | web + dsh-tui | durable evolving agent library under `~/.mpd/workmate/` (mutations rename/delete, archive-first) | `mpd_workmate_list/init/spawn/reflect/match/rename/delete`; service `mpdWorkmate` (`list`/`get`/`read`/`rename`/`delete`); web routes `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}` | — |
+| `mpd-team-compact` | mpd-team-compact-plugin | web + dsh-tui | compacts a FINISHED team's members (every task terminal AND every member idle) through each member's OWN scoped context; the captain is left to the human `/compact`; audit lands under `<workspace>/.mpd/team-compact/` and this row never writes `.mpd/team` | `mpd_team_compact_run`, `mpd_team_compact_status` | — |
+| `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | asset provisioning BY REFERENCE: registers `<bundle>/skills` as a skill provider through the adapter (rank 600 `bundled`) and removes the version-stamped home copies written by bundle <= 0.2.6 | effect only | `skillsDir`, `skipSkills`, `skipPresets`, `skipLegacyCleanup` |
+| `mpd-tui` | mpd-tui-plugin | web + dsh-tui (active in dsh-tui, degrades elsewhere) | the dsh-tui edition's native surface: binds the host's activation-gated TUI seams and probes each one with `ctx.get(id, false)` + warn-once degrade, so a web/headless composition loses the TUI surfaces and not the boot (§7b) | no model-facing tools; TUI status / settings section / board / command tree / shortcuts / dialogs / transcript renderer | — |
+| `agent-teams` | mpd-agent-teams-plugin (adopted, MIT) | web + dsh-tui | multi-agent team collaboration (captain, members, tasks, scheduler; its views back the AgentTeams sidebar tab) | `agent_teams_*` | `stateDir`, `memberProvider`, `memberMaxDepth`, `maxMembers`, `profiles` |
+
+**The two id-targets** (each replaces one composition's own preset-roster row; an id-target is a
+per-key shallow override, so the host row's other keys survive, and a composition that does not
+have the row logs `patch: entry … not found` and skips it):
+
+| Entry id | Target | Composition | What it carries here |
+|---|---|---|---|
+| `agent-presets` | the roster row `dsh-web-app` inserts | web / base plane | `default: mpd` + the bundle's own `presets/` root at `trust: system`, so ONE `dsh plugin add` makes the `mpd` preset selectable; a headless profile without the row skips it (headless never had a roster) |
+| `dsh-tui-agent-presets` | the roster row dsh-tui mints | dsh-tui plane | the same two keys for the TUI composition, whose roster row is a different loader entry; the stock row's legacy fallback-root branch is deliberately NOT restated (the pinned package already ships its presets, so that branch is dead) |
+
+Two rows behave differently per composition ON PURPOSE and neither is a defect: `mpd-tui` binds TUI
+seams and degrades warn-once where none exist (web / headless), and `mpd-web-compat` is what puts the
+bundle's web client into the boot graph (§3, §7) while being inert elsewhere.
 
 ## 5. Interaction flows
 
@@ -131,7 +228,8 @@ mechanism — the plugin never touches API keys**.
 - `mpd_workmate_init` (base + optional name) copies a roster base into
   `~/.mpd/workmate/<name>/` (meta/persona/memory/note, capped 8/8/1.5 KiB) — the base
   stays pristine. The base is addressed by its **functional NAME only** (a roster id is
-  refused with a names-only error, and `/roster` never serves an id either); omitting
+  refused with a names-only error; the roster surface is the `mpd_roles_list` TOOL, and neither it
+  nor any other registered surface ever serves a roster id); omitting
   `name` auto-generates it from that functional name (`Deep Worker` → `deep-worker-1`).
   `meta.json` keeps the internal `baseId` as provenance, while every tool output, route
   and GUI strips it.
@@ -250,8 +348,9 @@ that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
 - **Boundary:** the adopted `agent-teams` plugin (`packages/mpd-agent-teams-plugin`, MIT,
   re-vendored from upstream on upgrades) is NOT routed through the adapter — its `lib/`
   is upstream main code that a vendor refresh would overwrite. It keeps its own `ctx.*`
-  calls plus exactly one local adaptation, the `registerContinuableSetup` boot-safety
-  guard in `lib/members.js` (see LICENSE-NOTICES.md).
+  calls plus exactly one local adaptation: the `installContinuableMemberSetup` boot-safety
+  guard in `lib/harness-compat.js` (wrapping the host's `registerContinuableSetup`), which
+  `lib/members.js` merely calls (see LICENSE-NOTICES.md).
 
 ## 6c. Agent preset plane (the `mpd` preset)
 
@@ -418,3 +517,68 @@ plugin reload cannot leave a stale line behind.
 - QA never touches the real `~/.dsh` or the real `~/.mpd/workmate` (HOME is sandboxed).
 - Adopted code keeps its MIT license + provenance (`LICENSE-NOTICES.md`); runner
   binaries are optional dependencies and are never bundled.
+
+## 8b. Known limits of the design
+
+The design is deliberate about what it does not promise. These are the limits a reader of this
+document should carry, stated rather than left to be discovered:
+
+- **A composition dump is not a load.** `dsh --profile <p> --dump-config` composes rows and never
+  executes plugin code, so it can never witness a plugin load, a schema abort or a missing seam.
+  Every behavioural claim in this document rests on a gate or a real tool call instead (§4).
+- **The preset plane is validated only by a mounting boot.** A row whose `config` misses a REQUIRED
+  key fails the row and `dsh-agent-presets` then refuses the WHOLE preset (`agent-preset/invalid: …
+  row(s) did not activate`) — while an UNKNOWN key is silently kept by schemastery, so the row
+  applies and quietly loses that setting. `agentPresets.list` / `resolve` see neither class; only
+  `skills/dsh-qa/scripts/preset-conformance.mjs` (with its negative control) does (§6c).
+- **No plugin-module hot reload.** ESM caches a module at session start, so a plugin edit is
+  invisible until `dsh` restarts; an edit applied mid-session must be verified on the next boot.
+- **Two configuration paths with different latency.** The `mpd.jsonc` layers (schema defaults → the
+  patch row's `config` → the file) are read once at plugin mount, so a `.mpd/mpd.jsonc` edit lands
+  at the next boot; the settings document path (the TUI `/settings` screen, the write-back and the
+  `settings/document-updated` re-read) is the live path (§6c, §7b).
+- **The watchdog hold is a contract, not yet an interlock.** The row owns
+  `session-watchdog-hold` / `-resume` and the durable hold record; wiring the adopted dispatch
+  gates that honour a hold is a later task. Until then a hold is recorded and reported, and it is
+  the platform pause (`agent_teams_halt`) that actually stops dispatch (§4).
+- **The adopted team plugin is the one row not routed through the adapter.** Its `lib/` is upstream
+  main code that a vendor refresh would overwrite, plus exactly one local boot-safety adaptation
+  (§6b); its client half is used strictly as a view library and its own `apply` is never called
+  (§7).
+- **The web client is sidebar-only.** There is no in-conversation fallback: both mpd pages live as
+  sidebar tabs, and an optional seam must be mounted with `ctx.inject([...])` rather than probed
+  with a one-shot `ctx.get` — a probe cannot see a service another plugin owns and cannot recover
+  when that provider mounts late (§7).
+- **Two rows are inert or degraded by design.** `mcp-gitbash` ships disabled (Windows-only upstream)
+  and `mpd-tui` degrades warn-once in a composition with no TUI seams, so "the row is composed" and
+  "the capability is present" are different statements (§4).
+- **The vendored skill corpus is a pinned snapshot.** `skills/**` is fingerprinted in
+  `VENDOR_LOCK.json`; a corpus edit invalidates that fingerprint, so edits are serialized through a
+  single writer per wave and the re-pin lands in the same commit as the change.
+- **The rename and this document's role.** This document IS the design document the bundle links to
+  (`docs/design.md`, with `docs/design.zh-CN.md` as its twin); its own switch links and the links
+  inside the pair are maintained here. Records that predate the rename — `docs/decisions.md` and the
+  prior-phase reports — keep the former filename on purpose: they are historical records, not live
+  documentation.
+
+### Residual gaps carried from the fact base and the baseline measurement
+
+Two pre-wave evidence artifacts were read before this document was frozen; their stated limits are
+carried forward here instead of being dropped:
+
+- **The composition column is composition evidence, not load evidence.** The fact base's composition
+  section rests on the patch, the two installed profile manifests and a live tool list — its own
+  `dump-config` runs failed on a read-only filesystem — so §4 cites the stored
+  `evidence/tui/composition/20260915T053445Z` artifacts. **No mounting boot in an isolated
+  `DSH_HOME` was run for this document**; `skills/dsh-qa/scripts/preset-conformance.mjs` and
+  `bundle-lifecycle.mjs` remain the gates that would prove a load.
+- **The fact base is hash-anchored and therefore perishable.** It was measured while this document
+  was being rewritten, so its line references describe the pre-rewrite bytes even though the
+  findings it reports — the §4 table missing `mpd-team-watchdog`, `mpd-team-compact` and `mpd-tui`,
+  a roster surface claimed as a slash command that has no registration anywhere in the bundle, and
+  the 8-vs-6 MCP count — are FIXED here.
+- **The settings-knob count is deliberately not restated in this document.** The baseline
+  measurement audited it (`25 = 13 non-slot keys + 12 teamModels leaves`, which the schema declares)
+  and found no stale copy in this document or its predecessor; the count belongs to the README /
+  user-guide / schema comment. For readers of that count: the 13 are 6 single-key sections + 7
+  `watchdog.*` fields (not 13 sections), and FOUR — not three — `teamModels` slots are authoritative.
