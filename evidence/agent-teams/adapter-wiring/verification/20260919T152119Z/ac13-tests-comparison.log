@@ -1,0 +1,17 @@
+=== bun test packages (the repo script's own scope: package.json test = bun test packages) ===
+EXIT=0
+packages/mpd-comment-checker-plugin/test/comment-checker.test.ts:
+
+ 1151 pass
+ 0 fail
+ 11765 expect() calls
+Ran 1151 tests across 8505 files. [78.70s]
+
+=== bun test (BARE, repo root: discovers .qa-reloc/** sandbox copies too) ===
+EXIT=1
+ 4295 pass
+ 17 skip
+ 605 fail
+ 1052 errors
+ 18836 expect() calls
+Ran 4917 tests across 27700 files. [206.69s]

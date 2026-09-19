@@ -1,0 +1,8 @@
+=== bun run verify:docs (settled) ===
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS
+EXIT=0
+=== bun run verify:gates (settled) ===
+[verify-gates] member preset-conformance: exit=0 PASS - 439ms
+[verify-gates] PASS - 5/5 member gate(s) green
+EXIT=0

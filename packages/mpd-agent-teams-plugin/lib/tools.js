@@ -61,6 +61,13 @@ import { isNonDispatchableKind } from "./types.js";
 import { TERMINAL_TASK_STATUSES } from "./types.js";
 import { installTeamScheduler } from "./scheduler.js";
 import { resolveTeamProfile } from "./profiles.js";
+//#region mpd-delta adapter-subagent-runtime-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// D6: the halt path drains children THROUGH the runtime object, so it must resolve that runtime the
+// same way the delivery ladder does — the facade's `subagents` projection carries no
+// `drainContinuableChildren`, and reading it directly would silently downgrade the stop path to the
+// quiescence fallback.
+import { subagentRuntimeOf } from "./mpd-adapter-ctx.js";
+//#endregion mpd-delta adapter-subagent-runtime-import
 //#region mpd-delta strict-tool-arguments (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
 // T-61 (wave 2, lane A) — an UNKNOWN argument name must be LOUD, never a successful no-op.
 //
@@ -308,7 +315,11 @@ async function stopTeamMemberActivations(ctx, captain, members, signal) {
     // `drainContinuableChildren` is available in the current runtime and releases
     // the selected activation handles. Keep the quiescence fallback for pre-rc.8
     // hosts, where interrupt is the strongest available lifecycle operation.
-    const runtime = ctx.subagents;
+    //#region mpd-delta adapter-subagent-runtime-halt-drain (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // The drain runs on the RUNTIME object (identity-preserving through the adapter), never on the
+    // facade's `subagents` projection: `drainContinuableChildren` exists only on the runtime.
+    const runtime = subagentRuntimeOf(ctx);
+    //#endregion mpd-delta adapter-subagent-runtime-halt-drain
     if (runtime.drainContinuableChildren !== undefined) {
         try {
             await runtime.drainContinuableChildren(captain, memberIds);
@@ -366,17 +377,19 @@ export async function haltTeamWork(input) {
             members: fresh.members.filter((member) => member.id !== '' && member.status !== 'removed').map((member) => ({ ...member })),
         };
     });
+    //#region mpd-delta adapter-cancel-halt (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
     // Persist the stop boundary first, then abort the Captain before draining
     // children. Otherwise its current model turn can observe `halted`, call
     // resume, and race the still-running HTTP stop request.
-    input.captain.cancel({ kind: 'user' }, { keepInbox: true });
+    input.ctx.cancelAgentTurn(input.captain, { kind: 'user' }, { keepInbox: true });
     await stopTeamMemberActivations(input.ctx, input.captain, halted.members, input.signal);
     // Interrupting a child emits a trailing subagent-settled notification. That
     // notification can start a fresh Captain turn after the first cancellation,
     // so close the stop boundary again once every child activation has drained.
     // Queued user input is preserved both times; only runtime-generated work is
     // prevented from silently resuming the halted team.
-    input.captain.cancel({ kind: 'user' }, { keepInbox: true });
+    input.ctx.cancelAgentTurn(input.captain, { kind: 'user' }, { keepInbox: true });
+    //#endregion mpd-delta adapter-cancel-halt
     return {
         teamName: halted.teamName,
         cancelledTasks: halted.cancelledTasks,
@@ -612,13 +625,26 @@ export function registerAgentTeamsTools(ctx, config) {
         // End any planning turn that is still producing tool calls. A plugin
         // follow-up submitted after cancellation is queued as the next turn by the
         // Harness Agent contract, so it cannot race ahead and recreate the team.
-        captain.cancel({ kind: 'user' }, { keepInbox: true });
+        //#region mpd-delta adapter-cancel-feedback (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        ctx.cancelAgentTurn(captain, { kind: 'user' }, { keepInbox: true });
+        //#endregion mpd-delta adapter-cancel-feedback
+        //#region mpd-delta adapter-turn-submit (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        // D9: the throw inside this try/catch is part of the flow — `startAgentTurn` forwards
+        // THROWING, and with no adapter it runs the identical `captain.followup(msg)`.
+        //
+        // The try block lives INSIDE the region on purpose: the two regions are then ADJACENT
+        // siblings sharing one seam, which is the only arrangement the delta applier's context-pair
+        // walk-back heals byte-faithfully (measured by
+        // evidence/agent-teams/adapter-wiring/bridge/heal-probe.mjs: with `try {` between the two
+        // regions the heal of this very region refuses, because the sibling inserted before it moves
+        // the registered beforeContext away from the seam).
         try {
-            captain.followup(createUserMessage({
+            ctx.startAgentTurn(captain, createUserMessage({
                 content: [{ type: 'text', text: stagedPlanFeedbackContext(prepared.teamName) }],
                 source: { kind: 'plugin', plugin: 'dsh-agent-teams' },
             }));
         }
+        //#endregion mpd-delta adapter-turn-submit
         catch (error) {
             // Do not leave the durable UI in a false waiting state when the live
             // Captain disappeared between lookup and delivery.
@@ -652,10 +678,15 @@ export function registerAgentTeamsTools(ctx, config) {
         // still-running Captain turn. Without both operations a late model step can
         // observe the missing active team and incorrectly create it again.
         try {
-            captain.inject(createUserMessage({
+            //#region mpd-delta adapter-inject-staged-discard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // F2: the Agent's `inject(message)` seam is adapter-mediated (throwing verbatim forwarder,
+            // gated on capabilities().agentTurnInject) — NOTE this is the AGENT's inject, not the
+            // cordis `ctx.inject(deps, cb)` dependency seam the facade passes through.
+            ctx.injectAgentMessage(captain, createUserMessage({
                 content: [{ type: 'text', text: stagedPlanDiscardContext(discarded.teamName) }],
                 source: { kind: 'plugin', plugin: 'dsh-agent-teams' },
             }));
+            //#endregion mpd-delta adapter-inject-staged-discard
         }
         catch (error) {
             // The archive is already authoritative. Cancellation still prevents a
@@ -663,7 +694,9 @@ export function registerAgentTeamsTools(ctx, config) {
             // live-delivery warning and must not turn a successful discard into 409.
             ctx.logger.warn(`agent-teams: failed to inject discard context for "${discarded.teamId}": ${String(error)}`);
         }
-        captain.cancel({ kind: 'user' }, { keepInbox: true });
+        //#region mpd-delta adapter-cancel-discard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        ctx.cancelAgentTurn(captain, { kind: 'user' }, { keepInbox: true });
+        //#endregion mpd-delta adapter-cancel-discard
         return { teamId: discarded.teamId };
     };
     const runtime = {
@@ -2699,7 +2732,10 @@ export function registerAgentTeamsTools(ctx, config) {
             if (prepared.kind === 'captain') {
                 let delivered = 'mailbox';
                 if (captain !== undefined && prepared.identity.kind === 'member') {
-                    delivered = steerCaptainReport(captain, prepared.from, args.content) ? 'live' : 'mailbox';
+                    //#region mpd-delta adapter-steer-send-message-caller (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // F2: same seam as the member-report path — the caller supplies the plugin ctx.
+                    delivered = steerCaptainReport(ctx, captain, prepared.from, args.content) ? 'live' : 'mailbox';
+                    //#endregion mpd-delta adapter-steer-send-message-caller
                 }
                 if (delivered === 'live') {
                     await withTeamLock(teamLockKey(stateRoot, prepared.fresh.id), () => (acknowledgeMailbox(stateRoot, prepared.fresh.id, CAPTAIN_KEY, [prepared.message.id], { retentionMs: config.mailboxRetentionMs })));

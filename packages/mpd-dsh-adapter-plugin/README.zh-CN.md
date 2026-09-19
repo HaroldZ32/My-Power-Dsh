@@ -17,7 +17,32 @@
 | `ctx.skills.registerProvider` / `list` / `get` | `registerSkillProvider`、`listSkills`、`loadSkill` | disposer 透传、缺省参数 |
 | `ctx.agentPresets.resolve` | `resolvePreset(id)` | 归一化 `{id, path, trust, broken}` |
 | `ctx.llm.listProviders` / `listModels` / `resolveModelInfo` | `llmCatalog()` | 把宿主的实时模型目录投影为 `{ providers: [{ id, name, models: [{ id, name, description?, efforts: [{ id, name, description? }], defaultEffort? }] }], degraded }` —— reasoning 块被**摊平**到模型上，`efforts` 始终是数组；只读且从不抛错 |
+| `ctx.tools.register`（**逐字节**） | `registerHostTool(def)` | 把**已经是 Harness 形态**的定义原样转发 —— 同一个对象引用抵达 `tools.register`（端到端 `Object.is` 成立），disposer 透传。`registerTool` 会做归一化（因而会丢掉 `finalizeContent`/`presentCall`/`presentResult`/`isConcurrencySafe`），本方法刻意不做。接缝缺失时抛错 |
+| `ctx.subagents`（运行时对象） | `subagentRuntime()` | 保持同一性的运行时对象（`startContinuable`/`interrupt`/`getProvider`/`list`）；缺失时为 `undefined` |
+| `ctx.subagents.getProvider` | `subagentProvider(name)` | 薄转发；缺失时为 `undefined`（调用方自己的检查会抛出同样的错误） |
+| `ctx.subagents.list` | `subagentProviders()` | 缺失时为 `[]` |
+| `ctx.subagents.startContinuable` | `startContinuableAgent(spec)` | **抛错**转发 —— 无法 spawn 的成员必须响亮失败 |
+| `ctx.subagents.interrupt` | `interruptAgent(targetSessionId, authority)` | **抛错**转发 |
+| `ctx.llm.listModels` | `llmListModels(provider)` | **抛错**转发（单个 provider 的模型列表，与容错的 `llmCatalog()` 投影不同） |
+| `ctx.llm.resolveCallConfig` | `llmResolveCallConfig(config, signal?)` | **抛错**转发，signal 透传 |
+| `ctx.systemPrompt.section` | `registerPromptSection(section)` | disposer 透传；接缝缺失时在调用点抛错（调用方的 usage 段落是必需的） |
+| 活跃 agent 自有的 scoped ctx | `agentScope(agent)` | 由 `agent.ctx` 构造 `{ context, tools.restrict, on, effect }`；承诺的成员缺失时返回 `undefined`，调用方按次回退 |
+| `agent.followup` | `startAgentTurn(agent, message)` | **抛错**逐字节转发（绝不吞成布尔值或 `undefined`） |
+| `agent.cancel` | `cancelAgentTurn(agent, cause, options?)` | **抛错**逐字节转发 |
+| `agent.steer` | `steerAgentTurn(agent, message)` | **抛错**逐字节转发 —— 最近步（nearest-step）转向，区别于 `followup` 的新回合 |
+| `agent.inject` | `injectAgentMessage(agent, message)` | **抛错**逐字节转发 —— 收件箱接缝 |
 | 能力探测 | `capabilities()` | 每个接缝一个布尔值，调用方据此降级而不是崩溃 |
+
+上表中这十四个面向 `agentTeams` 的接缝只有一个消费方：采纳的 `agent-teams` 插件。其桥接模块
+`packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js`（mpd 自有，命名规则 `lib/mpd-*.js`）在
+`apply` 顶部只构建一次门面，把六个已桥接的采纳文件都接到这些方法上。每个方法都在一个
+`capabilities()` 标志之后（一个标志可覆盖两个方法；`subagentRuntime` 复用既有的 `subagents`
+标志），因此桥接层按接缝降级，而不是让整棵插件树失败：`toolsRegisterHost`、
+`subagents`、`subagentsProvider`、`subagentsContinuable`、`subagentsInterrupt`、`llmListModels`、
+`llmResolveCallConfig`、`systemPromptSection`、`agentScope`、`commandsRegister`、
+`agentTurnStart`、`agentTurnCancel`、`agentTurnSteer`、`agentTurnInject`（后两个
+`agentTurn{Steer,Inject}` 是实时名册探针：只有当某个
+活跃 agent 暴露 `steer` / `inject` 时才为 `true`）。
 
 ## 模型目录接缝（`llmCatalog`）
 
@@ -39,9 +64,12 @@
 
 Harness 更新是常态，但“每次更新都改所有调用点”不是。本包是仓库中**唯一**允许直接触碰 Harness 服务的文件。该规则具有约束力（AGENTS.md §6）：**插件行不得自行调用 `ctx.tools`、`ctx.subagents`、`ctx.skills`、`ctx.agentPresets`。**
 
-**边界：** 采纳的 `agent-teams` 插件（`packages/mpd-agent-teams-plugin`）是升级时会从上游重新
-vendor 的 MIT 主代码，因此保留自己的 `ctx.*` 调用（唯一本地适配是 `registerContinuableSetup`
-启动安全守卫）。所有自研 mpd 插件都经由本适配器——TUI 版本也一样：`packages/mpd-tui-plugin` 从这里导入 `createDshAdapter`，并通过已挂载的 `mpdDsh` 服务取得工作区根并集，与其他所有自研行完全一致。
+**采纳插件的路由（原“边界”，已于 2026-09-19 关闭）：** 采纳的 `agent-teams` 插件
+（`packages/mpd-agent-teams-plugin`）是升级时从上游重新 vendor 的 MIT 主代码，它经由**本适配器**
+接触 Harness 接缝 —— 通过其 mpd 自有的桥接模块 `lib/mpd-adapter-ctx.js` 惰性解析已挂载的
+`mpdDsh`，适配器缺席时 warn-once 回退（每个插件实例一行缺失日志）。本地适配保持不变
+（`registerContinuableSetup` 启动安全守卫、workmate persona 注入、`mpd-delta` 区域）。
+该关闭状态及其残留清单写在 AGENTS.md §6。所有自研 mpd 插件都经由本适配器——TUI 版本也一样：`packages/mpd-tui-plugin` 从这里导入 `createDshAdapter`，并通过已挂载的 `mpdDsh` 服务取得工作区根并集，与其他所有自研行完全一致。
 
 适配器刻意不声明 `inject`：每个接缝都在调用时惰性解析并做防御性探测——因为 loader 会并发应用同级行（在 `apply` 时取快照会漏报），且 Cordis 中把未注入的服务当属性读取会抛错。接缝缺失时：调用点给出可操作的错误，或由 `capabilities()` 暴露标志供调用方分支处理。
 

@@ -23,6 +23,11 @@ import { appendMailbox, acknowledgeMailbox, CAPTAIN_KEY, createMessage, readReti
 import { appendTeamEvent, captainSessionOf } from "./events.js";
 import { CAPTAIN_TOOL_NAMES } from "./tool-names.js";
 import { TERMINAL_TASK_STATUSES } from "./types.js";
+//#region mpd-delta adapter-delivery-runtime-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// D6: the delivery ladder must be handed the RUNTIME object, not the facade's `subagents`
+// projection — the adapter resolves WHICH runtime, the ladder keeps its generation policy.
+import { subagentRuntimeOf } from "./mpd-adapter-ctx.js";
+//#endregion mpd-delta adapter-delivery-runtime-import
 /** Persona snapshot of a profile protocol; the full text lives on team.json. */
 export const PERSONA_PROTOCOL_MAX_CHARS = 400;
 /** Bounded workmate context injected into a member persona (mirrors mpd-workmate caps). */
@@ -229,10 +234,18 @@ export async function resolveMemberLlmSelection(ctx, captain, request, signal) {
         ...fallback === undefined ? {} : { fallback },
     };
 }
-/** Deliver a durable member report to the live captain at its next model step. */
-export function steerCaptainReport(captain, from, content) {
+//#region mpd-delta adapter-steer-captain-report (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+/**
+ * Deliver a durable member report to the live captain at its next model step.
+ *
+ * F2: `ctx` is threaded in (the plugin facade at every composition-root call site) so the Agent's
+ * `steer` seam is adapter-mediated — a throwing verbatim forwarder gated on
+ * `capabilities().agentTurnSteer`. The try/catch keeps its meaning: a rejected steer is `false`, and
+ * with no adapter the facade runs the identical `captain.steer(msg)`.
+ */
+export function steerCaptainReport(ctx, captain, from, content) {
     try {
-        captain.steer(createUserMessage({
+        ctx.steerAgentTurn(captain, createUserMessage({
             content: [{ type: 'text', text: `AgentTeams message from member ${from}:\n\n${content}` }],
             source: { kind: 'plugin', plugin: 'dsh-agent-teams' },
         }));
@@ -243,6 +256,7 @@ export function steerCaptainReport(captain, from, content) {
         return false;
     }
 }
+//#endregion mpd-delta adapter-steer-captain-report
 /** Record a final turn failure, never an intermediate request retry. */
 export async function failMemberOpenAttempt(ctx, stateRoot, teamId, memberName, failure, fallbackSession, observed) {
     const summary = `${failure.message} (code ${failure.code})`;
@@ -299,7 +313,10 @@ export async function failMemberOpenAttempt(ctx, stateRoot, teamId, memberName, 
     // Use the same lease/acknowledgment contract as send_message, outside the
     // team lock: steering can synchronously start another agent turn.
     const captain = ctx.agents.get(brandedSessionId(prepared.captainSessionId));
-    const delivered = captain !== undefined && steerCaptainReport(captain, memberName, prepared.message.content);
+    //#region mpd-delta adapter-steer-captain-report-caller (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // F2: the report steer needs the plugin ctx to reach the adapter; `ctx` is this function's own.
+    const delivered = captain !== undefined && steerCaptainReport(ctx, captain, memberName, prepared.message.content);
+    //#endregion mpd-delta adapter-steer-captain-report-caller
     await withTeamLock(lockKey, () => delivered
         ? acknowledgeMailbox(stateRoot, teamId, CAPTAIN_KEY, [prepared.message.id])
         : releaseMailboxDelivery(stateRoot, teamId, CAPTAIN_KEY, [prepared.message.id]));
@@ -631,7 +648,11 @@ export async function spawnMember(ctx, config, selections, llmSelection, captain
  */
 export async function deliverToMember(ctx, captain, childId, text, signal) {
     try {
-        await queueMemberPrompt(ctx.subagents, captain, brandedSessionId(childId), [{ type: 'text', text }], signal);
+        //#region mpd-delta adapter-delivery-runtime (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+        // The ladder reads `prompt`/`followup`/`[HOST_PROMPT_QUEUE]` off this object; the facade's
+        // `subagents` member is a projection and would silently look undeliverable.
+        await queueMemberPrompt(subagentRuntimeOf(ctx), captain, brandedSessionId(childId), [{ type: 'text', text }], signal);
+        //#endregion mpd-delta adapter-delivery-runtime
         return true;
     }
     catch (error) {

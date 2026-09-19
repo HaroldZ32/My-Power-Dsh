@@ -322,6 +322,17 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta adapter-subagent-runtime-import",
+        beforeContext: [
+            "import { resolveTeamProfile } from \"./profiles.js\";",
+        ],
+        afterContext: [
+            "/** The caller agent, or a loud failure for non-agent callers. */",
+        ],
+        block: "//#region mpd-delta adapter-subagent-runtime-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n// D6: the halt path drains children THROUGH the runtime object, so it must resolve that runtime the\n// same way the delivery ladder does — the facade's `subagents` projection carries no\n// `drainContinuableChildren`, and reading it directly would silently downgrade the stop path to the\n// quiescence fallback.\nimport { subagentRuntimeOf } from \"./mpd-adapter-ctx.js\";\n//#endregion mpd-delta adapter-subagent-runtime-import",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
         id: "mpd-delta strict-tool-arguments",
         beforeContext: [
             "import { resolveTeamProfile } from \"./profiles.js\";",
@@ -345,6 +356,31 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta adapter-subagent-runtime-halt-drain",
+        beforeContext: [
+            "    // hosts, where interrupt is the strongest available lifecycle operation.",
+        ],
+        afterContext: [
+            "    if (runtime.drainContinuableChildren !== undefined) {",
+        ],
+        block: "    //#region mpd-delta adapter-subagent-runtime-halt-drain (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n    // The drain runs on the RUNTIME object (identity-preserving through the adapter), never on the\n    // facade's `subagents` projection: `drainContinuableChildren` exists only on the runtime.\n    const runtime = subagentRuntimeOf(ctx);\n    //#endregion mpd-delta adapter-subagent-runtime-halt-drain",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta adapter-cancel-halt",
+        beforeContext: [
+            "            members: fresh.members.filter((member) => member.id !== '' && member.status !== 'removed').map((member) => ({ ...member })),",
+            "        };",
+            "    });",
+        ],
+        afterContext: [
+            "    return {",
+            "        teamName: halted.teamName,",
+        ],
+        block: "    //#region mpd-delta adapter-cancel-halt (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n    // Persist the stop boundary first, then abort the Captain before draining\n    // children. Otherwise its current model turn can observe `halted`, call\n    // resume, and race the still-running HTTP stop request.\n    input.ctx.cancelAgentTurn(input.captain, { kind: 'user' }, { keepInbox: true });\n    await stopTeamMemberActivations(input.ctx, input.captain, halted.members, input.signal);\n    // Interrupting a child emits a trailing subagent-settled notification. That\n    // notification can start a fresh Captain turn after the first cancellation,\n    // so close the stop boundary again once every child activation has drained.\n    // Queued user input is preserved both times; only runtime-generated work is\n    // prevented from silently resuming the halted team.\n    input.ctx.cancelAgentTurn(input.captain, { kind: 'user' }, { keepInbox: true });\n    //#endregion mpd-delta adapter-cancel-halt",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
         id: "mpd-delta edit-plan-add-task-apply",
         beforeContext: [
             "                else if (mutation.action === 'add_task') {",
@@ -357,6 +393,56 @@ export const MPD_DELTAS = [
             "                else if (mutation.action === 'remove_task') {",
         ],
         block: "                    //#region mpd-delta edit-plan-add-task-apply (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                    // T-03 (wave 1, t14): the SAME gate create_task runs, so a staged-plan edit\n                    // can no longer add an unknown kind or an incomplete quality contract and\n                    // persist it as legacy `work`. The refusal text is the gate's own, i.e.\n                    // exactly as loud as create_task's.\n                    const gate = validateCreateTask(fresh, {\n                        subject,\n                        description: trimmedOptional(mutation.description),\n                        dependencies: [...new Set((mutation.dependencies ?? []).map((item) => item.trim()).filter(Boolean))],\n                        assignee: trimmedOptional(mutation.assignee),\n                        kind: mutation.kind,\n                        objective: mutation.objective,\n                        inScope: mutation.inScope,\n                        outOfScope: mutation.outOfScope,\n                        acceptance: mutation.acceptance,\n                        verify: mutation.verify,\n                    });\n                    if (!gate.ok)\n                        throw new Error(gate.error ?? 'edit_plan add_task rejected by quality gates');\n                    fresh.taskSeq += 1;\n                    const now = Date.now();\n                    fresh.tasks.push({\n                        id: `t${fresh.taskSeq}`,\n                        subject,\n                        description: trimmedOptional(mutation.description),\n                        status: 'pending',\n                        assignee: trimmedOptional(mutation.assignee),\n                        dependencies: [...new Set(mutation.dependencies.map((item) => item.trim()).filter(Boolean))],\n                        attempt: 0,\n                        kind: mutation.kind ?? 'work',\n                        ...mutation.objective === undefined ? {} : { objective: mutation.objective },\n                        ...mutation.inScope === undefined ? {} : { inScope: [...mutation.inScope] },\n                        ...mutation.outOfScope === undefined ? {} : { outOfScope: [...mutation.outOfScope] },\n                        ...mutation.acceptance === undefined ? {} : { acceptance: [...mutation.acceptance] },\n                        ...mutation.verify === undefined ? {} : { verify: [...mutation.verify] },\n                        createdAt: now,\n                        updatedAt: now,\n                    });\n                    //#endregion mpd-delta edit-plan-add-task-apply",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta adapter-cancel-feedback",
+        beforeContext: [
+            "        // Harness Agent contract, so it cannot race ahead and recreate the team.",
+        ],
+        afterContext: [
+            "        catch (error) {",
+            "            // Do not leave the durable UI in a false waiting state when the live",
+        ],
+        block: "        //#region mpd-delta adapter-cancel-feedback (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n        ctx.cancelAgentTurn(captain, { kind: 'user' }, { keepInbox: true });\n        //#endregion mpd-delta adapter-cancel-feedback",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta adapter-turn-submit",
+        beforeContext: [
+            "        // Harness Agent contract, so it cannot race ahead and recreate the team.",
+        ],
+        afterContext: [
+            "        catch (error) {",
+            "            // Do not leave the durable UI in a false waiting state when the live",
+        ],
+        block: "        //#region mpd-delta adapter-turn-submit (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n        // D9: the throw inside this try/catch is part of the flow — `startAgentTurn` forwards\n        // THROWING, and with no adapter it runs the identical `captain.followup(msg)`.\n        //\n        // The try block lives INSIDE the region on purpose: the two regions are then ADJACENT\n        // siblings sharing one seam, which is the only arrangement the delta applier's context-pair\n        // walk-back heals byte-faithfully (measured by\n        // evidence/agent-teams/adapter-wiring/bridge/heal-probe.mjs: with `try {` between the two\n        // regions the heal of this very region refuses, because the sibling inserted before it moves\n        // the registered beforeContext away from the seam).\n        try {\n            ctx.startAgentTurn(captain, createUserMessage({\n                content: [{ type: 'text', text: stagedPlanFeedbackContext(prepared.teamName) }],\n                source: { kind: 'plugin', plugin: 'dsh-agent-teams' },\n            }));\n        }\n        //#endregion mpd-delta adapter-turn-submit",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta adapter-inject-staged-discard",
+        beforeContext: [
+            "        // observe the missing active team and incorrectly create it again.",
+            "        try {",
+        ],
+        afterContext: [
+            "        }",
+            "        catch (error) {",
+            "            // The archive is already authoritative. Cancellation still prevents a",
+        ],
+        block: "            //#region mpd-delta adapter-inject-staged-discard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n            // F2: the Agent's `inject(message)` seam is adapter-mediated (throwing verbatim forwarder,\n            // gated on capabilities().agentTurnInject) — NOTE this is the AGENT's inject, not the\n            // cordis `ctx.inject(deps, cb)` dependency seam the facade passes through.\n            ctx.injectAgentMessage(captain, createUserMessage({\n                content: [{ type: 'text', text: stagedPlanDiscardContext(discarded.teamName) }],\n                source: { kind: 'plugin', plugin: 'dsh-agent-teams' },\n            }));\n            //#endregion mpd-delta adapter-inject-staged-discard",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta adapter-cancel-discard",
+        beforeContext: [
+            "            ctx.logger.warn(`agent-teams: failed to inject discard context for \"${discarded.teamId}\": ${String(error)}`);",
+            "        }",
+        ],
+        afterContext: [
+            "        return { teamId: discarded.teamId };",
+        ],
+        block: "        //#region mpd-delta adapter-cancel-discard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n        ctx.cancelAgentTurn(captain, { kind: 'user' }, { keepInbox: true });\n        //#endregion mpd-delta adapter-cancel-discard",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
@@ -777,6 +863,18 @@ export const MPD_DELTAS = [
             "            if (prepared.kind === 'captain') {",
         ],
         block: "            //#region mpd-delta send-dedup-delivery-guard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n            // R1: when this send FOLDED into an existing record (`_folded`, a transient marker\n            // from the state primitive — never persisted), the recipient must NOT be woken a\n            // second time: the fold is precisely the \"act at most once\" guarantee. And such a\n            // second delivery would be pure waste anyway — a SUCCESS would only re-acknowledge\n            // an already-acknowledged record, while a FAILURE would release the claim and hand\n            // the very same record to the scheduler, so the durable record is unchanged either\n            // way while the recipient may have acted twice. The scheduler therefore still owns\n            // the wake: it delivers the one surviving record exactly once when the live path\n            // did not accept it (unread + unclaimed), and delivers nothing once it was acked.\n            if (prepared.message._folded === true) {\n                return {\n                    message_id: prepared.message.id,\n                    from: prepared.from,\n                    to: prepared.kind === 'captain' ? CAPTAIN_KEY : prepared.recipient.name,\n                    delivered: 'duplicate',\n                };\n            }\n            //#endregion mpd-delta send-dedup-delivery-guard",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/tools.js",
+        id: "mpd-delta adapter-steer-send-message-caller",
+        beforeContext: [
+            "                if (captain !== undefined && prepared.identity.kind === 'member') {",
+        ],
+        afterContext: [
+            "                }",
+            "                if (delivered === 'live') {",
+        ],
+        block: "                    //#region mpd-delta adapter-steer-send-message-caller (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                    // F2: same seam as the member-report path — the caller supplies the plugin ctx.\n                    delivered = steerCaptainReport(ctx, captain, prepared.from, args.content) ? 'live' : 'mailbox';\n                    //#endregion mpd-delta adapter-steer-send-message-caller",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/tools.js",
@@ -1383,6 +1481,39 @@ export const MPD_DELTAS = [
         block: "//#region mpd-delta explicit-team-fallback (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n/** Marker the R4 activation notice starts with. */\nexport const EXPLICIT_TEAM_NOTICE_MARKER = '[AgentTeams] Explicit team activation';\n/** Marker the idempotent \"ask first\" inquiry starts with. */\nexport const EXPLICIT_TEAM_INQUIRY_MARKER = '[AgentTeams] Explicit request — a team already exists';\n/** An unapproved staged team whose captain is the same WORKSPACE's session line, or any\n * staged team still awaiting a decision. A fresh headless boot carries a new session id,\n * so participant matching alone would let a second explicit call silently stage a\n * DUPLICATE plan; this finds the plan the user has not answered yet. */\nasync function findStagedTeamAwaitingApproval(stateRoot, agentId) {\n    let entries;\n    try {\n        entries = await readdir(stateRoot, { withFileTypes: true });\n    }\n    catch {\n        return undefined;\n    }\n    for (const entry of entries) {\n        if (!entry.isDirectory() || entry.name === 'archive' || entry.name.startsWith('.'))\n            continue;\n        const team = await readTeam(stateRoot, entry.name);\n        if (team === undefined || team.phase !== 'staged' || team.approvedAt !== undefined)\n            continue;\n        return team;\n    }\n    return undefined;\n}\n/**\n * R4 explicit-entry hardening: the DETERMINISTIC half of the explicit path.\n *\n * An explicit invocation (`/agent-teams`, the generated `/agent-teams-<profile>`, or a\n * plain-text gesture) must never end with \"the user asked for a team and nothing\n * happened\". The model keeps the primary path, but the plugin stages the team itself\n * at the point the invocation is recognised — which is the SAME TURN by construction,\n * because the recognition happens inside the command/gesture handler — and injects a\n * visible activation notice. Nothing is ever silent: if the plugin cannot stage the\n * team (for example the row is not mounted with the profile roster), it returns a\n * warning instead.\n *\n * Idempotency is \"ask first\" (user decision C): when the session already leads a team,\n * nothing is reused and nothing new is staged; the caller gets an explicit inquiry\n * naming the existing team and the two options.\n * @param opts - ctx, the resolved config, the agent and the requested profile/goal.\n * @returns `{kind:'staged'|'exists'|'unavailable', text, teamId?, profile?}`.\n */\nexport async function ensureExplicitTeam(opts) {\n    const { ctx, config, agent, profileName } = opts;\n    const workspace = agent?.session?.header?.cwd ?? process.cwd();\n    const stateRoot = join(workspace, config.stateDir ?? '.mpd/team');\n    const profile = profileName ?? 'mpd';\n    try {\n        const existing = await findTeamByParticipant(stateRoot, agent.id) ?? await findStagedTeamAwaitingApproval(stateRoot, agent.id);\n        if (existing !== undefined) {\n            const approved = existing.approvedAt !== undefined || existing.phase !== 'staged';\n            return {\n                kind: 'exists',\n                teamId: existing.id,\n                profile: existing.profile?.name,\n                text: `${EXPLICIT_TEAM_INQUIRY_MARKER}: this session already leads team \"${existing.name}\" (id ${existing.id}, ${approved ? `phase ${existing.phase}` : 'staged, not yet approved'}). Nothing was created and nothing was reused automatically. Ask the user which they want: (a) keep using that team${approved ? ' and its task board' : ' and approve its plan'}, or (b) retire it (agent_teams_delete) and stage a fresh ${profile} team.`,\n            };\n        }\n        if (!Array.isArray(config.profiles?.[profile]?.members) || config.profiles[profile].members.length === 0) {\n            return {\n                kind: 'unavailable',\n                profile,\n                text: `${EXPLICIT_TEAM_NOTICE_MARKER}: WARNING — an explicit team request was recognised but the \"${profile}\" profile roster is unavailable in this deployment, so no team could be staged. Check that the agent-teams row carries the profiles block.`,\n            };\n        }\n        const teamId = await withTeamLock(`captain:${stateRoot}:${agent.id}`, async () => {\n            const raced = await findTeamByParticipant(stateRoot, agent.id);\n            if (raced !== undefined)\n                return undefined;\n            const base = (config.sessionTeamPolicy?.name ?? 'MPD Default');\n            const sanitized = base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'mpd-default';\n            // A deterministic per-captain id keeps two sessions in one workspace from\n            // colliding without needing a random read-modify-write.\n            const id = `${sanitized}-${createHash('sha256').update(agent.id).digest('hex').slice(0, 8)}`;\n            const created = await initializeProfileTeam({\n                ctx,\n                config,\n                memberSelections: undefined,\n                captain: agent,\n                exec: { signal: opts.signal },\n                stateRoot,\n                teamName: base,\n                teamId: id,\n                profileName: profile,\n                description: 'Staged by the R4 explicit-entry fallback (an explicit team request must never end silently).',\n                staged: true,\n            });\n            if (!created.committed)\n                throw new Error('explicit-entry staging did not commit');\n            return created.state.id;\n        });\n        if (teamId === undefined) {\n            const raced = await findTeamByParticipant(stateRoot, agent.id);\n            return { kind: 'exists', teamId: raced?.id, text: `${EXPLICIT_TEAM_INQUIRY_MARKER}: a team for this session appeared while the explicit request was being handled (id ${raced?.id ?? 'unknown'}); nothing was reused automatically — ask the user which team to keep.` };\n        }\n        return {\n            kind: 'staged',\n            teamId,\n            profile,\n            text: `${EXPLICIT_TEAM_NOTICE_MARKER}: the plugin staged team \"${config.sessionTeamPolicy?.name ?? 'MPD Default'}\" (id ${teamId}, profile ${profile}, approval=required) because this session was explicitly asked for a team. No member is spawned before the user approves the Web plan; shape the roster/DAG, then tell the user the plan is ready.`,\n        };\n    }\n    catch (error) {\n        ctx.logger?.warn?.(`agent-teams: explicit-team staging failed: ${String(error)}`);\n        return {\n            kind: 'unavailable',\n            profile,\n            text: `${EXPLICIT_TEAM_NOTICE_MARKER}: WARNING — an explicit team request was recognised but staging failed (${String(error)}). No team exists; do not report success.`,\n        };\n    }\n}\n//#endregion mpd-delta explicit-team-fallback",
     },
     {
+        file: "packages/mpd-agent-teams-plugin/lib/command.js",
+        id: "mpd-delta adapter-command-turn-submit",
+        beforeContext: [
+            "                    return { kind: 'error', text: `Usage: /${AGENT_TEAMS_COMMAND} [--profile <name>] <goal>` };",
+        ],
+        afterContext: [
+            "                // R4: the plugin stages (or asks) itself, in THIS turn, so the explicit",
+        ],
+        block: "                //#region mpd-delta adapter-command-turn-submit (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                // D9: the turn seam is adapter-mediated. `startAgentTurn` is a THROWING forwarder to\n                // `agent.followup`, so with no adapter mounted the identical expression runs.\n                ctx.startAgentTurn(invocation.agent, createUserMessage({ content: [{ type: 'text', text: `/${AGENT_TEAMS_COMMAND}${invocation.rawInput}` }], source: { kind: 'user' } }));\n                //#endregion mpd-delta adapter-command-turn-submit",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/command.js",
+        id: "mpd-delta adapter-command-turn-submit-profile",
+        beforeContext: [
+            "                        return { kind: 'error', text: `AgentTeams profile command \"/${commandName}\" is unavailable` };",
+        ],
+        afterContext: [
+            "                    const explicit = await resolveExplicitTeamText({ ...(getExplicitOpts() ?? {}), agent: invocation.agent, profileName: profile });",
+        ],
+        block: "                    //#region mpd-delta adapter-command-turn-submit-profile (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                    // Same seam as the generic command handler above, for a generated profile command.\n                    ctx.startAgentTurn(invocation.agent, createUserMessage({ content: [{ type: 'text', text: `/${commandName}${invocation.rawInput}` }], source: { kind: 'user' } }));\n                    //#endregion mpd-delta adapter-command-turn-submit-profile",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/index.js",
+        id: "mpd-delta adapter-facade-import",
+        beforeContext: [
+            "import { RequestBodyError, authenticatedWebRoutes, readJsonRequest } from \"./web-routes.js\";",
+        ],
+        afterContext: [
+            "/** Web-server service key candidates, newest first. */",
+        ],
+        block: "//#region mpd-delta adapter-facade-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n// AGENTS.md §6 closure: the adopted tree reaches every harness seam through `mpd-dsh-adapter`. This\n// is the ONLY new module binding it needs — the facade built at the top of `apply` is handed to\n// every consumer below, so the other five edited files import only the two scope helpers.\nimport { createAgentTeamsCtx } from \"./mpd-adapter-ctx.js\";\n//#endregion mpd-delta adapter-facade-import",
+    },
+    {
         file: "packages/mpd-agent-teams-plugin/lib/index.js",
         id: "mpd-delta member-tool-deny-config",
         beforeContext: [
@@ -1395,6 +1526,17 @@ export const MPD_DELTAS = [
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/index.js",
+        id: "mpd-delta adapter-facade-wiring",
+        beforeContext: [
+            "export function apply(ctx, config) {",
+        ],
+        afterContext: [
+            "    const resolved = {",
+        ],
+        block: "    //#region mpd-delta adapter-facade-wiring (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n    // D1/D2: ONE facade per plugin instance, built HERE and handed to every consumer below\n    // (including the calls INSIDE pre-existing regions). `resolveCtx` stays the RAW plugin ctx so a\n    // scoped/proxy ctx can never fail the `mpdDsh` probe; `ctx` from this line on is the facade, and\n    // its fallback column executes today's raw-ctx expressions exactly when no adapter is mounted.\n    const harnessCtx = ctx;\n    ctx = createAgentTeamsCtx(harnessCtx, { resolveCtx: harnessCtx });\n    //#endregion mpd-delta adapter-facade-wiring",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/index.js",
         id: "mpd-delta interjection-expiry-registration",
         beforeContext: [
             "    installSessionTeamPolicy(ctx, resolved);",
@@ -1403,6 +1545,53 @@ export const MPD_DELTAS = [
             "    // Deterministic activation surfaces: the closed-namespace `/agent-teams`",
         ],
         block: "    //#region mpd-delta interjection-expiry-registration (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n    // R1 dormancy fix: install the expiry sweep HERE, in the composition root, and\n    // UNCONDITIONALLY — not inside installSessionTeamPolicy. The sweep is bookkeeping every\n    // session needs, not a feature of auto-routing, so gating it behind the team policy\n    // (which returns early when `sessionTeamPolicy.mode` is off) would silently reintroduce\n    // the hole this closes: a dormant team's past-due interjection requests would never\n    // resolve and their requesters would never be told that silence is a DENY.\n    //\n    // The function itself lives in session-start.js with the rest of the session-start\n    // behaviour; only its REGISTRATION is a composition-root concern.\n    installInterjectionExpirySweep(ctx, resolved);\n    //#endregion mpd-delta interjection-expiry-registration",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/index.js",
+        id: "mpd-delta adapter-steer-approval-notice",
+        beforeContext: [
+            "                        try {",
+        ],
+        afterContext: [
+            "                        }",
+            "                        catch (error) {",
+        ],
+        block: "                            //#region mpd-delta adapter-steer-approval-notice (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                            // F2: the Agent's `steer` seam is adapter-mediated (throwing verbatim\n                            // forwarder, gated on capabilities().agentTurnSteer); with no adapter the\n                            // facade runs the identical `captain.steer(msg)` inside this try/catch.\n                            ctx.steerAgentTurn(captain, createUserMessage({\n                                content: [{ type: 'text', text: stagedPlanApprovedContext(team.name) }],\n                                source: { kind: 'plugin', plugin: 'dsh-agent-teams' },\n                            }));\n                            //#endregion mpd-delta adapter-steer-approval-notice",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/members.js",
+        id: "mpd-delta adapter-delivery-runtime-import",
+        beforeContext: [
+            "import { TERMINAL_TASK_STATUSES } from \"./types.js\";",
+        ],
+        afterContext: [
+            "/** Persona snapshot of a profile protocol; the full text lives on team.json. */",
+        ],
+        block: "//#region mpd-delta adapter-delivery-runtime-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n// D6: the delivery ladder must be handed the RUNTIME object, not the facade's `subagents`\n// projection — the adapter resolves WHICH runtime, the ladder keeps its generation policy.\nimport { subagentRuntimeOf } from \"./mpd-adapter-ctx.js\";\n//#endregion mpd-delta adapter-delivery-runtime-import",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/members.js",
+        id: "mpd-delta adapter-steer-captain-report",
+        beforeContext: [
+            "        ...fallback === undefined ? {} : { fallback },",
+            "    };",
+            "}",
+        ],
+        afterContext: [
+            "/** Record a final turn failure, never an intermediate request retry. */",
+        ],
+        block: "//#region mpd-delta adapter-steer-captain-report (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n/**\n * Deliver a durable member report to the live captain at its next model step.\n *\n * F2: `ctx` is threaded in (the plugin facade at every composition-root call site) so the Agent's\n * `steer` seam is adapter-mediated — a throwing verbatim forwarder gated on\n * `capabilities().agentTurnSteer`. The try/catch keeps its meaning: a rejected steer is `false`, and\n * with no adapter the facade runs the identical `captain.steer(msg)`.\n */\nexport function steerCaptainReport(ctx, captain, from, content) {\n    try {\n        ctx.steerAgentTurn(captain, createUserMessage({\n            content: [{ type: 'text', text: `AgentTeams message from member ${from}:\\n\\n${content}` }],\n            source: { kind: 'plugin', plugin: 'dsh-agent-teams' },\n        }));\n        return true;\n    }\n    catch {\n        // The plugin mailbox was persisted before this best-effort live delivery.\n        return false;\n    }\n}\n//#endregion mpd-delta adapter-steer-captain-report",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/members.js",
+        id: "mpd-delta adapter-steer-captain-report-caller",
+        beforeContext: [
+            "    const captain = ctx.agents.get(brandedSessionId(prepared.captainSessionId));",
+        ],
+        afterContext: [
+            "    await withTeamLock(lockKey, () => delivered",
+        ],
+        block: "    //#region mpd-delta adapter-steer-captain-report-caller (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n    // F2: the report steer needs the plugin ctx to reach the adapter; `ctx` is this function's own.\n    const delivered = captain !== undefined && steerCaptainReport(ctx, captain, memberName, prepared.message.content);\n    //#endregion mpd-delta adapter-steer-captain-report-caller",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/members.js",
@@ -1427,6 +1616,18 @@ export const MPD_DELTAS = [
             "            agentOptions: {",
         ],
         block: "//#region mpd-delta member-tool-deny-filter (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n            // The member's OWN restriction is merged on top of the captain-only denial:\n            // the read-only roster roles ship the same seven write-capable names the\n            // one-shot path uses (`READONLY_DENY`), carried as profile data. Without\n            // this a \"read-only\" member in a TEAM still had write/edit/bash — measured\n            // from inside a member session, whose own probe ran `pwd` for real.\n            toolFilter: { deny: [...CAPTAIN_TOOL_NAMES, ...(member.toolDeny ?? [])] },\n//#endregion mpd-delta member-tool-deny-filter",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/members.js",
+        id: "mpd-delta adapter-delivery-runtime",
+        beforeContext: [
+            "export async function deliverToMember(ctx, captain, childId, text, signal) {",
+            "    try {",
+        ],
+        afterContext: [
+            "        return true;",
+        ],
+        block: "        //#region mpd-delta adapter-delivery-runtime (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n        // The ladder reads `prompt`/`followup`/`[HOST_PROMPT_QUEUE]` off this object; the facade's\n        // `subagents` member is a projection and would silently look undeliverable.\n        await queueMemberPrompt(subagentRuntimeOf(ctx), captain, brandedSessionId(childId), [{ type: 'text', text }], signal);\n        //#endregion mpd-delta adapter-delivery-runtime",
     },
     {
         file: "packages/mpd-agent-teams-plugin/lib/profiles.js",
@@ -1487,5 +1688,135 @@ export const MPD_DELTAS = [
             "/** Statuses after which a task can no longer be claimed or worked on. */",
         ],
         block: "//#region mpd-delta deferred-kind (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n/**\n * T-13 (wave 2b, t27): `deferred` is a RECORD kind, never a work kind. A deferred task parks a row\n * the captain deliberately does not dispatch this wave — it keeps its full contract (so a reader\n * still sees what was parked and why) while every dispatch verb, the readiness predicate and the\n * two allowance predicates agree that it is not work. The three consumers that must agree with this\n * enum live in `quality-gates.js` (`isQualityKind` says false), `scheduler.js` (`isTaskReady` says\n * false) and `tools.js` (`claim_task` / `reassign_task` refuse it; `memberOpenTask` /\n * `captainOpenTask` do not count it) — each is asserted by the T-13 arms of\n * `self-fix-tests/wave2b-laneA-product-rows.test.mjs`.\n */\nexport const NON_DISPATCHABLE_TASK_KINDS = ['deferred'];\n/** True for a task whose kind parks it: a record, never work (T-13). */\nexport function isNonDispatchableKind(task) {\n    return NON_DISPATCHABLE_TASK_KINDS.includes(task?.kind ?? 'work');\n}\n//#endregion mpd-delta deferred-kind",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/capabilities.js",
+        id: "mpd-delta adapter-agent-scope-import",
+        beforeContext: [
+            "import { MEMBER_TOOL_NAMES, TEAM_TOOL_NAMES } from \"./tool-names.js\";",
+        ],
+        afterContext: [
+            "export const TEAM_ACTIVATION_PROMPT = 'AgentTeams (Agent Teams) provides multi-agent team collaboration. Apply these rules when the user requests it (including /agent-teams) or when continuing an existing team. Mentioning, quoting, discussing, or declining AgentTeams alone is not a request to start work.';",
+        ],
+        block: "//#region mpd-delta adapter-agent-scope-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n// D5: a member's per-agent seams (`tools.restrict`, `effect`) are adapter-owned; `agentScopeOf`\n// serves the mounted adapter's scope and today's raw `agent.ctx` otherwise.\nimport { agentScopeOf } from \"./mpd-adapter-ctx.js\";\n//#endregion mpd-delta adapter-agent-scope-import",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/capabilities.js",
+        id: "mpd-delta adapter-agent-scope",
+        beforeContext: [
+            "        active.add(state);",
+            "        try {",
+        ],
+        afterContext: [
+            "            return state;",
+        ],
+        block: "            //#region mpd-delta adapter-agent-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n            // D5: resolve the agent's scope ONCE per attach — the adapter's scope when `mpdDsh` is\n            // mounted, the raw `agent.ctx` (identity) otherwise, so both lanes run the same three\n            // statements this file ran before the bridge existed.\n            const scope = agentScopeOf(ctx, agent);\n            if (member)\n                revoke = scope.tools.restrict({\n                    deny: TEAM_TOOL_NAMES.filter(name => !MEMBER_TOOL_NAMES.includes(name)),\n                });\n            releaseLifetime = scope.effect(() => state.dispose, 'agent-teams: capability lifetime');\n            //#endregion mpd-delta adapter-agent-scope",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/harness-compat.js",
+        id: "mpd-delta adapter-subagent-runtime-import",
+        beforeContext: [
+            "import { SubagentError } from '../_deps/dsh-subagent/lib/index.js';",
+        ],
+        afterContext: [
+            "/**",
+            " * Exact protocol exported by `dsh-subagent/internal` in Alpha.5 … 0.1.2-rc.1.",
+        ],
+        block: "//#region mpd-delta adapter-subagent-runtime-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n// D5/D6: the runtime RESOLUTION and the per-agent scope are adapter-owned; the generation ladder's\n// own policy (which method of the runtime it reads, and the retired-member guard's patching) stays\n// in this module.\nimport { agentScopeOf, liveAgentOf, subagentRuntimeOf } from \"./mpd-adapter-ctx.js\";\n//#endregion mpd-delta adapter-subagent-runtime-import",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/harness-compat.js",
+        id: "mpd-delta adapter-subagent-runtime-install",
+        beforeContext: [
+            "export function installContinuableMemberSetup(ctx, setup) {",
+        ],
+        afterContext: [
+            "    if (typeof runtime.registerContinuableSetup === 'function') {",
+        ],
+        block: "    //#region mpd-delta adapter-subagent-runtime-install (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n    // D6: the adapter owns WHICH object this ladder operates on (`subagentRuntime()` through the\n    // facade, today's raw `ctx.subagents` otherwise); the ladder below still decides which\n    // generation's method it reads.\n    const runtime = subagentRuntimeOf(ctx);\n    //#endregion mpd-delta adapter-subagent-runtime-install",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/harness-compat.js",
+        id: "mpd-delta adapter-subagent-runtime-agent-scope",
+        beforeContext: [
+            "            if (installed.has(agent))",
+            "                return;",
+        ],
+        afterContext: [
+            "            // Deliberately synchronous: awaiting here loses the first-request race.",
+        ],
+        block: "            //#region mpd-delta adapter-subagent-runtime-agent-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n            // D5: the child's scope is adapter-owned; with no mounted adapter (and in every existing\n            // unit test, where the ctx is a plain object) this IS the raw `agent.ctx` — identity.\n            const scope = agentScopeOf(ctx, agent);\n            //#endregion mpd-delta adapter-subagent-runtime-agent-scope",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/harness-compat.js",
+        id: "mpd-delta adapter-subagent-runtime-agent-scope-setup",
+        beforeContext: [
+            "                // that throws on `childCtx.agent` (see this function's JSDoc).",
+        ],
+        afterContext: [
+            "            }",
+            "            catch (error) {",
+            "                // session-start is a notification: Harness logs a thrown listener and",
+        ],
+        block: "                //#region mpd-delta adapter-subagent-runtime-agent-scope-setup (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                // F1: `agentScopeOf` returns ONE shape in every arm and `scope.context` keeps the raw\n                // ctx's IDENTITY, so this is byte-for-byte today's `setup(agent.ctx, agent)`.\n                teardown = setup(scope.context, agent);\n                //#endregion mpd-delta adapter-subagent-runtime-agent-scope-setup",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/harness-compat.js",
+        id: "mpd-delta adapter-subagent-runtime-agent-scope-request",
+        beforeContext: [
+            "                ctx.logger?.warn?.(failure.message);",
+        ],
+        afterContext: [
+            "            }",
+            "            installed.add(agent);",
+        ],
+        block: "                //#region mpd-delta adapter-subagent-runtime-agent-scope-request (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                teardown = scope.on('agent/request', () => { throw failure; });\n                //#endregion mpd-delta adapter-subagent-runtime-agent-scope-request",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/harness-compat.js",
+        id: "mpd-delta adapter-subagent-runtime-agent-scope-effect",
+        beforeContext: [
+            "            // release our bookkeeping and remove them if this plugin is reloaded.",
+            "            try {",
+        ],
+        afterContext: [
+            "            }",
+            "            catch (error) {",
+            "                dispose();",
+        ],
+        block: "                //#region mpd-delta adapter-subagent-runtime-agent-scope-effect (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n                scope.effect(() => dispose, 'agent-teams: child compatibility setup');\n                //#endregion mpd-delta adapter-subagent-runtime-agent-scope-effect",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/harness-compat.js",
+        id: "mpd-delta adapter-subagent-runtime-guard",
+        beforeContext: [
+            "export function guardSubagentDelivery(ctx, isRetired) {",
+        ],
+        afterContext: [
+            "    const legacy = runtime.followup;",
+        ],
+        block: "    //#region mpd-delta adapter-subagent-runtime-guard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n    // D6/R2: same runtime RESOLUTION as the installer above — the retired-member guard keeps\n    // PATCHING that object (the adapter owns the resolution only).\n    const runtime = subagentRuntimeOf(ctx);\n    //#endregion mpd-delta adapter-subagent-runtime-guard",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/harness-compat.js",
+        id: "mpd-delta adapter-subagent-runtime-agents-lookup",
+        beforeContext: [
+            "        const guardedPrompt = async (request, signal) => {",
+        ],
+        afterContext: [
+            "            if (sender !== undefined) await check(sender, request.childSessionId);",
+        ],
+        block: "            //#region mpd-delta adapter-subagent-runtime-agents-lookup (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n            // The service-lookup spelling disappears: the bridge resolves the live sender through the\n            // adapter-routed `agents.get` in production and through today's `get('agents')` expression\n            // for a plain-object ctx (which is what every pre-existing unit test hands this guard).\n            const sender = liveAgentOf(ctx, request?.parentSessionId);\n            //#endregion mpd-delta adapter-subagent-runtime-agents-lookup",
+    },
+    {
+        file: "packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js",
+        id: "mpd-delta adapter-ctx-bridge",
+        beforeContext: [
+            "// mpd-owned bridge module — the adopted agent-teams plugin's ONE route to a DeepSeek Harness seam (LOCAL ADAPTATION; see agent-references/agent-teams-deltas.md).",
+        ],
+        afterContext: [
+            "// mpd-owned bridge module END — the two comment lines around the single region are the registry's skeleton context.",
+        ],
+        block: "//#region mpd-delta adapter-ctx-bridge (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)\n/**\n * The adapter-backed plugin context for the adopted agent-teams plugin.\n *\n * WHY (AGENTS.md §6): `packages/mpd-agent-teams-plugin/lib` is adopted upstream main code that used\n * to reach every harness seam on its own `ctx` (`ctx.tools.register`, `ctx.agents`, `ctx.subagents`,\n * `ctx.commands`, `ctx.systemPrompt`, `ctx.llm`, `ctx.on`, `agent.ctx.*`, `agent.followup`,\n * `agent.cancel`). That was the ONE documented exception to the adapter rule — a harness release\n * that reshapes a seam would have to be absorbed across the whole adopted tree instead of in\n * `packages/mpd-dsh-adapter-plugin`. This module closes it: the composition root builds ONE facade\n * per plugin instance and hands it to every consumer, so each adopted file keeps calling `ctx.<seam>`\n * while the bridge routes the call through the mounted `mpdDsh` adapter.\n *\n * Resolution (D2 / T-50, mirroring `createLazyDshAdapter` in the adapter row, but WITHOUT ever\n * building a private adapter — that fallback stays inside the adapter row itself):\n *   - probe `resolveCtx.get('mpdDsh', true)` per access; on a hit cache the adapter and never\n *     re-probe; a miss is NEVER cached and is re-probed on every access;\n *   - a strict miss + a non-strict hit is the PENDING window (the service is registered but its\n *     fiber is not ACTIVE yet — the loader applies sibling rows concurrently);\n *   - a strict + non-strict miss is ABSENT: the facade then serves the raw cordis ctx, which is\n *     exactly today's behaviour, plus one greppable witness line telling the operator that the\n *     adapter row must sit ABOVE the agent-teams row.\n *\n * Witness lines are emitted ONCE per mode per plugin instance (per `resolveCtx`, shared by the\n * scoped facades `inject` derives) through the CONSOLE: a headless boot has no logger sink, and the\n * sibling rows (`mpd-dsh-adapter`, `mpd-ext`, `mpd-roles`, …) report their own adapter identity the\n * same way, which is what makes these lines greppable in a boot log — and therefore falsifiable.\n *\n * Parity (contract §4): with the adapter absent every property executes TODAY'S EXACT expression\n * (same receiver, same throw). The only tolerated difference is where the adapter's own never-crash\n * contract already is more tolerant than the raw service (`liveAgent`/`liveAgents`/`onEvent`).\n *\n * Two contract REVISIONS are implemented here on purpose, both recorded because they change the\n * pre-revision behaviour:\n *   - F1: `agentScopeOf` (and the facade's `agentScope`) ALWAYS return ONE shape\n *     `{ context, tools, on, effect }` in EVERY arm — the raw-ctx arm BUILDS that shape instead of\n *     returning the raw ctx, whose `.context` read is `undefined` (the measured defect: the member\n *     setup then parked on its failure listener). `context` keeps the raw ctx's IDENTITY.\n *   - F2: `steerAgentTurn` / `injectAgentMessage` expose the Agent's `steer`/`inject` seams, gated on\n *     `capabilities().agentTurnSteer` / `.agentTurnInject` (throwing verbatim forwarders, D9 rule).\n * Every adapter seam is resolved through ONE presence+capability gate (`seam(name, flag)`): a missing\n * method OR a flag the adapter reports as `false` serves the raw lane, so an older/partial adapter\n * degrades per seam instead of taking the boot down.\n * @module dsh-agent-teams/mpd-adapter-ctx\n */\n\n/** The service name the mounted adapter is resolved by (`mpd-dsh-adapter` exports it as SERVICE_NAME). */\nconst MPD_DSH_SERVICE = 'mpdDsh';\n\n/** The three resolution outcomes, as the frozen witness strings (one line per mode per plugin instance). */\nexport const ADAPTER_WITNESS = {\n    mounted: '[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter',\n    pending: '[agent-teams] adapter: mpdDsh pending (provider not ACTIVE) — serving the raw cordis ctx for now and re-probing on every access',\n    absent: '[agent-teams] adapter: mpdDsh ABSENT — serving the raw cordis ctx (warn once); mpd-dsh-adapter must sit ABOVE the agent-teams row',\n    /**\n     * BR-1: a member the raw agent ctx cannot provide is handed a NO-OP. NOT a fourth resolution\n     * mode — it rides the same sink under the same once-per-instance discipline — but it IS a\n     * privilege event: a member that cannot be tool-restricted loses its restriction.\n     */\n    substituted: '[agent-teams] adapter: per-agent scope substituted a NO-OP for a member the agent ctx cannot provide — a member that cannot be tool-restricted is a MEMBER PRIVILEGE LOSS, not a cosmetic degrade',\n};\n\n/**\n * The BR-1 witness line: the substituted member NAMES plus the privilege-loss consequence. The\n * tolerance stays (never a throw — the plugin's doctrine is degrade-with-a-warning), but a silent\n * member-privilege loss is exactly the class this bridge refuses to leave anonymous.\n */\nexport function adapterSubstitutionWitness(members) {\n    return `${ADAPTER_WITNESS.substituted} [substituted: ${members.join(', ')}]`;\n}\n\n/**\n * Resolution + witness state per root context, so the scoped facade `inject` derives (frozen\n * wrapping: `createAgentTeamsCtx(scoped, { resolveCtx })`) reports the SAME single witness line\n * instead of repeating it for every scoped ctx the plugin ever injects.\n */\nconst WITNESS_STATE = new WeakMap();\n\n/** One witness line, emitted on the console by default (a boot log captures it; a logger level does not). */\nfunction defaultWitness(line, level) {\n    try {\n        (level === 'warn' ? console.warn : console.log)(line);\n    }\n    catch {\n        // A log sink must never take the plugin down (same rule as the adapter's own warning).\n    }\n}\n\n/**\n * One contained service probe. `strict: true` asks cordis for an ACTIVE provider only; `strict:\n * false` sees the registration regardless of fiber state, which is what distinguishes PENDING from\n * ABSENT. A ctx that cannot answer (a scoped proxy, an inject-filtered ctx, a test double) is a\n * miss, never a crash.\n */\nfunction probeMpdDsh(resolveCtx, strict) {\n    const get = resolveCtx?.get;\n    if (typeof get !== 'function')\n        return undefined;\n    try {\n        const value = get.call(resolveCtx, MPD_DSH_SERVICE, strict);\n        return value === undefined || value === null ? undefined : value;\n    }\n    catch {\n        return undefined;\n    }\n}\n\n/**\n * The adapter's OWN capability report, snapshotted once per adapter object.\n *\n * `capabilities()` is the adapter's published degrade signal (one boolean per seam); it is read at\n * most once per mounted adapter because the adapter itself is cached on a successful probe. An\n * adapter without `capabilities()` — or one whose report throws — yields `undefined`, and then the\n * method's presence alone decides (never a crash, never a boot abort).\n */\nconst CAPABILITY_SNAPSHOT = new WeakMap();\nfunction capabilitiesOf(dsh) {\n    const keyable = dsh !== null && (typeof dsh === 'object' || typeof dsh === 'function');\n    if (!keyable)\n        return undefined;\n    if (CAPABILITY_SNAPSHOT.has(dsh))\n        return CAPABILITY_SNAPSHOT.get(dsh);\n    let snapshot;\n    try {\n        snapshot = typeof dsh.capabilities === 'function' ? dsh.capabilities() : undefined;\n    }\n    catch {\n        snapshot = undefined;\n    }\n    CAPABILITY_SNAPSHOT.set(dsh, snapshot);\n    return snapshot;\n}\n\n/**\n * One adapter method, bound to the adapter object, or `undefined` when this adapter cannot serve it\n * (no such method, or its capability flag is reported `false`).\n */\nfunction seamMethod(dsh, name, flag) {\n    if (dsh === undefined || typeof dsh[name] !== 'function')\n        return undefined;\n    if (flag !== undefined) {\n        const capabilities = capabilitiesOf(dsh);\n        if (capabilities !== null && typeof capabilities === 'object' && capabilities[flag] === false)\n            return undefined;\n    }\n    const method = dsh[name];\n    return (...args) => method.call(dsh, ...args);\n}\n\n/** A disposer that does nothing: the per-member degrade of the uniform scope shape (F1). */\nconst DISPOSE_NOTHING = () => { };\n\n/** Read one member of a ctx without letting a hostile/proxy ctx throw (F1: per-member independence). */\nfunction readScopeMember(scoped, name) {\n    try {\n        return scoped?.[name];\n    }\n    catch {\n        return undefined;\n    }\n}\n\n/**\n * The ONE scope shape every arm returns (contract §4, F1): `{ context, tools, on, effect }`.\n *\n * `context` keeps the raw ctx's IDENTITY (so `setup(scope.context, agent)` is byte-for-byte today's\n * `setup(agent.ctx, agent)`), and each of the other three members is resolved INDEPENDENTLY — a\n * missing (or throwing) member degrades to a no-op for THAT member only, never discarding the rest.\n * The pre-F1 formula returned the raw ctx itself here, which is exactly the measured defect: reading\n * `scope.context` yielded `undefined` and `installContinuableMemberSetup` parked the member on its\n * failure listener, silently disabling member model selection.\n */\nfunction scopeShapeFrom(scoped, report) {\n    const tools = readScopeMember(scoped, 'tools');\n    const on = readScopeMember(scoped, 'on');\n    const effect = readScopeMember(scoped, 'effect');\n    const usableTools = tools !== null && typeof tools === 'object' && typeof tools.restrict === 'function';\n    // BR-1: NAME every member handed a no-op instead of leaving the degrade anonymous.\n    // `tools.restrict` is the security-relevant one — a member that cannot be tool-restricted loses\n    // its restriction — while `context` names the degenerate case where the identity itself is gone.\n    const substituted = [];\n    if (scoped === undefined || scoped === null)\n        substituted.push('context');\n    if (!usableTools)\n        substituted.push('tools.restrict');\n    if (typeof on !== 'function')\n        substituted.push('on');\n    if (typeof effect !== 'function')\n        substituted.push('effect');\n    if (substituted.length > 0 && typeof report === 'function')\n        report(substituted, scoped);\n    return {\n        context: scoped,\n        tools: usableTools\n            ? tools\n            : { restrict: () => DISPOSE_NOTHING },\n        on: (...args) => (typeof on === 'function' ? on.apply(scoped, args) : DISPOSE_NOTHING),\n        effect: (...args) => (typeof effect === 'function' ? effect.apply(scoped, args) : DISPOSE_NOTHING),\n    };\n}\n\n/**\n * Whether a scope an ADAPTER returned can be used as the shape: every member it promises must be\n * present and callable, and `context` must exist (without it the identity guarantee is lost). An\n * unusable result falls through to `scopeShapeFrom(agent?.ctx)` — the same per-member build.\n */\nfunction isUsableScope(scope) {\n    return scope !== null && typeof scope === 'object'\n        && 'context' in scope\n        && scope.tools !== null && typeof scope.tools === 'object' && typeof scope.tools.restrict === 'function'\n        && typeof scope.on === 'function'\n        && typeof scope.effect === 'function';\n}\n\n/** The shared resolution/witness state for one root context (a fresh record when it cannot be keyed). */\nfunction resolutionState(resolveCtx) {\n    const keyable = resolveCtx !== null && (typeof resolveCtx === 'object' || typeof resolveCtx === 'function');\n    if (!keyable)\n        return { mounted: undefined, notified: undefined, substituted: undefined };\n    const existing = WITNESS_STATE.get(resolveCtx);\n    if (existing !== undefined)\n        return existing;\n    const created = { mounted: undefined, notified: undefined, substituted: undefined };\n    WITNESS_STATE.set(resolveCtx, created);\n    return created;\n}\n\n/**\n * Build the facade the adopted agent-teams plugin drives instead of the raw cordis ctx.\n *\n * @param targetCtx - the raw plugin context every fallback expression is bound to.\n * @param options.resolveCtx - the ctx the adapter is probed on; defaults to `targetCtx`. The\n *   composition root passes the RAW plugin ctx so a scoped/proxy ctx can never fail the probe.\n * @param options.witness - optional `(line, level) => void` sink (tests); defaults to the console.\n * @returns the facade: exactly the properties the adopted tree reads, nothing else.\n */\nexport function createAgentTeamsCtx(targetCtx, options = {}) {\n    const resolveCtx = options.resolveCtx ?? targetCtx;\n    const sink = typeof options.witness === 'function' ? options.witness : defaultWitness;\n    const state = resolutionState(resolveCtx);\n\n    /** Report one resolution mode once (per plugin instance, not per access). */\n    function witness(mode, level) {\n        if (state.notified === mode)\n            return;\n        state.notified = mode;\n        try {\n            sink(ADAPTER_WITNESS[mode], level);\n        }\n        catch {\n            // Never take a plugin down because a sink misbehaved.\n        }\n    }\n\n    /**\n     * BR-1: report the NO-OP substitution ONCE per plugin instance (the same discipline and the same\n     * sink as the three mode witnesses). The tolerance stays — a missing seam degrades with a warning\n     * instead of taking the tree down — but a member that cannot be tool-restricted loses its\n     * restriction, so the substitution must never be silent.\n     */\n    function reportSubstitution(members) {\n        if (state.substituted !== undefined)\n            return;\n        state.substituted = members.join(', ');\n        try {\n            sink(adapterSubstitutionWitness(members), 'warn');\n        }\n        catch {\n            // A log sink must never take the plugin down (same rule as the mode witnesses).\n        }\n    }\n\n    /** T-50 resolution: cache ONLY a success; re-probe every miss; a miss serves the fallback column. */\n    function adapter() {\n        if (state.mounted !== undefined)\n            return state.mounted;\n        const active = probeMpdDsh(resolveCtx, true);\n        if (active !== undefined) {\n            state.mounted = active;\n            witness('mounted', 'info');\n            return active;\n        }\n        if (probeMpdDsh(resolveCtx, false) !== undefined)\n            witness('pending', 'warn');\n        else\n            witness('absent', 'warn');\n        return undefined;\n    }\n\n    /** One adapter seam method for THIS access, or `undefined` when the raw ctx must serve it. */\n    function seam(name, flag) {\n        return seamMethod(adapter(), name, flag);\n    }\n\n    return {\n        tools: {\n            register: (definition) => {\n                const register = seam('registerHostTool', 'toolsRegisterHost');\n                // VERBATIM passthrough: `defineTool(...)` output is already harness-shaped, and\n                // `registerTool` would rebuild it (dropping presentCall/presentResult/… and\n                // replacing execute), so the SAME object reference must reach `tools.register`.\n                return register === undefined ? targetCtx.tools.register(definition) : register(definition);\n            },\n        },\n        agents: {\n            get: (agentId) => {\n                const liveAgent = seam('liveAgent');\n                return liveAgent === undefined ? targetCtx.agents.get(agentId) : liveAgent(agentId);\n            },\n            list: () => {\n                const liveAgents = seam('liveAgents');\n                return liveAgents === undefined ? targetCtx.agents.list() : liveAgents();\n            },\n        },\n        subagents: {\n            getProvider: (name) => {\n                const provider = seam('subagentProvider', 'subagentsProvider');\n                return provider === undefined ? targetCtx.subagents.getProvider(name) : provider(name);\n            },\n            list: () => {\n                const providers = seam('subagentProviders', 'subagentsProvider');\n                return providers === undefined ? targetCtx.subagents.list() : providers();\n            },\n            startContinuable: (spec) => {\n                const start = seam('startContinuableAgent', 'subagentsContinuable');\n                // A member that cannot be spawned must be LOUD: the raw expression throws\n                // synchronously and the adapter's forwarder preserves both the throw and the\n                // service's own promise rejections.\n                return start === undefined ? targetCtx.subagents.startContinuable(spec) : start(spec);\n            },\n            interrupt: (targetSessionId, authority) => {\n                const interrupt = seam('interruptAgent', 'subagentsInterrupt');\n                return interrupt === undefined\n                    ? targetCtx.subagents.interrupt(targetSessionId, authority)\n                    : interrupt(targetSessionId, authority);\n            },\n            runtime: () => {\n                // Gated on the adapter's own `subagents` flag (its exact spelling of \"the service\n                // exists\"): every one of the fourteen mediated methods sits behind a capability\n                // flag, and a `false` here is equivalent to the service being absent.\n                const runtime = seam('subagentRuntime', 'subagents');\n                // The Harness-generation ladder (`prompt`/`followup`/`[HOST_PROMPT_QUEUE]`/\n                // `sendMessage`) reads and patches THIS object, so it must be the runtime\n                // itself — identity-preserving, never a projection of the facade.\n                return runtime === undefined ? targetCtx.subagents : runtime();\n            },\n        },\n        commands: {\n            register: (definition) => {\n                const register = seam('registerCommand', 'commandsRegister');\n                return register === undefined ? targetCtx.commands.register(definition) : register(definition);\n            },\n        },\n        systemPrompt: {\n            section: (section) => {\n                const registerSection = seam('registerPromptSection', 'systemPromptSection');\n                // THROW-shaped on purpose: the plugin's usage section is mandatory, so a\n                // composition that cannot register it must be loud rather than silently mute.\n                return registerSection === undefined ? targetCtx.systemPrompt.section(section) : registerSection(section);\n            },\n        },\n        llm: {\n            listModels: (provider) => {\n                const listModels = seam('llmListModels', 'llmListModels');\n                return listModels === undefined ? targetCtx.llm.listModels(provider) : listModels(provider);\n            },\n            resolveCallConfig: (config, signal) => {\n                const resolveCallConfig = seam('llmResolveCallConfig', 'llmResolveCallConfig');\n                return resolveCallConfig === undefined\n                    ? targetCtx.llm.resolveCallConfig(config, signal)\n                    : resolveCallConfig(config, signal);\n            },\n        },\n        agentScope: (agent) => {\n            const scope = seam('agentScope', 'agentScope');\n            if (scope !== undefined) {\n                const provided = scope(agent);\n                // The adapter's own shape when it is usable; otherwise the SAME per-member build the\n                // fallback arm uses — no arm returns a raw cordis ctx in place of the shape (F1).\n                if (isUsableScope(provided))\n                    return provided;\n            }\n            return scopeShapeFrom(agent?.ctx, reportSubstitution);\n        },\n        startAgentTurn: (agent, message) => {\n            const start = seam('startAgentTurn', 'agentTurnStart');\n            // Fallback = today's EXACT expression, RETURNED verbatim: the throw inside the caller's\n            // own try/catch (contract D9) and the expression's own value travel unchanged.\n            if (start === undefined)\n                return agent.followup(message);\n            return start(agent, message);\n        },\n        cancelAgentTurn: (agent, cause, cancelOptions) => {\n            const cancel = seam('cancelAgentTurn', 'agentTurnCancel');\n            if (cancel === undefined)\n                return agent.cancel(cause, cancelOptions);\n            return cancel(agent, cause, cancelOptions);\n        },\n        steerAgentTurn: (agent, message) => {\n            const steer = seam('steerAgentTurn', 'agentTurnSteer');\n            // Fallback = today's EXACT expression, returned verbatim; the throw inside the caller's\n            // own try/catch (F2 requires the throw preserved) travels unchanged.\n            if (steer === undefined)\n                return agent.steer(message);\n            return steer(agent, message);\n        },\n        injectAgentMessage: (agent, message) => {\n            const inject = seam('injectAgentMessage', 'agentTurnInject');\n            // NOTE the two `inject` spellings: this is the AGENT's `inject(message)`, not the cordis\n            // `ctx.inject(deps, callback)` seam (which the facade passes through untouched below).\n            if (inject === undefined)\n                return agent.inject(message);\n            return inject(agent, message);\n        },\n        on: (event, handler, ...listenerOptions) => {\n            const onEvent = seam('onEvent');\n            // The facade ALWAYS returns a disposer: callers store it and call it on teardown,\n            // while a non-callable answer (or a stub service) must not become a TypeError later.\n            // The FALLBACK forwards every listener option — `installInterjectionExpirySweep`\n            // registers with `{ global: true, prepend: true }`, and dropping them would silently\n            // change which events this plugin hears.\n            if (onEvent === undefined) {\n                const dispose = targetCtx.on(event, handler, ...listenerOptions);\n                // A cordis `on` answers the effect disposer; a stub service may answer anything, and\n                // callers store the result and call it on teardown (frozen §4: \"always a function\").\n                return typeof dispose === 'function' ? dispose : () => { };\n            }\n            // The adapter owns the subscription's identity (residual R1): its frozen `onEvent`\n            // signature takes the event and the handler only.\n            return onEvent(event, handler) ?? (() => { });\n        },\n        effect: (callback, label) => targetCtx.effect(callback, label),\n        get: (name, strict) => targetCtx.get(name, strict),\n        inject: (deps, callback) => targetCtx.inject(deps, (scoped) => callback(createAgentTeamsCtx(scoped, { resolveCtx }))),\n        logger: targetCtx.logger,\n    };\n}\n\n/**\n * The per-agent scope of one Agent — ALWAYS the ONE shape `{ context, tools, on, effect }`.\n *\n * MOUNTED arm: the facade's `agentScope(agent)` result when it is usable (the adapter's own shape).\n * FALLBACK arm (no facade in the chain, adapter absent/pending, or an unusable adapter result): the\n * shape is BUILT from the raw `agent.ctx` by `scopeShapeFrom`, per member, with `context` keeping that\n * ctx's identity — so `setup(scope.context, agent)` is byte-for-byte today's `setup(agent.ctx, agent)`.\n *\n * With a plain-object test ctx the shape is assembled from the SAME `agent.ctx` members, which is why\n * every existing plain-object-ctx test stays green with zero edits.\n *\n * @param ctx - the facade (or the raw ctx outside the composition root).\n * @param agent - the live Agent handle.\n */\n/**\n * BR-1: the report gate for the RAW-ctx lane. `createAgentTeamsCtx` gates on its per-instance\n * `state`; this lane (`agentScopeOf` outside the composition root, where there is no facade carrying\n * a sink) has no instance at hand, so the gate is the ctx that cannot provide the members — one\n * report per ctx, plus one for the degenerate unkeyable case. Never on the happy path: a ctx exposing\n * all four members reports nothing.\n */\nconst REPORTED_SUBSTITUTIONS = new WeakSet();\nlet reportedUnkeyableSubstitution = false;\n\nfunction reportRawSubstitution(members, scoped) {\n    const keyable = scoped !== null && (typeof scoped === 'object' || typeof scoped === 'function');\n    if (keyable) {\n        if (REPORTED_SUBSTITUTIONS.has(scoped))\n            return;\n        REPORTED_SUBSTITUTIONS.add(scoped);\n    }\n    else {\n        if (reportedUnkeyableSubstitution)\n            return;\n        reportedUnkeyableSubstitution = true;\n    }\n    defaultWitness(adapterSubstitutionWitness(members), 'warn');\n}\n\nexport function agentScopeOf(ctx, agent) {\n    const provided = typeof ctx?.agentScope === 'function' ? ctx.agentScope(agent) : undefined;\n    return isUsableScope(provided) ? provided : scopeShapeFrom(agent?.ctx, reportRawSubstitution);\n}\n\n/**\n * The subagent delivery RUNTIME the Harness-generation ladder operates on (contract D6): the\n * adapter's `subagentRuntime()` through a facade, today's raw `ctx.subagents` otherwise.\n *\n * The adapter owns WHICH object the ladder operates on; the ladder's own policy (which generation's\n * method it reads, and the retired-member guard's patching) stays in the plugin (residual R2).\n *\n * @param ctx - the facade (or the raw ctx outside the composition root).\n */\nexport function subagentRuntimeOf(ctx) {\n    const subagents = ctx?.subagents;\n    return subagents !== undefined && typeof subagents.runtime === 'function' ? subagents.runtime() : subagents;\n}\n\n/**\n * One live Agent by id: the facade's routed `agents.get` (the mounted adapter's `liveAgent`) when the\n * ctx offers it, else today's service-lookup expression.\n *\n * WHY THE SECOND LANE EXISTS (measured, not speculative): the retired-member guard's sender lookup\n * used to be `ctx.get?.('agents')?.get(…)`, and every PRE-EXISTING unit test hands that guard a\n * plain-object ctx that carries the registry ONLY through `get('agents')` — replacing the expression\n * outright made the guard admit a resumed retired member (test\n * `harness-compat.test.ts: retired-member guard covers every resumable face`). Keeping the tolerant\n * lane HERE is what lets the production path be adapter-routed while the fallback stays byte-parity;\n * the alternative was a raw fallback expression inside an ADOPTED file, which the bridge exists to\n * prevent.\n *\n * @param ctx - the facade (or any ctx-shaped object).\n * @param agentId - the session id to resolve.\n */\nexport function liveAgentOf(ctx, agentId) {\n    const agents = ctx?.agents;\n    if (agents !== undefined && typeof agents.get === 'function')\n        return agents.get(agentId);\n    const lookup = ctx?.get?.('agents');\n    return lookup === undefined ? undefined : lookup.get(agentId);\n}\n//#endregion mpd-delta adapter-ctx-bridge",
     },
 ];

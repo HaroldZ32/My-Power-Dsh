@@ -1,0 +1,13 @@
+pack root: /root/dshProj/my-power-dsh/dist/mpd-package
+read at (UTC): 2026-09-19T16:24:06.025Z
+bridge repo sha256   = 01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3
+bridge packed sha256 = 01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3
+bridge identical     = true
+[six bridged adopted files] compared 6 · identical 6 · differing 0 · missing-from-pack 0
+[adopted lib/** (all files)] compared 55 · identical 55 · differing 0 · missing-from-pack 0
+adapter dist repo sha256   = d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4
+adapter dist packed sha256 = d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4
+[all packages/*/dist/**] compared 25 · identical 24 · differing 0 · missing-from-pack 1
+  MISSING: packages/mpd-qa-roles-probe/dist/index.js
+[wave-touched docs + registry] compared 6 · identical 5 · differing 0 · missing-from-pack 1
+  MISSING: AGENTS.md

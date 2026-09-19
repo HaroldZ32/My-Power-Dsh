@@ -1,0 +1,103 @@
+{
+  "task": "t23 \u2014 repair round 2 (bridge lane's share)",
+  "seat": "Senior Engineer",
+  "attempt": 1,
+  "attempt_id": "5049803a-d557-4e1a-9b85-db71fc5bae44",
+  "read_moments": {
+    "item1_gates": "2026-09-19T16:00:47Z",
+    "verification_sweep": "2026-09-19T16:03:52Z"
+  },
+  "changed": {
+    "AGENTS.md": {
+      "items": "4 + 5",
+      "sha256": "d813c47c31e7497b277f2bddd307229871669801ebd62abbf124e93aa5579f54"
+    },
+    "packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs": {
+      "items": "3",
+      "sha256": "7898fd03526a36c0ece5f76f2a573a39c8b93339c8bb703251feaab1fa1d9f84"
+    }
+  },
+  "item1_repin_and_gates": {
+    "repin_landed": "VENDOR_LOCK.json modified in the working tree (re-pin landed with the skills changes); the commit is the captain's step",
+    "verify_vendor": "exit 0 PASS (all assets OK, incl. the skills treeSha that was red before the re-pin)",
+    "verify_gates": "exit 0 \u2014 PASS 5/5 member gates",
+    "test_qa": "exit 0 \u2014 [test:qa] all self-tests passed",
+    "out_of_scope_reported": "the contract's line 334 ('skills/** MUST NOT be touched') still lacks the t22 exception; the contract file is NOT in this task's inScope \u2014 amendment proposed in the README and to the captain"
+  },
+  "item2_fresh_verification": {
+    "t22": "completed (Junior Engineer)",
+    "repin": "landed",
+    "t8": "in_progress (Deep Worker) \u2014 the fresh verification attempt on the new hashes",
+    "t24": "pending (Reviewer) \u2014 review-round-2",
+    "anchoring": "re-running AC12/AC13/AC16 + boot arms and anchoring to the new hashes is t8's in-flight deliverable; its stored result still carries the PRE-re-pin FAILED verdict"
+  },
+  "item3_scanner": {
+    "new_rules": [
+      "facade.alias",
+      "facade.destructure",
+      "facade.bracket",
+      "facade.reflect"
+    ],
+    "childCtx": "skip narrowed to the five identity-matched lines (file + trimmed text, T-55); those lines are still scanned, with exactly the counted access per subscription line exempted; a new childCtx line is a finding",
+    "falsifiability": "new arm drives 7 spellings (each must fire) + 3 negative controls (facade call, bare alias call, ctx.agents.get alias-of-result)",
+    "tests": "6 pass / 0 fail in the scanner file"
+  },
+  "item4_and_5_agents_md": {
+    "sentences_qualified": [
+      "\u00a71 'every harness seam it touches goes through the mounted mpdDsh service' + counted residual",
+      "\u00a76 'it reaches every harness seam THROUGH mpd-dsh-adapter' + counted residual"
+    ],
+    "flags_reworded": "each behind a `capabilities()` flag (one flag may cover two methods; `subagentRuntime` reuses the existing `subagents` flag)",
+    "residual_paragraph": "names the two raw subscriptions childCtx.on('agent/error') / childCtx.on('agent/request-error'), the vendored installModelSelection hand-off, and the legacy hostChild ?? childCtx.agent read"
+  },
+  "item6_verification_result": {
+    "already_stated": "AC10_mounting_boot.boot_lines.ADAPTER_SEAMS names the five flags (agentScope + the four agentTurn*) as LIVE-REGISTRY probes reading FALSE in a session-less boot",
+    "edit_made": "none \u2014 another lane's in-progress evidence file, and the required statement is present (quoted in the README)"
+  },
+  "sweep": {
+    "bun test packages/mpd-agent-teams-plugin": "361 pass / 0 fail (5269 expect() calls)",
+    "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 \u2014 151 regions / 13 files",
+    "bun run typecheck": "exit 0",
+    "git status --porcelain -- test self-fix-tests": "only ?? entries (no ' M ')",
+    "bun run verify:docs": "PASS \u2014 pairs=38 failed=0 violations=0",
+    "bun run verify:gates": "PASS \u2014 5/5 member gates green"
+  },
+  "followup_f4_f7": {
+    "read_at_utc": "2026-09-19T16:08:01Z",
+    "F4_scanner_extended": {
+      "what": "the METHOD-EXTRACTION shape (`X.get.call(X, id)`, `X.register.call(...)`, `captain.followup.call(captain, msg)`) added as rule `seam.method-call`, with a module-scoped exemption for the ladder's own captures in harness-compat (runtime.* and the captured function names queue/prompt/legacy/send/followup per D6/R2)",
+      "falsifiability": "4 new caught spellings + 4 negative controls (3 ladder receipts inside harness-compat, 1 PROVING the exemption is module-scoped: the same spelling in members.js is a finding)",
+      "file": "packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs",
+      "sha256": "d40c230bee54b75be72bf63c50cac053941f2e98242fe4bc69748f46944c9be4",
+      "tests": "6 pass / 0 fail in the scanner file"
+    },
+    "F7_scope_note_inserted": {
+      "what": "an append-only SCOPE NOTE inside AC10_mounting_boot of the t8 verification result: the SEVEN service-level flags were witnessed TRUE by the boot; the FIVE agent-object flags (agentScope + the four agentTurn*) are LIVE-REGISTRY probes reading FALSE in a session-less boot and are therefore NOT witnessed by it; their evidence is the 14/14 flag-presence check + the flag-false degrade arms",
+      "how": "TEXTUAL insert, not a re-serialize: the file escapes non-ASCII as \\uXXXX, so a parse->stringify write would have reformatted another lane's artifact. Guarded by: (a) re-serialization must be byte-identical or ABORT (it was not -> switched to text), (b) every pre-existing key deep-compared to the pre-write snapshot (NONE drifted), (c) removing the inserted block restores the original bytes exactly",
+      "file": "evidence/agent-teams/adapter-wiring/verification/20260919T152119Z/result.json",
+      "read": {
+        "sha256": "f9cd65c265414f5e",
+        "bytes": 22301
+      },
+      "written": {
+        "sha256": "2276663e0256d291715b2e4b69da83c99e87e5a810d61f676b7116d5393bde35",
+        "bytes": 23620,
+        "delta": 1319
+      }
+    },
+    "hard_constraint_respected": "no `skills/**` path was edited by this lane (t22 owned that fix); verified: the skills edits are t22's and the wave's single re-pin is the captain's, measured landed and green",
+    "task_record": {
+      "t23": "completed (this lane)",
+      "t25": "completed (Planner) - the contract reconciliation of the authorized skills exception",
+      "t8": "in_progress, Deep Worker attempt 7 - the fresh verification on the post-re-pin revision",
+      "t24": "in_progress, Reviewer attempt 2 - review-round-2"
+    },
+    "sweep": {
+      "bun test packages/mpd-agent-teams-plugin": "361 pass / 0 fail (exit 0)",
+      "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 - 151 regions / 13 files",
+      "bun run typecheck": "exit 0",
+      "git status --porcelain -- test self-fix-tests": "only ?? entries (no ' M ')",
+      "log": "evidence/agent-teams/adapter-wiring/bridge/round2-repair/f4-f7-sweep.log"
+    }
+  }
+}

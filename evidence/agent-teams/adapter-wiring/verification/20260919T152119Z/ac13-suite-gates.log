@@ -1,0 +1,42 @@
+=== bun test ===
+(fail) OmoTaskSettingsSchema zero-as-unlimited concurrency > #given generated schema #when global concurrency values validate #then zero and four pass and negative one fails [3.80ms]
+
+ 4294 pass
+ 17 skip
+ 606 fail
+ 1052 errors
+ 18836 expect() calls
+Ran 4917 tests across 27700 files. [220.89s]
+EXIT=1
+
+=== bun run test:qa ===
+  ok   modern delivery prefers the public prompt seam
+  ok   modern member setup receives the live Agent instead of reading childCtx.agent
+  ok   legacy followup/queue remain only as older-generation fallbacks
+  ok   task mutations kick the whole team
+  ok   member idle edges kick that member
+  ok   delivery failure rolls the claim back instead of stranding it
+  FAIL capabilities deny all captain-only tools for members
+  ok   members receive member instructions, not the captain protocol
+  ok   real run asserts the wake on the dependent task's assignee only
+[agent-teams-dispatch] FAIL: 2 of 14 checks failed
+[test:qa] FAILED: skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+error: script "test:qa" exited with code 1
+EXIT=1
+
+=== bun run verify:gates ===
+[verify-gates] docs-parity out| skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+[verify-gates] docs-parity out| skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+[verify-gates] docs-parity out| note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+[verify-gates] docs-parity out| note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+[verify-gates] docs-parity out| note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **151**/13 vs derived 151/13 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): packages/mpd-agent-teams-plugin/lib/quality-gates.js: registry 18 id(s), live 18 id(s) — agree; packages/mpd-agent-teams-plugin/lib/tools.js: registry 73 id(s), live 73 id(s) — agree; packages/mpd-agent-teams-plugin/lib/session-start.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/state.js: registry 11 id(s), live 11 id(s) — agree; packages/mpd-agent-teams-plugin/lib/scheduler.js: registry 16 id(s), live 16 id(s) — agree; packages/mpd-agent-teams-plugin/lib/command.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/index.js: registry 5 id(s), live 5 id(s) — agree; packages/mpd-agent-teams-plugin/lib/members.js: registry 6 id(s), live 6 id(s) — agree; packages/mpd-agent-teams-plugin/lib/profiles.js: registry 4 id(s), live 4 id(s) — agree; packages/mpd-agent-teams-plugin/lib/types.js: registry 1 id(s), live 1 id(s) — agree; packages/mpd-agent-teams-plugin/lib/capabilities.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/harness-compat.js: registry 8 id(s), live 8 id(s) — agree; packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js: registry 1 id(s), live 1 id(s) — agree
+[verify-gates] docs-parity out| note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+[verify-gates] docs-parity out| [verify-docs-parity] links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 files=92
+[verify-gates] docs-parity out| 
+[verify-gates] docs-parity out| [verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS
+[verify-gates] member docs-parity: exit=0 PASS - 179ms
+[verify-gates] member preset-conformance :: node ./skills/dsh-qa/scripts/preset-conformance.mjs --self-test
+[verify-gates] preset-conformance out| [preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+[verify-gates] member preset-conformance: exit=0 PASS - 688ms
+[verify-gates] PASS - 5/5 member gate(s) green
+EXIT=0

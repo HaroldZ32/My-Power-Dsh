@@ -1,0 +1,37 @@
+# t20 bridge-tolerance evidence — started 2026-09-19T15:13:19Z
+
+## settled-hash sandwich (start)
+01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3  packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js
+456a297b00e5225f02a1404d0d56c637f7df0583ce60b02ef0b7542e3a56d111  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+6e8a6f0f8cbaee80085e3322f65fd50d536bdedb8cac6e7630011914496c5080  packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs
+5c6c9bb41fae3979b856458e418e66c541980d0de0717064f2205fb09b4a41d6  packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs
+
+### verify 1: bun test packages/mpd-agent-teams-plugin
+ 360 pass
+ 0 fail
+ 5259 expect() calls
+Ran 360 tests across 4374 files. [32.05s]
+exit=0
+
+### verify 2: node scripts/patch-agent-teams-fixes.mjs --check
+[patch-agent-teams-fixes] already applied: 151 mpd delta region(s) across 13 adopted file(s)
+exit=0
+
+### verify 3: bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+## D11 reconstruction + BR-1 line at 2026-09-19T15:13:53Z
+regions/files      : 151 13
+bridge entry       : mpd-delta adapter-ctx-bridge | block lines 520
+reconstruction==file: true
+sha256             : 01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3
+BR-1 line present  : true | trailing single NL: true
+F2 ids frozen map  : true
+
+## settled-hash sandwich (end)
+01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3  packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js
+456a297b00e5225f02a1404d0d56c637f7df0583ce60b02ef0b7542e3a56d111  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+6e8a6f0f8cbaee80085e3322f65fd50d536bdedb8cac6e7630011914496c5080  packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs
+5c6c9bb41fae3979b856458e418e66c541980d0de0717064f2205fb09b4a41d6  packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs
+SETTLED: start == end

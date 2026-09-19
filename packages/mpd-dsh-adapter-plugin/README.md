@@ -20,7 +20,32 @@ instead of across every plugin.
 | `ctx.skills.registerProvider` / `list` / `get` | `registerSkillProvider`, `listSkills`, `loadSkill` | disposer pass-through, default options |
 | `ctx.agentPresets.resolve` | `resolvePreset(id)` | normalized `{id, path, trust, broken}` |
 | `ctx.llm.listProviders` / `listModels` / `resolveModelInfo` | `llmCatalog()` | the host's live model catalog projected as `{ providers: [{ id, name, models: [{ id, name, description?, efforts: [{ id, name, description? }], defaultEffort? }] }], degraded }` — the reasoning block FLATTENED onto the model, `efforts` always an array; read-only and never throwing |
+| `ctx.tools.register` (VERBATIM) | `registerHostTool(def)` | forwards an ALREADY harness-shaped definition unchanged — the same object reference reaches `tools.register` (`Object.is` holds end-to-end) and the disposer is passed through. `registerTool` normalizes (and would drop `finalizeContent`/`presentCall`/`presentResult`/`isConcurrencySafe`); this one deliberately does not. THROW when the seam is absent |
+| `ctx.subagents` (the runtime object) | `subagentRuntime()` | identity-preserving runtime (`startContinuable`/`interrupt`/`getProvider`/`list`); `undefined` when absent |
+| `ctx.subagents.getProvider` | `subagentProvider(name)` | thin forwarder; `undefined` when absent (the caller's own check throws the same message) |
+| `ctx.subagents.list` | `subagentProviders()` | `[]` when absent |
+| `ctx.subagents.startContinuable` | `startContinuableAgent(spec)` | THROWING forwarder — a member that cannot be spawned must be loud |
+| `ctx.subagents.interrupt` | `interruptAgent(targetSessionId, authority)` | THROWING forwarder |
+| `ctx.llm.listModels` | `llmListModels(provider)` | THROWING forwarder (a per-provider list, distinct from the tolerant `llmCatalog()` projection) |
+| `ctx.llm.resolveCallConfig` | `llmResolveCallConfig(config, signal?)` | THROWING forwarder, signal passed through |
+| `ctx.systemPrompt.section` | `registerPromptSection(section)` | disposer pass-through; THROW at the call when the seam is absent (the caller's usage section is mandatory) |
+| a live agent's own scoped ctx | `agentScope(agent)` | `{ context, tools.restrict, on, effect }` built from `agent.ctx`; `undefined` when a promised member is missing, so the caller falls back per call |
+| `agent.followup` | `startAgentTurn(agent, message)` | THROWING verbatim forwarder (never swallowed into a boolean or `undefined`) |
+| `agent.cancel` | `cancelAgentTurn(agent, cause, options?)` | THROWING verbatim forwarder |
+| `agent.steer` | `steerAgentTurn(agent, message)` | THROWING verbatim forwarder — nearest-step steering, distinct from `followup`'s new turn |
+| `agent.inject` | `injectAgentMessage(agent, message)` | THROWING verbatim forwarder — the inbox seam |
 | capability probing | `capabilities()` | one boolean per seam, so a caller can degrade instead of crashing |
+
+The fourteen `agentTeams`-facing rows above exist for ONE consumer: the adopted `agent-teams`
+plugin, whose bridge module `packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js` (mpd-owned,
+name rule `lib/mpd-*.js`) builds the facade once at the top of `apply` and routes six bridged
+adopted files through them. Each method sits behind a `capabilities()` flag (one flag may cover
+two methods; `subagentRuntime` reuses the existing `subagents` flag), so the bridge degrades per
+seam instead of aborting the plugin tree: `toolsRegisterHost`, `subagents`, `subagentsProvider`,
+`subagentsContinuable`, `subagentsInterrupt`, `llmListModels`, `llmResolveCallConfig`,
+`systemPromptSection`, `agentScope`, `commandsRegister`, `agentTurnStart`, `agentTurnCancel`,
+`agentTurnSteer` and `agentTurnInject` (the two `agentTurn{Steer,Inject}` flags are live-registry
+probes: they report `true` only when a live agent exposes `steer` / `inject`).
 
 ## The model-catalog seam (`llmCatalog`)
 
@@ -47,10 +72,15 @@ package is the only file in the repository allowed to touch a harness service di
 The rule is binding (AGENTS.md §6): **a plugin row must not call `ctx.tools`,
 `ctx.subagents`, `ctx.skills` or `ctx.agentPresets` itself.**
 
-**Boundary:** the adopted `agent-teams` plugin (`packages/mpd-agent-teams-plugin`) is
-upstream MIT main code re-vendored from upstream on upgrades, so it keeps its own
-`ctx.*` calls (its one local adaptation is the `registerContinuableSetup` boot-safety
-guard). Every self-written mpd plugin goes through this adapter — including the TUI edition:
+**Adopted-plugin routing (the former boundary, closed 2026-09-19):** the adopted
+`agent-teams` plugin (`packages/mpd-agent-teams-plugin`) is upstream MIT main code
+re-vendored on upgrades, and it reaches the harness seams through THIS adapter — via its
+mpd-owned bridge `lib/mpd-adapter-ctx.js`, which resolves the mounted `mpdDsh` lazily and
+falls back warn-once when the adapter is absent (one absent line per plugin instance). Its
+local adaptations stay as they were (the `registerContinuableSetup` boot-safety guard, the
+workmate persona injection, the `mpd-delta` regions). The closure and its residual set are
+stated in AGENTS.md §6. Every self-written mpd plugin goes through this adapter — including
+the TUI edition:
 `packages/mpd-tui-plugin` imports `createDshAdapter` from here and reads the mounted `mpdDsh`
 service for the workspace-root union, exactly like every other self-written row.
 

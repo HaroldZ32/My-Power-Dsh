@@ -1,0 +1,192 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+(pass) AC15: no adopted server file reaches a harness seam on a receiver the facade cannot cover [103.10ms]
+(pass) AC15: the host-handed child scope is a COUNTED residual, never an unseen path [93.30ms]
+215 |     const whenIdle = []
+216 |     for (const file of SERVER_FILES) {
+217 |         const lines = stripComments(readFileSync(join(libDir, file), "utf8")).split("\n")
+218 |         for (const line of lines) if (/\.whenIdle\s*\(/.test(line)) whenIdle.push(`${file} ${line.trim()}`)
+219 |     }
+220 |     expect(whenIdle).toEqual([
+                           ^
+error: expect(received).toEqual(expected)
+
+  [
+-   "members.js await child.whenIdle();",
+    "tools.js await Promise.race([live.whenIdle(), aborted]);",
++   "members.js await child.whenIdle();",
+  ]
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:220:22)
+(fail) F2/AC15: the Class-B set is inventoried exactly, so it cannot grow silently [14.19ms]
+(pass) AC15: the bridge is the ONLY server module holding a raw-context fallback expression [16.42ms]
+(pass) AC15: every region a server file carries is registered, and the six bridged files carry their frozen ids [6.72ms]
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs:
+
+ 4 pass
+ 1 fail
+ 1689 expect() calls
+Ran 5 tests across 81 files. [7.67s]

@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "sandbox": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-disabled-2026-09-19T15-25-13.360Z",
+  "bootLog": "/root/dshProj/my-power-dsh/evidence/agent-teams/adapter-wiring/verification/20260919T152119Z/adapter-disabled-boot.log",
+  "checks": {
+    "install": {
+      "ok": true,
+      "status": 0
+    },
+    "adapterRowProvided": {
+      "ok": true,
+      "occurrences": 0
+    },
+    "fallbackWitnesses": {
+      "ok": true,
+      "absent": 1,
+      "pending": 0,
+      "mounted": 0
+    },
+    "tools21": {
+      "ok": true,
+      "line": "VERIF_AGENT_TEAMS_TOOLS=21/21"
+    },
+    "scopeShape": {
+      "ok": true,
+      "members": "context,effect,on,tools",
+      "identity": "true"
+    },
+    "f1Signature": {
+      "ok": true,
+      "occurrences": 0
+    },
+    "br1Witness": {
+      "lines": 0
+    },
+    "presetProbe": {
+      "verdict": "PASS"
+    },
+    "isolation": {
+      "dshHome": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-disabled-2026-09-19T15-25-13.360Z/home",
+      "userHome": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-disabled-2026-09-19T15-25-13.360Z/userhome",
+      "workspace": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-disabled-2026-09-19T15-25-13.360Z/ws",
+      "sessionsSandboxed": true
+    }
+  }
+}

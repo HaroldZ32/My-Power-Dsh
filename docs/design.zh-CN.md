@@ -37,7 +37,8 @@ my-power-dsh 的详细设计：它设计什么、遵循哪些设计原则、如�
    （§8b）而非留待被发现，都源于此。
 2. **唯一接缝接触面。** 只有一个包（`mpd-dsh-adapter`）接触 host 的工具/代理/skill/preset 接缝；
    其他所有行都经由 `mpdDsh` 服务调用。host 版本重塑接缝时，只需在该处吸收，而不必全树修改（§6b）。
-   唯一例外是采纳的上游主代码，它保留自己的 `ctx.*` 调用，并在 §6b 中明确标注为例外。
+   采纳的上游主代码也不再是例外：采纳的 `agent-teams` 插件同样经由该适配器接触这些接缝，其背后是
+   mpd 自有的桥接模块 `lib/mpd-adapter-ctx.js`（§6b）。
 3. **插件形态、按引用配置。** 每个能力都是 Cordis 插件行或配置好的 host 插件实例；profile 与脚本里
    不放逻辑。资产（skill 语料、`mpd` 预设）由 bundle 直接供给而非复制进 `$DSH_HOME`，因此卸载不留
    残留（§2、§6c）。
@@ -294,11 +295,26 @@ key**。
   `{ok, isError, value, error}` 工具调用结果、`{output, structured, stopReason}` spawn 结果。
 - QA 证明：`bundle-lifecycle` 断言组合后的行、启动日志行、探针的 `ADAPTER_SEAMS=…`
   快照与 `ADAPTER_TOOL_CALL=ok`（通过归一化路径真实调用一次 `mpd_config_get`）。
-- **边界：** 采纳的 `agent-teams` 插件（`packages/mpd-agent-teams-plugin`，MIT，升级时从上游重新
-  vendor）**不**经过适配器——其 `lib/` 是上游主代码，重新 vendor 会覆盖改动。它保留自己的
-  `ctx.*` 调用，外加唯一一处本地适配：`lib/harness-compat.js` 中的
-  `installContinuableMemberSetup` 启动安全守卫（包装宿主的 `registerContinuableSetup`），
-  `lib/members.js` 至多是它的调用方（见 LICENSE-NOTICES.md）。
+- **采纳插件的接缝路由（原“边界”，已于 2026-09-19 关闭）：** 采纳的 `agent-teams` 插件
+  （`packages/mpd-agent-teams-plugin`，MIT）现在每个 Harness 接缝都经由本适配器 —— 但
+  `setup(childCtx, child)` 这一条**已计数**的例外除外（见 `AGENTS.md` §6：`lib/members.js`
+  中五行、逐行断言；该 scoped ctx 由宿主传入，会转交给 vendored 的 `_deps/dsh-agent` 助手，
+  且在旧版 Alpha.2 宿主上 `childCtx` 不保证等于 `child.ctx`）。新增的
+  mpd 自有模块 `lib/mpd-adapter-ctx.js`（命名规则 `lib/mpd-*.js`，可由 delta 注册表按字节
+  恢复）在 `apply` 顶部**只构建一次**门面，因此**六个**已桥接的采纳文件
+  （`lib/index.js`、`lib/capabilities.js`、`lib/harness-compat.js`、`lib/members.js`、
+  `lib/command.js`、`lib/tools.js`）使用该门面，其余采纳的服务端文件原样接收它。
+  门面惰性解析已挂载的 `mpdDsh` 服务，并在缺失时 warn-once 回退（每个插件实例**恰好一行**
+  缺失日志），因此适配器缺席时插件仍能应用。**十四个**适配器方法承载这些调用，每个都在一个
+  `capabilities()` 标志之后（一个标志可覆盖两个方法；`subagentRuntime` 复用既有的 `subagents`
+  标志）：`registerHostTool`（逐字节透传，`Object.is`）、`subagentRuntime` /
+  `subagentProvider` / `subagentProviders` / `startContinuableAgent` / `interruptAgent`、
+  `llmListModels` / `llmResolveCallConfig`、`registerPromptSection`、`agentScope`，以及
+  `agentTurn*` 家族（`startAgentTurn` / `cancelAgentTurn` / `steerAgentTurn` /
+  `injectAgentMessage`）。保留的本地适配不变 —— 包装宿主 `registerContinuableSetup` 的
+  `installContinuableMemberSetup` 启动安全守卫、workmate persona 注入，以及抗重新 vendor 的
+  `mpd-delta` 区域。该关闭状态连同其**残留清单**写在 AGENTS.md §6（R1–R5 以及 `members.js`
+  中已计数的旁路），已桥接的区域 id 记录在 `agent-references/agent-teams-deltas.md`。
 
 ## 6c. Agent 预设层（`mpd` 预设）
 

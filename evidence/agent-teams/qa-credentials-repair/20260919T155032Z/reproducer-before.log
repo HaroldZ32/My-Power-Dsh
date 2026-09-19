@@ -1,0 +1,6 @@
+[merge-repro] inline `refs: {}` -> top-level refs keys: 2  <-- DUPLICATE: the harness reports DUPLICATE_KEY and the boot aborts
+[merge-repro] control bare `refs:`  -> top-level refs keys: 1
+[merge-repro] merged inline document tail (keys only, values redacted):
+[merge-repro]   refs: {}
+[merge-repro]   refs:
+before_exit=0

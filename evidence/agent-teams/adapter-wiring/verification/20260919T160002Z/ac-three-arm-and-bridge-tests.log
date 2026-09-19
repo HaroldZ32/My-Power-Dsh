@@ -1,0 +1,8 @@
+=== targeted bridge + adapter tests (three-arm / F1 / F2 / bypass inventory / tool parity) ===
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts:
+
+ 130 pass
+ 0 fail
+ 2390 expect() calls
+Ran 130 tests across 486 files. [8.95s]
+EXIT=0

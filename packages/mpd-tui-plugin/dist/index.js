@@ -1186,6 +1186,39 @@ function workspaceRootsOf(agents) {
   }
 }
 function noop2() {}
+function scopeOfAgentContext(agent) {
+  let context;
+  try {
+    context = agent?.ctx;
+  } catch {
+    return;
+  }
+  if (context === undefined || context === null)
+    return;
+  const kind = typeof context;
+  if (kind !== "object" && kind !== "function")
+    return;
+  let on;
+  let effect;
+  let restrict;
+  try {
+    const scoped = context;
+    on = scoped.on;
+    effect = scoped.effect;
+    restrict = scoped.tools?.restrict;
+  } catch {
+    return;
+  }
+  if (typeof on !== "function" || typeof effect !== "function" || typeof restrict !== "function")
+    return;
+  const tools = context.tools;
+  return {
+    context,
+    tools: { restrict: (filter) => restrict.call(tools, filter) },
+    on: (event, handler) => on.call(context, event, handler),
+    effect: (fn, label) => effect.call(context, fn, label)
+  };
+}
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   const service = (serviceName) => {
@@ -1376,6 +1409,8 @@ function createDshAdapter(ctx, config = {}) {
       const commands = service("commands");
       const agents = service("agents");
       const compaction = service("compaction");
+      const llmService = service("llm");
+      const systemPrompt = service("systemPrompt");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -1404,7 +1439,19 @@ function createDshAdapter(ctx, config = {}) {
         compaction: typeof compaction?.compactNow === "function",
         compactionForAgent: scopedCompaction,
         events: typeof ctx?.on === "function",
-        llmCatalog: LLM_CATALOG_METHODS.every((method) => typeof service("llm")?.[method] === "function")
+        llmCatalog: LLM_CATALOG_METHODS.every((method) => typeof service("llm")?.[method] === "function"),
+        toolsRegisterHost: typeof tools?.register === "function",
+        subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
+        subagentsContinuable: typeof subagents?.startContinuable === "function",
+        subagentsInterrupt: typeof subagents?.interrupt === "function",
+        llmListModels: typeof llmService?.listModels === "function",
+        llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
+        systemPromptSection: typeof systemPrompt?.section === "function",
+        agentScope: liveAgents().some((candidate) => scopeOfAgentContext(candidate) !== undefined),
+        agentTurnStart: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
+        agentTurnCancel: liveAgents().some((candidate) => typeof candidate?.cancel === "function"),
+        agentTurnSteer: liveAgents().some((candidate) => typeof candidate?.steer === "function"),
+        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function")
       };
     },
     workspaceRoot,
@@ -1414,6 +1461,25 @@ function createDshAdapter(ctx, config = {}) {
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
+    llmListModels(provider) {
+      const llm = requireService("llm", 'cannot list the models of provider "' + provider + '"');
+      if (typeof llm.listModels !== "function")
+        throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
+      return llm.listModels.call(llm, provider);
+    },
+    llmResolveCallConfig(config2, signal) {
+      const llm = requireService("llm", "cannot resolve a call config");
+      if (typeof llm.resolveCallConfig !== "function")
+        throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
+      return llm.resolveCallConfig.call(llm, config2, signal);
+    },
+    registerHostTool(definition) {
+      const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
+      if (typeof tools.register !== "function")
+        throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
+      const registered = tools.register(definition);
+      return typeof registered === "function" ? registered : noop2;
+    },
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
@@ -1453,6 +1519,13 @@ function createDshAdapter(ctx, config = {}) {
           });
         }
       });
+      return typeof registered === "function" ? registered : noop2;
+    },
+    registerPromptSection(section) {
+      const systemPrompt = requireService("systemPrompt", 'cannot register prompt section "' + String(section?.name) + '"');
+      if (typeof systemPrompt.section !== "function")
+        throw new Error("mpd-dsh-adapter: the harness systemPrompt service exposes no section()");
+      const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop2;
     },
     guardTool(guard) {
@@ -1549,6 +1622,36 @@ function createDshAdapter(ctx, config = {}) {
         structured: result.structured,
         stopReason: result.stopReason ?? null
       };
+    },
+    subagentRuntime() {
+      return service("subagents");
+    },
+    subagentProvider(name) {
+      const subagents = service("subagents");
+      const getProvider = subagents?.getProvider;
+      if (typeof getProvider !== "function")
+        return;
+      return getProvider.call(subagents, name);
+    },
+    subagentProviders() {
+      const subagents = service("subagents");
+      const list = subagents?.list;
+      if (typeof list !== "function")
+        return [];
+      const names = list.call(subagents);
+      return Array.isArray(names) ? names.filter((entry) => typeof entry === "string") : [];
+    },
+    startContinuableAgent(spec) {
+      const subagents = requireService("subagents", "cannot start a continuable agent");
+      if (typeof subagents.startContinuable !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()");
+      return subagents.startContinuable.call(subagents, spec);
+    },
+    interruptAgent(targetSessionId, authority) {
+      const subagents = requireService("subagents", 'cannot interrupt subagent session "' + String(targetSessionId) + '"');
+      if (typeof subagents.interrupt !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
+      subagents.interrupt.call(subagents, targetSessionId, authority);
     },
     registerSkillProvider(provider) {
       const skills = requireService("skills", "cannot register a skill provider");
@@ -1702,6 +1805,33 @@ function createDshAdapter(ctx, config = {}) {
     },
     text: textBlock,
     userMessage,
+    agentScope(agent) {
+      return scopeOfAgentContext(agent);
+    },
+    startAgentTurn(agent, message2) {
+      const followup = agent?.followup;
+      if (typeof followup !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
+      followup.call(agent, message2);
+    },
+    cancelAgentTurn(agent, cause, options) {
+      const cancel = agent?.cancel;
+      if (typeof cancel !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
+      cancel.call(agent, cause, options);
+    },
+    steerAgentTurn(agent, message2) {
+      const steer = agent?.steer;
+      if (typeof steer !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
+      steer.call(agent, message2);
+    },
+    injectAgentMessage(agent, message2) {
+      const inject = agent?.inject;
+      if (typeof inject !== "function")
+        throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
+      inject.call(agent, message2);
+    },
     submitUserTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")

@@ -1,0 +1,10 @@
+=== bun test (targeted: the bridge three-arm + adapter surface + watchdog) ===
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts:
+
+ 130 pass
+ 0 fail
+ 2390 expect() calls
+Ran 130 tests across 486 files. [9.37s]
+EXIT=0

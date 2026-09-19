@@ -1,0 +1,47 @@
+=== t26 repair-3 verification sweep (read 2026-09-19T16:16:49Z) ===
+
+--- 1. bun test packages/mpd-agent-teams-plugin ---
+ 361 pass
+ 0 fail
+ 5290 expect() calls
+Ran 361 tests across 4374 files. [30.65s]
+exit=0
+
+--- 2. node scripts/patch-agent-teams-fixes.mjs --check ---
+[patch-agent-teams-fixes] already applied: 151 mpd delta region(s) across 13 adopted file(s)
+exit=0
+
+--- 3. bun run typecheck ---
+$ tsgo --noEmit
+exit=0
+
+--- 4. git status --porcelain -- test self-fix-tests ---
+?? packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-routing.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-tool-parity.test.mjs
+exit=0
+
+--- 5. bun run verify:docs (bilingual pair changed) ---
+[verify-docs-parity] links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 files=92
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS
+exit=0
+
+--- 6. bun run verify:gates (aggregate) ---
+[verify-gates] member preset-conformance: exit=0 PASS - 427ms
+[verify-gates] PASS - 5/5 member gate(s) green
+exit=0
+
+--- 7. flag-list parity across the pair ---
+packages/mpd-dsh-adapter-plugin/README.md -> 14 names in the list
+packages/mpd-dsh-adapter-plugin/README.zh-CN.md -> 0 names in the list
+
+--- 8. changed-file hashes ---
+91a153031268fdaa09369dd426b033a0bc3c381d1c5ce3832b84423c0aa23fe4  docs/design.md
+ace6a393173f3afef92bf933a4ce8c3a3d5d1b7963f1da56cf35c5afba2bf692  docs/design.zh-CN.md
+420b4894cf4c632fb8e1d3ada4be188957b9169214702aaaa296e59c02e765d9  packages/mpd-dsh-adapter-plugin/README.md
+c41fa806e7586cd5622edcc696d668572a07e2895e223142b8d76073fe6273af  packages/mpd-dsh-adapter-plugin/README.zh-CN.md
+2d98f7e9173e18278c078048eae1f83b38ea4de971511aa202ead58e3303c9c1  agent-references/agent-teams-deltas.md
+4d8fb3e3b0da2308f4eec468d2b09f796f17962954bd4b87fee06749fec61b2b  packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs

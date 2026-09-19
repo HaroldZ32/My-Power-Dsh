@@ -112,7 +112,15 @@ function selfTest() {
   const members = readFileSync(join(PLUGIN, "lib", "members.js"), "utf8")
   const compat = readFileSync(join(PLUGIN, "lib", "harness-compat.js"), "utf8")
   // 2) the shipped plugin binds the delivery seam, not the retired method.
-  checks.push(["member delivery uses the audited boundary", members.includes("await queueMemberPrompt(ctx.subagents,")])
+  // The bridge rewired this call site inside a delta region (members.js `adapter-delivery-runtime`):
+  // delivery still goes through `queueMemberPrompt`, but with the audited subagent RUNTIME object
+  // resolved by the bridge (`subagentRuntimeOf`, imported from the facade module) — the facade's
+  // `subagents` member is a projection whose ladder lookups would silently look undeliverable. The
+  // pre-bridge spelling is asserted ABSENT, so a regression back to the raw projection reddens here.
+  checks.push(["member delivery uses the audited boundary",
+    members.includes("import { subagentRuntimeOf } from \"./mpd-adapter-ctx.js\";")
+    && members.includes("await queueMemberPrompt(subagentRuntimeOf(ctx), captain, brandedSessionId(childId),")
+    && !members.includes("await queueMemberPrompt(ctx.subagents,")])
   checks.push(["no call site uses ctx.subagents.followup",
     !/ctx\.subagents\.followup/.test(members) && !/ctx\.subagents\.followup/.test(readFileSync(join(PLUGIN, "lib", "scheduler.js"), "utf8"))])
   checks.push(["modern delivery prefers the public prompt seam",
@@ -143,8 +151,15 @@ function selfTest() {
   // 4) members can never call captain-only operations (capability layer).
   const caps = readFileSync(join(PLUGIN, "lib", "capabilities.js"), "utf8")
   const names = readFileSync(join(PLUGIN, "lib", "tool-names.js"), "utf8")
+  // The bridge resolves the per-agent scope ONCE (`agentScopeOf`, region `adapter-agent-scope`): the
+  // member-only restriction still runs the captain-only DENY filter on that scope's tools object, and
+  // the filter expression itself is asserted verbatim, so this check cannot pass on a refactor that
+  // drops the deny list (a bare `restrict({` substring would have gone green on any tools object).
   checks.push(["capabilities deny all captain-only tools for members",
-    caps.includes("revoke = agent.ctx.tools.restrict({") && names.includes("'agent_teams_approve'") && names.includes("'agent_teams_edit_plan'")])
+    caps.includes("const scope = agentScopeOf(ctx, agent);")
+    && caps.includes("revoke = scope.tools.restrict({")
+    && caps.includes("deny: TEAM_TOOL_NAMES.filter(name => !MEMBER_TOOL_NAMES.includes(name)),")
+    && names.includes("'agent_teams_approve'") && names.includes("'agent_teams_edit_plan'")])
   checks.push(["members receive member instructions, not the captain protocol",
     caps.includes("export const TEAM_MEMBER_PROMPT") && caps.includes("? TEAM_MEMBER_PROMPT : captainPrompt")])
 

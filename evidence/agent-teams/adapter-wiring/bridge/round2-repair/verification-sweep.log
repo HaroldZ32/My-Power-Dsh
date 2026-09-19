@@ -1,0 +1,42 @@
+=== t23 verification sweep (read 2026-09-19T16:03:52Z) ===
+
+--- 1. bun test packages/mpd-agent-teams-plugin ---
+
+ 361 pass
+ 0 fail
+ 5269 expect() calls
+Ran 361 tests across 4374 files. [32.28s]
+exit=0
+
+--- 2. node scripts/patch-agent-teams-fixes.mjs --check ---
+[patch-agent-teams-fixes] already applied: 151 mpd delta region(s) across 13 adopted file(s)
+exit=0
+
+--- 3. bun run typecheck ---
+$ tsgo --noEmit
+exit=0
+
+--- 4. git status --porcelain -- test self-fix-tests ---
+?? packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-routing.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-tool-parity.test.mjs
+exit=0
+
+--- 5. bun run verify:docs (AGENTS.md changed) ---
+note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+[verify-docs-parity] links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 files=92
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS
+exit=0
+
+--- 6. bun run verify:gates (re-run after my AGENTS.md edits) ---
+[verify-gates] preset-conformance out| [preset-conformance self-test] ok: 31 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, row parity 31/31
+[verify-gates] member preset-conformance: exit=0 PASS - 446ms
+[verify-gates] PASS - 5/5 member gate(s) green
+exit=0
+
+--- 7. changed hashes (my files) ---
+d813c47c31e7497b277f2bddd307229871669801ebd62abbf124e93aa5579f54  AGENTS.md
+7898fd03526a36c0ece5f76f2a573a39c8b93339c8bb703251feaab1fa1d9f84  packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs

@@ -93,12 +93,16 @@ const STATE_DIR = join(".mpd", "team")
 let modules = null
 async function realModules() {
   if (modules !== null) return modules
-  for (const required of [join(ADOPTED_LIB, "scheduler.js"), join(ADOPTED_LIB, "tools.js"), WATCHDOG_DIST]) {
+  for (const required of [join(ADOPTED_LIB, "scheduler.js"), join(ADOPTED_LIB, "tools.js"), join(ADOPTED_LIB, "mpd-adapter-ctx.js"), WATCHDOG_DIST]) {
     if (!existsSync(required)) throw new Error("fault fixture: missing " + required + " (build the plugin dist / check the checkout)")
   }
   modules = {
     scheduler: await import(join(ADOPTED_LIB, "scheduler.js")),
     tools: await import(join(ADOPTED_LIB, "tools.js")),
+    // The plugin's OWN facade (mpd-owned bridge module). The halt path below is a real
+    // FACADE-shaped caller of the bridge's cancel-turn seam, so the fixture must hand it the
+    // surface production hands it.
+    adapterCtx: await import(join(ADOPTED_LIB, "mpd-adapter-ctx.js")),
     watchdog: await import(WATCHDOG_DIST),
   }
   return modules
@@ -706,7 +710,7 @@ async function casePausePreserves(root) {
 
 async function casePausePreservesHaltControl(root) {
   const { workspace, harness } = await preservationFixture(root)
-  const { tools } = await realModules()
+  const { tools, adapterCtx } = await realModules()
   // THE REAL PATH, imported — not stubbed, not weakened. This is the adopted mass-cancel.
   if (typeof tools.haltTeamWork !== "function") {
     return { ok: false, observation: { error: "haltTeamWork is not exported by the adopted lib" }, lines: ["FATAL: the real halt path is not importable"] }
@@ -717,7 +721,11 @@ async function casePausePreservesHaltControl(root) {
     stateRoot: join(workspace, STATE_DIR),
     teamId: TEAM,
     captain: harness.captain,
-    ctx: harness.ctx,
+    // The REAL halt path reaches the harness seam through the FACADE (the adopted lib's frozen §5
+    // spelling routes it via the bridge, never through the raw ctx): a hand-built RAW ctx does not
+    // carry that surface, so wrap it with the plugin's OWN facade — the surface it actually gets in
+    // production — instead of special-casing the caller or weakening the halt path.
+    ctx: adapterCtx.createAgentTeamsCtx(harness.ctx, { witness: () => {} }),
     signal: undefined,
   })
   const shaAfter = sha(teamPath(workspace))

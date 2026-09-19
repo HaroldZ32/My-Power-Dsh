@@ -219,7 +219,11 @@ export function registerAgentTeamsCommand(ctx, getProfiles = () => ({}), getExpl
                     return { kind: 'error', text: `unknown AgentTeams profile "${parsed.profile}"` };
                 if (parsed.profile === undefined && parsed.goal === '')
                     return { kind: 'error', text: `Usage: /${AGENT_TEAMS_COMMAND} [--profile <name>] <goal>` };
-                invocation.agent.followup(createUserMessage({ content: [{ type: 'text', text: `/${AGENT_TEAMS_COMMAND}${invocation.rawInput}` }], source: { kind: 'user' } }));
+                //#region mpd-delta adapter-command-turn-submit (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // D9: the turn seam is adapter-mediated. `startAgentTurn` is a THROWING forwarder to
+                // `agent.followup`, so with no adapter mounted the identical expression runs.
+                ctx.startAgentTurn(invocation.agent, createUserMessage({ content: [{ type: 'text', text: `/${AGENT_TEAMS_COMMAND}${invocation.rawInput}` }], source: { kind: 'user' } }));
+                //#endregion mpd-delta adapter-command-turn-submit
                 // R4: the plugin stages (or asks) itself, in THIS turn, so the explicit
                 // path cannot end with "asked for a team, nothing happened".
                 const explicit = await resolveExplicitTeamText({ ...(getExplicitOpts() ?? {}), agent: invocation.agent, profileName: parsed.profile });
@@ -238,7 +242,10 @@ export function registerAgentTeamsCommand(ctx, getProfiles = () => ({}), getExpl
                     const profile = profileForCommand(commandName, getProfiles());
                     if (profile === undefined)
                         return { kind: 'error', text: `AgentTeams profile command "/${commandName}" is unavailable` };
-                    invocation.agent.followup(createUserMessage({ content: [{ type: 'text', text: `/${commandName}${invocation.rawInput}` }], source: { kind: 'user' } }));
+                    //#region mpd-delta adapter-command-turn-submit-profile (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                    // Same seam as the generic command handler above, for a generated profile command.
+                    ctx.startAgentTurn(invocation.agent, createUserMessage({ content: [{ type: 'text', text: `/${commandName}${invocation.rawInput}` }], source: { kind: 'user' } }));
+                    //#endregion mpd-delta adapter-command-turn-submit-profile
                     const explicit = await resolveExplicitTeamText({ ...(getExplicitOpts() ?? {}), agent: invocation.agent, profileName: profile });
                     return { kind: 'success', text: explicit ?? `AgentTeams activated with profile ${profile} — the captain will assemble the team.` };
                 },

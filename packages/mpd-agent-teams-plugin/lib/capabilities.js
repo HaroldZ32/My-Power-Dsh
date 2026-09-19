@@ -14,6 +14,11 @@ import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { readTeamSync, readRetiredMemberIdsSync } from "./state.js";
 import { MEMBER_TOOL_NAMES, TEAM_TOOL_NAMES } from "./tool-names.js";
+//#region mpd-delta adapter-agent-scope-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// D5: a member's per-agent seams (`tools.restrict`, `effect`) are adapter-owned; `agentScopeOf`
+// serves the mounted adapter's scope and today's raw `agent.ctx` otherwise.
+import { agentScopeOf } from "./mpd-adapter-ctx.js";
+//#endregion mpd-delta adapter-agent-scope-import
 export const TEAM_ACTIVATION_PROMPT = 'AgentTeams (Agent Teams) provides multi-agent team collaboration. Apply these rules when the user requests it (including /agent-teams) or when continuing an existing team. Mentioning, quoting, discussing, or declining AgentTeams alone is not a request to start work.';
 export const TEAM_MEMBER_PROMPT = 'You are an AgentTeams member. Follow your assigned member persona and task contract. Use agent_teams_claim_task, agent_teams_update_task, agent_teams_send_message and agent_teams_status for your own work. Include the current attempt_id in updates; report completion or failure to the captain. Do not create, approve, edit or resume a team. If your durable membership is unavailable, report that to the parent instead of creating a replacement.';
 function stateRoot(agent, config) {
@@ -89,11 +94,17 @@ export function installTeamCapabilities(ctx, config) {
         states.set(agent, state);
         active.add(state);
         try {
+            //#region mpd-delta adapter-agent-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // D5: resolve the agent's scope ONCE per attach — the adapter's scope when `mpdDsh` is
+            // mounted, the raw `agent.ctx` (identity) otherwise, so both lanes run the same three
+            // statements this file ran before the bridge existed.
+            const scope = agentScopeOf(ctx, agent);
             if (member)
-                revoke = agent.ctx.tools.restrict({
+                revoke = scope.tools.restrict({
                     deny: TEAM_TOOL_NAMES.filter(name => !MEMBER_TOOL_NAMES.includes(name)),
                 });
-            releaseLifetime = agent.ctx.effect(() => state.dispose, 'agent-teams: capability lifetime');
+            releaseLifetime = scope.effect(() => state.dispose, 'agent-teams: capability lifetime');
+            //#endregion mpd-delta adapter-agent-scope
             return state;
         }
         catch (error) {

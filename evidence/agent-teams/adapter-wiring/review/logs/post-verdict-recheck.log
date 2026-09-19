@@ -1,0 +1,25 @@
+2026-09-19T16:00:32Z
+--- VENDOR_LOCK.json now ---
+ VENDOR_LOCK.json | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+fc6f8aa34771faba879a4c448ce837dac506ffb461bd8c0586adbe406e3672fb  VENDOR_LOCK.json
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 326 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+VENDOR_EXIT=0
+
+=== POST-VERDICT RE-MEASURE (the re-pin landed while/after this review closed) ===
+measured at 2026-09-19T16:00:55Z
+VENDOR_LOCK.json now sha256 fc6f8aa34771faba879a4c448ce837dac506ffb461bd8c0586adbe406e3672fb (1 line changed: the skills treeSha)
+node scripts/verify-vendor.mjs            -> exit 0
+bun run verify:gates                      -> PASS 5/5 members (log: verify-gates-third.log)
+bun skills/dsh-qa/scripts/agent-teams-messaging.mjs --self-test -> exit 0 ('VENDOR_LOCK skills pin current (326 files/82f38bd828bc)'; log: post-verdict-messaging-selftest.log)
+
+READ THIS WITH THE VERDICT, NOT AGAINST IT: the t9 verdict (AC13 FAIL / F1 high) is anchored to the revision measured at 15:55:40Z and re-measured at 15:57:28Z, BEFORE the re-pin. F1's remedy is now VISIBLY EFFECTIVE on the post-re-pin revision. Confirming steps still owed by the wave: a fresh verification attempt on the post-re-pin hashes (F3) and a full bun run test:qa re-run (this log re-ran only the case that reddened it), then AC14/t10 integration.

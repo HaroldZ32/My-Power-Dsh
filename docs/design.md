@@ -47,9 +47,10 @@ even when it works on the happy path.
    limits (§8b) instead of leaving them to be discovered.
 2. **One seam contact surface.** Exactly one package (`mpd-dsh-adapter`) touches the host's
    tool/agent/skill/preset seams; every other row calls through the `mpdDsh` service. A host
-   release that reshapes a seam is absorbed there instead of across the tree (§6b). The one
-   exception is adopted upstream main code, which keeps its own `ctx.*` calls and is named as an
-   exception (§6b).
+   release that reshapes a seam is absorbed there instead of across the tree (§6b). Adopted
+   upstream main code is not an exception any more: the adopted `agent-teams` plugin reaches
+   those seams through the adapter as well, behind the mpd-owned bridge
+   `lib/mpd-adapter-ctx.js` (§6b).
 3. **Plugin form, config by reference.** Every capability is a Cordis plugin row or a configured
    host plugin instance; no logic lives in profiles or scripts. Assets (the skill corpus, the
    `mpd` preset) are SERVED by the bundle rather than copied into `$DSH_HOME`, so uninstall leaves
@@ -345,12 +346,29 @@ that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
 - QA proof: `bundle-lifecycle` asserts the composed row, the boot log line, the probe's
   `ADAPTER_SEAMS=…` snapshot and `ADAPTER_TOOL_CALL=ok` (a real `mpd_config_get` call
   through the normalized path).
-- **Boundary:** the adopted `agent-teams` plugin (`packages/mpd-agent-teams-plugin`, MIT,
-  re-vendored from upstream on upgrades) is NOT routed through the adapter — its `lib/`
-  is upstream main code that a vendor refresh would overwrite. It keeps its own `ctx.*`
-  calls plus exactly one local adaptation: the `installContinuableMemberSetup` boot-safety
-  guard in `lib/harness-compat.js` (wrapping the host's `registerContinuableSetup`), which
-  `lib/members.js` merely calls (see LICENSE-NOTICES.md).
+- **Adopted-plugin seam routing (the former boundary — CLOSED 2026-09-19):** the adopted
+  `agent-teams` plugin (`packages/mpd-agent-teams-plugin`, MIT) reaches every harness seam
+  through this adapter — except the counted `setup(childCtx, child)` residual that AGENTS.md §6
+  names (five lines in `lib/members.js`, asserted line-by-line, because that host-handed scoped
+  ctx is passed to a vendored `_deps/dsh-agent` helper and a legacy Alpha.2 `childCtx` is not
+  guaranteed to be `child.ctx`). `lib/mpd-adapter-ctx.js` — a NEW mpd-owned module (name rule
+  `lib/mpd-*.js`, restorable byte-faithfully from the delta registry) — builds the facade once
+  at the top of `apply`, so the SIX bridged adopted files (`lib/index.js`, `lib/capabilities.js`,
+  `lib/harness-compat.js`, `lib/members.js`, `lib/command.js`, `lib/tools.js`) consume the facade
+  and the remaining adopted server files receive it unchanged. The facade resolves the mounted
+  `mpdDsh` service lazily and falls back warn-once (exactly one absent line per plugin instance),
+  so the plugin still applies with the adapter absent. FOURTEEN adapter methods carry the
+  traffic, each behind a `capabilities()` flag (one flag may cover two methods; `subagentRuntime`
+  reuses the existing `subagents` flag): `registerHostTool` (verbatim, `Object.is`),
+  `subagentRuntime` / `subagentProvider` / `subagentProviders` / `startContinuableAgent` /
+  `interruptAgent`, `llmListModels` / `llmResolveCallConfig`, `registerPromptSection`,
+  `agentScope`, and the `agentTurn*` family (`startAgentTurn` / `cancelAgentTurn` /
+  `steerAgentTurn` / `injectAgentMessage`). The local adaptations that remain are unchanged —
+  the `installContinuableMemberSetup` boot-safety guard wrapping the host's
+  `registerContinuableSetup`, the workmate persona injection, and the re-vendor-resistant
+  `mpd-delta` regions. The closure is stated WITH its residual set in AGENTS.md §6 (R1–R5 plus
+  the counted `members.js` bypass), and the bridged region ids live in
+  `agent-references/agent-teams-deltas.md`.
 
 ## 6c. Agent preset plane (the `mpd` preset)
 

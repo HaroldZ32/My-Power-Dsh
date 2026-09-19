@@ -1,0 +1,7 @@
+index.js: regions=5 hunks=4 changed-lines-outside-regions=0 
+capabilities.js: regions=2 hunks=4 changed-lines-outside-regions=0 
+harness-compat.js: regions=8 hunks=8 changed-lines-outside-regions=0 
+members.js: regions=6 hunks=6 changed-lines-outside-regions=0 
+command.js: regions=3 hunks=2 changed-lines-outside-regions=0 
+tools.js: regions=73 hunks=12 changed-lines-outside-regions=0 
+TOTAL hunks=36 outside=0 -> DELTA-DISCIPLINE OK

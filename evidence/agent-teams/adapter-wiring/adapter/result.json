@@ -1,0 +1,342 @@
+{
+  "task": "t4 (team numbering) = contract lane t2 (adapter) \u2014 the twelve frozen \u00a73 seam methods + capability flags",
+  "seat": "Deep Worker",
+  "attempt_id": "a0d5fe92-c983-41dd-a93f-25dee8b0d17c",
+  "measured_at_utc": "2026-09-19T14:46Z (post-rebuild, contract rev 2)",
+  "frozen_authority": "evidence/agent-teams/adapter-wiring/requirements-contract.md (\u00a73 table, \u00a73.1, \u00a74, \u00a77 AC1/AC2)",
+  "status": "COMPLETE (contract revision 2): every acceptance item met; AF1 resolved by the amended scope + the 17 canonical rebuilds; verify-dist-fresh exits 0 with 20/20 targets fresh.",
+  "artifacts": {
+    "adapter_src": "packages/mpd-dsh-adapter-plugin/src/index.ts",
+    "adapter_dist": "packages/mpd-dsh-adapter-plugin/dist/index.js",
+    "tests_new": "packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts",
+    "tests_existing": "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts (fixture extended additively; no assertion changed)",
+    "verify_log": "evidence/agent-teams/adapter-wiring/adapter/verify.log",
+    "dist_gate_log": "evidence/agent-teams/adapter-wiring/adapter/dist-fresh-after-adapter-src.log",
+    "invalidation_proof": "evidence/agent-teams/adapter-wiring/adapter/dist-invalidation-proof.txt",
+    "invalidation_script": "evidence/agent-teams/adapter-wiring/adapter/measure-dist-invalidation.sh",
+    "rebuild_script": "evidence/agent-teams/adapter-wiring/adapter/rebuild-adapter-dependent-dists.sh",
+    "harness_shape_verification": "evidence/agent-teams/adapter-wiring/adapter/harness-shape-verification.md",
+    "post_rebuild_hash_record": "evidence/agent-teams/adapter-wiring/adapter/post-rebuild-hashes.txt"
+  },
+  "plan_review_F3_answer": {
+    "request": "captain relay: verify each harness shape against the INSTALLED harness and record WHICH path; dsh-system-prompt is NOT in the plugin's _deps closure (it is an injected service); an absent service must degrade as \u00a73 says and never throw at apply time.",
+    "applied": "evidence/agent-teams/adapter-wiring/adapter/harness-shape-verification.md \u2014 all twelve bindings re-verified against /root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/<pkg>/lib/{index.js,types/*.d.ts}, with the installed path+line recorded per row, the _deps copy recorded separately where one exists, and the two roots shown to differ (HS/dsh-tools/lib/index.js:2773 vs _deps/dsh-tools/lib/index.js:2762).",
+    "f3_confirmed_corrections": [
+      "dsh-system-prompt is ABSENT from packages/mpd-agent-teams-plugin/_deps/ (measured listing) and is an INJECTED service (packages/mpd-agent-teams-plugin/lib/index.js:45 inject list) \u2014 the adapter reaches it via ctx.get('systemPrompt'), so the wrong root never affected the implementation; the installed path is now the cited one (dsh-system-prompt/lib/index.js:238 section(section), types/index.d.ts:233).",
+      "the Agent's turn METHODS are not in dsh-agent/lib/index.js at all (grep count 0): declared at dsh-agent/lib/types/runtime-types.d.ts:192 followup / :157 cancel and IMPLEMENTED at dsh-agent-loop/lib/index.js:789 followup(input) and :798 cancel(cause, options = {})."
+    ],
+    "degrade_discipline": "no behaviour change was needed: nothing on the surface throws at construct/mount/probe time. The eight THROW rows throw only WHEN CALLED (synchronously \u2014 parity with the facade's raw fallback column) and the four value rows answer undefined/[]; now locked by the new test `apply-time safety: nothing on this surface throws at construct or probe time` (three compositions, including a ctx.get that THROWS)."
+  },
+  "hashes": {
+    "sha256_src_index_ts": "e3948553551161877551a5fce8ce3b1c96f4936153351250bf230ecda787d023",
+    "sha256_dist_index_js": "d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4",
+    "sha256_test_adapter": "4367f6ea34e2fc5f26759870f1456d878f203e130ef68ee3d98e37b865d7f8c4",
+    "sha256_test_adapter_agent_teams_surface": "b339e9da38fd017726e922efb6c82a9d8e8b2aba59f19024ae5228d508b5612d",
+    "sha256_dist_gate_log": "b3c4ca63b994c32ab140c02cd3b8b21ff141feb90c4a8cec1eae1ca58f7fd573",
+    "sha256_verify_log": "6e434ab43c7e81c3649223bdb98d77a574fcf17d752e54243fdf068aa6745200",
+    "sha256_invalidation_proof": "fd3285a217f9654b2bc2bc0dc953619f739b6c0cfbc869d950f87ea30768db22",
+    "sha256_measure_script": "8a6e20a4c43dd14d80f3170bfa8508cc3b47ea4110cf7a62a7304747caf7115b",
+    "sha256_rebuild_script": "fe5d2f2083dd623aee516f60dbb3ada5e714c0d700eae92943717e0fbde4fda3",
+    "sha256_harness_shape_verification": "9b7f55010daccf5386ee6aa057b38aae3e2169db309d75a3216a5fe9376705c3",
+    "sha256_rebuild_consumer_dists_log": "76e61f3a40f71d2b7b0b1e2d894521640687848be0df6bb98cf35e811fd40892",
+    "sha256_result_json_note": "self-excluded (this file)",
+    "sha256_post_rebuild_hashes_txt": "96fa70cd4ac333e931e0ba08a6a8a786a0b4085ce945a037abbd90ee60bc13b1"
+  },
+  "ac1_frozen_surface": {
+    "claim": "every one of the twelve \u00a73 methods exists with the FROZEN name and signature, carries the stated capability flag in capabilities(), and degrades as the table says (THROW / no-op disposer / undefined / [])",
+    "methods_added": [
+      {
+        "name": "registerHostTool",
+        "arity": 1,
+        "flag": "toolsRegisterHost",
+        "degrade": "THROW"
+      },
+      {
+        "name": "subagentRuntime",
+        "arity": 0,
+        "flag": "subagents (existing)",
+        "degrade": "undefined"
+      },
+      {
+        "name": "subagentProvider",
+        "arity": 1,
+        "flag": "subagentsProvider",
+        "degrade": "undefined"
+      },
+      {
+        "name": "subagentProviders",
+        "arity": 0,
+        "flag": "subagentsProvider",
+        "degrade": "[]"
+      },
+      {
+        "name": "startContinuableAgent",
+        "arity": 1,
+        "flag": "subagentsContinuable",
+        "degrade": "THROW (synchronous)"
+      },
+      {
+        "name": "interruptAgent",
+        "arity": 2,
+        "flag": "subagentsInterrupt",
+        "degrade": "THROW (synchronous)"
+      },
+      {
+        "name": "llmListModels",
+        "arity": 1,
+        "flag": "llmListModels",
+        "degrade": "THROW (synchronous)"
+      },
+      {
+        "name": "llmResolveCallConfig",
+        "arity": 2,
+        "flag": "llmResolveCallConfig",
+        "degrade": "THROW (synchronous)"
+      },
+      {
+        "name": "registerPromptSection",
+        "arity": 1,
+        "flag": "systemPromptSection",
+        "degrade": "THROW"
+      },
+      {
+        "name": "agentScope",
+        "arity": 1,
+        "flag": "agentScope",
+        "degrade": "undefined"
+      },
+      {
+        "name": "startAgentTurn",
+        "arity": 2,
+        "flag": "agentTurnStart",
+        "degrade": "THROW"
+      },
+      {
+        "name": "cancelAgentTurn",
+        "arity": 3,
+        "flag": "agentTurnCancel",
+        "degrade": "THROW"
+      }
+    ],
+    "flag_name_authority": "contract \u00a73 table column 4 wins over the task-description paraphrase; the names implemented are toolsRegisterHost, subagents (existing flag, row 2), subagentsProvider (rows 3+4), subagentsContinuable, subagentsInterrupt, llmListModels, llmResolveCallConfig, systemPromptSection, agentScope, agentTurnStart, agentTurnCancel. The description's llmModels/llmCallConfig/turnStart/turnCancel are NOT used (the task text says the contract table wins).",
+    "harness_shapes_verified_against_installed_harness": [
+      "dsh-tools/lib/types/index.d.ts:601 register(definition): () => void",
+      "dsh-subagent/lib/types/index.d.ts getProvider(name): SubagentProvider|undefined; list(): string[]; startContinuable(spec): Promise<ContinuableStart>; interrupt(targetSessionId, authority): void",
+      "dsh-llm/lib/types/index.d.ts listModels(provider): Promise<LlmModelInfo[]>; resolveCallConfig(config, signal?): Promise<LlmCallConfig>",
+      "dsh-system-prompt/lib/types/index.d.ts:233 section(section: PromptSection): () => void; PromptSection = {name, order, text, complete?}",
+      "dsh-agent/lib/types/runtime-types.d.ts:157 cancel(cause, options?): void; :192 followup(message): void",
+      "restrict requires a real scoped context -> agentScope returns agent.ctx itself"
+    ],
+    "degrade_form_note": "THROW is SYNCHRONOUS even on the three promise-returning methods (rows 5,7,8) and the two promise-returning methods' own promises are forwarded UNTOUCHED (no async wrapper): contract \u00a74 parity rule (a) says the absent-adapter column runs today's exact expression, which throws synchronously, so a caller's try/catch keeps its meaning.",
+    "evidence": "bun test packages/mpd-dsh-adapter-plugin -> 100 pass / 0 fail / 468 expect(); the new file asserts the name+arity table, the flag table, the per-method degrade, and apply-time safety.",
+    "surface_size": "twelve contract \u00a73 methods + the two the captain's ruling added (\u00a73 rows 13-14) = 14 methods, 12 new capability flags"
+  },
+  "ac2_verbatim_registration": {
+    "claim": "registerHostTool passes the SAME object reference to tools.register (Object.is) and preserves the returned disposer; registerTool is untouched for its existing consumers",
+    "evidence": [
+      "Object.is(recorded, definition) === true on a definition carrying finalizeContent/presentCall/presentResult/isConcurrencySafe/timeoutMs (each asserted by identity), and recorded.execute === the caller's execute (NOT registerTool's wrapper)",
+      "output object identity preserved (no {...output, schema, render} rebuild), no injected parameters default, key set of the recorded object equals the key set of the definition",
+      "the registry's disposer is returned by identity; a non-callable registry answer degrades to a no-op disposer",
+      "contrast test: registerTool still rebuilds (new object, wrapped execute, injected defaults) \u2014 its existing consumers see the exact old behaviour",
+      "the pre-existing 63 tests in adapter.test.ts pass with 214 expect() calls \u2014 the SAME 214 expect() count as the run made with the un-extended fixture (where only the one all-true assertion failed), so the fixture change added no assertion and edited none"
+    ],
+    "existing_test_file_deviation": {
+      "what": "test/adapter.test.ts received 24 inserted lines and 2 replaced lines in the SHARED fixture fakeHarness(); NO test body or assertion was changed (verified by the unchanged 214 expect() count and a diff that only adds seam stubs).",
+      "why": "that fixture is asserted to be a *full harness* (`Object.values(caps).every(v => v === true)`), and a full harness now includes the six new seams; without the stubs the flag surface correctly reports false and that pre-existing assertion fails. The alternative (flags that report true for a service lacking the method) would make the flags lie and turn a feature-detectable absence into a runtime TypeError in the bridge.",
+      "diff_summary": "subagents gains getProvider/list/startContinuable/interrupt; llm gains resolveCallConfig; a systemPrompt service with section(); the sample agent gains cancel and its scoped ctx gains on/effect/tools.restrict.",
+      "requested_judgement": "the reviewer should treat this as the minimal fixture completion an additive surface change requires, not as a weakened test."
+    }
+  },
+  "captain_extra_criteria": {
+    "verbatim_no_rebuild": "covered by ac2 evidence (no spread/rebuild/wrapper; dropped fields survive by identity)",
+    "startAgentTurn_is_throwing_and_not_submitUserTurn": "test: `startAgentTurn` propagates the agent's own 'driver refused' error while `submitUserTurn` on the same agent returns false; submitUserTurn's boolean contract is unchanged and its pre-existing tests are untouched",
+    "cancelAgentTurn_and_agentScope": "test: cancelAgentTurn forwards (cause, options) by identity with the agent as receiver and propagates its error; agentScope(agent).context IS agent.ctx (Object.is) and on/effect/tools.restrict forward to that same object with the raw receivers; a partial ctx (missing on, effect, tools.restrict) returns undefined; an exploding ctx getter is a miss, never a crash",
+    "dist_rebuilt_with_canonical_command": "bun build packages/mpd-dsh-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-dsh-adapter-plugin/dist/index.js -> exit 0; gate line: `FRESH packages/mpd-dsh-adapter-plugin/dist/index.js sha c22f2e87c762\u2026`",
+    "new_test_file": "packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts - 37 new tests (100 total in the package), each with a recording fake harness that captures the RECEIVER of every call, plus the absent-harness degrade table and the apply-time-safety composition sweep."
+  },
+  "commands_run": [
+    {
+      "command": "bun test packages/mpd-dsh-adapter-plugin",
+      "exit": 0,
+      "result": "100 pass / 0 fail / 468 expect() calls (63 pre-existing + 37 new)"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "result": "tsgo --noEmit clean"
+    },
+    {
+      "command": "bun build packages/mpd-dsh-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-dsh-adapter-plugin/dist/index.js",
+      "exit": 0,
+      "result": "Bundled 1 module; index.js 31.89 KB; gate line FRESH sha d8e8fa36cb21\u2026"
+    },
+    {
+      "command": "bash evidence/agent-teams/adapter-wiring/adapter/rebuild-adapter-dependent-dists.sh",
+      "exit": 0,
+      "result": "17 canonical repo-root builds + the script's own gate run: ok 20/20 targets fresh; log evidence/.../rebuild-consumer-dists.log"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.mjs",
+      "exit": 0,
+      "result": "[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) \u2014 7 NOT COVERED files listed \u2014 635ms"
+    }
+  ],
+  "blocking_finding": {
+    "id": "AF1 - the adapter src change mechanically invalidates 17 consumer dists that no task owns",
+    "severity": "blocker for the task's last acceptance line and for AC13/AC14 (t6/t8)",
+    "statement": "Every mpd plugin resolves the adapter through the AGENTS.md \u00a76 idiom, so its src imports ../../mpd-dsh-adapter-plugin/src/index and bun BUNDLES the adapter's TypeScript source into that package's own dist/index.js. Editing packages/mpd-dsh-adapter-plugin/src/index.ts therefore makes 17 committed consumer dists stale. `node scripts/verify-dist-fresh.mjs` cannot be GREEN until those 17 are rebuilt, and they are outside this task's inScope (T-88: packages/*/dist/** belongs to the integration task's inScope; a lane must not declare a dist/** pattern for itself).",
+    "proof": [
+      "A. gate: 17 STALE / 3 FRESH; the 3 FRESH are mpd-bundle-plugin (no adapter import), mpd-ext-plugin/dist/sdk.js (no adapter import) and mpd-dsh-adapter-plugin itself.",
+      "B. set identity: exactly the 18 entries whose FRESH build embeds adapter code (grep 'mpd-dsh-adapter:') = the 17 STALE targets + the adapter itself.",
+      "C. byte-causality: with HEAD's adapter src (sha256 8826eb6d2b7a4b34\u2026), packages/mpd-roles-plugin and packages/mpd-tools-plugin rebuild BYTE-IDENTICALLY to their committed dists (98180ed1c3f7a4ca\u2026, 248dbf383aea3fea\u2026). Both were therefore fresh before this change and are stale only because of it.",
+      "D. the canonical rebuild command reproduces the gate's fresh build byte-for-byte: the scratch rebuild used a DIFFERENT --outfile path and still matched the committed bytes, so the 17 rebuilds below close the gate by construction."
+    ],
+    "contract_errata": "contract \u00a711 E5 ('AC13's verify-dist-fresh is expected GREEN without touching any other package's dist/**; the only rebuilt dist is packages/mpd-dsh-adapter-plugin/dist/index.js') is FALSIFIED by measurement. E5 needs revision, not the implementation.",
+    "remedy_prepared": {
+      "script": "evidence/agent-teams/adapter-wiring/adapter/rebuild-adapter-dependent-dists.sh (17 canonical repo-root builds + a re-run of the gate)",
+      "owner_options": [
+        "amend THIS task's inScope with the 17 `packages/<pkg>/dist/index.js` paths (or packages/*/dist/**) and wake this seat \u2014 it will run the script, re-run the gate, and complete with the post-rebuild hashes;",
+        "or assign the same script to the INTEGRATION lane (T-88's documented home for packages/*/dist/**) \u2014 but it must run BEFORE t6's AC13 verification, otherwise t6 records a red that only integration clears."
+      ],
+      "proposed_amendment_text": "amend t4: inScope += packages/mpd-bootstrap-plugin/dist/index.js, packages/mpd-boulder-plugin/dist/index.js, packages/mpd-codegraph-plugin/dist/index.js, packages/mpd-comment-checker-plugin/dist/index.js, packages/mpd-config-plugin/dist/index.js, packages/mpd-ext-plugin/dist/index.js, packages/mpd-hashline-plugin/dist/index.js, packages/mpd-memory-plugin/dist/index.js, packages/mpd-modelchain-plugin/dist/index.js, packages/mpd-qa-roles-probe/dist/index.js, packages/mpd-roles-plugin/dist/index.js, packages/mpd-team-compact-plugin/dist/index.js, packages/mpd-team-watchdog-plugin/dist/index.js, packages/mpd-tools-plugin/dist/index.js, packages/mpd-tui-plugin/dist/index.js, packages/mpd-ulw-plugin/dist/index.js, packages/mpd-workmate-plugin/dist/index.js",
+      "acceptance_delta": "add: 'node scripts/verify-dist-fresh.mjs exits 0 after the 17 canonical rebuilds'"
+    },
+    "resolution": {
+      "amended_by": "captain, contract revision 2: inScope += the 17 declared dist paths; verify += the prepared rebuild script + the standalone gate; new acceptance item 7 records the measured scope correction.",
+      "executed": "bash evidence/agent-teams/adapter-wiring/adapter/rebuild-adapter-dependent-dists.sh -> SCRIPT_EXIT=0 (the script's own gate run inside it already read 20/20 fresh)",
+      "gate_after": "node scripts/verify-dist-fresh.mjs -> EXIT=0, [verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) - 7 NOT COVERED files listed",
+      "set_equality_proved": "git status --porcelain -- packages/ minus the adopted-plugin lane == the 4 adapter-package paths + EXACTLY the declared 17 dists (unexpected: [] / declared-but-untouched: [])",
+      "log": "evidence/agent-teams/adapter-wiring/adapter/rebuild-consumer-dists.log"
+    }
+  },
+  "changed_paths_in_scope_only": [
+    "packages/mpd-dsh-adapter-plugin/src/index.ts",
+    "packages/mpd-dsh-adapter-plugin/dist/index.js",
+    "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts",
+    "packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts",
+    "packages/mpd-bootstrap-plugin/dist/index.js",
+    "packages/mpd-boulder-plugin/dist/index.js",
+    "packages/mpd-codegraph-plugin/dist/index.js",
+    "packages/mpd-comment-checker-plugin/dist/index.js",
+    "packages/mpd-config-plugin/dist/index.js",
+    "packages/mpd-ext-plugin/dist/index.js",
+    "packages/mpd-hashline-plugin/dist/index.js",
+    "packages/mpd-memory-plugin/dist/index.js",
+    "packages/mpd-modelchain-plugin/dist/index.js",
+    "packages/mpd-qa-roles-probe/dist/index.js",
+    "packages/mpd-roles-plugin/dist/index.js",
+    "packages/mpd-team-compact-plugin/dist/index.js",
+    "packages/mpd-team-watchdog-plugin/dist/index.js",
+    "packages/mpd-tools-plugin/dist/index.js",
+    "packages/mpd-tui-plugin/dist/index.js",
+    "packages/mpd-ulw-plugin/dist/index.js",
+    "packages/mpd-workmate-plugin/dist/index.js",
+    "evidence/agent-teams/adapter-wiring/adapter/verify.log",
+    "evidence/agent-teams/adapter-wiring/adapter/rebuild-consumer-dists.log",
+    "evidence/agent-teams/adapter-wiring/adapter/dist-fresh-after-adapter-src.log",
+    "evidence/agent-teams/adapter-wiring/adapter/dist-invalidation-proof.txt",
+    "evidence/agent-teams/adapter-wiring/adapter/measure-dist-invalidation.sh",
+    "evidence/agent-teams/adapter-wiring/adapter/rebuild-adapter-dependent-dists.sh",
+    "evidence/agent-teams/adapter-wiring/adapter/harness-shape-verification.md",
+    "evidence/agent-teams/adapter-wiring/adapter/result.json",
+    "evidence/agent-teams/adapter-wiring/adapter/post-rebuild-hashes.txt"
+  ],
+  "captain_ruling_extension": {
+    "source": "captain ruling (independent architecture review): five direct Agent-method calls the closure claim did not cover",
+    "added": [
+      {
+        "name": "steerAgentTurn",
+        "arity": 2,
+        "forwarder": "agent.steer(message)",
+        "flag": "agentTurnSteer",
+        "degrade": "THROW",
+        "call_sites": "lib/index.js captain.steer(createUserMessage(...)) approval notice; lib/members.js captain.steer(...) steerCaptainReport"
+      },
+      {
+        "name": "injectAgentMessage",
+        "arity": 2,
+        "forwarder": "agent.inject(message)",
+        "flag": "agentTurnInject",
+        "degrade": "THROW",
+        "call_sites": "lib/tools.js captain.inject(createUserMessage(...)) staged-team discard"
+      }
+    ],
+    "flag_naming": "agentTurnSteer / agentTurnInject \u2014 the captain offered turnSteer/turnInject OR the D9-pair convention; the D9 convention (agentTurnStart / agentTurnCancel, from contract \u00a73's table) was kept so the four agent-object turn flags read as one family.",
+    "not_added_by_ruling": "whenIdle stays a DIRECT Class-B call in the plugin (promise-shaped scheduling await, no defined degradation) \u2014 the adapter deliberately has NO whenIdle method.",
+    "harness_shapes_verified": [
+      "dsh-agent/lib/types/runtime-types.d.ts:200 steer(message: UserMessage): void; :209 inject(message: UserMessage): void",
+      "dsh-agent-loop/lib/index.js:792 steer(input) { send(input, 'next-step', true) }; :795 inject(input) { ... }  (same file as followup :789 and cancel :798)"
+    ],
+    "name_collision_recorded": "agent.inject(message) is NOT the cordis ctx.inject(deps, cb) seam (also called in lib/index.js); injectAgentMessage passes exactly ONE argument and the adapter surface exposes no cordis inject \u2014 both asserted by test.",
+    "tests": "5 new tests in adapter-agent-teams-surface.test.ts (verbatim+receiver forwarding, the agent's own throw preserved, absent-method THROW, sibling-flag independence, one-argument/no-cordis-inject), plus the two rows added to the frozen name+arity table, the flag table and the absent-harness degrade table."
+  },
+  "post_rebuild_hashes": {
+    "packages/mpd-dsh-adapter-plugin/src/index.ts": "e3948553551161877551a5fce8ce3b1c96f4936153351250bf230ecda787d023",
+    "packages/mpd-dsh-adapter-plugin/dist/index.js": "d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4",
+    "packages/mpd-bootstrap-plugin/dist/index.js": "01f88fac5edf46b67ce4a3d57e4725e042072e323fd9800a4a0712748ae710ac",
+    "packages/mpd-boulder-plugin/dist/index.js": "a1ea029ce52b9189c6a5a5d07a60c1b8c96a9f65bb0e087c09ad3e81ef57890f",
+    "packages/mpd-codegraph-plugin/dist/index.js": "f055b853a411713619e38d1bac82644875213fce7783be1873c20fcdf2f1be2a",
+    "packages/mpd-comment-checker-plugin/dist/index.js": "b905aaeee047bfa4aeec60fc2d6787632f7b0f41617a52b1f48f78a0dbebb0d2",
+    "packages/mpd-config-plugin/dist/index.js": "f8fed0ad642d729da89a492184a63289da9bd0b43059167c39b1b0cb1c099371",
+    "packages/mpd-ext-plugin/dist/index.js": "f4900827ef5c51a75ee3a66e64ac8753e77fbfbae96e037d2b4480849b1c42bd",
+    "packages/mpd-hashline-plugin/dist/index.js": "b28975d7441e085c81980f094ecde1627386fa0f08660b7d0b5eb5326db5fce2",
+    "packages/mpd-memory-plugin/dist/index.js": "99a70bd9b94883dd2fafc742967dcf918c66fa1669faac3a8fc389734d17d538",
+    "packages/mpd-modelchain-plugin/dist/index.js": "cef5baf5a7698e4c6bdbac777e467d5994bd5b6dd676a25f37234f2bd7673f83",
+    "packages/mpd-qa-roles-probe/dist/index.js": "1aa8c4b415b6c2656aa0c230d2de4146eb06d7ba4c51a355e3fca2bbd14e2ba0",
+    "packages/mpd-roles-plugin/dist/index.js": "e2a085467eebf5e1847771167027e4b460a7b40b21b8694fa70148141072bafa",
+    "packages/mpd-team-compact-plugin/dist/index.js": "70fe4e7e2ad9552e886058d49d206222ac6a11199cc81e1d10fe4ae246dc2f8d",
+    "packages/mpd-team-watchdog-plugin/dist/index.js": "3fabf0e154ff7878deed5302738628a2e2385ed28820016ca5707e034ef635fd",
+    "packages/mpd-tools-plugin/dist/index.js": "5452cd87be33d2ab49917df4c3e58622b0296d7a7ef70041523a8c1c4a51be46",
+    "packages/mpd-tui-plugin/dist/index.js": "b74b88906d0111765fe09cf1e1ecba2b30fed32bcc51f4a0978b11a658258e5e",
+    "packages/mpd-ulw-plugin/dist/index.js": "df61eae41012768d133f7f6e86a21e8d616bff946518d7e7e2c63a435ddc0eed",
+    "packages/mpd-workmate-plugin/dist/index.js": "6264923f5b54cc0fc781cab5d0b2bd0439310cfac328eb977d892995ec5567d4"
+  },
+  "captain_cross_check": {
+    "what": "The captain independently ran the prepared rebuild script at 14:38Z and relayed 18 sha256 prefixes; this lane re-derived all 18 from the working tree at 14:42:34Z.",
+    "result": "MATCH 18/18 \u2014 no discrepancy, so per his instruction the pipeline was NOT re-run beyond the two commanded re-verifications (both green again: rebuild script exit 0 with its internal gate at 20/20 fresh; standalone gate exit 0, zero STALE).",
+    "canonical_record": "evidence/agent-teams/adapter-wiring/adapter/post-rebuild-hashes.txt"
+  },
+  "cross_lane_conformance": {
+    "peer": "Senior Engineer (t5, bridge lane) \u2014 read-only verification, exit 0; his evidence: evidence/agent-teams/adapter-wiring/bridge/adapter-flag-conformance.{mjs,log}",
+    "peer_findings": [
+      "13 flags used by the bridge, ALL declared by the adapter: true (the list is DERIVED from the bridge source, so a paraphrase leak would show up as `missing`)",
+      "flag=false -> raw lane for startAgentTurn and steerAgentTurn: true (a false flag is a real degrade, not a silent no-op)",
+      "THROW-degrade methods are called through untouched; subagentRuntime/subagentProvider/agentScope undefined-degrades handled without a crash",
+      "under contract revision 6 (F1) the facade no longer falls back to a raw cordis ctx: an unusable/undefined adapter scope lands on the BUILT shape {context,tools,on,effect} whose context IS agent.ctx (Object.is) \u2014 so my all-or-nothing `undefined` is a SUPPORTED input and no adapter change is needed"
+    ],
+    "this_lane_independent_check": "re-derived from the SHIPPED artifact: all 13 gated names (toolsRegisterHost, subagentsProvider, subagentsContinuable, subagentsInterrupt, llmListModels, llmResolveCallConfig, systemPromptSection, agentScope, agentTurnStart, agentTurnCancel, agentTurnSteer, agentTurnInject, commandsRegister) exist as keys in packages/mpd-dsh-adapter-plugin/dist/index.js \u2014 13/13 ok, 0 missing. Consistent with the peer's `all declared: true`.",
+    "effect_on_this_lane": "none \u2014 no contract change, no code change, no test change; the flag-name warning I raised is closed by measurement.",
+    "flag_count_erratum": {
+      "read_utc": "2026-09-19T15:50:21Z",
+      "original_value": "13 capability flags used by the bridge (candidate-list grep: the twelve/ten new flags + commandsRegister)",
+      "corrected_value": "14 \u2014 the fourteenth is `subagents`, the gate for subagentRuntime()",
+      "why_the_original_was_short": "my count was measured against a CANDIDATE list of known flag names, which never contained `subagents`; it therefore could not detect it. The bridge bytes are UNCHANGED since that measurement (sha256 01fd9125510885fb\u2026), so this is a counting artifact, not a moving target.",
+      "independent_reproduction_by_this_lane": {
+        "method": "extract every `seam(name, flag)` second argument plus every capabilities() read from lib/mpd-adapter-ctx.js, then brace-scan the SHIPPED dist literal and cross-check membership",
+        "derived_flags": 14,
+        "all_present_in_dist_capabilities_literal": true,
+        "gate_anchor": "SYMBOL anchor (T-55): `seam('subagentRuntime', 'subagents')` in the `runtime` member of the facade's `subagents` object built by `createAgentTeamsCtx`, reached through the exported `subagentRuntimeOf(ctx)` \u2014 packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js",
+        "the_fourteen": [
+          "agentScope",
+          "agentTurnCancel",
+          "agentTurnInject",
+          "agentTurnStart",
+          "agentTurnSteer",
+          "commandsRegister",
+          "llmListModels",
+          "llmResolveCallConfig",
+          "subagents",
+          "subagentsContinuable",
+          "subagentsInterrupt",
+          "subagentsProvider",
+          "systemPromptSection",
+          "toolsRegisterHost"
+        ],
+        "gate_anchor_superseded": "lib/mpd-adapter-ctx.js:342  const runtime = seam('subagentRuntime', 'subagents');   [SUPERSEDED 2026-09-19T15:53:17Z per T-55: a line pointer rots with the next write inside the region \u2014 the bridge grew under BR-1 between reads, which is exactly why the peer's earlier grep and this line number disagreed]",
+        "gate_anchor_stable_bytes": "the bridge file's sha256 01fd9125510885fb\u2026 (read 2026-09-19T15:21:19Z, re-read unchanged at 2026-09-19T15:53:17Z) \u2014 bytes, not lines, are the durable anchor"
+      },
+      "peer_anchor": "evidence/agent-teams/adapter-wiring/bridge/adapter-flag-conformance.{mjs,log} (peer's two-authority run: source + shipped dist, both 14/14); their README \u00a75c/\u00a75d; their result.json.adapterSurfaceConformance.peerCrossCheck cites this entry back",
+      "effect_on_this_lane": "none on behaviour, tests, dist or task payloads \u2014 t4 stays completed/terminal; this is a corrected evidence count."
+    }
+  }
+}

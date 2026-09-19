@@ -1,0 +1,17 @@
+ok   (i) bare refs: -> exactly ONE top-level refs  [refs=1]
+ok   (i) pre-existing block entry preserved verbatim
+ok   (i) new entry inserted into the block
+ok   (ii-a) refs: {} -> exactly ONE top-level refs  [refs=1]
+ok   (ii-a) new entry lands INSIDE the braces
+ok   (ii-a) surrounding document preserved byte-for-byte
+ok   (ii-b) refs: { K: v } -> exactly ONE top-level refs  [refs=1]
+ok   (ii-b) existing inner text preserved VERBATIM
+ok   (ii-b) new entry appended inside the braces
+ok   (ii-c) trailing comma tolerated, exactly ONE refs  [refs: {A: "1", SYNTHETIC_KEY: "REDACTED-VALUE"}]
+ok   (iii) no refs: -> exactly ONE appended refs block  [refs=1]
+ok   (iii) appended as a block with the new entry
+ok   (iv) flat layout stays flat (no refs block introduced)  [OPENCODE_GO_API_KEY: "REDACTED" | SYNTHETIC_KEY: "REDACTED-VALUE"]
+ok   (v) multi-line flow mapping refused loudly (no duplicate key emitted)
+ok   (v) alias/scalar value refused loudly (no duplicate key emitted)
+ok   (vi) second merge keeps ONE refs and both keys
+[shapes-proof] ALL SHAPES PASS (bare / inline-empty / inline-filled / none / flat / refusals / idempotence)

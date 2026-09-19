@@ -211,6 +211,44 @@ export interface DshPresetInfo {
   broken?: string
 }
 
+/**
+ * One system-prompt section, as {@link DshAdapter.registerPromptSection} forwards it.
+ *
+ * MEASURED against the installed harness (`dsh-system-prompt/lib/types/index.d.ts`
+ * `PromptSection`): `name` is unique (a duplicate registration THROWS inside the
+ * registry, and that error is deliberately NOT swallowed here), sections are
+ * concatenated in ascending `order`, and `text` is either static or a provider
+ * re-evaluated at every assembly. The host's optional `complete` flag is not modelled
+ * because no mpd caller sets it; the open index signature keeps such extra keys
+ * forwardable VERBATIM instead of being silently dropped by a spread.
+ */
+export interface DshPromptSection {
+  name: string
+  order: number
+  text: string | ((ctx: unknown) => string)
+  [key: string]: unknown
+}
+
+/**
+ * One agent's OWN scope: the RAW agent context plus the three members a plugin needs
+ * from it, each a thin forwarder bound to that same context object.
+ *
+ * `context` IS `agent.ctx` (identity, never a projection). That is load-bearing:
+ * the adopted agent-teams plugin hands it to a member's setup callback, and
+ * `dsh-tools`' `restrict` resolves against a REAL scoped cordis context — a rebuilt
+ * look-alike would be rejected there.
+ *
+ * Measured harness shapes: `dsh-tools/lib/types/index.d.ts`
+ * `restrict(filter): () => void` (the filter is `{allow?, deny?}` of names);
+ * cordis `ctx.on(event, listener): () => void` and `ctx.effect(fn, label?): () => void`.
+ */
+export interface DshAgentScope {
+  context: unknown
+  tools: { restrict(filter: { allow?: readonly string[]; deny?: readonly string[] }): () => void }
+  on(event: string, handler: (...args: unknown[]) => unknown): () => void
+  effect(fn: () => unknown, label?: string): () => void
+}
+
 export interface DshCapabilities {
   tools: boolean
   toolsRegister: boolean
@@ -252,6 +290,59 @@ export interface DshCapabilities {
    * `resolveModelInfo`). Callers degrade to their declared option lists when false.
    */
   llmCatalog: boolean
+  /**
+   * The VERBATIM host-tool registration seam (`tools.register`) used by
+   * {@link DshAdapter.registerHostTool}. Same probe as {@link DshCapabilities.toolsRegister},
+   * reported separately because the two methods carry DIFFERENT contracts: `registerTool`
+   * normalizes a definition, `registerHostTool` forwards an already harness-shaped one.
+   */
+  toolsRegisterHost: boolean
+  /**
+   * `ctx.subagents.getProvider` AND `.list` (both must be callable, because
+   * {@link DshAdapter.subagentProvider} and {@link DshAdapter.subagentProviders} address
+   * the same catalogue; a half-present service reports false so a caller degrades to its
+   * own message instead of a `TypeError`).
+   */
+  subagentsProvider: boolean
+  /** `ctx.subagents.startContinuable` — the durable continuable-child seam. */
+  subagentsContinuable: boolean
+  /** `ctx.subagents.interrupt` — the parked-child interrupt seam. */
+  subagentsInterrupt: boolean
+  /** `ctx.llm.listModels` — the per-provider model list (the catalog seam needs its own trio). */
+  llmListModels: boolean
+  /** `ctx.llm.resolveCallConfig` — resolves one call's provider/model/effort config. */
+  llmResolveCallConfig: boolean
+  /** `ctx.systemPrompt.section` — the system-prompt contribution seam. */
+  systemPromptSection: boolean
+  /**
+   * A live agent's own context exposes every member {@link DshAgentScope} promises
+   * (`on`, `effect`, `tools.restrict`), i.e. {@link DshAdapter.agentScope} can build a
+   * scope for it.
+   *
+   * Like {@link DshCapabilities.turnSubmit} this is a LIVE-REGISTRY probe, so a
+   * composition with no live session reports false even though the surface exists;
+   * `agentScope`'s own `undefined` return is the authoritative per-call signal.
+   */
+  agentScope: boolean
+  /**
+   * A live agent exposes `followup` — the THROWING turn seam
+   * {@link DshAdapter.startAgentTurn} forwards to. Same live probe as
+   * {@link DshCapabilities.turnSubmit}; the two flags are distinct because the METHODS
+   * have deliberately different contracts (throwing vs boolean).
+   */
+  agentTurnStart: boolean
+  /** A live agent exposes `cancel` — the seam {@link DshAdapter.cancelAgentTurn} forwards to. */
+  agentTurnCancel: boolean
+  /**
+   * A live agent exposes `steer` — the seam {@link DshAdapter.steerAgentTurn} forwards to
+   * (nearest-step steering, distinct from `followup`'s own new turn).
+   */
+  agentTurnSteer: boolean
+  /**
+   * A live agent exposes `inject` — the inbox seam {@link DshAdapter.injectAgentMessage}
+   * forwards to.
+   */
+  agentTurnInject: boolean
 }
 
 /**
@@ -383,6 +474,26 @@ export interface DshAdapter {
    * catalog down — and the returned catalog carries `degraded: true`.
    */
   llmCatalog(): Promise<DshLlmCatalog>
+  /**
+   * List one provider's models through the harness llm service — the read the
+   * adopted agent-teams plugin needs when it validates a member's route.
+   *
+   * A THIN forwarder: `listModels(provider)` on the service, receiver-bound, and the
+   * service's own promise handed back untouched (its rejections stay rejections).
+   * Degrade: a composition without the service, or without `listModels`, THROWS
+   * synchronously — parity with the raw `ctx.llm.listModels(provider)` expression the
+   * caller would otherwise run, so a caller's `try/catch` keeps working. Reported by
+   * `capabilities().llmListModels`.
+   */
+  llmListModels(provider: string): Promise<unknown>
+  /**
+   * Resolve one call's provider/model/effort configuration through the harness llm
+   * service (`resolveCallConfig(config, signal?)`), receiver-bound, promise forwarded.
+   *
+   * Degrade: THROWS synchronously when the service or the method is absent (parity
+   * with the raw expression). Reported by `capabilities().llmResolveCallConfig`.
+   */
+  llmResolveCallConfig(config: unknown, signal?: AbortSignal): Promise<unknown>
   /** Reader for one settings namespace, or undefined when the service is absent. */
   settingsReader(namespace: string): DshSettingsReader | undefined
   /**
@@ -447,6 +558,31 @@ export interface DshAdapter {
     ops: readonly { op: "set" | "unset"; path: readonly string[]; value?: unknown }[],
     expectedRevision?: number,
   ): Promise<DshSettingsMutateResult>
+  /**
+   * Register an ALREADY harness-shaped tool definition, VERBATIM.
+   *
+   * WHY THIS EXISTS BESIDE {@link DshAdapter.registerTool} (not a duplicate):
+   * `registerTool` RECONSTRUCTS what it is given — it injects `parameters` and
+   * `output.schema` defaults, supplies a `render` fallback and replaces `execute`
+   * with an `(args ?? {}, exec ?? {})` wrapper. A definition that is already
+   * harness-shaped (the adopted agent-teams plugin registers `defineTool(...)`
+   * output, whose schemas are compiled and whose `execute` validates its own args)
+   * loses `finalizeContent`, `presentCall`, `presentResult` and `isConcurrencySafe`
+   * through that rebuild, and its `execute` identity would change.
+   *
+   * This method therefore passes the SAME object reference to `tools.register` and
+   * applies NO normalization of its own: `Object.is` holds end to end, and the
+   * registry's disposer is passed back. A non-callable return (a stub registry) is
+   * degraded to a no-op disposer rather than leaked.
+   *
+   * Degrade: THROWS when the tools service is unavailable — parity with the injected
+   * `ctx.tools` a plugin would otherwise reach. Reported by
+   * `capabilities().toolsRegisterHost`.
+   *
+   * @param definition - the harness-shaped definition; forwarded untouched.
+   * @returns the registry's effect disposer (a no-op only when it returned none).
+   */
+  registerHostTool(definition: unknown): () => void
   registerTool(definition: DshToolDef): () => void
   registerTools(definitions: DshToolDef[]): () => void
   /**
@@ -473,6 +609,23 @@ export interface DshAdapter {
    * @returns the registry's disposer, or a no-op when the seam is absent.
    */
   registerCommand(definition: DshCommandDef): () => void
+  /**
+   * Contribute ONE section to the host's system prompt
+   * (`systemPrompt.section(section)`), the section object forwarded VERBATIM.
+   *
+   * MEASURED against the installed harness
+   * (`dsh-system-prompt/lib/types/index.d.ts` `SystemPrompt.section`) and its runtime
+   * (`dsh-agent/lib/index.js` `assembleContextFor`): the section's `text` provider is
+   * re-evaluated at every assembly with `{agent, scope, signal?}`, and `section()`
+   * returns the exact cordis effect disposer (a non-callable stub answer degrades to a
+   * no-op). A DUPLICATE name throws inside the registry and that error is deliberately
+   * NOT swallowed.
+   *
+   * Degrade: THROWS at the call — the adopted plugin's usage section is mandatory, so a
+   * composition without this seam must fail loudly at apply time instead of silently
+   * dropping the section. Reported by `capabilities().systemPromptSection`.
+   */
+  registerPromptSection(section: DshPromptSection): () => void
   guardTool(guard: (exec: DshToolExec) => string | undefined): () => void
   /**
    * Observe a tool call BEFORE dispatch — the `tools/pre-execute` waterfall.
@@ -520,6 +673,52 @@ export interface DshAdapter {
    */
   executeTool(input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; timeoutMs?: number; agent?: unknown }): Promise<DshToolCallResult>
   spawnAgent(spec: DshSpawnSpec): Promise<DshSpawnResult>
+  /**
+   * The subagent DELIVERY RUNTIME itself (identity-preserving), or `undefined` when
+   * the service is absent.
+   *
+   * This is the object the adopted agent-teams plugin's Harness-generation ladder
+   * reads (`prompt` / `followup` / `[HOST_PROMPT_QUEUE]` / `sendMessage` /
+   * `registerContinuableSetup`). WHICH object that ladder operates on is the
+   * adapter's business (contract D6); the ladder POLICY stays in the plugin, which
+   * is why the adapter hands the raw runtime out rather than projecting it.
+   * Reported by the existing `capabilities().subagents` flag.
+   */
+  subagentRuntime(): unknown
+  /**
+   * Look one subagent provider up by name (`subagents.getProvider(name)`),
+   * receiver-bound, the provider handed back untouched.
+   *
+   * Degrade: `undefined` when the service or the method is absent — the caller's own
+   * capability check then throws its own actionable message. Reported by
+   * `capabilities().subagentsProvider`.
+   */
+  subagentProvider(name: string): unknown
+  /**
+   * The registered provider NAMES in insertion order (`subagents.list()`).
+   *
+   * Degrade: `[]` when the service or the method is absent, and a non-string entry in
+   * a stub answer is dropped rather than leaking a value the frozen `string[]`
+   * return type cannot carry. Reported by `capabilities().subagentsProvider`.
+   */
+  subagentProviders(): string[]
+  /**
+   * Establish a durable continuable child (`subagents.startContinuable(spec)`),
+   * receiver-bound, the service's own promise forwarded untouched.
+   *
+   * Degrade: THROWS synchronously — a member that cannot be spawned must be loud, and
+   * a synchronous throw keeps parity with the raw expression a caller would run.
+   * Reported by `capabilities().subagentsContinuable`.
+   */
+  startContinuableAgent(spec: unknown): Promise<unknown>
+  /**
+   * Interrupt one durable child session (`subagents.interrupt(targetSessionId,
+   * authority)`), receiver-bound, arguments forwarded verbatim.
+   *
+   * Degrade: THROWS synchronously when the service or the method is absent. Reported
+   * by `capabilities().subagentsInterrupt`.
+   */
+  interruptAgent(targetSessionId: string, authority: unknown): void
   registerSkillProvider(provider: unknown): () => void
   listSkills(options?: { cwd?: string }): Promise<DshSkillSummary[]>
   loadSkill(skillName: string, options?: { cwd?: string }): Promise<unknown>
@@ -546,6 +745,72 @@ export interface DshAdapter {
    * freeze theirs.
    */
   userMessage(input: DshUserMessageInput): DshUserMessage
+  /**
+   * One agent's OWN scope, built from its RAW context, or `undefined` when the context
+   * does not expose every member {@link DshAgentScope} promises (the caller then falls
+   * back to the raw `agent.ctx` itself).
+   *
+   * `scope.context` IS `agent.ctx` — identity, never a projection — and `on` / `effect`
+   * / `tools.restrict` are thin forwarders bound to that same object, so a member's
+   * scoped context keeps working against the harness's own scoped cordis context.
+   * The adapter performs NO call during construction: a scope is inert until used.
+   *
+   * This is the ONE sanctioned spelling of `agent.ctx.<seam>` (contract D5/D8): the
+   * Agent's own DATA (`id`/`status`/`session`/`ctx`) stays a direct read on the handle
+   * the adapter hands out, while the per-agent SEAMS go through here.
+   * Reported by `capabilities().agentScope` (a live-registry probe).
+   */
+  agentScope(agent: unknown): DshAgentScope | undefined
+  /**
+   * Start an agent's next turn: `agent.followup(message)`, receiver-bound, forwarded
+   * THROWING.
+   *
+   * This is deliberately NOT {@link DshAdapter.submitUserTurn}: the host's `followup`
+   * throws for a rejected submission, and the adopted plugin's own call site depends on
+   * that throw inside its `try`/`catch` (contract D9). Swallowing it into a boolean here
+   * would silently change the plugin's behaviour, so this seam preserves the throw and
+   * the ORIGINAL error.
+   *
+   * Degrade: THROWS when the agent exposes no `followup` (a caller that wants the
+   * safe boolean uses `submitUserTurn` instead). Reported by
+   * `capabilities().agentTurnStart`.
+   */
+  startAgentTurn(agent: unknown, message: unknown): void
+  /**
+   * Cancel an agent's turn/parked work: `agent.cancel(cause, options?)`,
+   * receiver-bound, arguments forwarded verbatim, THROWING (errors from the agent are
+   * never swallowed).
+   *
+   * Degrade: THROWS when the agent exposes no `cancel`. Reported by
+   * `capabilities().agentTurnCancel`.
+   */
+  cancelAgentTurn(agent: unknown, cause: unknown, options?: unknown): void
+  /**
+   * Steer an agent's NEAREST step: `agent.steer(message)`, receiver-bound, forwarded
+   * VERBATIM and THROWING — the same D9 discipline as {@link DshAdapter.startAgentTurn}
+   * (a rejected steer must stay a throw, never a swallowed boolean).
+   *
+   * Measured harness shape: `dsh-agent-loop/lib/index.js` `steer(input)` is
+   * `send(input, "next-step", true)` — an idle driver starts a turn, a running driver
+   * consumes the item at its next step boundary (distinct from `followup`, which opens
+   * its OWN turn). Adopted call sites: the approval notice and the captain-report steer.
+   *
+   * Degrade: THROWS when the agent exposes no `steer`. Reported by
+   * `capabilities().agentTurnSteer`.
+   */
+  steerAgentTurn(agent: unknown, message: unknown): void
+  /**
+   * Queue one message into an agent's inbox: `agent.inject(message)`, receiver-bound,
+   * forwarded VERBATIM and THROWING (same D9 discipline).
+   *
+   * The spelling matters: this is the AGENT's `inject(message)`, NOT the cordis
+   * `ctx.inject(deps, callback)` dependency-injection seam — the two share a name and
+   * nothing else. Adopted call site: the staged-team discard path.
+   *
+   * Degrade: THROWS when the agent exposes no `inject`. Reported by
+   * `capabilities().agentTurnInject`.
+   */
+  injectAgentMessage(agent: unknown, message: unknown): void
   /**
    * Submit one user-role message into an agent's OWN next turn — the turn seam a
    * command handler needs, because the host runs a command "without sending the
@@ -655,6 +920,51 @@ export function workspaceRootsOf(agents: any): string[] {
 }
 
 function noop(): void { /* seam absent: nothing was registered */ }
+
+/**
+ * Build one {@link DshAgentScope} from the RAW `agent.ctx`, or `undefined` when that
+ * context does not expose every member the scope promises.
+ *
+ * ALL-OR-NOTHING is deliberate: a scope whose `tools.restrict` (or `on`, or `effect`)
+ * would throw on use is worse than the caller's own raw-context fallback, because it
+ * turns a feature-detectable absence into a runtime `TypeError` at an arbitrary later
+ * moment. The probe is contained (a throwing getter or a proxy context is a miss,
+ * never a crash — the adapter's never-crash-at-construction contract).
+ *
+ * The returned `context` is the SAME object (`agent.ctx`), and each member is a
+ * forwarder that binds the raw receiver, so the host's own scoped cordis semantics
+ * (effect ownership, `restrict` resolution) are preserved.
+ */
+function scopeOfAgentContext(agent: unknown): DshAgentScope | undefined {
+  let context: unknown
+  try {
+    context = (agent as { ctx?: unknown } | undefined)?.ctx
+  } catch {
+    return undefined
+  }
+  if (context === undefined || context === null) return undefined
+  const kind = typeof context
+  if (kind !== "object" && kind !== "function") return undefined
+  let on: unknown
+  let effect: unknown
+  let restrict: unknown
+  try {
+    const scoped = context as { on?: unknown; effect?: unknown; tools?: { restrict?: unknown } }
+    on = scoped.on
+    effect = scoped.effect
+    restrict = scoped.tools?.restrict
+  } catch {
+    return undefined
+  }
+  if (typeof on !== "function" || typeof effect !== "function" || typeof restrict !== "function") return undefined
+  const tools = (context as { tools: object }).tools
+  return {
+    context,
+    tools: { restrict: (filter) => (restrict as (filter: unknown) => () => void).call(tools, filter) },
+    on: (event, handler) => (on as (event: string, handler: (...args: unknown[]) => unknown) => () => void).call(context, event, handler),
+    effect: (fn, label) => (effect as (fn: () => unknown, label?: string) => () => void).call(context, fn, label),
+  }
+}
 
 export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number } = {}): DshAdapter {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS
@@ -869,6 +1179,8 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const commands = service("commands")
       const agents = service("agents")
       const compaction = service("compaction")
+      const llmService = service("llm")
+      const systemPrompt = service("systemPrompt")
       const sample = liveAgents()[0]
       const sampleScoped = sample?.ctx
       let scopedCompaction = false
@@ -901,6 +1213,26 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // The catalog seam needs the WHOLE trio: a service exposing only part of it
         // cannot satisfy llmCatalog's projection, so it reports false.
         llmCatalog: LLM_CATALOG_METHODS.every((method) => typeof (service("llm") as any)?.[method] === "function"),
+        // ── the agent-teams surface (each flag faces ONE adapter method) ──────
+        // `registerTool` and `registerHostTool` share the `tools.register` seam but
+        // carry different contracts, so each reports its own flag.
+        toolsRegisterHost: typeof tools?.register === "function",
+        // The provider catalogue needs BOTH halves (getProvider + list): a caller that
+        // reads this flag must never hit a half-present service.
+        subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
+        subagentsContinuable: typeof subagents?.startContinuable === "function",
+        subagentsInterrupt: typeof subagents?.interrupt === "function",
+        llmListModels: typeof llmService?.listModels === "function",
+        llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
+        systemPromptSection: typeof systemPrompt?.section === "function",
+        // The three agent-object seams are LIVE-REGISTRY probes (like turnSubmit): a
+        // composition with no live session reports false although the surface exists —
+        // the per-call return value (undefined / the throw) stays authoritative.
+        agentScope: liveAgents().some((candidate) => scopeOfAgentContext(candidate) !== undefined),
+        agentTurnStart: liveAgents().some((candidate) => typeof (candidate as { followup?: unknown } | undefined)?.followup === "function"),
+        agentTurnCancel: liveAgents().some((candidate) => typeof (candidate as { cancel?: unknown } | undefined)?.cancel === "function"),
+        agentTurnSteer: liveAgents().some((candidate) => typeof (candidate as { steer?: unknown } | undefined)?.steer === "function"),
+        agentTurnInject: liveAgents().some((candidate) => typeof (candidate as { inject?: unknown } | undefined)?.inject === "function"),
       }
     },
 
@@ -915,7 +1247,38 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     onEvent,
     llmCatalog,
 
+    // ── llm plane: the two thin reads the agent-teams bridge forwards ───────
+    // Both are THIN and both THROW synchronously on a missing seam: the raw
+    // `ctx.llm.listModels(provider)` / `ctx.llm.resolveCallConfig(config, signal)`
+    // expression a caller would otherwise run throws the same way, so a caller's
+    // try/catch keeps its exact meaning.
+    llmListModels(provider: string): Promise<unknown> {
+      const llm = requireService("llm", "cannot list the models of provider \"" + provider + "\"")
+      if (typeof llm.listModels !== "function") throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()")
+      return llm.listModels.call(llm, provider)
+    },
+
+    llmResolveCallConfig(config: unknown, signal?: AbortSignal): Promise<unknown> {
+      const llm = requireService("llm", "cannot resolve a call config")
+      if (typeof llm.resolveCallConfig !== "function") throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()")
+      return llm.resolveCallConfig.call(llm, config, signal)
+    },
+
     // ── tool plane ──────────────────────────────────────────────────────────
+    registerHostTool(definition: unknown): () => void {
+      const tools = requireService("tools", "cannot register host tool \"" + String((definition as { name?: unknown } | undefined)?.name) + "\"")
+      if (typeof tools.register !== "function") throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()")
+      // VERBATIM by contract: the SAME reference reaches the registry — no rebuild, no
+      // spread, no default `parameters`/`output.schema`, no `render` fallback, no
+      // `execute` wrapper. The adopted agent-teams plugin registers `defineTool(...)`
+      // output, so `finalizeContent`/`presentCall`/`presentResult`/`isConcurrencySafe`
+      // and the exact `execute` function must survive untouched (Object.is end to end).
+      const registered = tools.register(definition)
+      // Only a callable may be handed back as a disposer (a stub registry can return
+      // anything); an absent registry answer degrades to a no-op, never to a leak.
+      return typeof registered === "function" ? registered : noop
+    },
+
     registerTool(definition: DshToolDef): () => void {
       const tools = requireService("tools", "cannot register tool \"" + String(definition?.name) + "\"")
       if (typeof tools.register !== "function") throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()")
@@ -962,6 +1325,18 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       })
       // The host's register() returns the exact effect disposer; a stub registry can
       // return anything, and only a callable may be handed back as a disposer.
+      return typeof registered === "function" ? registered : noop
+    },
+
+    registerPromptSection(section: DshPromptSection): () => void {
+      // THROW, not a no-op: the adopted agent-teams plugin's usage section is
+      // MANDATORY, so a composition without the seam must be loud (contract §3 #9)
+      // instead of silently dropping the section.
+      const systemPrompt = requireService("systemPrompt", "cannot register prompt section \"" + String(section?.name) + "\"")
+      if (typeof systemPrompt.section !== "function") throw new Error("mpd-dsh-adapter: the harness systemPrompt service exposes no section()")
+      // VERBATIM section, receiver-bound. A duplicate name throws INSIDE the registry
+      // and is deliberately not swallowed; only a non-callable answer degrades.
+      const registered = systemPrompt.section(section)
       return typeof registered === "function" ? registered : noop
     },
 
@@ -1081,6 +1456,51 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         structured: result.structured,
         stopReason: (result.stopReason as string | null | undefined) ?? null,
       }
+    },
+
+    // ── subagent plane: the delivery runtime and its provider catalogue ──────
+    // (the adopted agent-teams plugin's seam set; contract §3 rows 2–6)
+    subagentRuntime(): unknown {
+      // IDENTITY-preserving: the plugin's Harness-generation ladder reads
+      // `prompt`/`followup`/`[HOST_PROMPT_QUEUE]`/`sendMessage` off THIS object and the
+      // ladder's own policy stays in the plugin (contract D6). `service()` is contained,
+      // so a missing service is `undefined`, never a throw.
+      return service("subagents")
+    },
+
+    subagentProvider(name: string): unknown {
+      const subagents = service("subagents")
+      const getProvider = (subagents as { getProvider?: unknown } | undefined)?.getProvider
+      // Degrade: `undefined` — the plugin's own capability check throws its own
+      // actionable message, so this seam must not invent one.
+      if (typeof getProvider !== "function") return undefined
+      return (getProvider as (name: string) => unknown).call(subagents, name)
+    },
+
+    subagentProviders(): string[] {
+      const subagents = service("subagents")
+      const list = (subagents as { list?: unknown } | undefined)?.list
+      if (typeof list !== "function") return []
+      const names: unknown = (list as () => unknown).call(subagents)
+      // The host answers provider NAMES in insertion order (`list(): string[]`); a stub
+      // that answers something else degrades to the declared type rather than leaking
+      // values the frozen `string[]` contract cannot carry.
+      return Array.isArray(names) ? names.filter((entry): entry is string => typeof entry === "string") : []
+    },
+
+    startContinuableAgent(spec: unknown): Promise<unknown> {
+      // Synchronous THROW on a missing seam (parity with the raw expression a caller
+      // would run); the service's own promise is forwarded UNTOUCHED, so its rejections
+      // stay rejections for the caller.
+      const subagents = requireService("subagents", "cannot start a continuable agent")
+      if (typeof subagents.startContinuable !== "function") throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()")
+      return subagents.startContinuable.call(subagents, spec)
+    },
+
+    interruptAgent(targetSessionId: string, authority: unknown): void {
+      const subagents = requireService("subagents", "cannot interrupt subagent session \"" + String(targetSessionId) + "\"")
+      if (typeof subagents.interrupt !== "function") throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()")
+      subagents.interrupt.call(subagents, targetSessionId, authority)
     },
 
     // ── skill plane ─────────────────────────────────────────────────────────
@@ -1264,6 +1684,48 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
 
     text: textBlock,
     userMessage,
+
+    // ── agent plane: the per-agent scope and the throwing turn engine ────────
+    // (contract D5/D8/D9: the agent's own SEAMS are routed; its DATA stays a direct
+    // read on the handle this adapter hands out)
+    agentScope(agent: unknown): DshAgentScope | undefined {
+      // The ONE spelling of `agent.ctx.<seam>`: the all-or-nothing probe below keeps a
+      // partial context from producing a scope that throws later.
+      return scopeOfAgentContext(agent)
+    },
+
+    startAgentTurn(agent: unknown, message: unknown): void {
+      const followup = (agent as { followup?: unknown } | undefined)?.followup
+      // THROWING on purpose (contract D9): the adopted plugin's own call site relies on
+      // this throw inside its try/catch. `submitUserTurn` below stays the swallowing
+      // boolean seam for callers that want one.
+      if (typeof followup !== "function") throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn")
+      ;(followup as (input: unknown) => unknown).call(agent, message)
+    },
+
+    cancelAgentTurn(agent: unknown, cause: unknown, options?: unknown): void {
+      const cancel = (agent as { cancel?: unknown } | undefined)?.cancel
+      if (typeof cancel !== "function") throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn")
+      // Receiver-bound, both arguments verbatim; the agent's own error propagates.
+      ;(cancel as (cause: unknown, options?: unknown) => unknown).call(agent, cause, options)
+    },
+
+    steerAgentTurn(agent: unknown, message: unknown): void {
+      const steer = (agent as { steer?: unknown } | undefined)?.steer
+      // Same THROWING discipline as startAgentTurn (contract D9): the adopted call sites
+      // run inside their own try/catch and rely on the throw, so this seam must never
+      // swallow a rejected steer into a boolean.
+      if (typeof steer !== "function") throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn")
+      ;(steer as (input: unknown) => unknown).call(agent, message)
+    },
+
+    injectAgentMessage(agent: unknown, message: unknown): void {
+      // NOTE the two `inject` spellings: this is the AGENT's inject(message), not the
+      // cordis ctx.inject(deps, callback) seam (which the facade passes through).
+      const inject = (agent as { inject?: unknown } | undefined)?.inject
+      if (typeof inject !== "function") throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it")
+      ;(inject as (input: unknown) => unknown).call(agent, message)
+    },
 
     // ── turn plane ──────────────────────────────────────────────────────────
     submitUserTurn(agent: unknown, message: DshUserMessage): boolean {
