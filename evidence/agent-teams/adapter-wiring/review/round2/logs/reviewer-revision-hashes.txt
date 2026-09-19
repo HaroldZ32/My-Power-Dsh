@@ -1,0 +1,26 @@
+# t24 reviewer revision hashes — read at 2026-09-19T16:06:07Z
+d813c47c31e7497b277f2bddd307229871669801ebd62abbf124e93aa5579f54  AGENTS.md
+fc6f8aa34771faba879a4c448ce837dac506ffb461bd8c0586adbe406e3672fb  VENDOR_LOCK.json
+a1ea21c0bdcffcfbb182a9e24434f7150496340ab8c7f39521cd83d2a267534c  agent-references/agent-teams-deltas.md
+5de54a335699702605ce6173ac2a5a41ecaef96025d5b4290fd52270060f701d  docs/design.md
+dfd17369c12ca9ae2ae8920cd89b04a43cbbbc65c87361b4747d61abf30e761b  docs/design.zh-CN.md
+01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3  packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js
+456a297b00e5225f02a1404d0d56c637f7df0583ce60b02ef0b7542e3a56d111  packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+3387c26ec897845b26ba5f3acac3e14d75411e0bc209afedbaa312cfdf1f36e8  packages/mpd-agent-teams-plugin/lib/index.js
+8e6249da18074d125e6a8626f061c98372bcec769deaa866b27612d792249731  packages/mpd-agent-teams-plugin/lib/capabilities.js
+22f5d3f7676a6478ad661454fe2678ea78e3a218cc69d34b029495b6b7efd4ab  packages/mpd-agent-teams-plugin/lib/harness-compat.js
+f4b7cb9b086fd23e498e76073e647e5a21c1b7ee17b34bc43c8e7b57ab12c823  packages/mpd-agent-teams-plugin/lib/members.js
+fcc3bb6bf1fe158d2548a5f755f775fa67a32f4ef6d460b328f9853dc9d8c95e  packages/mpd-agent-teams-plugin/lib/command.js
+d470e24c9b1d760d27058fd4cbf18f0de43640d778a226c1b3107e0fc2961e1a  packages/mpd-agent-teams-plugin/lib/tools.js
+e3948553551161877551a5fce8ce3b1c96f4936153351250bf230ecda787d023  packages/mpd-dsh-adapter-plugin/src/index.ts
+d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4  packages/mpd-dsh-adapter-plugin/dist/index.js
+f0789ea0cf35dadd4b6ab9ad69c9c395f6a98b93ebe4cd9faf87408e6ecb63f3  scripts/patch-agent-teams-fixes.mjs
+7898fd03526a36c0ece5f76f2a573a39c8b93339c8bb703251feaab1fa1d9f84  packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs
+2fa5abf9dabf85783c483ba2b057bc0e0a0786f6c5e58b1a54cb199b091dc2b9  packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs
+14c908108b8828c7c9df4e73f0c51af51ad8bb967800077d8a7b022fa8f3f932  packages/mpd-agent-teams-plugin/test/adapter-routing.test.mjs
+f03352563b8c01f34f5c862915cd12160a501244f65e1a3dbc416bad419cd770  packages/mpd-agent-teams-plugin/test/adapter-tool-parity.test.mjs
+b339e9da38fd017726e922efb6c82a9d8e8b2aba59f19024ae5228d508b5612d  packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts
+b4c9ceb879b290a179c593f83d72973a58bd10e04ee19374abe462d166ae6c58  packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs
+b32f12c7becaf6c6781fbb1d5c3fcdcb1d863c7852258a2b858c224e8d999cfa  skills/dsh-qa/scripts/lib/credentials.mjs
+8da2a61b9a6c1cc4364ec2b6e322c6507dafebb75d573501c48175917ed83a8c  skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+e4e0b3b24f7778c5fa16fe97397874b0f4ea9862ae223b7ee3da6a3385390dde  evidence/agent-teams/adapter-wiring/requirements-contract.md

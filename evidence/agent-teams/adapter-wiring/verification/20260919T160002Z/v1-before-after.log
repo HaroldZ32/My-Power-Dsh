@@ -1,0 +1,8 @@
+=== V-1 before/after instrument (credentials-merge-repro.mjs) ===
+# NOTE: the script's assertion encodes the PRE-FIX behaviour (expects 2 refs keys); on the repaired
+# revision it must show 1 and therefore exit 1 — that exit is the FIX signal, not a failure.
+[merge-repro] inline `refs: {}` -> top-level refs keys: 1
+[merge-repro] control bare `refs:`  -> top-level refs keys: 1
+[merge-repro] merged inline document tail (keys only, values redacted):
+[merge-repro]   refs: {SYNTHETIC_KEY: "REDACTED-VALUE"}
+EXIT=1

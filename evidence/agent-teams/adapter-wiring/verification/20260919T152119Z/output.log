@@ -1,0 +1,66 @@
+# t8 verification output.log — contract lane t6 (AC10-AC13, AC16)
+# seat: Deep Worker · attempt 6 · 2026-09-19T15:47:23Z
+# VERDICT: FAILED — AC12 + AC13 red (one shared root cause for the live-boot reds); AC10/AC11/F1/three-arm/AC16 green.
+
+## commands and exit codes (contract order)
+1. bun skills/dsh-qa/scripts/bundle-lifecycle.mjs                                  exit 0  (PASS; evidence/dsh-qa/bundle-lifecycle/2026-09-19T15-21-24.780Z)
+2. node skills/dsh-qa/scripts/preset-conformance.mjs                               exit 1  (RED — V-1 credentials staging; conformance substep green)
+3. node skills/dsh-qa/scripts/preset-conformance.mjs --self-test                   exit 0  (31 rows conform, parity 31/31)
+4. bun run verify:gates                                                            exit 0  (5/5 members)
+5. bun test (bare, repo root)                                                      exit 1  (RED — V-2: 605 fail/1052 errors, ALL under evidence/mpd-naming/wave2/raw/scratch/**; zero under packages/**)
+5b. bun test packages (the repo script's own scope)                                exit 0  (1151 pass / 0 fail)
+6. bun run typecheck                                                               exit 0
+7. bun run test:qa                                                                 exit 1  (RED — V-1: agent-teams-dispatch 2/14, captainRun dies in dsh-credentials-local)
+8. node scripts/verify-dist-fresh.mjs                                              exit 0  (20/20 targets fresh, ZERO STALE)
+9. bun run verify:docs                                                             exit 0  (pairs=38 failed=0 violations=0 dead=0)
+10. bun run verify:rows                                                            exit 0  (25 row ids match)
+
+## negative control + instrumented boots
+adapter-disabled-boot.mjs   exit 0  (row off; ABSENT witness ×1; pending/mounted 0; tools 21/21; F1 sigs 0; scope {context,effect,on,tools} identity true; seed probe PASS; isolation asserted)
+adapter-enabled-boot.mjs    exit 0  ([mpd-dsh-adapter] mpdDsh provided ×1; MOUNTED witness ×1; fallback 0; tools 21/21; scope identity true)
+credentials-merge-repro.mjs exit 0  (inline refs:{} -> 2 top-level refs keys; control -> 1)
+targeted bridge tests       exit 0  (130 pass / 0 fail / 2390 expect: the four bridge test files + the adapter package)
+AC16 settle                 22 files, start 15:21:19Z == end 15:46:52Z, 50 s settle window identical
+
+## V-1 (high) — credentials staging makes every sandboxed live boot abort
+  `failed to apply loader entry credentials (@deepseek-ai/dsh-credentials-local): credentials-local: invalid document at …/.credentials.yaml: DUPLICATE_KEY at line 9, column 1`
+  mergeRefsEntry(): inline 'refs: {}' is not matched by /^refs:[ \t]*$/m -> falls through -> APPENDS a second top-level refs key.
+
+## V-2 (medium) — bare 'bun test' runs TRACKED foreign tests
+  evidence/mpd-naming/wave2/raw/scratch/** holds vendored build copies with their own *.test.ts (3766 tests); 605 fail there. The repo's own scope (bun test packages) is green.
+
+## evidence files in this directory
+ac10-bundle-lifecycle.log
+ac10-enabled-boot.log
+ac11-adapter-disabled.log
+ac12-preset-conformance.log
+ac13-bun-test-bare.raw.log
+ac13-bun-test-packages.raw.log
+ac13-static-gates.log
+ac13-suite-gates.log
+ac13-tests-comparison.log
+ac16-settled-hashes.log
+ac-scope-and-bridge-tests.log
+adapter-disabled-boot.log
+adapter-disabled-boot.mjs
+adapter-disabled-result.json
+adapter-enabled-boot.log
+adapter-enabled-boot.mjs
+adapter-enabled-result.json
+agent-teams-dispatch.raw.log
+credentials-merge-repro.log
+credentials-merge-repro.mjs
+end-a.txt
+end-b.txt
+end-c.txt
+install.log
+output.log
+result.json
+start.txt
+verif-probe.mjs
+
+## CORRECTION (2026-09-19T15:52:00Z) — V-2 wording in this log
+The line above describing bare `bun test` as picking up 'TRACKED foreign tests' is WRONG and is corrected here (originals above are preserved):
+  measured: git ls-files evidence/mpd-naming/wave2/raw/scratch -> 0 | git check-ignore -v -> .gitignore:45:evidence/**/raw/scratch/
+  the 411 *.test.ts under that subtree are UNTRACKED and GITIGNORED BY DESIGN (local vendored working copies); the tracked record of that wave is its 7 sibling files under evidence/mpd-naming/wave2/raw/.
+  V-2 disposition UNCHANGED: the sanctioned gate is `bun test packages` (1151 pass / 0 fail); the bare spelling is not a gate; nothing is deleted and the arm is not re-opened.

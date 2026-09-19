@@ -1,0 +1,64 @@
+{
+  "task": "t20",
+  "attempt_id": "443859b5-9685-447e-b34a-9fa99a608f09",
+  "lane": "bridge-tolerance",
+  "generated_at_utc": "2026-09-19T15:14:02.309Z",
+  "br1_loud_noop_substitution": {
+    "where": "lib/mpd-adapter-ctx.js -> scopeShapeFrom(scoped, report)",
+    "line_shape": "[agent-teams] adapter: per-agent scope substituted a NO-OP for a member the agent ctx cannot provide — a member that cannot be tool-restricted is a MEMBER PRIVILEGE LOSS, not a cosmetic degrade [substituted: tools.restrict]",
+    "member_enumeration": [
+      "context",
+      "tools.restrict",
+      "on",
+      "effect"
+    ],
+    "privilege_member": "tools.restrict — a member that cannot be tool-restricted is a MEMBER PRIVILEGE LOSS, not a cosmetic degrade",
+    "once_discipline": "facade arm: one report per plugin instance via the per-resolveCtx WITNESS_STATE record (state.substituted); raw-ctx arm (agentScopeOf outside the composition root, no facade carrying a sink): one report per raw ctx via a WeakSet, plus one for the degenerate unkeyable case",
+    "sink": "the SAME sink the mounted/pending/absent mode witnesses use (options.witness, default console.warn), level \"warn\"",
+    "tolerance_kept": "no throw anywhere: the shape still comes back as {context, tools, on, effect} with a no-op restrict and identity-preserved context"
+  },
+  "br2_frozen_regions": {
+    "file": "packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs",
+    "added": {
+      "index.js": [
+        "mpd-delta adapter-steer-approval-notice"
+      ],
+      "members.js": [
+        "mpd-delta adapter-steer-captain-report",
+        "mpd-delta adapter-steer-captain-report-caller"
+      ],
+      "tools.js": [
+        "mpd-delta adapter-steer-send-message-caller",
+        "mpd-delta adapter-inject-staged-discard"
+      ]
+    },
+    "registry_authority": "node scripts/patch-agent-teams-fixes.mjs --check exit 0"
+  },
+  "d11_layout": {
+    "single_region": "mpd-delta adapter-ctx-bridge",
+    "reconstruction_equals_file": true,
+    "region_count": {
+      "regions": 151,
+      "files": 13
+    },
+    "trailing_single_newline": true,
+    "registry_note": "lib/mpd-deltas.js is NOT this lane's file and was NOT written by this seat (no --write-registry run here): its mtime 2026-09-19T23:11:35 coincides with the bridge edit and another lane regenerated it. Measured: the registry block for the bridge MATCHES the edited file byte-for-byte (reconstruction exact) and --check exits 0 across all 13 files, so a create-path restore would re-materialize the POST-BR-1 bridge."
+  },
+  "gates": {
+    "bun test packages/mpd-agent-teams-plugin": "360 pass / 0 fail / 5259 expect() calls (>= the contract's 350 + the new arm; baseline moved by other lanes)",
+    "node scripts/patch-agent-teams-fixes.mjs --check": "exit 0 — already applied: 151 mpd delta region(s) across 13 adopted file(s)",
+    "bun run typecheck": "exit 0 (tsgo --noEmit, no diagnostics)"
+  },
+  "test_arms_added": [
+    "BR-1: a substituted NO-OP member is reported ONCE per plugin instance, NAMED, and never throws (happy path silent; missing tools.restrict named; throwing on/effect named; uniform shape + context identity kept)"
+  ],
+  "settled_hashes": {
+    "measured_at_utc": "2026-09-19T15:13:53Z",
+    "lib/mpd-adapter-ctx.js": "01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3",
+    "lib/mpd-deltas.js": "456a297b00e5225f02a1404d0d56c637f7df0583ce60b02ef0b7542e3a56d111",
+    "test/adapter-facade.test.mjs": "6e8a6f0f8cbaee80085e3322f65fd50d536bdedb8cac6e7630011914496c5080",
+    "test/adapter-bypass-inventory.test.mjs": "5c6c9bb41fae3979b856458e418e66c541980d0de0717064f2205fb09b4a41d6",
+    "sandwich": "start == end across the whole gate run (SETTLED)"
+  },
+  "lanes_after": "docs/dashboard lanes and the verification lane (t8) run AFTER this task; the bridge revision is frozen here."
+}

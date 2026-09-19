@@ -1,0 +1,41 @@
+# AC15 scanner power probe — 2026-09-19T15:55:49Z
+# AC15 scanner power probe (rules copied verbatim from the test)
+alias of the scoped ctx (decl)                 -> []
+alias used (evades)                            -> []
+destructured on() (evades)                     -> []
+destructured use (evades)                      -> []
+bracket member (evades)                        -> []
+Reflect.get (evades)                           -> []
+get via .call (evades)                         -> []
+bypass hidden on a childCtx line (SKIPPED)     -> ["<SKIPPED: line mentions childCtx>"]
+plain scoped ctx on() (DETECTED)               -> ["scoped-ctx.seam(receiver=agent)"]
+captain.followup (DETECTED)                    -> ["agent.turn-start(receiver=captain)"]
+facade ctx.on (correctly exempt)               -> []
+ctx.subagents value use (DETECTED)             -> ["subagents-runtime(receiver=ctx)"]
+ctx.subagents.runtime() (correctly exempt)     -> []
+
+# independent closure census: harness-seam spellings per lib/*.js (client.js/browser OUT of scope by D7)
+25 tools.js
+19 mpd-adapter-ctx.js
+10 members.js
+4 index.js
+3 capabilities.js
+2 scheduler.js
+2 command.js
+1 harness-compat.js
+1 events.js
+0 web-routes.js
+0 types.js
+0 tool-names.js
+0 state.js
+0 snapshot.js
+0 session-start.js
+0 quality-gates.js
+0 profiles.js
+0 event-types.js
+
+# alias / destructure / dynamic / second-module probes over the whole lib/
+(none outside the bridge)
+
+# bridge-only fallback column (targetCtx / ctx?.get?.('agents')) outside the bridge:
+(none)

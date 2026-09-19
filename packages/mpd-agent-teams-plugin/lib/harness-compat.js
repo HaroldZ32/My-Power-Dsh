@@ -23,6 +23,12 @@
  */
 import { randomUUID } from 'node:crypto';
 import { SubagentError } from '../_deps/dsh-subagent/lib/index.js';
+//#region mpd-delta adapter-subagent-runtime-import (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+// D5/D6: the runtime RESOLUTION and the per-agent scope are adapter-owned; the generation ladder's
+// own policy (which method of the runtime it reads, and the retired-member guard's patching) stays
+// in this module.
+import { agentScopeOf, liveAgentOf, subagentRuntimeOf } from "./mpd-adapter-ctx.js";
+//#endregion mpd-delta adapter-subagent-runtime-import
 /**
  * Exact protocol exported by `dsh-subagent/internal` in Alpha.5 … 0.1.2-rc.1.
  * That subpath does not exist in Alpha.2, so importing it statically would
@@ -64,7 +70,12 @@ export function sessionOwnEvents(session) {
  * and the second argument is absent; legacy ctxs do carry `agent`.
  */
 export function installContinuableMemberSetup(ctx, setup) {
-    const runtime = ctx.subagents;
+    //#region mpd-delta adapter-subagent-runtime-install (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // D6: the adapter owns WHICH object this ladder operates on (`subagentRuntime()` through the
+    // facade, today's raw `ctx.subagents` otherwise); the ladder below still decides which
+    // generation's method it reads.
+    const runtime = subagentRuntimeOf(ctx);
+    //#endregion mpd-delta adapter-subagent-runtime-install
     if (typeof runtime.registerContinuableSetup === 'function') {
         // Upstream owns this registration with this.ctx.effect. Cordis resolves
         // that ctx to the accessing plugin, so its disposal revokes installations
@@ -85,12 +96,21 @@ export function installContinuableMemberSetup(ctx, setup) {
         const stop = ctx.on('agent/session-start', ({ agent }) => {
             if (installed.has(agent))
                 return;
+            //#region mpd-delta adapter-subagent-runtime-agent-scope (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // D5: the child's scope is adapter-owned; with no mounted adapter (and in every existing
+            // unit test, where the ctx is a plain object) this IS the raw `agent.ctx` — identity.
+            const scope = agentScopeOf(ctx, agent);
+            //#endregion mpd-delta adapter-subagent-runtime-agent-scope
             // Deliberately synchronous: awaiting here loses the first-request race.
             let teardown;
             try {
                 // Pass the Agent explicitly: a modern child ctx is a Cordis proxy
                 // that throws on `childCtx.agent` (see this function's JSDoc).
-                teardown = setup(agent.ctx, agent);
+                //#region mpd-delta adapter-subagent-runtime-agent-scope-setup (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                // F1: `agentScopeOf` returns ONE shape in every arm and `scope.context` keeps the raw
+                // ctx's IDENTITY, so this is byte-for-byte today's `setup(agent.ctx, agent)`.
+                teardown = setup(scope.context, agent);
+                //#endregion mpd-delta adapter-subagent-runtime-agent-scope-setup
             }
             catch (error) {
                 // session-start is a notification: Harness logs a thrown listener and
@@ -98,7 +118,9 @@ export function installContinuableMemberSetup(ctx, setup) {
                 // a malformed saved route cannot silently execute on a default model.
                 const failure = new Error(`agent-teams: member initialization failed: ${String(error)}`, { cause: error });
                 ctx.logger?.warn?.(failure.message);
-                teardown = agent.ctx.on('agent/request', () => { throw failure; });
+                //#region mpd-delta adapter-subagent-runtime-agent-scope-request (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                teardown = scope.on('agent/request', () => { throw failure; });
+                //#endregion mpd-delta adapter-subagent-runtime-agent-scope-request
             }
             installed.add(agent);
             let disposed = false;
@@ -114,7 +136,9 @@ export function installContinuableMemberSetup(ctx, setup) {
             // Listeners contributed to agent.ctx already follow its lifetime. Also
             // release our bookkeeping and remove them if this plugin is reloaded.
             try {
-                agent.ctx.effect(() => dispose, 'agent-teams: child compatibility setup');
+                //#region mpd-delta adapter-subagent-runtime-agent-scope-effect (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+                scope.effect(() => dispose, 'agent-teams: child compatibility setup');
+                //#endregion mpd-delta adapter-subagent-runtime-agent-scope-effect
             }
             catch (error) {
                 dispose();
@@ -160,7 +184,11 @@ export async function queueMemberPrompt(runtime, parent, childId, content, signa
  * later assignment or captain message.
  */
 export function guardSubagentDelivery(ctx, isRetired) {
-    const runtime = ctx.subagents;
+    //#region mpd-delta adapter-subagent-runtime-guard (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+    // D6/R2: same runtime RESOLUTION as the installer above — the retired-member guard keeps
+    // PATCHING that object (the adapter owns the resolution only).
+    const runtime = subagentRuntimeOf(ctx);
+    //#endregion mpd-delta adapter-subagent-runtime-guard
     const legacy = runtime.followup;
     const prompt = runtime.prompt;
     const queue = runtime[HOST_PROMPT_QUEUE];
@@ -190,7 +218,12 @@ export function guardSubagentDelivery(ctx, isRetired) {
         // The public prompt seam carries session ids, not the sender Agent, so
         // resolve the live parent through the agents registry for the same check.
         const guardedPrompt = async (request, signal) => {
-            const sender = ctx.get?.('agents')?.get(request?.parentSessionId);
+            //#region mpd-delta adapter-subagent-runtime-agents-lookup (mpd LOCAL ADAPTATION; re-applied by scripts/patch-agent-teams-fixes.mjs)
+            // The service-lookup spelling disappears: the bridge resolves the live sender through the
+            // adapter-routed `agents.get` in production and through today's `get('agents')` expression
+            // for a plain-object ctx (which is what every pre-existing unit test hands this guard).
+            const sender = liveAgentOf(ctx, request?.parentSessionId);
+            //#endregion mpd-delta adapter-subagent-runtime-agents-lookup
             if (sender !== undefined) await check(sender, request.childSessionId);
             return prompt.call(runtime, request, signal);
         };

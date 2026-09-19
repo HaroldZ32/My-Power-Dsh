@@ -1,0 +1,5 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[pause-preserves-halt-control] case completed
+leg ok: true
+observation: {"injected":"silence","mechanism":"haltTeamWork (the adopted mass-cancel path), imported from packages/mpd-agent-teams-plugin/lib/tools.js and CALLED — never stubbed","cancelledTasks":1,"alreadyHalted":false,"halted":true,"sha256Changed":true,"before":{"status":"in_progress","attemptId":"att-live","output":"partial result","handoffId":"handoff-1"},"after":{"status":"cancelled","attemptId":null,"output":"Stopped from the captain chat.","handoffId":null},"cancelled":true,"wouldReddenAC17":true}
+AFTER_EXIT=0

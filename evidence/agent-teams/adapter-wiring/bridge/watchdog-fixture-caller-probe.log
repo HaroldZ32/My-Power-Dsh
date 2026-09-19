@@ -1,0 +1,4 @@
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[pause-preserves-halt-control] case threw: input.ctx.cancelAgentTurn is not a function
+leg ok: false
+observation: {"threw":"input.ctx.cancelAgentTurn is not a function"}

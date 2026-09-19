@@ -1,0 +1,5 @@
+flags used by the bridge: 14 | all declared in the adapter SOURCE: true 
+flags used by the bridge: 14 | all present in the SHIPPED dist artifact: true 
+flag-false startAgentTurn -> raw lane: true
+flag-false steerAgentTurn -> raw lane: true
+unusable adapter scope -> built shape: ["context","effect","on","tools"] | context is agent.ctx (Object.is): true

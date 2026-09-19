@@ -28,7 +28,7 @@
 //
 // The guard is exercised by `packages/mpd-agent-teams-plugin/self-fix-tests/registry-context-heal.test.mjs`
 // (marker-prefix fixtures + strip-heal byte fidelity for both adopted files) and by the vendor run itself.
-import { readFileSync, readdirSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, relative } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import process from "node:process"
@@ -54,6 +54,36 @@ export function mpdDeltaFiles() {
     .map((name) => relative(repoRoot, join(libDir, name)).split("\\").join("/"))
     .filter((file) => !registered.includes(file) && readFileSync(join(repoRoot, file), "utf8").includes("//#region mpd-delta "))
   return [...registered, ...discovered]
+}
+
+/**
+ * Name-derived CREATE CLASS (t6): the files the registry may RECREATE byte-faithfully when
+ * they are missing. mpd-owned-ness comes from the FILE NAME — never from a registry field, so
+ * the schema stays its five keys — and the derived registry itself is EXCLUDED: it matches
+ * `mpd-*.js` but is the artifact being generated, never restorable from its own entries.
+ * @returns {string|undefined} the basename when it is create-class-eligible, else undefined
+ */
+export function createClassBase(file) {
+  const base = file.split("/").pop()
+  if (base === undefined || base === "mpd-deltas.js" || !/^mpd-.*\.js$/.test(base)) return undefined
+  return base
+}
+
+/**
+ * Byte-faithful reconstruction of one entry's file: the two skeleton windows around the region
+ * plus the region block, terminated by exactly one newline. RULE A (`writeRegistry`) refuses to
+ * REGISTER a create-class entry that does not reproduce the current file, and the heal path
+ * re-verifies what it wrote before reporting success.
+ */
+export function reconstructCreateClassFile(entry) {
+  return [...entry.beforeContext, ...entry.block.split("\n"), ...entry.afterContext].join("\n") + "\n"
+}
+
+/** The single registry entry of a create-class file, or undefined when the create predicate fails. */
+function createClassEntry(file) {
+  if (createClassBase(file) === undefined) return undefined
+  const entries = MPD_DELTAS.filter((item) => item.file === file)
+  return entries.length === 1 ? entries[0] : undefined
 }
 
 /**
@@ -406,6 +436,41 @@ export function applyAgentTeamsFixes({ root = repoRoot, write = false } = {}) {
   let regions = 0
   for (const file of files) {
     const absolute = join(root, file)
+    // DISPOSITION BRANCH (t6): an enumerated registered file may be ABSENT — a re-materialize
+    // (`rm -rf lib && cp -r upstream/lib lib`) drops our mpd-owned bridge, which upstream does
+    // not have. It must never reach the bare readFileSync below: a missing create-class file is
+    // either reported BY NAME (--check) or RECREATED from its single registry entry (--write),
+    // and every other missing file refuses by name instead of crashing with ENOENT.
+    if (!existsSync(absolute)) {
+      const entry = createClassEntry(file)
+      if (entry === undefined) {
+        throw new Error(`[patch-agent-teams-fixes] FAIL: registered adopted file ${file} is MISSING and is NOT a create-class file (lib/mpd-*.js, excluding mpd-deltas.js, carrying exactly ONE registry entry) — the registry cannot reconstruct it from context; restore the file from the re-materialize source and re-run`)
+      }
+      if (!write) {
+        throw new Error(`[patch-agent-teams-fixes] FAIL: registered mpd-owned file ${file} is MISSING (verify-only mode) — its single registry entry "${entry.id}" reconstructs it byte-faithfully; re-run with --write to recreate it from lib/mpd-deltas.js`)
+      }
+      const expected = reconstructCreateClassFile(entry)
+      writeFileSync(absolute, expected)
+      try {
+        const created = readFileSync(absolute, "utf8")
+        if (created !== expected) throw new Error("the re-read bytes differ from the bytes just written")
+        if (!created.endsWith("\n") || created.endsWith("\n\n")) throw new Error("the created file does not end with exactly one newline")
+        const createdLines = created.split("\n")
+        assertRegionMatches(createdLines, entry, file, findRegion(createdLines, entry.id))
+        validateHealedFile(createdLines, file)
+      } catch (error) {
+        // ROUND-TRIP RULE (t6): a create that does not immediately re-verify is UNDONE, so a
+        // failed run never leaves a half-restored tree. Its bound, stated honestly: this catches
+        // a corrupt or half-written create, NOT truncation — RULE A (writeRegistry) is what
+        // prevents a short reconstruction from ever being registered.
+        rmSync(absolute, { force: true })
+        const why = error instanceof Error ? error.message : String(error)
+        throw new Error(`[patch-agent-teams-fixes] FAIL: recreated ${file} from its single registry entry "${entry.id}" but the post-create re-verification FAILED (${why}) — the created file was DELETED again, so no half-restored tree is left behind; fix that entry and re-run`)
+      }
+      regions += 1
+      inserted.push(entry.id)
+      continue
+    }
     const before = readFileSync(absolute, "utf8")
     let lines = before.split("\n")
     for (const delta of MPD_DELTAS.filter((item) => item.file === file)) {
@@ -517,7 +582,15 @@ export function writeRegistry() {
   const out = []
   const entries = []
   for (const file of mpdDeltaFiles()) {
-    const lines = readFileSync(join(repoRoot, file), "utf8").split("\n")
+    const absolute = join(repoRoot, file)
+    // Same disposition rule as the applier: a MISSING registered file must never reach a bare
+    // readFileSync. Regeneration would silently DROP that file's entries, so it refuses BY NAME
+    // and tells the caller to restore the file first (--write recreates a create-class file).
+    if (!existsSync(absolute)) {
+      throw new Error(`[patch-agent-teams-fixes] FAIL: registered adopted file ${file} is MISSING — regenerating the registry now would silently DROP its entries; run: node scripts/patch-agent-teams-fixes.mjs --write first (it recreates a create-class lib/mpd-*.js file byte-faithfully), then re-run --write-registry`)
+    }
+    const text = readFileSync(absolute, "utf8")
+    const lines = text.split("\n")
     // Spans and skeleton are computed ONCE per file: recomputing them after each
     // entry would let an already-processed region's body contaminate the next
     // entry's uniqueness count.
@@ -535,6 +608,18 @@ export function writeRegistry() {
         throw new Error(`[patch-agent-teams-fixes] FAIL: no ${missing} window for region "${id}" in ${file} is unique in the region-stripped skeleton within ${CONTEXT_WINDOW_MAX} lines — refusing to register a far-away or ambiguous anchor (that fallback is exactly the wave-2 order-dependence bug)`)
       }
       entries.push({ file, id, beforeContext, afterContext, block })
+      // RULE A (t6): the create guarantee is sound only when the entry reproduces the WHOLE
+      // file, and `uniqueWindow` returns the SHORTEST unique window (<= CONTEXT_WINDOW_MAX
+      // lines) — NOT edge-anchored — so a file with more skeleton lines than its windows would
+      // reconstruct SHORT, and the heal's own round-trip check cannot see that. The invariant is
+      // therefore enforced HERE, where the file still exists. Multi-region mpd-*.js files carry
+      // no create guarantee and are never refused.
+      if (createClassBase(file) !== undefined && spans.length === 1) {
+        const reconstructed = reconstructCreateClassFile({ beforeContext, afterContext, block })
+        if (reconstructed !== text) {
+          throw new Error(`[patch-agent-teams-fixes] FAIL: ${file} is a create-class file (lib/mpd-*.js, exactly one region) but beforeContext + block + afterContext does NOT reproduce its current bytes — a create-class file must be reconstructible from beforeContext+block+afterContext; make the leading/trailing skeleton lines unique (the frozen bridge layout is 1 leading comment + region + 1 different trailing comment) or drop the create guarantee by using more than one region`)
+        }
+      }
     }
   }
   out.push("/**")

@@ -253,25 +253,50 @@ export function seedSandboxCredentials(sandboxDir, options = {}) {
  * Put `KEY: <value>` into the document's `refs:` mapping: into an existing `refs:` section, into a
  * recognized FLAT layout, or as a new `refs:` section on a document that has none (the harness
  * rejects an unknown TOP-LEVEL key, so the entry must live under `refs:`).
+ *
+ * The `refs:` section is matched for EVERY shape, because a SECOND top-level `refs:` is a
+ * DUPLICATE_KEY that aborts the whole plugin tree at boot. Measured: an INLINE mapping
+ * (`refs: {}`) slipped past the bare-line-only match, the flat-layout branch was skipped because
+ * the document has `version:`, and the fallthrough appended a second block.
+ *
+ * Handled: a bare `refs:` line (block form), and a SINGLE-LINE inline mapping (`refs: {}`,
+ * `refs: { K: "v" }`) — the existing inner text is preserved verbatim and the new entry is
+ * appended INSIDE the braces. NOT handled, and REFUSED LOUDLY rather than corrupted: a multi-line
+ * flow mapping (`refs: {` … `}` on a later line), or any other non-mapping `refs:` value
+ * (alias/scalar/list/comment) — a documented refusal beats a silent duplicate key or data loss.
  */
 export function mergeRefsEntry(text, keyName, value) {
   const quoted = JSON.stringify(value)
   const entry = "  " + keyName + ": " + quoted
   if (text.trim() === "") return "version: 1\nrefs:\n" + entry + "\n"
-  const refsLine = /^refs:[ \t]*$/m.exec(text)
+  const refsLine = /^refs:[ \t]*(.*)$/m.exec(text)
   const hasVersion = /^version:[ \t]*\S/m.test(text)
   if (refsLine) {
-    const before = text.slice(0, refsLine.index + refsLine[0].length)
-    const after = text.slice(refsLine.index + refsLine[0].length)
-    const lines = after.split(/\r?\n/)
-    let lastContent = -1
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].trim() === "") continue
-      if (/^[ \t]/.test(lines[i])) lastContent = i
-      else break
+    const tail = refsLine[1].trim()
+    if (tail === "") {
+      const before = text.slice(0, refsLine.index + refsLine[0].length)
+      const after = text.slice(refsLine.index + refsLine[0].length)
+      const lines = after.split(/\r?\n/)
+      let lastContent = -1
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim() === "") continue
+        if (/^[ \t]/.test(lines[i])) lastContent = i
+        else break
+      }
+      lines.splice(lastContent + 1, 0, entry)
+      return before + lines.join("\n")
     }
-    lines.splice(lastContent + 1, 0, entry)
-    return before + lines.join("\n")
+    if (tail.startsWith("{") && tail.endsWith("}")) {
+      // INLINE mapping on ONE line: append inside the braces, so every pre-existing entry (and its
+      // exact spelling) survives byte-for-byte. A trailing comma is dropped first, or the appended
+      // pair would follow an empty one.
+      const inner = tail.slice(1, -1).trim().replace(/,[ \t]*$/, "")
+      const merged = inner === "" ? "{" + keyName + ": " + quoted + "}" : "{" + inner + ", " + keyName + ": " + quoted + "}"
+      return text.slice(0, refsLine.index) + "refs: " + merged + text.slice(refsLine.index + refsLine[0].length)
+    }
+    throw new Error("[mpd-qa] credentials merge: the staged .credentials.yaml carries a `refs:` form this merger cannot edit safely ("
+      + (tail.startsWith("{") ? "a multi-line inline mapping" : "a non-mapping value")
+      + ") — refusing instead of appending a second top-level `refs:` (a DUPLICATE_KEY that aborts the boot); make `refs:` an empty mapping (`refs: {}`) or a block (`refs:`) and re-run")
   }
   if (!hasVersion && /^[ \t]*[A-Za-z_][A-Za-z0-9_]*:[ \t]*\S/m.test(text)) {
     // A recognized FLAT layout: the harness itself migrates it, so keep the flat shape.

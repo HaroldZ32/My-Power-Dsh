@@ -1,0 +1,56 @@
+ M AGENTS.md
+ M VENDOR_LOCK.json
+ M agent-references/agent-teams-deltas.md
+ M docs/design.md
+ M docs/design.zh-CN.md
+ M packages/mpd-agent-teams-plugin/lib/capabilities.js
+ M packages/mpd-agent-teams-plugin/lib/command.js
+ M packages/mpd-agent-teams-plugin/lib/harness-compat.js
+ M packages/mpd-agent-teams-plugin/lib/index.js
+ M packages/mpd-agent-teams-plugin/lib/members.js
+ M packages/mpd-agent-teams-plugin/lib/mpd-deltas.js
+ M packages/mpd-agent-teams-plugin/lib/tools.js
+ M packages/mpd-bootstrap-plugin/dist/index.js
+ M packages/mpd-boulder-plugin/dist/index.js
+ M packages/mpd-codegraph-plugin/dist/index.js
+ M packages/mpd-comment-checker-plugin/dist/index.js
+ M packages/mpd-config-plugin/dist/index.js
+ M packages/mpd-dsh-adapter-plugin/README.md
+ M packages/mpd-dsh-adapter-plugin/README.zh-CN.md
+ M packages/mpd-dsh-adapter-plugin/dist/index.js
+ M packages/mpd-dsh-adapter-plugin/src/index.ts
+ M packages/mpd-dsh-adapter-plugin/test/adapter.test.ts
+ M packages/mpd-ext-plugin/dist/index.js
+ M packages/mpd-hashline-plugin/dist/index.js
+ M packages/mpd-memory-plugin/dist/index.js
+ M packages/mpd-modelchain-plugin/dist/index.js
+ M packages/mpd-qa-roles-probe/dist/index.js
+ M packages/mpd-roles-plugin/dist/index.js
+ M packages/mpd-team-compact-plugin/dist/index.js
+ M packages/mpd-team-watchdog-plugin/dist/index.js
+ M packages/mpd-team-watchdog-plugin/test/fixtures/inject.mjs
+ M packages/mpd-tools-plugin/dist/index.js
+ M packages/mpd-tui-plugin/dist/index.js
+ M packages/mpd-ulw-plugin/dist/index.js
+ M packages/mpd-workmate-plugin/dist/index.js
+ M scripts/patch-agent-teams-fixes.mjs
+ M skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+ M skills/dsh-qa/scripts/lib/credentials.mjs
+?? evidence/agent-teams/adapter-wiring/
+?? evidence/agent-teams/bridge-tolerance/
+?? evidence/agent-teams/fixture-repair/
+?? evidence/agent-teams/qa-credentials-repair/
+?? evidence/dsh-qa/agent-teams-dispatch/2026-09-19T15-29-52.205Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-19T15-21-24.780Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-09-19T16-00-10.971Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-19T15-28-08.386Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-19T15-51-13.529Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-19T15-56-05.060Z/
+?? evidence/dsh-qa/preset-conformance/2026-09-19T16-01-07.071Z/
+?? packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js
+?? packages/mpd-agent-teams-plugin/self-fix-tests/mpd-owned-file-restore.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-facade.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-routing.test.mjs
+?? packages/mpd-agent-teams-plugin/test/adapter-tool-parity.test.mjs
+?? packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts

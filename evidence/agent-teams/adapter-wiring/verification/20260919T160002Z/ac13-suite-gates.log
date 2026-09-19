@@ -1,0 +1,27 @@
+=== bun run verify:gates ===
+EXIT=0
+[verify-gates] member preset-conformance: exit=0 PASS - 471ms
+[verify-gates] PASS - 5/5 member gate(s) green
+
+=== bun test packages (sanctioned scope) ===
+EXIT=0
+ 1152 pass
+ 0 fail
+ 11775 expect() calls
+Ran 1152 tests across 8505 files. [63.51s]
+
+=== bun test (BARE — V-2 note arm) ===
+EXIT=1
+ 605 fail
+ 1052 errors
+ 18846 expect() calls
+Ran 4918 tests across 27700 files. [240.69s]
+
+=== bun run test:qa (V-1 re-measurement) ===
+EXIT=0
+[mpd-ext] validate /root/dshProj/my-power-dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+[test:qa] all self-tests passed

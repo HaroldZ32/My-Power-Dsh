@@ -1,0 +1,29 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-dispatch-Mr1VuY",
+  "steps": {
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "captainRun": {
+      "ok": false,
+      "exit": 1,
+      "tail": "dsh-credentials-local/lib/index.js:141:40)\n          at LocalCredentialProvider.loadInitial (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:657:20)\n          at async [cordis.init] (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:446:3)\n          at file:///tmp/mpd-dispatch-Mr1VuY/profiles/mpd-headless/#credentials\n          at file:///tmp/mpd-dispatch-Mr1VuY/profiles/mpd-headless/#include\n    }\n  }\n}\n\nNode.js v24.16.0\n"
+    },
+    "tasks": {
+      "total": 0
+    },
+    "memberAssignments": {
+      "count": 0,
+      "sessions": 0,
+      "labels": []
+    },
+    "secondBatchDispatched": {
+      "ok": false
+    },
+    "assignmentDelivery": {
+      "ok": false
+    }
+  }
+}

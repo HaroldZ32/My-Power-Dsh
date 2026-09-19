@@ -1,0 +1,142 @@
+=== 2026-09-19T14:38:54Z POST-REBUILD verification (contract rev 2) ===
+
+=== 1) bun test packages/mpd-dsh-adapter-plugin ===
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts:
+
+ 100 pass
+ 0 fail
+ 468 expect() calls
+Ran 100 tests across 162 files. [8.45s]
+EXIT=0
+
+=== 2) bun run typecheck ===
+$ tsgo --noEmit
+EXIT=0
+
+=== 3) canonical adapter dist build ===
+
+  index.js  31.89 KB  (entry point)
+
+EXIT=0
+
+=== 4) node scripts/verify-dist-fresh.mjs (standalone) ===
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha 01f88fac5edf… 39ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha a1ea029ce52b… 31ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 30ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha f055b853a411… 25ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha b905aaeee047… 24ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha f8fed0ad642d… 33ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha d8e8fa36cb21… 22ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha f4900827ef5c… 36ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 15ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha b28975d7441e… 30ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha 99a70bd9b948… 22ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha cef5baf5a769… 24ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha 1aa8c4b415b6… 21ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha e2a085467eeb… 32ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 70fe4e7e2ad9… 31ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha 3fabf0e154ff… 44ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha 5452cd87be33… 29ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha b74b88906d01… 39ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha df61eae41012… 24ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 6264923f5b54… 37ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 635ms
+EXIT=0
+
+=== 5) post-rebuild hashes ===
+e3948553551161877551a5fce8ce3b1c96f4936153351250bf230ecda787d023  packages/mpd-dsh-adapter-plugin/src/index.ts
+d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4  packages/mpd-dsh-adapter-plugin/dist/index.js
+01f88fac5edf46b67ce4a3d57e4725e042072e323fd9800a4a0712748ae710ac  packages/mpd-bootstrap-plugin/dist/index.js
+a1ea029ce52b9189c6a5a5d07a60c1b8c96a9f65bb0e087c09ad3e81ef57890f  packages/mpd-boulder-plugin/dist/index.js
+f055b853a411713619e38d1bac82644875213fce7783be1873c20fcdf2f1be2a  packages/mpd-codegraph-plugin/dist/index.js
+b905aaeee047bfa4aeec60fc2d6787632f7b0f41617a52b1f48f78a0dbebb0d2  packages/mpd-comment-checker-plugin/dist/index.js
+f8fed0ad642d729da89a492184a63289da9bd0b43059167c39b1b0cb1c099371  packages/mpd-config-plugin/dist/index.js
+f4900827ef5c51a75ee3a66e64ac8753e77fbfbae96e037d2b4480849b1c42bd  packages/mpd-ext-plugin/dist/index.js
+b28975d7441e085c81980f094ecde1627386fa0f08660b7d0b5eb5326db5fce2  packages/mpd-hashline-plugin/dist/index.js
+99a70bd9b94883dd2fafc742967dcf918c66fa1669faac3a8fc389734d17d538  packages/mpd-memory-plugin/dist/index.js
+cef5baf5a7698e4c6bdbac777e467d5994bd5b6dd676a25f37234f2bd7673f83  packages/mpd-modelchain-plugin/dist/index.js
+1aa8c4b415b6c2656aa0c230d2de4146eb06d7ba4c51a355e3fca2bbd14e2ba0  packages/mpd-qa-roles-probe/dist/index.js
+e2a085467eebf5e1847771167027e4b460a7b40b21b8694fa70148141072bafa  packages/mpd-roles-plugin/dist/index.js
+70fe4e7e2ad9552e886058d49d206222ac6a11199cc81e1d10fe4ae246dc2f8d  packages/mpd-team-compact-plugin/dist/index.js
+3fabf0e154ff7878deed5302738628a2e2385ed28820016ca5707e034ef635fd  packages/mpd-team-watchdog-plugin/dist/index.js
+5452cd87be33d2ab49917df4c3e58622b0296d7a7ef70041523a8c1c4a51be46  packages/mpd-tools-plugin/dist/index.js
+b74b88906d0111765fe09cf1e1ecba2b30fed32bcc51f4a0978b11a658258e5e  packages/mpd-tui-plugin/dist/index.js
+df61eae41012768d133f7f6e86a21e8d616bff946518d7e7e2c63a435ddc0eed  packages/mpd-ulw-plugin/dist/index.js
+6264923f5b54cc0fc781cab5d0b2bd0439310cfac328eb977d892995ec5567d4  packages/mpd-workmate-plugin/dist/index.js
+
+=== RE-RUN on captain request (2026-09-19T14:41:44Z) — idempotence check ===
+--- (1) bash evidence/agent-teams/adapter-wiring/adapter/rebuild-adapter-dependent-dists.sh ---
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 522ms
+[rebuild] done — the gate above must read: PASS
+SCRIPT_EXIT=0
+
+--- (2) node scripts/verify-dist-fresh.mjs ---
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha 01f88fac5edf… 24ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha a1ea029ce52b… 22ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 17ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha f055b853a411… 20ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha b905aaeee047… 23ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha f8fed0ad642d… 28ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha d8e8fa36cb21… 19ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha f4900827ef5c… 32ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 19ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha b28975d7441e… 24ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha 99a70bd9b948… 22ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha cef5baf5a769… 24ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha 1aa8c4b415b6… 29ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha e2a085467eeb… 26ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 70fe4e7e2ad9… 27ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha 3fabf0e154ff… 35ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha 5452cd87be33… 34ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha b74b88906d01… 55ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha df61eae41012… 31ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 6264923f5b54… 35ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 582ms
+EXIT=0
+
+--- (3) bun test packages/mpd-dsh-adapter-plugin ---
+ 100 pass
+ 0 fail
+ 468 expect() calls
+Ran 100 tests across 162 files. [8.49s]
+EXIT=0
+
+--- (4) bun run typecheck ---
+$ tsgo --noEmit
+EXIT=0
+
+--- post-re-run hashes (must equal the completion payload) ---
+e3948553551161877551a5fce8ce3b1c96f4936153351250bf230ecda787d023  packages/mpd-dsh-adapter-plugin/src/index.ts
+d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4  packages/mpd-dsh-adapter-plugin/dist/index.js
+e2a085467eebf5e1847771167027e4b460a7b40b21b8694fa70148141072bafa  packages/mpd-roles-plugin/dist/index.js
+b74b88906d0111765fe09cf1e1ecba2b30fed32bcc51f4a0978b11a658258e5e  packages/mpd-tui-plugin/dist/index.js
+5452cd87be33d2ab49917df4c3e58622b0296d7a7ef70041523a8c1c4a51be46  packages/mpd-tools-plugin/dist/index.js
+
+=== CAPTAIN-REQUESTED RE-VERIFY (2026-09-19T14:42:24Z) ===
+--- bash evidence/agent-teams/adapter-wiring/adapter/rebuild-adapter-dependent-dists.sh ---
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 928ms
+[rebuild] done — the gate above must read: PASS
+SCRIPT_EXIT=0
+--- node scripts/verify-dist-fresh.mjs ---
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 818ms
+EXIT=0

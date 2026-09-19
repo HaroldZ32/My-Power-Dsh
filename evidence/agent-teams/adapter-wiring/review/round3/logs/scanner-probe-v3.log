@@ -1,0 +1,18 @@
+# t27 scanner probe (t26 rules) — 2026-09-19T16:19:29Z
+# t27 probe of the t26 scanner rules
+F4: late assignment                            -> ["facade.alias"]
+F4: parenthesized receiver                     -> ["facade.alias"]
+F4: ctx.get extraction                         -> ["facade.get-extraction"]
+F4: scoped-ctx member extraction               -> ["scoped-ctx.extraction"]
+F4: scoped-ctx destructure                     -> []
+F4: param alias (still inherent)               -> []
+F5: captured call outside harness-compat       -> ["seam.captured-method-call"]
+F5: captured legacy.call in members.js         -> ["seam.captured-method-call"]
+F5: receiver-chained runtime.prompt(...)       -> []
+clean: documented ctx.get('mpdDsh') call       -> []
+clean: facade call ctx.get('agents').get       -> []
+clean: bare alias call                         -> []
+clean: runtime capture declaration             -> []
+
+# harness-compat.js exemption check (same captured line, the ladder's own module):
+prompt.call(runtime, request, signal) -> []

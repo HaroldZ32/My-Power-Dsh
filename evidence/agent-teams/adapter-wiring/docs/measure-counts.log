@@ -1,0 +1,63 @@
+read at (UTC): 2026-09-19T15:10:27.551Z
+MPD_DELTAS.length = 151
+distinct registry files = 13
+registry keys of entry 0 = file,id,beforeContext,afterContext,block
+entries carrying a "create" key = 0
+  index.js: 5 marker(s), unclosed=0
+  capabilities.js: 2 marker(s), unclosed=0
+  harness-compat.js: 8 marker(s), unclosed=0
+  members.js: 6 marker(s), unclosed=0
+  command.js: 3 marker(s), unclosed=0
+  tools.js: 73 marker(s), unclosed=0
+six bridged files: 97 markers / 96 distinct ids
+mpd-adapter-ctx.js: 1 marker(s) [mpd-delta adapter-ctx-bridge]
+including the bridge module: 98 markers / 97 distinct ids
+  index.js: 3 adapter-* marker(s)
+  capabilities.js: 2 adapter-* marker(s)
+  harness-compat.js: 8 adapter-* marker(s)
+  members.js: 4 adapter-* marker(s)
+  command.js: 2 adapter-* marker(s)
+  tools.js: 8 adapter-* marker(s)
+  mpd-adapter-ctx.js: 1 adapter-* marker(s)
+six bridged files: 27 adapter-* markers / 26 distinct ids
+including the bridge module: 28 adapter-* markers / 27 distinct ids (cross-file repeats: 2)
+index.js: 5 registered region(s) — adapter-facade-import, member-tool-deny-config, adapter-facade-wiring, interjection-expiry-registration, adapter-steer-approval-notice
+capabilities.js: 2 registered region(s) — adapter-agent-scope-import, adapter-agent-scope
+harness-compat.js: 8 registered region(s) — adapter-subagent-runtime-import, adapter-subagent-runtime-install, adapter-subagent-runtime-agent-scope, adapter-subagent-runtime-agent-scope-setup, adapter-subagent-runtime-agent-scope-request, adapter-subagent-runtime-agent-scope-effect, adapter-subagent-runtime-guard, adapter-subagent-runtime-agents-lookup
+members.js: 6 registered region(s) — adapter-delivery-runtime-import, adapter-steer-captain-report, adapter-steer-captain-report-caller, member-welcome-claimable, member-tool-deny-filter, adapter-delivery-runtime
+command.js: 3 registered region(s) — explicit-team-fallback, adapter-command-turn-submit, adapter-command-turn-submit-profile
+tools.js: 73 registered region(s) — artifact-channel-imports, mailbox-check-import, unresolved-dependency-import, plan-format-import, capacity-view-import, team-revision-import, deferred-kind-import, adapter-subagent-runtime-import, strict-tool-arguments, deferred-allowance, adapter-subagent-runtime-halt-drain, adapter-cancel-halt, edit-plan-add-task-apply, adapter-cancel-feedback, adapter-turn-submit, adapter-inject-staged-discard, adapter-cancel-discard, edit-plan-quality-contract, edit-plan-add-task-mutation, member-tool-deny-param, member-tool-deny-add, deferred-reassign-refusal, deferred-claim-refusal, claim-contract-version-stamp, update-task-amend-helper, path-ownership-tools, update-task-contract, update-task-required-status-param, terminal-output-append, artifact-channel-params, reported-red-schema, reported-red-description, update-task-amend-scope, artifact-channel-result, strict-tool-arguments-apply, update-task-amend-owned-task, member-amend-at-claim-time, update-task-required-attempt-id, artifact-channel-apply, terminal-output-append-apply, update-task-amend-terminal, update-task-terminal-immutable-fields, terminal-stale-attempt-refusal, update-task-amend-running, output-append-any-status, mailbox-check-tool, mailbox-send-gate, message-payload-ceiling, send-dedup-wiring, send-dedup-member-wiring, send-dedup-delivery-guard, adapter-steer-send-message-caller, task-contract, status-capacity-bind, pause-surface-apply, status-revision-payload, wave-status, status-capacity-payload, interjection-tools, seed-task-drafts, team-model-slot-route-helpers, team-model-slot-routes, plan-file-seeds-dag, wave-create, reported-red-parse, artifact-channel-helper, task-contract-render, pause-surface-helper, member-capacity-view, wave-render, status-pause-mechanisms, status-revision-render, status-capacity-render
+mpd-adapter-ctx.js: 1 registered region(s) — adapter-ctx-bridge
+  method registerHostTool: declared=true implemented=true
+  method subagentRuntime: declared=true implemented=true
+  method subagentProvider: declared=true implemented=true
+  method subagentProviders: declared=true implemented=true
+  method startContinuableAgent: declared=true implemented=true
+  method interruptAgent: declared=true implemented=true
+  method llmListModels: declared=true implemented=true
+  method llmResolveCallConfig: declared=true implemented=true
+  method registerPromptSection: declared=true implemented=true
+  method agentScope: declared=true implemented=true
+  method startAgentTurn: declared=true implemented=true
+  method cancelAgentTurn: declared=true implemented=true
+  method steerAgentTurn: declared=true implemented=true
+  method injectAgentMessage: declared=true implemented=true
+  flag toolsRegisterHost: true
+  flag subagents: true
+  flag subagentsProvider: true
+  flag subagentsContinuable: true
+  flag subagentsInterrupt: true
+  flag llmListModels: true
+  flag llmResolveCallConfig: true
+  flag systemPromptSection: true
+  flag agentScope: true
+  flag agentTurnStart: true
+  flag agentTurnCancel: true
+  flag agentTurnSteer: true
+  flag agentTurnInject: true
+members.js childCtx residual lines = 5
+  installContinuableMemberSetup(ctx, (childCtx, hostChild) => {
+  const child = hostChild ?? childCtx.agent;
+  const disposeFailure = childCtx.on('agent/error', async (payload) => {
+  const disposeSelection = installModelSelection(childCtx, selectionRef);
+  const disposeFallback = childCtx.on('agent/request-error', async (payload, next) => {

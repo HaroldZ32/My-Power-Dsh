@@ -35,6 +35,14 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
       started.push({ mode, spec })
       return { result: { output: "done", structured: { ok: true }, stopReason: "end_turn" } }
     },
+    // ── additive (t2/AC1): the three provider/delivery seams the agent-teams surface
+    // consumes. A "full harness" now includes them, so the shared fixture carries them;
+    // every EXISTING assertion above and below is untouched (their BEHAVIOUR is covered
+    // by test/adapter-agent-teams-surface.test.ts, which owns its own recording double).
+    getProvider: (name: string) => ({ name }),
+    list: () => ["spawn-in-process"],
+    startContinuable: async (spec: any) => ({ spec }),
+    interrupt: (targetSessionId: string, authority: any) => { void targetSessionId; void authority },
   }
   const skills = {
     registerProvider: (provider: any) => { provided.skills = provider; return () => { delete provided.skills } },
@@ -70,19 +78,37 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
       name: modelId,
       reasoning: { efforts: [{ id: "high", name: "High" }], defaultEffort: "high" },
     }),
+    // additive (t2/AC1): the per-call config resolver the agent-teams route check uses.
+    resolveCallConfig: async (config: any) => config,
   }
+  // additive (t2/AC1): the system-prompt contribution seam (one callable `section`).
+  const systemPrompt = { section: (_section: any) => () => { /* unregistered */ } }
   // The sample agent carries its OWN scoped ctx: on a real harness the agent-scoped compaction
   // service is a different object from the host-plane one, so capabilities() reports two seams.
   const submitted: any[] = []
   const sampleAgent = {
     id: "sample-agent",
-    ctx: { get: (serviceName: string) => (serviceName === "compaction" ? compaction : undefined) },
+    // The scoped context now also carries the per-agent seam members the agentScope
+    // probe promises (additive, t2/AC1); `get("compaction")` and every existing
+    // assertion about this context are unchanged.
+    ctx: {
+      get: (serviceName: string) => (serviceName === "compaction" ? compaction : undefined),
+      on: (_event: string, _handler: any) => () => {},
+      effect: (_fn: any, _label?: string) => () => {},
+      tools: { restrict: (_filter: any) => () => {} },
+    },
     // The host turn seam (dsh-agent-loop: `followup(input) => send(input, "next-turn", true)`).
     followup: (message: any) => { submitted.push(message) },
+    // additive (t2/AC1): the cancellation seam (`cancel(cause, options?)`).
+    cancel: (_cause: any, _options?: any) => {},
+    // additive (captain ruling, extends §3): the nearest-step steer and the inbox inject
+    // seams — a full harness exposes them too (behaviour covered by the surface test).
+    steer: (_message: any) => {},
+    inject: (_message: any) => {},
   }
   const agents = { list: () => [sampleAgent], get: (id: string) => (id === sampleAgent.id ? sampleAgent : undefined) }
   const ctx = {
-    get: (serviceName: string) => ({ tools, subagents, skills, agentPresets, agents, compaction, commands, llm } as Record<string, unknown>)[serviceName],
+    get: (serviceName: string) => ({ tools, subagents, skills, agentPresets, agents, compaction, commands, llm, systemPrompt } as Record<string, unknown>)[serviceName],
     on: (event: string, listener: any) => {
       if (event === "tools/post-execute") listeners.push(listener)
       if (event === "tools/pre-execute") preListeners.push(listener)

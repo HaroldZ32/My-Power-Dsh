@@ -1,0 +1,15 @@
+  ok   installed host exposes no subagent followup member
+  ok   installed host owns the public subagent prompt seam
+  ok   installed host face declares the prompt request/receipt contract
+  FAIL member delivery uses the audited boundary
+  ok   no call site uses ctx.subagents.followup
+  ok   modern delivery prefers the public prompt seam
+  ok   modern member setup receives the live Agent instead of reading childCtx.agent
+  ok   legacy followup/queue remain only as older-generation fallbacks
+  ok   task mutations kick the whole team
+  ok   member idle edges kick that member
+  ok   delivery failure rolls the claim back instead of stranding it
+  FAIL capabilities deny all captain-only tools for members
+  ok   members receive member instructions, not the captain protocol
+  ok   real run asserts the wake on the dependent task's assignee only
+[agent-teams-dispatch] FAIL: 2 of 14 checks failed

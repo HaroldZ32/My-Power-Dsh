@@ -1,0 +1,64 @@
+{
+  "lane": "integration (team task t10 / contract lane t8)",
+  "team": "agent-teams-adapter-wiring",
+  "wave": "w1",
+  "attempt_id": "f7815ee4-2534-48fc-ac0b-7e49df5ebad5",
+  "report_moment_utc": "2026-09-19T16:24Z",
+  "authority": "evidence/agent-teams/adapter-wiring/requirements-contract.md §7 AC14 + §4 T-91 note",
+  "gate_in": {
+    "review_round3_verdict": "pass",
+    "artifact": "evidence/agent-teams/adapter-wiring/review/round3/verdict.md",
+    "in_scope_acs": ["AC1", "AC2", "AC3", "AC4", "AC5", "AC6", "AC7", "AC8", "AC9", "AC10", "AC11", "AC12", "AC13", "AC15", "AC16"],
+    "carried_to_this_lane": "AC14"
+  },
+  "settle_sandwich": {
+    "start_utc": "2026-09-19T16:22:53Z",
+    "end_utc": "2026-09-19T16:23:43Z",
+    "files_hashed": 18,
+    "identical": true,
+    "log": "integration/settle-sandwich.log",
+    "cross_check": "matches the reviewer's independent round-3 hash table read at 2026-09-19T16:18:53Z"
+  },
+  "commands": [
+    { "command": "node scripts/pack-mpd.mjs", "exit": 0, "reading": "staged 1194 files (644: 1182, 755: 12) into dist/mpd-package" },
+    { "command": "node scripts/verify-pack-closure.mjs", "exit": 0, "reading": "content bytes: 1185 compared, 1185 identical, 0 drift, 0 expected-after-pack; completeness: 409 declared, 408 present, 1 declared exemption (packages/mpd-qa-roles-probe/dist/index.js), 0 absent; 23/23 declared packages present; agent references 3/3; pack stamp 2026-09-19T16:23:55.148Z" },
+    { "command": "node evidence/agent-teams/adapter-wiring/integration/pack-bytes-proof.mjs", "exit": 0, "reading": "bridge identical; 6/6 bridged files identical; 55/55 adopted lib files identical; adapter dist identical" }
+  ],
+  "byte_identities": {
+    "bridge": { "path": "packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js", "sha256": "01fd9125510885fb334935c9b0a589e5c63614f3e976234fbd364e7ed89a27d3", "identical": true },
+    "adapter_dist": { "path": "packages/mpd-dsh-adapter-plugin/dist/index.js", "sha256": "d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4", "identical": true },
+    "six_bridged_files": { "compared": 6, "identical": 6, "differing": 0, "missing": 0 },
+    "adopted_lib_all": { "compared": 55, "identical": 55, "differing": 0, "missing": 0 },
+    "all_package_dists": { "compared": 25, "identical": 24, "missing": ["packages/mpd-qa-roles-probe/dist/index.js"], "missing_is_declared_exemption": true },
+    "root_agents_md_shipped": false,
+    "root_agents_md_absence_reason": "scripts/pack-mpd.mjs deliberately keeps the root manual out of the packed artifact"
+  },
+  "freshness_reading": {
+    "expected_after_pack_entries": 0,
+    "drift": 0,
+    "meaning": "T-91: the freshness signal is the EMPTY expected-after-pack list (nothing the pack was supposed to absorb is missing or drifted), not the exit code"
+  },
+  "not_claimed": [
+    "The pack was NOT installed into a fresh profile and booted; AC10/AC11/AC12 were proven by a CHECKOUT boot, and closure proves packed BYTES, not packed-tree behaviour.",
+    "bun run verify:gates expects a clean tree; the wave's own files are untracked until the captain commits, so the wave ran dirty by construction. This lane ran only the two AC14 commands.",
+    "Bare `bun test` stays red on untracked+gitignored scratch copies under evidence/mpd-naming/wave2/raw/scratch/** (411 files); the captain accepted the sanctioned scope `bun test packages`.",
+    "The AC15 scanner is a bounded heuristic; the closure census (83 sites / 0 UNROUTED) is the primary evidence, and two shapes remain invisible to the line-local rules (measured as 0 occurrences).",
+    "REPLACEMENT-shaped deltas do not self-heal after a human re-vendor; the applier refuses loudly by design.",
+    "No release act: no version bump, commit, tag, push or master merge — the captain is the single git writer."
+  ],
+  "changed_paths": [
+    ".mpd/plans/agent-teams-adapter-wiring-report.md",
+    "evidence/agent-teams/adapter-wiring/integration/INDEX.md",
+    "evidence/agent-teams/adapter-wiring/integration/README.md",
+    "evidence/agent-teams/adapter-wiring/integration/result.json",
+    "evidence/agent-teams/adapter-wiring/integration/settle-sandwich.sh",
+    "evidence/agent-teams/adapter-wiring/integration/settle-sandwich.log",
+    "evidence/agent-teams/adapter-wiring/integration/pack.log",
+    "evidence/agent-teams/adapter-wiring/integration/pack-bytes-proof.mjs",
+    "evidence/agent-teams/adapter-wiring/integration/pack-bytes-proof.log",
+    "evidence/agent-teams/adapter-wiring/integration/pack-closure.log",
+    "evidence/agent-teams/adapter-wiring/integration/git-status-porcelain.txt",
+    "dist/mpd-package/** (derived, refreshed by the packer)"
+  ],
+  "git_commands_run": []
+}

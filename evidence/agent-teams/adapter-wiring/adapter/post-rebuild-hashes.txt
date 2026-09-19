@@ -1,0 +1,26 @@
+# Post-rebuild dist hashes — canonical record (t4, contract revision 2)
+
+# Derived by this lane at 2026-09-19T14:42:34Z from the working tree, after the canonical rebuild of the 17
+# adapter-dependent consumers and the adapter itself. Re-derive with:
+#   sha256sum packages/*/dist/index.js   (the 17 + the adapter are listed below in the frozen order)
+# Cross-checked against the hash list the captain relayed from his own 14:38Z run: MATCH 18/18
+# (no discrepancy found, so no pipeline re-run beyond the two commanded re-verifications).
+
+01f88fac5edf46b67ce4a3d57e4725e042072e323fd9800a4a0712748ae710ac  packages/mpd-bootstrap-plugin/dist/index.js
+a1ea029ce52b9189c6a5a5d07a60c1b8c96a9f65bb0e087c09ad3e81ef57890f  packages/mpd-boulder-plugin/dist/index.js
+f055b853a411713619e38d1bac82644875213fce7783be1873c20fcdf2f1be2a  packages/mpd-codegraph-plugin/dist/index.js
+b905aaeee047bfa4aeec60fc2d6787632f7b0f41617a52b1f48f78a0dbebb0d2  packages/mpd-comment-checker-plugin/dist/index.js
+f8fed0ad642d729da89a492184a63289da9bd0b43059167c39b1b0cb1c099371  packages/mpd-config-plugin/dist/index.js
+f4900827ef5c51a75ee3a66e64ac8753e77fbfbae96e037d2b4480849b1c42bd  packages/mpd-ext-plugin/dist/index.js
+b28975d7441e085c81980f094ecde1627386fa0f08660b7d0b5eb5326db5fce2  packages/mpd-hashline-plugin/dist/index.js
+99a70bd9b94883dd2fafc742967dcf918c66fa1669faac3a8fc389734d17d538  packages/mpd-memory-plugin/dist/index.js
+cef5baf5a7698e4c6bdbac777e467d5994bd5b6dd676a25f37234f2bd7673f83  packages/mpd-modelchain-plugin/dist/index.js
+1aa8c4b415b6c2656aa0c230d2de4146eb06d7ba4c51a355e3fca2bbd14e2ba0  packages/mpd-qa-roles-probe/dist/index.js
+e2a085467eebf5e1847771167027e4b460a7b40b21b8694fa70148141072bafa  packages/mpd-roles-plugin/dist/index.js
+70fe4e7e2ad9552e886058d49d206222ac6a11199cc81e1d10fe4ae246dc2f8d  packages/mpd-team-compact-plugin/dist/index.js
+3fabf0e154ff7878deed5302738628a2e2385ed28820016ca5707e034ef635fd  packages/mpd-team-watchdog-plugin/dist/index.js
+5452cd87be33d2ab49917df4c3e58622b0296d7a7ef70041523a8c1c4a51be46  packages/mpd-tools-plugin/dist/index.js
+b74b88906d0111765fe09cf1e1ecba2b30fed32bcc51f4a0978b11a658258e5e  packages/mpd-tui-plugin/dist/index.js
+df61eae41012768d133f7f6e86a21e8d616bff946518d7e7e2c63a435ddc0eed  packages/mpd-ulw-plugin/dist/index.js
+6264923f5b54cc0fc781cab5d0b2bd0439310cfac328eb977d892995ec5567d4  packages/mpd-workmate-plugin/dist/index.js
+d8e8fa36cb214d0492bf5b82bfc0bf1988f694b09ad930572f5f7b62143bddf4  packages/mpd-dsh-adapter-plugin/dist/index.js

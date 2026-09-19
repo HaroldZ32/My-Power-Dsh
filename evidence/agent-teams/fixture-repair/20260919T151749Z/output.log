@@ -1,0 +1,24 @@
+# t18 fixture-repair evidence — 2026-09-19T15:19:05Z
+
+## BEFORE (raw ctx, the bridge lane's harness: runCase(pause-preserves-halt-control))
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[pause-preserves-halt-control] case threw: input.ctx.cancelAgentTurn is not a function
+leg ok: false
+observation: {"threw":"input.ctx.cancelAgentTurn is not a function"}
+BEFORE_EXIT=1
+
+## AFTER (fixture wraps the ctx with createAgentTeamsCtx)
+[mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[pause-preserves-halt-control] case completed
+leg ok: true
+observation: {"injected":"silence","mechanism":"haltTeamWork (the adopted mass-cancel path), imported from packages/mpd-agent-teams-plugin/lib/tools.js and CALLED — never stubbed","cancelledTasks":1,"alreadyHalted":false,"halted":true,"sha256Changed":true,"before":{"status":"in_progress","attemptId":"att-live","output":"partial result","handoffId":"handoff-1"},"after":{"status":"cancelled","attemptId":null,"output":"Stopped from the captain chat.","handoffId":null},"cancelled":true,"wouldReddenAC17":true}
+AFTER_EXIT=0
+
+## watchdog suite (unchanged contract: 139 pass / 0 fail)
+ 139 pass
+ 0 fail
+ 684 expect() calls
+Ran 139 tests across 1053 files. [10.22s]
+exit=0
+
+## fixture sha256 (settled sandwich start == end): b4c9ceb879b290a179c593f83d72973a58bd10e04ee19374abe462d166ae6c58

@@ -1,0 +1,29 @@
+=== adapter-enabled-boot.mjs (AC10 21-tool arm) ===
+  },
+  "presetProbe": {
+    "verdict": "PASS"
+  },
+  "isolation": {
+    "dshHome": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-enabled-2026-09-19T16-02-15.124Z/home",
+    "userHome": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-enabled-2026-09-19T16-02-15.124Z/userhome",
+    "workspace": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-enabled-2026-09-19T16-02-15.124Z/ws",
+    "sessionsSandboxed": true
+  }
+}
+[adapter-enabled] PASS
+ENABLED_EXIT=0
+
+=== adapter-disabled-boot.mjs (AC11 negative control) ===
+  },
+  "presetProbe": {
+    "verdict": "PASS"
+  },
+  "isolation": {
+    "dshHome": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-disabled-2026-09-19T16-02-29.965Z/home",
+    "userHome": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-disabled-2026-09-19T16-02-29.965Z/userhome",
+    "workspace": "/root/dshProj/my-power-dsh/.qa-reloc/adapter-disabled-2026-09-19T16-02-29.965Z/ws",
+    "sessionsSandboxed": true
+  }
+}
+[adapter-disabled] PASS
+DISABLED_EXIT=0
