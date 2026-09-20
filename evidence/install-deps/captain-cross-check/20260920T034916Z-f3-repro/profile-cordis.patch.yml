@@ -1,0 +1,3 @@
+- insert:
+    - id: user-sidebar-probe
+      name: 'dsh-better-sidebar'

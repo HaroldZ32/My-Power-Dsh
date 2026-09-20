@@ -1,0 +1,16 @@
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules
+[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is itself a declared bundle layer
+[mpd-better-sidebar] mount guard: DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch
+[mpd-better-sidebar] mount guard: DISABLED - no web plane in this composition
+[mpd-better-sidebar] mount guard: DISABLED - guard threw Invalid URL
+PASS 1. package missing -> DISABLED (want true, got true)
+PASS 1b. package present, nothing else -> ENABLED (want false, got false)
+PASS 2. sidebar is itself a bundle layer -> DISABLED (want true, got true)
+PASS 3. another layer's patch names the package -> DISABLED (want true, got true)
+PASS 3b. another layer's patch does NOT name it -> ENABLED (want false, got false)
+PASS 3c. our OWN patch text (contains mpd-better-sidebar) is not treated as another layer -> ENABLED (want false, got false)
+PASS 4. no web plane (no webserver entry, no web layer) -> DISABLED (want true, got true)
+PASS 4b. web layer present without a webserver entry -> ENABLED (order fallback) (want false, got false)
+PASS 5. guard throws (baseUrl unusable) -> DISABLED (want true, got true)
+PASS: 9/9 guard cases

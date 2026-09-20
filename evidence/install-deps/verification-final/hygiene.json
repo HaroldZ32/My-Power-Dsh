@@ -1,0 +1,12 @@
+{
+  "atUtc": "2026-09-20T04:47:13Z",
+  "files": 73,
+  "bytes": 1004863,
+  "checksReceived": {
+    "tokenValues": [],
+    "credentialMaterial": [],
+    "sandboxDirs": []
+  },
+  "ok": true,
+  "note": "the credential check matches credential MATERIAL (key shapes, PRIVATE KEY, DEEPSEEK_API_KEY assignments, refs: blocks); prose that merely names .credentials.yaml/settings.yaml in REPORT.md is not a leak. Sandboxes live under T5_SANDBOX_ROOT (/tmp), never in this tree."
+}

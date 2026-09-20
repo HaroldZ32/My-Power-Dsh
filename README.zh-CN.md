@@ -51,6 +51,18 @@ cd <repo> && dsh plugin --profile web add .
 语料库与扩展根目录 —— 不需要打包步骤，也不需要复制步骤。之后重启 `dsh`，在会话中选择
 **MPD（Main Working Agent）** preset。
 
+本 bundle 声明了一个外部运行时依赖 —— `dsh-better-sidebar`，即承载 mpd 两个标签页的社区侧边栏
+bundle（见 *Web GUI*）—— 因此检出目录安装要先把仓库依赖落到本地：
+
+```bash
+cd <repo> && bun install                     # 把声明的侧边栏依赖落到仓库 node_modules
+cd <repo> && dsh plugin --profile web add .
+```
+
+如果 `node-gyp` 不可用（侧边栏的传递依赖 `node-pty` 需要它），可以不带构建脚本安装该依赖：
+`bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` —— 只有侧边栏的终端面板会降级。
+从打包产物安装时无需这一步（pnpm 会装好声明的依赖），见下方 *从打包产物安装*。
+
 检出目录安装会直接读取该目录：改动代码后，重新构建所改包的 `dist/`，再重启 `dsh`。
 
 ### 安装到终端界面（`dsh-tui` profile）
@@ -103,9 +115,9 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 ### 这次安装挂载了哪些插件
 
 下面每一个插件都由 bundle patch `packages/mpd-bundle/cordis.patch.yml` 声明，并被上面那一条
-`dsh plugin add` 一次性挂载。该 patch 一共写了 **27 个 `- id:` 条目，分两种**：**本 bundle 插入
-（insert）的 25 行**（分组如下）与**它 id 定向（id-target，即 replace，不是 insert）的 2 个宿主行**。
-`node scripts/verify-rows-parity.mjs` 校验的正是这 25 个 insert id。
+`dsh plugin add` 一次性挂载。该 patch 一共写了 **28 个 `- id:` 条目，分两种**：**本 bundle 插入
+（insert）的 26 行**（分组如下）与**它 id 定向（id-target，即 replace，不是 insert）的 2 个宿主行**。
+`node scripts/verify-rows-parity.mjs` 校验的正是这 26 个 insert id。
 
 **Bundle 宿主插件 —— 18 个 insert 行**
 
@@ -147,6 +159,16 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 | Row id | 包 | 提供的能力 |
 |---|---|---|
 | `agent-teams` | `mpd-agent-teams-plugin` | 多智能体团队引擎（MIT，采纳自 `dsh-agent-teams`，以一等主代码形式随包）：`agent_teams_*` 工具、调度器、Web 面板。见 *鸣谢* |
+
+**侧边栏宿主 —— 1 个 insert 行**
+
+承载 AgentTeams 与 Workmates 标签页的社区侧边栏 bundle 是本 bundle 的**已声明运行时依赖**
+（`package.json` 的 `dependencies`，即 `dsh-better-sidebar`），而不是需要用户手动安装的可选附加项：
+下面这一行负责挂载它，因此一条安装命令就够了。
+
+| Row id | 包 | 提供的能力 |
+|---|---|---|
+| `mpd-better-sidebar` | `dsh-better-sidebar` | 承载 mpd 两个标签页的侧边栏宿主（见 *Web GUI*）。它**只挂载一次**：只要任何被组合的 patch 层已经挂载该包 —— 每个已声明 bundle 层自身的 `dsh.bundle.patch`（例如 `@linxin666/dsh-web-all` 聚合包）、profile 的 `cordis.patch.yml`、`$DSH_HOME/cordis.patch.yml`，或从命令行读到的 `--patch` 覆盖层路径（`--patch X` 与 `--patch=X` 两种写法）—— 或者组合中不存在**已启用**的 `@deepseek-ai/dsh-host-webserver` 条目（`dsh-tui` / headless profile），或者该包无法解析时，这一行就会自行禁用。外部层只有在其 patch 里含有**真正挂载该包的行**时才会抑制本行 —— 即某行的 `name` 为 `dsh-better-sidebar` 且其 `disabled` 不是字面量 `true`；注释里的提及、或字面量 `disabled: true` 的行都不挂载任何东西，因此不会抑制我们的挂载。行扫描器无法解析的形式一律回退到保守行为（视作挂载）—— 误禁只损失侧边栏，误启用会让启动以 `duplicate prefix route` 直接失败。会话随后只打印一行日志并降级为"没有侧边栏"，而不是启动失败 |
 
 **远程 MCP 行 —— 2 个 insert 行**（公开服务：需要网络，按需选用）
 
@@ -499,10 +521,13 @@ agent_teams_create {
 - **Workmates 标签页** —— workmate 库：列出实例的 base、使用次数与说明卡，支持过滤，打开后可看
   人设/记忆/说明卡，并提供初始化 / 重命名 / 删除流程（删除是两步确认，彻底清除还需逐字输入名字）。
 
-两个标签页都贡献给社区侧边栏 bundle `dsh-better-sidebar`，出现在它的标签条里；没有这个 bundle 时，
-两个页面各只记录一条警告、不注册任何内容，而一切仍然可以通过 `agent_teams_*` 与 `mpd_workmate_*`
-工具使用。bundle 自己的 web 客户端（通过 `mpd-web-compat` 行加载）提供这些页面，并以浮动面板作为
-兜底。
+两个标签页都贡献给社区侧边栏 bundle `dsh-better-sidebar`，出现在它的标签条里。该侧边栏**随本
+bundle 一起安装并挂载**：`dsh-better-sidebar` 是已声明的运行时依赖，并由 `mpd-better-sidebar` 行
+挂载（见 *这次安装挂载了哪些插件*），所以执行上面那一条安装命令后标签页即可开箱使用。两个页面
+**只存在于侧边栏** —— 没有浮动面板兜底：唯一的警告路径（`… has no host`）对应依赖缺失或损坏的
+情形（检出目录安装却没有执行过 `bun install`，或非 web 组合 —— 此时该行有意禁用）。一切仍然可以
+通过 `agent_teams_*` 与 `mpd_workmate_*` 工具使用；这些页面由 bundle 自己的 web 客户端（通过
+`mpd-web-compat` 行加载）提供。
 
 ## DSH-TUI 版本
 
@@ -658,8 +683,9 @@ agent_teams_create {
 - **[comment-checker](https://github.com/code-yeongyu/go-claude-code-comment-checker)**（MIT）——
   `mpd_comment_check` 背后的注释/docstring 检测器，以可选依赖
   `@code-yeongyu/comment-checker@0.8.0` 的方式使用。
-- **`dsh-better-sidebar`** —— 承载 AgentTeams 与 Workmates 标签页的社区侧边栏 bundle；页面贡献给它，
-  而 `agent_teams_*` / `mpd_workmate_*` 工具在没有它时同样可用。
+- **`dsh-better-sidebar`** —— 承载 AgentTeams 与 Workmates 标签页的社区侧边栏 bundle；它是本
+  bundle 的**已声明运行时依赖**（随本 bundle 一起安装并挂载，见 *这次安装挂载了哪些插件*），而
+  `agent_teams_*` / `mpd_workmate_*` 工具在没有它时同样可用。
 - **本仓库自己写的部分。** DSH 管道（harness 适配器、运行时插件、`mpd` preset、合并后的 web
   客户端）、DSH-TUI 版本、QA 套件、文档以及扩展接口，都是本项目自己的工作。
 

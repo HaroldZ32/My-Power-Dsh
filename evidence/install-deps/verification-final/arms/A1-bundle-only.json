@@ -1,0 +1,138 @@
+{
+  "id": "A1-bundle-only",
+  "plane": "web",
+  "purpose": "the reported user composition: the bundle alone on the web plane.",
+  "profileName": "w",
+  "bundles": [
+    "@deepseek-ai/dsh-base",
+    "@deepseek-ai/dsh-web-app",
+    "@mpd-dsh/mpd"
+  ],
+  "expect": {
+    "rowsMin": 1,
+    "rowsMax": 2,
+    "literalEnabledMax": 0,
+    "guard": "ENABLED",
+    "served": true,
+    "routeMounted": true
+  },
+  "ok": true,
+  "checks": [
+    {
+      "name": "composition.exit0",
+      "ok": true,
+      "detail": "exit=0 stderr=[\"[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.\",\"[dump-config] ---- the composed rows below are the child's own output ----\",\"dsh: [@mpd-dsh/mpd] patch: entry \\\"dsh-tui-agent-presets\\\" not found\",\"[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).\"]"
+    },
+    {
+      "name": "composition.rowCount",
+      "ok": true,
+      "detail": "rows=1 ids=[\"mpd-better-sidebar\"]"
+    },
+    {
+      "name": "composition.literalEnabled",
+      "ok": true,
+      "detail": "literalEnabled=0 []"
+    },
+    {
+      "name": "load.booted",
+      "ok": true,
+      "detail": "booted"
+    },
+    {
+      "name": "load.noFatalSignature",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "name": "load.guardDecision",
+      "ok": true,
+      "detail": "guard={\"decision\":\"ENABLED\",\"reason\":\"web plane present and no other layer mounts dsh-better-sidebar\"} expected=ENABLED"
+    },
+    {
+      "name": "load.routeMounted",
+      "ok": true,
+      "detail": "GET /sidebar/api -> 405 body=\"{\\\"ok\\\":false,\\\"error\\\":{\\\"code\\\":\\\"method-error\\\",\\\"message\\\":\\\"method not allowed\\\"}}\""
+    },
+    {
+      "name": "load.clientServed",
+      "ok": true,
+      "detail": "servedClientCarriesSidebar=true"
+    }
+  ],
+  "failedChecks": [],
+  "findingArm": false,
+  "install": null,
+  "stage": null,
+  "overlayArgs": [],
+  "profilePatch": null,
+  "nodeModulesAfterBoot": [
+    "@mpd-dsh",
+    "dsh-better-sidebar"
+  ],
+  "evidence": {
+    "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification-final/logs/A1-bundle-only.boot.log",
+    "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification-final/logs/A1-bundle-only.composed.txt"
+  },
+  "composition": {
+    "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never executes plugin code, AGENTS.md §4). NEVER cited as load evidence.",
+    "command": "node scripts/dump-config.mjs --profile w --json",
+    "exitCode": 0,
+    "envelopeParsed": true,
+    "rows": [
+      {
+        "id": "mpd-better-sidebar",
+        "disabledRaw": "!!js >-",
+        "enabled": false
+      }
+    ],
+    "rowIds": [
+      "mpd-better-sidebar"
+    ],
+    "stderrTail": [
+      "[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.",
+      "[dump-config] ---- the composed rows below are the child's own output ----",
+      "dsh: [@mpd-dsh/mpd] patch: entry \"dsh-tui-agent-presets\" not found",
+      "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+    ],
+    "rowCount": 1,
+    "literalEnabledCount": 0,
+    "literalEnabledIds": [],
+    "ok": true
+  },
+  "load": {
+    "claim": "REAL mounting boot + HTTP probes (no --dump-config in this claim)",
+    "bootCommand": "dsh --profile w --port 3613 --no-open",
+    "logPath": "/tmp/t17-sandboxes/A1-bundle-only/boot.log",
+    "port": 3613,
+    "booted": true,
+    "servedClientCarriesSidebar": true,
+    "sidebarRoute": {
+      "status": 405,
+      "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+    },
+    "sidebarRouteMounted": true,
+    "signatures": {
+      "hits": [],
+      "markers": [],
+      "healthy": true
+    },
+    "guardLines": [
+      "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+    ],
+    "guard": {
+      "decision": "ENABLED",
+      "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+    },
+    "duplicateRouteLines": [],
+    "logTail": [
+      "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on",
+      "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter",
+      "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+      "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+      "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+      "dsh web: http://127.0.0.1:3613/?token[redacted:43ch]"
+    ]
+  }
+}

@@ -1,0 +1,169 @@
+{
+  "id": "F3-decoy-comment-layer",
+  "plane": "web",
+  "purpose": "adversarial over-approximation probe: a foreign layer that only MENTIONS 'dsh-better-sidebar' in a comment (mounts nothing). Guard predicate 3 is a substring test over the whole patch text.",
+  "bundles": [
+    "@deepseek-ai/dsh-base",
+    "@deepseek-ai/dsh-web-app",
+    "@mpd-dsh/mpd",
+    "t5-decoy-comment"
+  ],
+  "profileName": "w",
+  "stage": false,
+  "expect": {
+    "rowsMin": 1,
+    "rowsMax": 1,
+    "literalEnabledMax": 0,
+    "guard": "DISABLED",
+    "served": false,
+    "routeMounted": false
+  },
+  "ok": false,
+  "checks": [
+    {
+      "name": "composition.exit0",
+      "ok": true,
+      "detail": "exit=0"
+    },
+    {
+      "name": "composition.rowCount",
+      "ok": true,
+      "detail": "rows=1 in [1,1] ids=[\"mpd-better-sidebar\"]"
+    },
+    {
+      "name": "composition.literalEnabled",
+      "ok": true,
+      "detail": "literalEnabled=0 <= 0 []"
+    },
+    {
+      "name": "load.booted",
+      "ok": false,
+      "detail": "reason=no token + session cookie within 90000ms"
+    },
+    {
+      "name": "load.noFatalSignature",
+      "ok": false,
+      "detail": "[\"entryApplyFailed\",\"pluginTreeFailed\"]"
+    },
+    {
+      "name": "load.guardDecision",
+      "ok": true,
+      "detail": "guard={\"decision\":\"DISABLED\",\"reason\":\"bundle layer t5-decoy-comment already mounts it in its own patch\"} expected=DISABLED"
+    },
+    {
+      "name": "load.routeMounted",
+      "ok": false,
+      "detail": "GET /sidebar/api -> n/a body=\"\""
+    },
+    {
+      "name": "load.clientServed",
+      "ok": false,
+      "detail": "servedClientCarriesSidebar=undefined module=null"
+    },
+    {
+      "name": "load.oneSidebarMount",
+      "ok": false,
+      "detail": "exactly-once / expected-absent verdict"
+    }
+  ],
+  "failedChecks": [
+    "load.booted",
+    "load.noFatalSignature",
+    "load.routeMounted",
+    "load.clientServed",
+    "load.oneSidebarMount"
+  ],
+  "findingArm": true,
+  "findingIf": "guard DISABLED by a comment-only mention while no layer mounts the sidebar (sidebar lost)",
+  "sandbox": {
+    "root": "<pruned:sandbox>",
+    "dshHome": "<pruned:sandbox>",
+    "userHome": "<pruned:sandbox>",
+    "ws": "<pruned:sandbox>",
+    "profile": "<pruned:sandbox>"
+  },
+  "install": null,
+  "nodeModulesAfterBoot": [
+    "@mpd-dsh",
+    "dsh-better-sidebar",
+    "t5-decoy-comment"
+  ],
+  "moduleFallbackAfterBoot": [
+    "node_modules"
+  ],
+  "composition": {
+    "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; composes rows, never executes plugin code — AGENTS.md §4). NEVER cited as load evidence.",
+    "command": "node scripts/dump-config.mjs --profile w --json",
+    "exitCode": 0,
+    "envelopeParsed": true,
+    "rows": [
+      {
+        "id": "mpd-better-sidebar",
+        "disabledRaw": "!!js >-",
+        "enabled": false
+      }
+    ],
+    "stderrTail": [
+      "[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.",
+      "[dump-config] ---- the composed rows below are the child's own output ----",
+      "dsh: [@mpd-dsh/mpd] patch: entry \"dsh-tui-agent-presets\" not found",
+      "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+    ],
+    "composedTextFile": null,
+    "rowCount": 1,
+    "rowIds": [
+      "mpd-better-sidebar"
+    ],
+    "literalEnabledCount": 0,
+    "literalEnabledIds": [],
+    "ok": true
+  },
+  "load": {
+    "claim": "REAL mounting boot + HTTP probes (no --dump-config anywhere in this claim)",
+    "bootCommand": "dsh --profile w --port 3534 --no-open",
+    "logPath": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F3-decoy-comment-layer.boot.log",
+    "port": 3534,
+    "booted": false,
+    "reason": "no token + session cookie within 90000ms",
+    "signatures": {
+      "hits": [
+        "entryApplyFailed",
+        "pluginTreeFailed"
+      ],
+      "markers": [
+        "failed to apply loader entry",
+        "plugin tree failed to load"
+      ],
+      "healthy": false
+    },
+    "guard": {
+      "decision": "DISABLED",
+      "reason": "bundle layer t5-decoy-comment already mounts it in its own patch"
+    },
+    "guardLines": [
+      "[mpd-better-sidebar] mount guard: DISABLED - bundle layer t5-decoy-comment already mounts it in its own patch"
+    ],
+    "sidebarMentions": [],
+    "logTail": [
+      "          at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)",
+      "          at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34",
+      "          at file://<sandbox>/F3-decoy-comment-layer/dsh/profiles/w/#t5-decoy-comment-row",
+      "          at file://<sandbox>/F3-decoy-comment-layer/dsh/profiles/w/#include",
+      "    }",
+      "  }",
+      "}",
+      "Node.js v24.16.0"
+    ],
+    "logBytes": 7926,
+    "logPathDurable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F3-decoy-comment-layer.boot.log"
+  },
+  "pruned": {
+    "atUtc": "2026-09-20T04:24:55Z",
+    "sandboxTreesDeleted": true,
+    "durableEvidence": [
+      "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F3-decoy-comment-layer.boot.log"
+    ],
+    "rewrotePrunedCitations": 6,
+    "note": "sandbox working trees (DSH homes, node_modules mirrors, caches, staged copies) were deleted before the commit; every dead path is marked <pruned:sandbox> and the durable boot log is the anchor"
+  }
+}

@@ -1,0 +1,28 @@
+[install-dependencies] arm bundle-only (composition 1) bundles=["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]
+[install-dependencies]   composition: exit=0 sidebarRows=[{"id":"mpd-better-sidebar","disabledRaw":"!!js >-","enabled":false}]
+[install-dependencies]   load: booted=true signatures=[] route=405 servedSidebarClient=true
+[install-dependencies]   guard: "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+[install-dependencies] arm bundle-only -> PASS
+[install-dependencies] arm aggregate-first (composition 2) bundles=["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@linxin666/dsh-web-all","@mpd-dsh/mpd"]
+[install-dependencies]   composition: exit=0 sidebarRows=[{"id":"web-ui-better-sidebar","disabledRaw":null,"enabled":true},{"id":"mpd-better-sidebar","disabledRaw":"!!js >-","enabled":false}]
+[install-dependencies]   load: booted=true signatures=[] route=405 servedSidebarClient=true
+[install-dependencies]   guard: "[mpd-better-sidebar] mount guard: DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+[install-dependencies] arm aggregate-first -> PASS
+[install-dependencies] arm mpd-first-aggregate-after (composition 3) bundles=["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd","@linxin666/dsh-web-all"]
+[install-dependencies]   composition: exit=0 sidebarRows=[{"id":"mpd-better-sidebar","disabledRaw":"!!js >-","enabled":false},{"id":"web-ui-better-sidebar","disabledRaw":null,"enabled":true}]
+[install-dependencies]   load: booted=true signatures=[] route=405 servedSidebarClient=true
+[install-dependencies]   guard: "[mpd-better-sidebar] mount guard: DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+[install-dependencies] arm mpd-first-aggregate-after -> PASS
+[install-dependencies] arm tui-plane (composition 4) bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"]
+[install-dependencies]   composition: exit=0 sidebarRows=[{"id":"mpd-better-sidebar","disabledRaw":"!!js >-","enabled":false}]
+[install-dependencies]   load: booted=true signatures=[] failures=[]
+[install-dependencies]   guard: "\u001b[?2004l\r[mpd-better-sidebar] mount guard: DISABLED - no enabled @deepseek-ai/dsh-host-webserver entry in this composition\r"
+[install-dependencies] arm tui-plane -> PASS
+[install-dependencies] arm package-absent (composition 5) bundles=["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]
+[install-dependencies]   composition: exit=0 sidebarRows=[{"id":"mpd-better-sidebar","disabledRaw":"!!js >-","enabled":false}]
+[install-dependencies]   load: booted=true signatures=[] route=404 servedSidebarClient=false
+[install-dependencies]   guard: "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules"
+[install-dependencies] arm package-absent -> PASS
+[install-dependencies] ok=true arms=5 skipped=0 -> /root/dshProj/my-power-dsh/evidence/install-deps/qa-case/2026-09-20T04-43-31.096Z
+[install-dependencies] PASS
+qa case exit=0

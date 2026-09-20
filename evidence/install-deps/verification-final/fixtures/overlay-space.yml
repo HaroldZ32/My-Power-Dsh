@@ -1,0 +1,5 @@
+# t17 patch-layer fixture: a PATCH OVERLAY supplied on the command line (`--patch`), mounting
+# the sidebar host. The loader applies it after the profile layer; the guard must see it in argv.
+- insert:
+    - id: t17-overlay-space-row
+      name: 'dsh-better-sidebar'

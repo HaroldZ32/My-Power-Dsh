@@ -1,0 +1,6 @@
+{
+  "name": "dsh-profile-web",
+  "private": true,
+  "dependencies": { "@mpd-dsh/mpd": "link:/root/dshProj/my-power-dsh" },
+  "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@mpd-dsh/mpd"], "patchReload": "live" } }
+}

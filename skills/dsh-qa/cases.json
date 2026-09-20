@@ -141,6 +141,18 @@
       ]
     },
     {
+      "case": "install-dependencies",
+      "script": "skills/dsh-qa/scripts/install-dependencies.mjs",
+      "suites": [
+        "all"
+      ],
+      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
+      "prereq": [
+        "absent-dsh-binary",
+        "absent-fixture"
+      ]
+    },
+    {
       "case": "mcp-call",
       "script": "skills/dsh-qa/scripts/mcp-call.mjs",
       "suites": [
@@ -373,6 +385,14 @@
         "absent-fixture"
       ],
       "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-team-surface"
+    },
+    {
+      "case": "ulw-command",
+      "script": "skills/dsh-qa/scripts/ulw-command.mjs",
+      "suites": [
+        "all"
+      ],
+      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
     },
     {
       "case": "ultrawork-smoke",

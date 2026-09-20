@@ -59,7 +59,7 @@ declared lists. The branch that produced the options is logged on every registra
 `settings section mpd slot options: provider=live(N)|declared(N) model=… reasoningEffort=… catalog=live|degraded|unavailable`.
 
 The board is the TUI-native equivalent of the web-only surfaces (agent-teams
-sidebar, workmate tab, bundle floater). It reads state — it never writes:
+sidebar, workmate tab). It reads state — it never writes:
 - `<workspace>/.mpd/team/<teamId>/team.json` (newest record wins)
 - `<workspace>/.mpd/boulder.json`
 - `<workspace>/.mpd/plans/*.md`
@@ -181,10 +181,10 @@ only when no logger exists to `stderr`, with `debug` gated behind
    conflicting file — while the settings value still applies; the status line
    carries the matching runtime notice. Not claimed: a specific front door's
    rendering (the Web card's browser render is verified by the user in their GUI).
-3. **Web-only surfaces have no TUI rendering face.** The agent-teams sidebar,
-   the workmate tab and the bundle floater (`dsh.client.platform = web`) do not
-   render in the TUI. The board, the status line and the dialogs are equivalents
-   — not a pixel or feature parity claim. The web profile is untouched.
+3. **Web-only surfaces have no TUI rendering face.** The agent-teams sidebar and
+   the workmate tab (`dsh.client.platform = web`) do not render in the TUI. The
+   board, the status line and the dialogs are equivalents — not a pixel or
+   feature parity claim. The web profile is untouched.
 4. **The packaged skill is an asset only.** `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` ships with
    the package, but the bundle's corpus is served from `<bundle>/skills` by
    `mpd-bootstrap`; this package-local copy is not registered by this row.

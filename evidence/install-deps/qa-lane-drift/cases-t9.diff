@@ -1,0 +1,17 @@
+--- evidence/install-deps/qa-lane-drift/cases-before-t9-reconstructed.json	2026-09-20 11:43:08.939442383 +0800
++++ skills/dsh-qa/cases.json	2026-09-20 11:42:56.331116372 +0800
+@@ -387,6 +387,14 @@
+       "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-team-surface"
+     },
+     {
++      "case": "ulw-command",
++      "script": "skills/dsh-qa/scripts/ulw-command.mjs",
++      "suites": [
++        "all"
++      ],
++      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
++    },
++    {
+       "case": "ultrawork-smoke",
+       "script": "skills/dsh-qa/scripts/ultrawork-smoke.mjs",
+       "suites": [

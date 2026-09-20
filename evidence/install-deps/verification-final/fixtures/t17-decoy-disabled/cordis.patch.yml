@@ -1,0 +1,6 @@
+# t17 falsification fixture: inserts a row NAMED dsh-better-sidebar that is LITERALLY
+# disabled: true — it mounts nothing. t14's repair must treat it as not-a-mount.
+- insert:
+    - id: t17-decoy-disabled-row
+      name: 'dsh-better-sidebar'
+      disabled: true

@@ -1,0 +1,5 @@
+arm tui-plane (composition 4) bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"]
+  composition: exit=0 sidebarRows=[{"id":"mpd-better-sidebar","disabledRaw":"!!js >-","enabled":false}]
+  load: booted=true signatures=[] failures=[]
+  guard: "\u001b[?2004l\r[mpd-better-sidebar] mount guard: DISABLED - no web plane in this composition\r"
+arm tui-plane -> PASS

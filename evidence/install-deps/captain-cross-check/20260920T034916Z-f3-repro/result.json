@@ -1,0 +1,40 @@
+{
+  "case": "install-deps/captain-cross-check F3 reproduction",
+  "kind": "INDEPENDENT captain reproduction of review finding R1 (t6, high)",
+  "measured_at_utc": "2026-09-20T03:49:16+00:00",
+  "scenario": "web profile (base + web-app + @mpd-dsh/mpd, link install) where the USER mounted the sidebar host in the PROFILE's own patch layer <profileDir>/cordis.patch.yml as row id `user-sidebar-probe`, name `dsh-better-sidebar` \u2014 exactly the manual mount the sidebar bundle's own patch comment calls the pre-bundle-channel way.",
+  "observed": {
+    "guard_decision": "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar",
+    "fatal": "dsh: plugin tree failed to load: failed to apply loader entry user-sidebar-probe (dsh-better-sidebar): webserver: duplicate prefix route \"/sidebar/api\"",
+    "duplicate_route_occurrences": 4,
+    "boot_outcome": "THE WHOLE PLUGIN TREE FAILS TO LOAD \u2014 not a degraded sidebar."
+  },
+  "why_it_matters": "The guard's duplicate-mount clause reads only layers declared in package.json#dsh.profile.bundles, while the loader composes bundlePatches + <profileDir>/cordis.patch.yml + $DSH_HOME/cordis.patch.yml + --patch overlays (dsh CLI lib/profile-boot-Dk-7KqJc.js#allPatches). A sidebar row in any of the last three is invisible to the guard, so the bundle MOUNTS A SECOND TIME and the boot dies \u2014 a regression for a user configuration the sidebar's own documentation names.",
+  "falsifier": "Remove the profile-layer row and the same sandbox boots clean (evidence/install-deps/captain-cross-check/20260920T033545Z/result.json: guard ENABLED, one mount, 0 fatal signatures, /sidebar/api 405).",
+  "source_hash_at_read": {
+    "packages/mpd-bundle/cordis.patch.yml": "6ab4df7eb2e4dbe515406044ef580c698f004b355f4ea0bde4d2e327baeb711a"
+  },
+  "verdict": "CONFIRMED \u2014 the repair must close this class (profile layer, home layer, --patch overlays), not narrow the claim.",
+  "VERDICT_AFTER_REPAIR": {
+    "measured_at_utc": "2026-09-20T04:04:54+00:00",
+    "same_sandbox": true,
+    "guard_decision": [
+      "[mpd-better-sidebar] mount guard: DISABLED - patch layer /root/dshProj/my-power-dsh/.qa-dep-f3/dsh/profiles/web/cordis.patch.yml already mounts it"
+    ],
+    "fatal_signature_counts": {
+      "duplicate": 0,
+      "failed to load": 0,
+      "did not activate": 0
+    },
+    "http": {
+      "authorize": 303,
+      "index_bytes": 28318,
+      "sidebar_client_composed": 3,
+      "sidebar_api": 405
+    },
+    "conclusion": "CLOSED \u2014 the profile-layer arm now yields DISABLED ('patch layer <profileDir>/cordis.patch.yml already mounts it'), ZERO fatal signatures, a healthy boot, and the sidebar still served exactly once by the USER's own row. This is the same sandbox whose pre-repair run is recorded in this directory's boot.log (guard ENABLED, `webserver: duplicate prefix route`, tree failed to load), so the guard body is the only variable.",
+    "source_hash_at_read": {
+      "packages/mpd-bundle/cordis.patch.yml": "e70a179e1ed13c5e4fa9926fb89fda9de4e17c1935aac1d517b37fa0b7b4b28e"
+    }
+  }
+}

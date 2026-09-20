@@ -1,0 +1,126 @@
+{
+  "id": "A4-tui-plane",
+  "plane": "tui",
+  "purpose": "the dsh-tui plane provides no webServer: row disables, TUI boot stays green.",
+  "profileName": "dsh-tui",
+  "bundles": [
+    "@deepseek-ai/dsh-base",
+    "@deepseek-harness-tui/dsh-tui",
+    "@mpd-dsh/mpd"
+  ],
+  "expect": {
+    "rowsMin": 1,
+    "rowsMax": 1,
+    "literalEnabledMax": 0,
+    "guard": "DISABLED",
+    "served": false
+  },
+  "ok": true,
+  "checks": [
+    {
+      "name": "composition.exit0",
+      "ok": true,
+      "detail": "exit=0 stderr=[\"[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.\",\"[dump-config] ---- the composed rows below are the child's own output ----\",\"dsh: [@mpd-dsh/mpd] patch: entry \\\"agent-presets\\\" not found\",\"[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).\"]"
+    },
+    {
+      "name": "composition.rowCount",
+      "ok": true,
+      "detail": "rows=1 ids=[\"mpd-better-sidebar\"]"
+    },
+    {
+      "name": "composition.literalEnabled",
+      "ok": true,
+      "detail": "literalEnabled=0 []"
+    },
+    {
+      "name": "load.booted",
+      "ok": true,
+      "detail": "booted"
+    },
+    {
+      "name": "load.noFatalSignature",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "name": "load.guardDecision",
+      "ok": true,
+      "detail": "guard={\"decision\":\"DISABLED\",\"reason\":\"no enabled @deepseek-ai/dsh-host-webserver entry in this composition\"} expected=DISABLED"
+    }
+  ],
+  "failedChecks": [],
+  "findingArm": false,
+  "install": null,
+  "stage": null,
+  "overlayArgs": [],
+  "profilePatch": null,
+  "nodeModulesAfterBoot": [
+    "@alcalzone",
+    "@deepseek-harness-tui",
+    "@mpd-dsh",
+    "ansi-regex",
+    "ansi-styles",
+    "any-promise",
+    "auto-bind",
+    "bidi-js"
+  ],
+  "evidence": {
+    "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification-final/logs/A4-tui-plane.boot.log",
+    "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification-final/logs/A4-tui-plane.composed.txt"
+  },
+  "composition": {
+    "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never executes plugin code, AGENTS.md §4). NEVER cited as load evidence.",
+    "command": "node scripts/dump-config.mjs --profile dsh-tui --json",
+    "exitCode": 0,
+    "envelopeParsed": true,
+    "rows": [
+      {
+        "id": "mpd-better-sidebar",
+        "disabledRaw": "!!js >-",
+        "enabled": false
+      }
+    ],
+    "rowIds": [
+      "mpd-better-sidebar"
+    ],
+    "stderrTail": [
+      "[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.",
+      "[dump-config] ---- the composed rows below are the child's own output ----",
+      "dsh: [@mpd-dsh/mpd] patch: entry \"agent-presets\" not found",
+      "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+    ],
+    "rowCount": 1,
+    "literalEnabledCount": 0,
+    "literalEnabledIds": [],
+    "ok": true
+  },
+  "load": {
+    "claim": "REAL dsh-tui mounting boot in tmux",
+    "bootCommand": "tmux new-session … dsh-tui",
+    "paneFile": "/tmp/t17-sandboxes/A4-tui-plane/tui-pane.txt",
+    "rawLogFile": "/tmp/t17-sandboxes/A4-tui-plane/tui-raw.log",
+    "booted": true,
+    "signatures": {
+      "hits": [],
+      "markers": [],
+      "healthy": true
+    },
+    "guard": {
+      "decision": "DISABLED",
+      "reason": "no enabled @deepseek-ai/dsh-host-webserver entry in this composition"
+    },
+    "guardLines": [
+      "[mpd-better-sidebar] mount guard: DISABLED - no enabled @deepseek-ai/dsh-host-webserver entry in this composition"
+    ],
+    "logTail": [
+      "                                            stability, or wait for a dsh-tui update.",
+      "          Explore the uncharted!",
+      "   ▶ （Ctrl+P to expand） Context loaded · System prompt 17 sections · Runtime context 2 items · Skills 18 · Tools 100",
+      "  mpd: team - · plans 0 · workmates 0 · notes 1",
+      "  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮",
+      "  ❯                                                                                                                                                                                                                      ⛶",
+      "  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯",
+      "   deepseek-flash · max · ws"
+    ]
+  }
+}

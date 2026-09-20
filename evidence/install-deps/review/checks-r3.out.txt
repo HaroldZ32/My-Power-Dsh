@@ -1,0 +1,44 @@
+patch guard      : 5915 5859cb4e571ff1d97d6dcc6a68aa78e4522b323223fb62301d00802f3ca077cb
+installer guard  : 5915 EQUAL: true
+canonical packed : 3367 e0429ff54f8eaca1cd371e49925a32d91233850126ebd8afc66bbb601f40aeb6 EQUAL TO SOURCE: false
+repair pack-verified: 5915 5859cb4e571ff1d97d6dcc6a68aa78e4522b323223fb62301d00802f3ca077cb EQUAL TO SOURCE: true
+raw e.options.disabled reads: 2 | evaluated .disabled read elsewhere: no
+comment-strip + unquote + keyOf present: true,true,true,true
+[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar
+[mpd-better-sidebar] mount guard: DISABLED - bundle layer @other/web-all already mounts it in its own patch
+[mpd-better-sidebar] mount guard: DISABLED - patch layer /tmp/r3-14-D6FJAR/dsh/profiles/w/cordis.patch.yml already mounts it
+[mpd-better-sidebar] mount guard: DISABLED - patch layer /tmp/r3-15-6ivwuU/dsh/cordis.patch.yml already mounts it
+[mpd-better-sidebar] mount guard: DISABLED - patch layer /tmp/r3-22-DJlXWq/ov-mount.yml already mounts it
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules
+
+--- round-3 probes over the SHIPPED predicate (real fs) ---
+OK   D1 comment-only mention                              -> false (expected false)
+OK   D2 comment with apostrophes                          -> false (expected false)
+OK   D3 literal disabled:true foreign row                 -> false (expected false)
+OK   D4 quoted 'true' string disabled row                 -> false (expected false)
+OK   D5 YAML boolean True row                             -> false (expected false)
+OK   D6 disabled:true row plus a comment                  -> false (expected false)
+OK   D7 profile layer: disabled:true row                  -> false (expected false)
+OK   D8 home layer: comment-only mention                  -> false (expected false)
+OK   D10 row literally disabled + a second mention in the same row -> false (expected false)
+OK   M1 accepted aggregate shape                          -> true (expected true)
+OK   M2 bare name                                         -> true (expected true)
+OK   M3 disabled: false                                   -> true (expected true)
+OK   M4 disabled: !!js "false"                            -> true (expected true)
+OK   M5 deeper disabled (inside config) counts as mount   -> true (expected true)
+OK   M6 profile layer mount                               -> true (expected true)
+OK   M7 home layer mount                                  -> true (expected true)
+OK   P1 flow-style mapping                                -> true (expected true)
+OK   P2 multi-line name scalar                            -> true (expected true)
+OK   P3 YAML anchor + alias                               -> true (expected true)
+OK   P4 mention only in a config value                    -> true (expected true)
+OK   P5 tab-indented row                                  -> true (expected true)
+OK   P6 block-scalar name value                           -> true (expected true)
+OK   M8 --patch mount                                     -> true (expected true)
+OK   M9 --patch=mount                                     -> true (expected true)
+OK   D9 --patch decoy comment                             -> false (expected false)
+OK   H1 happy path (no foreign layer)                     -> false (expected false)
+OK   H2 package absent                                    -> true (expected true)
+OK   H3 NON-LITERAL name (shim/other spec) -> ENABLE (bound) -> false (expected false)
+
+ALL PROBES OK

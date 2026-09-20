@@ -1,0 +1,5 @@
+# t17 falsification fixture: a FOREIGN layer that genuinely MOUNTS dsh-better-sidebar (enabled row),
+# appearing AFTER @mpd-dsh/mpd in dsh.profile.bundles. The guard MUST back off.
+- insert:
+    - id: t17-foreign-sidebar
+      name: 'dsh-better-sidebar'

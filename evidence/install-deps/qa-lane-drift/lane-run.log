@@ -1,0 +1,11 @@
+[ulw-command] ok=true -> /root/dshProj/my-power-dsh/evidence/dsh-qa/ulw-command/2026-09-20T03-42-12.956Z
+  install: {"ok":true,"exit":0}
+  artifact: {"ok":true,"sources":{"mpd-dsh-adapter":{"source":"shipped","path":"/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js","missingInShipped":[],"buildExit":null},"mpd-ulw":{"source":"shipped","path":"/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js","missingInShip
+  shippedComposition: {"ok":true,"problems":[],"listing":["agent-teams","agent-teams-mpd","compact","feedback","goal","mpd","permission","plan","ultrawork","ulw"],"usage":{"commandId":"cmd-7851f1b2-1","kind":"error","text":"usage: /ulw <objective> (alias: /ultrawork <objective>) — starts an autonomous ULW run for that ob
+  gesture: {"ok":true,"problems":[],"gating":true,"finding":null,"rewritten":true,"clauses":["triage","gate","team","loop","fixOnSight","closeOut"],"numbered":6,"commandRuns":0,"objectiveSeen":true}
+  stubServed: {"ok":true,"requests":5}
+  workspacesSandboxed: {"ok":true,"sandbox":"/tmp/mpd-ulw-command-FRW9Kc","gatedWorkspace":"/tmp/mpd-ulw-command-FRW9Kc/ws-shipped"}
+  equivalenceTableTools: {"ok":true,"observed":true,"toolCount":103,"missing":[]}
+  gatedProblems: []
+[ulw-command] PASS
+EXIT=0

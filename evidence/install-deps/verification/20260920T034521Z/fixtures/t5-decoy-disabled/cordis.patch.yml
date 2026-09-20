@@ -1,0 +1,6 @@
+# t5 falsification fixture: this layer inserts a row named dsh-better-sidebar that is
+# EXPLICITLY DISABLED, i.e. it mounts NOTHING.
+- insert:
+    - id: t5-decoy-disabled-row
+      name: 'dsh-better-sidebar'
+      disabled: true

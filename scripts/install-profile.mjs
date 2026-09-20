@@ -52,6 +52,13 @@ function extractAgentTeamsProfiles(patchText) {
   return { base, lines: out }
 }
 
+// The sidebar mount guard, byte-identical to the `disabled: !!js` scalar of the
+// bundle patch's `mpd-better-sidebar` row (asserted by selfTest below). It is
+// duplicated here because the legacy installer renders its OWN patch instead of
+// reading the bundle's, and the two writers must not drift: a drifted guard
+// double-mounts (or disables the only mount) on a legacy install.
+const SIDEBAR_GUARD = "(() => { const say = (decision, reason) => { try { const seen = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen = {}); const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1; console.warn('[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason) } } catch (e) {} }; try { const fs = process.getBuiltinModule('node:fs'); const path = process.getBuiltinModule('node:path'); const profileDir = path.normalize(decodeURIComponent(new URL('.', baseUrl).pathname)); const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch (e) { return null } }; const readText = (p) => { try { return fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const SQ = String.fromCharCode(39); const DQ = String.fromCharCode(34); const HASH = String.fromCharCode(35); const LF = String.fromCharCode(10); const TAB = String.fromCharCode(9); const stripComments = (text) => { const out = []; for (const line of String(text).split(LF)) { let kept = ''; let quote = ''; for (const ch of line) { if (quote === '') { if (ch === HASH) { break } if (ch === SQ || ch === DQ) { quote = ch } } else if (ch === quote) { quote = '' } kept += ch } out.push(kept) } return out.join(LF) }; const unquote = (raw) => { const t = String(raw).trim(); if (t.length > 1 && (t.charAt(0) === SQ || t.charAt(0) === DQ) && t.charAt(t.length - 1) === t.charAt(0)) { return t.slice(1, -1) } return t }; const indentOf = (line) => { let i = 0; while (i < line.length && (line.charAt(i) === ' ' || line.charAt(i) === TAB)) { i++ } return i }; const keyOf = (line, key) => { let t = line; if (t.charAt(0) === '-' && t.charAt(1) === ' ') { t = t.slice(2) } const trimmed = t.trimStart(); if (!trimmed.startsWith(key + ':')) { return null } return trimmed.slice(key.length + 1).trim() }; const foreignRowMountsSidebar = (text) => { const stripped = stripComments(text); if (stripped.indexOf('dsh-better-sidebar') < 0) { return false } const rows = []; let current = null; for (const line of stripped.split(LF)) { if (line.trim() === '') { continue } const indent = indentOf(line); const body = line.slice(indent); const isItem = body.charAt(0) === '-' && (body.length === 1 || body.charAt(1) === ' '); if (isItem) { current = { indent, lines: [] }; rows.push(current) } if (current !== null && (isItem || indent > current.indent)) { current.lines.push({ indent, body }) } } let named = false; let mounting = false; for (const row of rows) { let nameValue = null; let nameIndent = -1; let disabledValue = null; let disabledIndent = -1; for (const entry of row.lines) { const nv = keyOf(entry.body, 'name'); if (nv !== null && (nameIndent < 0 || entry.indent < nameIndent)) { nameIndent = entry.indent; nameValue = nv } const dv = keyOf(entry.body, 'disabled'); if (dv !== null && (disabledIndent < 0 || entry.indent < disabledIndent)) { disabledIndent = entry.indent; disabledValue = dv } } if (nameValue === null || unquote(nameValue) !== 'dsh-better-sidebar') { continue } named = true; const literallyDisabled = disabledValue !== null && disabledIndent <= nameIndent && unquote(disabledValue).toLowerCase() === 'true'; if (!literallyDisabled) { mounting = true } } if (mounting) { return true } if (!named) { return true } return false }; const ownModules = path.join(profileDir, 'node_modules'); if (!fs.existsSync(path.join(ownModules, 'dsh-better-sidebar'))) { say('DISABLED', 'dsh-better-sidebar is not resolvable from the profile node_modules'); return true } const manifest = readJson(path.join(profileDir, 'package.json')); const bundles = manifest && manifest.dsh && manifest.dsh.profile && Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles : []; if (bundles.indexOf('dsh-better-sidebar') >= 0) { say('DISABLED', 'dsh-better-sidebar is itself a declared bundle layer'); return true } for (const bundle of bundles) { const name = String(bundle); for (const dir of [path.join(ownModules, name), path.join(profileDir, '..', 'node_modules', name)]) { const other = readJson(path.join(dir, 'package.json')); if (!other) continue; if (other.name === '@mpd-dsh/mpd') continue; const rel = other.dsh && other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !== 'string') continue; const text = readText(path.join(dir, rel)); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' + name + ' already mounts it in its own patch'); return true } } } const argv = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string' ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') { overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) { overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir, 'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')]; if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '') { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for (const overlay of overlays) { layers.push(path.resolve(overlay)) } for (const layer of layers) { const text = readText(layer); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + ' already mounts it'); return true } } const entries = [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options && e.options.name === '@deepseek-ai/dsh-host-webserver' && (e.options.disabled === undefined || e.options.disabled === false)); if (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver entry in this composition'); return true } say('ENABLED', 'web plane present and no other layer mounts dsh-better-sidebar'); return false } catch (e) { try { console.warn('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' + String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()"
+
 function buildPlan(o) {
   const dshHome = o.dshHome ?? process.env.DSH_HOME ?? join(homedir(), ".dsh")
   const isHeadless = o.profile === "mpd-headless"
@@ -73,6 +80,16 @@ function buildPlan(o) {
     {
       id: "mpd-web-compat", name: "@mpd-dsh/mpd",
       config: {}
+    },
+    // The sidebar HOST the bundle's shipped GUI registers into (the runtime
+    // dependency declared in the manifest's `dependencies`). Guarded exactly like
+    // the bundle patch row: disabled when another layer already mounts the package,
+    // when no web plane is present, or when the package is not resolvable — never a
+    // second mount, never a pending entry, never a dead boot. Id parity with the
+    // patch's insert set is enforced by scripts/verify-rows-parity.mjs.
+    {
+      id: "mpd-better-sidebar", name: "dsh-better-sidebar",
+      disabledYaml: "!!js " + JSON.stringify(SIDEBAR_GUARD)
     },
     // NOTE: no root skill-filesystem row — the mpd-* presets already declare it
     // (agent-plane, tool rows are preset-plane responsibility since 49b1288), and
@@ -240,7 +257,9 @@ function renderRow(r, indent) {
   const body = []
   body.push(indent + "- id: " + r.id)
   body.push(indent + "  name: " + JSON.stringify(r.name))
-  if (r.disabled !== undefined) body.push(indent + "  disabled: " + JSON.stringify(r.disabled))
+  // `disabledYaml` carries a raw YAML form (`!!js "..."`); `disabled` a literal.
+  if (r.disabledYaml !== undefined) body.push(indent + "  disabled: " + r.disabledYaml)
+  else if (r.disabled !== undefined) body.push(indent + "  disabled: " + JSON.stringify(r.disabled))
   const hasConfig = r.config && Object.keys(r.config).length > 0
   if (hasConfig) body.push(indent + "  config:")
   if (hasConfig) {
@@ -284,6 +303,13 @@ function selfTest() {
   if (plan.homePatch !== join(plan.dshHome, "cordis.patch.yml")) { console.error("[install-profile self-test] FAIL: path model"); process.exit(1) }
   const rows = plan.rows.map((r) => r.id)
   if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("agent-teams")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
+  // The sidebar row + its guard: the same row the bundle patch inserts, with the
+  // SAME expression (a drifted guard is the duplicate-mount / missing-sidebar class
+  // this wave exists to close).
+  const sidebarRow = plan.rows.find((r) => r.id === "mpd-better-sidebar")
+  const bundlePatchText = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  if (!sidebarRow || sidebarRow.name !== "dsh-better-sidebar" || sidebarRow.disabledYaml !== "!!js " + JSON.stringify(SIDEBAR_GUARD)) { console.error("[install-profile self-test] FAIL: sidebar row + guard"); process.exit(1) }
+  if (!bundlePatchText.includes("disabled: !!js " + JSON.stringify(SIDEBAR_GUARD))) { console.error("[install-profile self-test] FAIL: sidebar guard drifted from the bundle patch"); process.exit(1) }
   if (!rows.includes("mcp-context7") || !rows.includes("mcp-grepapp")) { console.error("[install-profile self-test] FAIL: mcp-context7/mcp-grepapp rows"); process.exit(1) }
   for (const mcp of ["mcp-astgrep", "mcp-gitbash", "mcp-lsp", "mcp-codegraph"]) {
     const r = plan.rows.find((x) => x.id === mcp)

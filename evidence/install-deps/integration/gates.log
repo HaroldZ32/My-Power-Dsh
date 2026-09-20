@@ -1,0 +1,693 @@
+### node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 26 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+exit=0 
+### bun run verify:rows
+$ node scripts/verify-rows-parity.mjs
+[verify-rows-parity] ok: 26 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+exit=0 
+### node scripts/verify-dist-fresh.mjs
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha 01f88fac5edf… 24ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha a1ea029ce52b… 28ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha d4785951a7b2… 19ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha f055b853a411… 23ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha b905aaeee047… 23ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha f8fed0ad642d… 32ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha d8e8fa36cb21… 21ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha f4900827ef5c… 30ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 4117a1d5d11d… 15ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha b28975d7441e… 23ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha 99a70bd9b948… 23ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha cef5baf5a769… 21ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha 1aa8c4b415b6… 22ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha e2a085467eeb… 23ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 70fe4e7e2ad9… 25ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha 3fabf0e154ff… 29ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha 5452cd87be33… 20ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha b74b88906d01… 36ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha df61eae41012… 22ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 6264923f5b54… 25ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /root/dshProj/my-power-dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] NOT COVERED (7) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-astgrep/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-astgrep/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.mjs from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 517ms
+exit=0 
+### bun run verify:docs
+$ node scripts/verify-docs-parity.mjs
+ok   README.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/index.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip packages/mpd-agent-teams-plugin/README.md — EXEMPT: adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: 2 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/index.md — DERIVED: 1 delta-range claim(s) A1–D42 checked against "A1–D42" derived from agent-references/agent-teams-deltas.md
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim checked: carried **151**/13 vs derived 151/13 from packages/mpd-agent-teams-plugin/lib/mpd-deltas.js; PER FILE (nesting-aware: every begin paired with its OWN end, T-57): packages/mpd-agent-teams-plugin/lib/quality-gates.js: registry 18 id(s), live 18 id(s) — agree; packages/mpd-agent-teams-plugin/lib/tools.js: registry 73 id(s), live 73 id(s) — agree; packages/mpd-agent-teams-plugin/lib/session-start.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/state.js: registry 11 id(s), live 11 id(s) — agree; packages/mpd-agent-teams-plugin/lib/scheduler.js: registry 16 id(s), live 16 id(s) — agree; packages/mpd-agent-teams-plugin/lib/command.js: registry 3 id(s), live 3 id(s) — agree; packages/mpd-agent-teams-plugin/lib/index.js: registry 5 id(s), live 5 id(s) — agree; packages/mpd-agent-teams-plugin/lib/members.js: registry 6 id(s), live 6 id(s) — agree; packages/mpd-agent-teams-plugin/lib/profiles.js: registry 4 id(s), live 4 id(s) — agree; packages/mpd-agent-teams-plugin/lib/types.js: registry 1 id(s), live 1 id(s) — agree; packages/mpd-agent-teams-plugin/lib/capabilities.js: registry 2 id(s), live 2 id(s) — agree; packages/mpd-agent-teams-plugin/lib/harness-compat.js: registry 8 id(s), live 8 id(s) — agree; packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js: registry 1 id(s), live 1 id(s) — agree
+note packages/mpd-agent-teams-plugin/README.md — LINK: EXEMPT_PROVENANCE (adopted upstream main code, kept VERBATIM as provenance — its bytes cannot carry a marker): 7 relative target(s) reported as EXEMPT PROVENANCE — never a pass and never a violation, because these bytes cannot change; no target exists in this root for: ./docs/quality-gates.md, ./docs/usage.md, ./skills/dsh-plugin-development/SKILL.md, ./docs/usage.md, ./docs/verification-guide.md, ./docs/developing-dsh-plugins.md, ./docs/readme-writing-guide.md
+[verify-docs-parity] links=234 checked=217 resolved=210 dead=0 exemptProvenance=7 absentSite=0 ignoredExternal=13 ignoredAnchorOnly=4 files=92
+
+[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS
+exit=0 
+### node scripts/verify-pack-closure.mjs
+[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/my-power-dsh/dist/mpd-package (383 asset files); agent references 3/3; root files 1/1; declared packages 23/23 present in the artifact; content bytes: 1186 file(s) compared, 1186 identical, 0 drift, 0 expected-after-pack; completeness: 410 declared source file(s) compared, 409 present, 1 declared exemption(s), 0 absent; pack stamp 2026-09-20T04:48:26.886Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+exit=0 
+### node scripts/install-profile.mjs --dry-run
+[install-profile] dshHome=/root/.dsh profile=mpd write=false
+[install-profile] profileDir=/root/.dsh/profiles/mpd
+[install-profile] homePatch=/root/.dsh/cordis.patch.yml
+[install-profile] presets -> /root/.dsh/.agent-presets/mpd-*
+[install-profile] toolchain missing=false (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 26 (id-target=0, insert=26)
+- insert:
+  - id: mpd-web-compat
+    name: "@mpd-dsh/mpd"
+  - id: mpd-better-sidebar
+    name: "dsh-better-sidebar"
+    disabled: !!js "(() => { const say = (decision, reason) => { try { const seen = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen = {}); const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1; console.warn('[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason) } } catch (e) {} }; try { const fs = process.getBuiltinModule('node:fs'); const path = process.getBuiltinModule('node:path'); const profileDir = path.normalize(decodeURIComponent(new URL('.', baseUrl).pathname)); const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch (e) { return null } }; const readText = (p) => { try { return fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const SQ = String.fromCharCode(39); const DQ = String.fromCharCode(34); const HASH = String.fromCharCode(35); const LF = String.fromCharCode(10); const TAB = String.fromCharCode(9); const stripComments = (text) => { const out = []; for (const line of String(text).split(LF)) { let kept = ''; let quote = ''; for (const ch of line) { if (quote === '') { if (ch === HASH) { break } if (ch === SQ || ch === DQ) { quote = ch } } else if (ch === quote) { quote = '' } kept += ch } out.push(kept) } return out.join(LF) }; const unquote = (raw) => { const t = String(raw).trim(); if (t.length > 1 && (t.charAt(0) === SQ || t.charAt(0) === DQ) && t.charAt(t.length - 1) === t.charAt(0)) { return t.slice(1, -1) } return t }; const indentOf = (line) => { let i = 0; while (i < line.length && (line.charAt(i) === ' ' || line.charAt(i) === TAB)) { i++ } return i }; const keyOf = (line, key) => { let t = line; if (t.charAt(0) === '-' && t.charAt(1) === ' ') { t = t.slice(2) } const trimmed = t.trimStart(); if (!trimmed.startsWith(key + ':')) { return null } return trimmed.slice(key.length + 1).trim() }; const foreignRowMountsSidebar = (text) => { const stripped = stripComments(text); if (stripped.indexOf('dsh-better-sidebar') < 0) { return false } const rows = []; let current = null; for (const line of stripped.split(LF)) { if (line.trim() === '') { continue } const indent = indentOf(line); const body = line.slice(indent); const isItem = body.charAt(0) === '-' && (body.length === 1 || body.charAt(1) === ' '); if (isItem) { current = { indent, lines: [] }; rows.push(current) } if (current !== null && (isItem || indent > current.indent)) { current.lines.push({ indent, body }) } } let named = false; let mounting = false; for (const row of rows) { let nameValue = null; let nameIndent = -1; let disabledValue = null; let disabledIndent = -1; for (const entry of row.lines) { const nv = keyOf(entry.body, 'name'); if (nv !== null && (nameIndent < 0 || entry.indent < nameIndent)) { nameIndent = entry.indent; nameValue = nv } const dv = keyOf(entry.body, 'disabled'); if (dv !== null && (disabledIndent < 0 || entry.indent < disabledIndent)) { disabledIndent = entry.indent; disabledValue = dv } } if (nameValue === null || unquote(nameValue) !== 'dsh-better-sidebar') { continue } named = true; const literallyDisabled = disabledValue !== null && disabledIndent <= nameIndent && unquote(disabledValue).toLowerCase() === 'true'; if (!literallyDisabled) { mounting = true } } if (mounting) { return true } if (!named) { return true } return false }; const ownModules = path.join(profileDir, 'node_modules'); if (!fs.existsSync(path.join(ownModules, 'dsh-better-sidebar'))) { say('DISABLED', 'dsh-better-sidebar is not resolvable from the profile node_modules'); return true } const manifest = readJson(path.join(profileDir, 'package.json')); const bundles = manifest && manifest.dsh && manifest.dsh.profile && Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles : []; if (bundles.indexOf('dsh-better-sidebar') >= 0) { say('DISABLED', 'dsh-better-sidebar is itself a declared bundle layer'); return true } for (const bundle of bundles) { const name = String(bundle); for (const dir of [path.join(ownModules, name), path.join(profileDir, '..', 'node_modules', name)]) { const other = readJson(path.join(dir, 'package.json')); if (!other) continue; if (other.name === '@mpd-dsh/mpd') continue; const rel = other.dsh && other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !== 'string') continue; const text = readText(path.join(dir, rel)); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' + name + ' already mounts it in its own patch'); return true } } } const argv = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string' ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') { overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) { overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir, 'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')]; if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '') { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for (const overlay of overlays) { layers.push(path.resolve(overlay)) } for (const layer of layers) { const text = readText(layer); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + ' already mounts it'); return true } } const entries = [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options && e.options.name === '@deepseek-ai/dsh-host-webserver' && (e.options.disabled === undefined || e.options.disabled === false)); if (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver entry in this composition'); return true } say('ENABLED', 'web plane present and no other layer mounts dsh-better-sidebar'); return false } catch (e) { try { console.warn('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' + String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()"
+  - id: mcp-astgrep
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "ast_grep"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-astgrep/dist/cli.js"
+      env:
+        MPD_AST_GREP_SG_PATH: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/sg"
+      toolCallTimeoutMs: 60000
+  - id: mcp-gitbash
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "git_bash"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-gitbash/dist/cli.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-lsp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "lsp"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-lsp/dist/cli.js"
+        - "mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-codegraph
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "codegraph"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/root/dshProj/my-power-dsh/packages/mpd-mcp-codegraph/dist/serve.js"
+      env:
+        MPD_CODEGRAPH_BIN: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+      toolCallTimeoutMs: 60000
+  - id: mcp-context7
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "context7"
+      transport: "streamable-http"
+      url: "https://mcp.context7.com/mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-grepapp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "grep_app"
+      transport: "streamable-http"
+      url: "https://mcp.grep.app"
+      toolCallTimeoutMs: 60000
+  - id: mpd-codegraph
+    name: "/root/dshProj/my-power-dsh/packages/mpd-codegraph-plugin/dist/index.js"
+    config:
+      autoInit: true
+      initTimeoutMs: 60000
+      binary: "/root/dshProj/my-power-dsh/.toolchain/node_modules/.bin/codegraph"
+  - id: mpd-tools
+    name: "/root/dshProj/my-power-dsh/packages/mpd-tools-plugin/dist/index.js"
+    config:
+      writeGuard: true
+      truncateMaxBytes: 8192
+  - id: mpd-modelchain
+    name: "/root/dshProj/my-power-dsh/packages/mpd-modelchain-plugin/dist/index.js"
+  - id: mpd-ulw
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ulw-plugin/dist/index.js"
+    config:
+      maxRounds: 3
+  - id: mpd-hashline
+    name: "/root/dshProj/my-power-dsh/packages/mpd-hashline-plugin/dist/index.js"
+    config:
+      guardEditTools: true
+  - id: mpd-boulder
+    name: "/root/dshProj/my-power-dsh/packages/mpd-boulder-plugin/dist/index.js"
+  - id: mpd-dsh-adapter
+    name: "/root/dshProj/my-power-dsh/packages/mpd-dsh-adapter-plugin/dist/index.js"
+  - id: mpd-config
+    name: "/root/dshProj/my-power-dsh/packages/mpd-config-plugin/dist/index.js"
+  - id: mpd-comment-checker
+    name: "/root/dshProj/my-power-dsh/packages/mpd-comment-checker-plugin/dist/index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "/root/dshProj/my-power-dsh/packages/mpd-memory-plugin/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-ext
+    name: "/root/dshProj/my-power-dsh/packages/mpd-ext-plugin/dist/index.js"
+    config:
+      quiet: false
+  - id: mpd-roles
+    name: "/root/dshProj/my-power-dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-workmate
+    name: "/root/dshProj/my-power-dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-team-compact
+    name: "/root/dshProj/my-power-dsh/packages/mpd-team-compact-plugin/dist/index.js"
+  - id: mpd-team-watchdog
+    name: "/root/dshProj/my-power-dsh/packages/mpd-team-watchdog-plugin/dist/index.js"
+    config:
+      stateDir: ".mpd/team"
+      warnSilenceMs: 90000
+      tickIntervalMs: 15000
+      warnStreakToEscalate: 3
+      actionOnEscalate: "pause"
+  - id: mpd-bootstrap
+    name: "/root/dshProj/my-power-dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: mpd-tui
+    name: "/root/dshProj/my-power-dsh/packages/mpd-tui-plugin/dist/index.js"
+  - id: agent-teams
+    name: "/root/dshProj/my-power-dsh/packages/mpd-agent-teams-plugin/lib/index.js"
+    config:
+      stateDir: ".mpd/team"
+      memberProvider: "spawn"
+      memberMaxDepth: 1
+      maxMembers: 16
+      maxParallelMembers: 8
+      maxMessagesPerRun: 10000
+      maxWallClockMinutes: 120
+      maxMemberTurns: 500
+      messagePayloadMaxBytes: 32768
+      recipientUnreadMaxBytes: 262144
+      mailboxPollIntervalMs: 3000
+      enforcement: "enforce"
+      reclaimStaleAfterMs: 3600000
+      sessionTeamPolicy:
+        mode: "off"
+        autoRoute: true
+        profile: "mpd"
+        presets: ["mpd"]
+        name: "MPD Default"
+        approval: "required"
+      profiles:
+        mpd:
+          description: "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
+          protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match."
+          taskPlanning: captain
+          # fallback.provider is ALWAYS deepseek-official (never the bare
+          # "deepseek" compat-track provider): the original layered design
+          # intended dsh-llm-pi-ai ("deepseek") as the degradation tier, but
+          # that row is OFF by default (install-profile --with-compat-track is
+          # gone) and the harness only registers deepseek-official
+          # (dsh-llm-deepseek), so a "deepseek" fallback would fail with
+          # NO_ADAPTER exactly when the fallback is needed.
+          # MEMBER ROUTES COME FROM THE SETTINGS SLOTS, not from literals: `tier: N` starts the
+          # member on mpd.teamModels.slot<N> (provider + model + reasoning effort, editable in the
+          # TUI /settings section and in the Web settings card). The frozen class mapping is
+          # tier 1 = Architect/Planner/Reviewer/Lead/Senior Engineer, tier 2 = the analysts
+          # (Researcher/Explorer/Plan Reviewer), tier 3 = the executors (Deep Worker/Junior
+          # Engineer), tier 4 = the vision member (Vision Analyst). Slot 4's DEFAULT is Vision
+          # Analyst's own vision route (deepseek-v4-flash-vision-exp at `high`), so routing it
+          # through the slot is behaviour-preserving while making its model configurable. A slot
+          # edit applies at the next dsh boot, like every other mpd knob.
+          members:
+            - name: Architect
+              tier: 1
+              role: architecture review / deep debugging / self-review
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
+              # Read-only members are MECHANICALLY restricted, not just instructed: these
+              # names are the same seven the one-shot roster path denies
+              # (mpd-roles-plugin / mpd-workmate-plugin READONLY_DENY), carried as profile
+              # data because the adopted plugin cannot import across packages. Without
+              # them a "read-only" member in a team kept write/edit/bash (measured
+              # 2026-09-14: a member's own session ran `pwd` for real).
+
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Researcher
+              tier: 2
+              role: code / open-source evidence search
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Planner
+              tier: 1
+              role: planning / task decomposition
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Explorer
+              tier: 2
+              role: read-only codebase exploration
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Reviewer
+              tier: 1
+              role: correctness / risk review
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
+            - name: Plan Reviewer
+              tier: 2
+              role: work-plan QA review / UI-UX critique
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Vision Analyst
+              tier: 4
+              role: image / diagram analysis
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Lead
+              tier: 1
+              role: orchestration / integration
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+            - name: Deep Worker
+              tier: 3
+              role: autonomous goal-driven implementation
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+            - name: Senior Engineer
+              tier: 1
+              role: primary implementation
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+            - name: Junior Engineer
+              tier: 3
+              role: small mechanical changes
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+
+[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target
+exit=0 
+### node scripts/run-qa-lanes.mjs --check-drift
+[run-qa-lanes] discovery: 48 lane script(s) discovered (48 listed, 0 unlisted, 19 outside every suite); .mjs entries 48, underscore-excluded 0
+[run-qa-lanes] immutability required=10: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=38
+[run-qa-lanes] manifest and disk agree (54 entries, 48 lane script(s) discovered) and the immutability guard is declared
+exit=0 
+### node scripts/verify-manual-paths.mjs
+[verify-manual-paths] manual /root/dshProj/my-power-dsh/AGENTS.md
+[verify-manual-paths] root /root/dshProj/my-power-dsh
+[verify-manual-paths] manual-sha256 165f4bc93a34be617c8d0526f51a40c033292cb2feecd781324e0b3c95c2e890 bytes=64424 mtime=2026-09-20T04:40:42.327Z
+[verify-manual-paths] rule candidate=path-shaped token | position=code span or ./|../-prefixed prose | shape=no glob/tilde/url/whitespace/placeholder/trailing-punctuation | anchor=./|-literal else first segment must be a repo-root entry | existence=stat <root>/<token>
+[verify-manual-paths] subjects audited=116 (resolved=116 unresolved=0); tokens that are not path-shaped are out of scope by the rule above and are counted nowhere
+[verify-manual-paths] census bucket=resolved direction=audited count=116 reason="audited: the path exists at the repo root"
+[verify-manual-paths] resolved AGENTS.md:9 -> README.md
+[verify-manual-paths] resolved AGENTS.md:12 -> scripts/verify-docs-parity.mjs
+[verify-manual-paths] resolved AGENTS.md:12 -> docs
+[verify-manual-paths] resolved AGENTS.md:12 -> docs/index.md
+[verify-manual-paths] resolved AGENTS.md:12 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:13 -> docs
+[verify-manual-paths] resolved AGENTS.md:22 -> docs/decisions.md
+[verify-manual-paths] resolved AGENTS.md:23 -> docs/bline-report.md
+[verify-manual-paths] resolved AGENTS.md:23 -> docs/omo-parity-gap.md
+[verify-manual-paths] resolved AGENTS.md:23 -> docs/review-p0-p3.md
+[verify-manual-paths] resolved AGENTS.md:24 -> docs/track-a-report.md
+[verify-manual-paths] resolved AGENTS.md:24 -> docs/ulw-deepseek-optimization.md
+[verify-manual-paths] resolved AGENTS.md:25 -> docs/tui-edition-report.md
+[verify-manual-paths] resolved AGENTS.md:30 -> agent-references
+[verify-manual-paths] resolved AGENTS.md:32 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:39 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:40 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] resolved AGENTS.md:40 -> scripts/patch-agent-teams-fixes.mjs
+[verify-manual-paths] resolved AGENTS.md:40 -> scripts/vendor-agent-teams.mjs
+[verify-manual-paths] resolved AGENTS.md:50 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:55 -> LICENSE.md
+[verify-manual-paths] resolved AGENTS.md:56 -> README.md
+[verify-manual-paths] resolved AGENTS.md:56 -> LICENSE-NOTICES.md
+[verify-manual-paths] resolved AGENTS.md:60 -> .mpd
+[verify-manual-paths] resolved AGENTS.md:64 -> .mpd/plans
+[verify-manual-paths] resolved AGENTS.md:80 -> packages/mpd-agent-teams-plugin
+[verify-manual-paths] resolved AGENTS.md:109 -> AGENTS.md
+[verify-manual-paths] resolved AGENTS.md:118 -> packages/mpd-agent-teams-plugin
+[verify-manual-paths] resolved AGENTS.md:127 -> .mpd/team
+[verify-manual-paths] resolved AGENTS.md:127 -> .mpd
+[verify-manual-paths] resolved AGENTS.md:210 -> .mpd/team
+[verify-manual-paths] resolved AGENTS.md:232 -> scripts/verify-vendor.mjs
+[verify-manual-paths] resolved AGENTS.md:232 -> scripts/repin-vendor.mjs
+[verify-manual-paths] resolved AGENTS.md:232 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:233 -> scripts/verify-dist-fresh.mjs
+[verify-manual-paths] resolved AGENTS.md:233 -> dist
+[verify-manual-paths] resolved AGENTS.md:234 -> scripts/verify-rows-parity.mjs
+[verify-manual-paths] resolved AGENTS.md:234 -> skills/dsh-qa/scripts/preset-conformance.mjs
+[verify-manual-paths] resolved AGENTS.md:235 -> scripts/verify-pack-closure.mjs
+[verify-manual-paths] resolved AGENTS.md:239 -> scripts/install-profile.mjs
+[verify-manual-paths] resolved AGENTS.md:240 -> scripts/verify-docs-parity.mjs
+[verify-manual-paths] resolved AGENTS.md:240 -> docs
+[verify-manual-paths] resolved AGENTS.md:241 -> scripts/mpd-ext.mjs
+[verify-manual-paths] resolved AGENTS.md:241 -> extensions/mpd-ext-example
+[verify-manual-paths] resolved AGENTS.md:242 -> skills/dsh-qa/scripts/bundle-lifecycle.mjs
+[verify-manual-paths] resolved AGENTS.md:242 -> skills/dsh-qa/scripts/preset-conformance.mjs
+[verify-manual-paths] resolved AGENTS.md:243 -> scripts/dump-config.mjs
+[verify-manual-paths] resolved AGENTS.md:246 -> scripts/verify-pack-closure.mjs
+[verify-manual-paths] resolved AGENTS.md:259 -> evidence/workmate/rename-delete-core/20260910T131415Z-fullboot/full-boot.result.json
+[verify-manual-paths] resolved AGENTS.md:264 -> scripts/dump-config.mjs
+[verify-manual-paths] resolved AGENTS.md:292 -> .git/HEAD
+[verify-manual-paths] resolved AGENTS.md:328 -> README.md
+[verify-manual-paths] resolved AGENTS.md:328 -> package.json
+[verify-manual-paths] resolved AGENTS.md:332 -> packages/mpd-dsh-adapter-plugin
+[verify-manual-paths] resolved AGENTS.md:339 -> packages/mpd-agent-teams-plugin/lib
+[verify-manual-paths] resolved AGENTS.md:357 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] resolved AGENTS.md:366 -> scripts/patch-agent-teams-client.mjs
+[verify-manual-paths] resolved AGENTS.md:369 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] resolved AGENTS.md:381 -> scripts/vendor-agent-teams.mjs
+[verify-manual-paths] resolved AGENTS.md:384 -> packages/mpd-agent-teams-plugin/lib/index.js
+[verify-manual-paths] resolved AGENTS.md:387 -> scripts/patch-agent-teams-fixes.mjs
+[verify-manual-paths] resolved AGENTS.md:388 -> scripts/vendor-agent-teams.mjs
+[verify-manual-paths] resolved AGENTS.md:395 -> agent-references/agent-teams-deltas.md
+[verify-manual-paths] resolved AGENTS.md:397 -> evidence/wave2/adopted-tooling/result.json
+[verify-manual-paths] resolved AGENTS.md:426 -> .mpd
+[verify-manual-paths] resolved AGENTS.md:437 -> evidence/session-workspace-root/b1-resolution
+[verify-manual-paths] resolved AGENTS.md:446 -> .codegraph
+[verify-manual-paths] resolved AGENTS.md:447 -> packages/mpd-codegraph-plugin/README.md
+[verify-manual-paths] resolved AGENTS.md:450 -> packages/mpd-ext-plugin/src/sdk.ts
+[verify-manual-paths] resolved AGENTS.md:451 -> packages/mpd-ext-plugin/dist/sdk.js
+[verify-manual-paths] resolved AGENTS.md:455 -> scripts/verify-dist-fresh.mjs
+[verify-manual-paths] resolved AGENTS.md:464 -> skills/dsh-qa/scripts/preset-register.mjs
+[verify-manual-paths] resolved AGENTS.md:475 -> skills/dsh-qa
+[verify-manual-paths] resolved AGENTS.md:483 -> skills/dsh-qa/scripts/lib/workspace-isolation.mjs
+[verify-manual-paths] resolved AGENTS.md:488 -> .codegraph
+[verify-manual-paths] resolved AGENTS.md:501 -> skills/dsh-qa/scripts/lib/session-evidence.mjs
+[verify-manual-paths] resolved AGENTS.md:509 -> evidence/dsh-qa/codegraph/2026-09-14T08-56-10.102Z
+[verify-manual-paths] resolved AGENTS.md:525 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:556 -> evidence/docs-overhaul/SUMMARY.md
+[verify-manual-paths] resolved AGENTS.md:567 -> package.json
+[verify-manual-paths] resolved AGENTS.md:568 -> packages/mpd-bundle/cordis.patch.yml
+[verify-manual-paths] resolved AGENTS.md:571 -> packages/mpd-bundle-plugin/client.js
+[verify-manual-paths] resolved AGENTS.md:576 -> packages/mpd-agent-teams-plugin
+[verify-manual-paths] resolved AGENTS.md:580 -> scripts/pack-mpd.mjs
+[verify-manual-paths] resolved AGENTS.md:581 -> dist/mpd-package
+[verify-manual-paths] resolved AGENTS.md:582 -> dist/mpd-package
+[verify-manual-paths] resolved AGENTS.md:583 -> skills
+[verify-manual-paths] resolved AGENTS.md:584 -> presets
+[verify-manual-paths] resolved AGENTS.md:584 -> extensions
+[verify-manual-paths] resolved AGENTS.md:584 -> templates
+[verify-manual-paths] resolved AGENTS.md:584 -> docs
+[verify-manual-paths] resolved AGENTS.md:585 -> agent-references
+[verify-manual-paths] resolved AGENTS.md:585 -> scripts
+[verify-manual-paths] resolved AGENTS.md:588 -> dist
+[verify-manual-paths] resolved AGENTS.md:590 -> dist
+[verify-manual-paths] resolved AGENTS.md:592 -> package.json
+[verify-manual-paths] resolved AGENTS.md:594 -> scripts/install-profile.mjs
+[verify-manual-paths] resolved AGENTS.md:596 -> scripts/install-profile.mjs
+[verify-manual-paths] resolved AGENTS.md:607 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:612 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:633 -> scripts/repin-vendor.mjs
+[verify-manual-paths] resolved AGENTS.md:636 -> skills/dsh-qa/scripts/preset-conformance.mjs
+[verify-manual-paths] resolved AGENTS.md:637 -> scripts/verify-dist-fresh.mjs
+[verify-manual-paths] resolved AGENTS.md:637 -> scripts/verify-pack-closure.mjs
+[verify-manual-paths] resolved AGENTS.md:640 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:651 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:654 -> evidence/gates/agents-budget
+[verify-manual-paths] resolved AGENTS.md:655 -> VENDOR_LOCK.json
+[verify-manual-paths] resolved AGENTS.md:663 -> agent-references/troubleshooting.md
+[verify-manual-paths] resolved AGENTS.md:666 -> scripts/mpd-bg.mjs
+[verify-manual-paths] resolved AGENTS.md:670 -> scripts/mpd-bg.mjs
+[verify-manual-paths] resolved AGENTS.md:672 -> scripts/mpd-bg.mjs
+[verify-manual-paths] resolved AGENTS.md:674 -> scripts/mpd-bg.mjs
+[verify-manual-paths] resolved AGENTS.md:684 -> scripts/mpd-bg.mjs
+[verify-manual-paths] resolved AGENTS.md:685 -> evidence/platform/harness-close
+[verify-manual-paths] resolved AGENTS.md:739 -> tests/golden
+[verify-manual-paths] census bucket=unresolved direction=audited count=0 reason="audited: the path does NOT exist at the repo root"
+[verify-manual-paths] census bucket=anticipatory direction=declared count=2 reason="DECLARED anticipatory class: the manual names it, the repository keeps it by design and deliberately does NOT create it (AGENTS.md §3) — printed with its count so an exemption for a file that does not exist can never rot silently"
+[verify-manual-paths] anticipatory AGENTS.md:14 -> docs/adder4.md [ANTICIPATORY — not a live path: kept by design (AGENTS.md §3), printed by `scripts/verify-docs-parity.mjs` as its own class, and deliberately not created yet]
+[verify-manual-paths] anticipatory AGENTS.md:14 -> docs/cnt8.md [ANTICIPATORY — not a live path: kept by design (AGENTS.md §3), printed by `scripts/verify-docs-parity.mjs` as its own class, and deliberately not created yet]
+[verify-manual-paths] census bucket=declared-unreferenced direction=declared count=0 reason="ROT GUARD: a declared anticipatory path this manual no longer names — reported here rather than dropped silently"
+[verify-manual-paths] census bucket=over-report:url direction=over-report count=0 reason="contains `://` — a URL, not a repo path"
+[verify-manual-paths] census bucket=over-report:fragment direction=over-report count=37 reason="contains whitespace — a sentence or command fragment, not one path"
+[verify-manual-paths] over-report:fragment AGENTS.md:135 -> /ulw <objective> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:135 -> /ultrawork <objective> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:137 -> /ulw … [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:232 -> node scripts/verify-vendor.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:232 -> node scripts/repin-vendor.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:233 -> node scripts/verify-dist-fresh.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:234 -> node skills/dsh-qa/scripts/preset-conformance.mjs --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:235 -> node scripts/verify-pack-closure.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:238 -> node skills/dsh-qa/scripts/<case>.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:239 -> node scripts/install-profile.mjs --dry-run [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:241 -> bun scripts/mpd-ext.mjs --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:241 -> bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:242 -> bun skills/dsh-qa/scripts/bundle-lifecycle.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:242 -> node skills/dsh-qa/scripts/preset-conformance.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:243 -> node scripts/dump-config.mjs --profile <p> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:246 -> node scripts/verify-pack-closure.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:264 -> node scripts/dump-config.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:300 -> git tag backup/<branch>-<sha> <sha> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:455 -> node scripts/verify-dist-fresh.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:490 -> agentsHome = $DSH_AGENTS_HOME ?? ~/.agents [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:511 -> evidence/<domain>/<slug>/<timestamp>/{result.json, output.log} [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:528 -> 1 changed path(s) not covered by inScope: …/dist/index.js is undeclared [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:538 -> agent-preset/invalid … row(s) did not activate [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:572 -> dsh plugin remove @mpd-dsh/mpd [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:580 -> node scripts/pack-mpd.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:582 -> dsh plugin --profile web add dist/mpd-package [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:596 -> node scripts/install-profile.mjs --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain] [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:631 -> git checkout -b release/vX.Y.Z [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:633 -> node scripts/repin-vendor.mjs --write --i-know-this-is-the-captains-step [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:636 -> node skills/dsh-qa/scripts/preset-conformance.mjs --self-test [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:637 -> node scripts/verify-dist-fresh.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:637 -> node scripts/verify-pack-closure.mjs [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:666 -> node scripts/mpd-bg.mjs reload-check <module-path> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:670 -> node scripts/mpd-bg.mjs run --log <workspace-path> -- <cmd> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:672 -> node scripts/mpd-bg.mjs probe <pidfile> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:674 -> node scripts/mpd-bg.mjs check-write <path> [the whole code span, whitespace included]
+[verify-manual-paths] over-report:fragment AGENTS.md:684 -> node scripts/mpd-bg.mjs --self-test [the whole code span, whitespace included]
+[verify-manual-paths] census bucket=over-report:trailing direction=over-report count=3 reason="ends with punctuation — a bound-token fragment, not a path target"
+[verify-manual-paths] over-report:trailing AGENTS.md:376 -> childCtx.on('agent/error') [the token ends with ")"]
+[verify-manual-paths] over-report:trailing AGENTS.md:376 -> childCtx.on('agent/request-error') [the token ends with ")"]
+[verify-manual-paths] over-report:trailing AGENTS.md:507 -> request/header.data.header.tools[] [the token ends with "]"]
+[verify-manual-paths] census bucket=over-report:npm direction=over-report count=6 reason="starts with `@` — an npm package name, not a repo path"
+[verify-manual-paths] over-report:npm AGENTS.md:112 -> @deepseek-ai/dsh-llm-deepseek
+[verify-manual-paths] over-report:npm AGENTS.md:117 -> @nanmicoder/dsh-agent-teams
+[verify-manual-paths] over-report:npm AGENTS.md:460 -> @mpd-dsh/mpd/packages/...
+[verify-manual-paths] over-report:npm AGENTS.md:461 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:567 -> @mpd-dsh/mpd
+[verify-manual-paths] over-report:npm AGENTS.md:572 -> @mpd-dsh/mpd
+[verify-manual-paths] census bucket=over-report:notRoot direction=over-report count=24 reason="first segment is not an entry at the repo root — a slug, route, branch, tool name or package-relative spelling, not a repo path"
+[verify-manual-paths] over-report:notRoot AGENTS.md:20 -> mpd-agent-teams-plugin/README.md [first segment "mpd-agent-teams-plugin"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:49 -> code-yeongyu/oh-my-openagent [first segment "code-yeongyu"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:125 -> lib/client.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:130 -> lib/members.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:131 -> lib/mpd-adapter-ctx.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:286 -> release/vX.Y.Z [first segment "release"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:327 -> src/index.ts [first segment "src"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:342 -> lib/mpd-adapter-ctx.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:347 -> lib/index.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:347 -> lib/capabilities.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:347 -> lib/harness-compat.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:347 -> lib/members.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:348 -> lib/command.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:348 -> lib/tools.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:364 -> lib/client.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:373 -> lib/members.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:378 -> _deps/dsh-agent [first segment "_deps"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:392 -> lib/mpd-adapter-ctx.js [first segment "lib"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:481 -> session/create [first segment "session"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:486 -> mpd_workmate_rename/delete [first segment "mpd_workmate_rename"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:506 -> tool/call.data.name [first segment "tool"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:506 -> tool/result [first segment "tool"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:538 -> agent-preset/invalid [first segment "agent-preset"]
+[verify-manual-paths] over-report:notRoot AGENTS.md:631 -> release/vX.Y.Z [first segment "release"]
+[verify-manual-paths] census bucket=over-report:bare direction=over-report count=17 reason="a bare file name with no directory component and not a root file this repo is expected to carry"
+[verify-manual-paths] over-report:bare AGENTS.md:20 -> README_ZH.md
+[verify-manual-paths] over-report:bare AGENTS.md:32 -> AGENT.md
+[verify-manual-paths] over-report:bare AGENTS.md:32 -> CLAUDE.md
+[verify-manual-paths] over-report:bare AGENTS.md:75 -> meta.json
+[verify-manual-paths] over-report:bare AGENTS.md:98 -> mpd.jsonc
+[verify-manual-paths] over-report:bare AGENTS.md:108 -> AGENT.md
+[verify-manual-paths] over-report:bare AGENTS.md:109 -> CLAUDE.md
+[verify-manual-paths] over-report:bare AGENTS.md:242 -> full-profile-boot.sh
+[verify-manual-paths] over-report:bare AGENTS.md:242 -> mount-proof.sh
+[verify-manual-paths] over-report:bare AGENTS.md:390 -> tools.js
+[verify-manual-paths] over-report:bare AGENTS.md:492 -> settings.yaml
+[verify-manual-paths] over-report:bare AGENTS.md:598 -> cordis.patch.yml
+[verify-manual-paths] over-report:bare AGENTS.md:695 -> preset.yml
+[verify-manual-paths] over-report:bare AGENTS.md:695 -> agent.cordis.yml
+[verify-manual-paths] over-report:bare AGENTS.md:702 -> roles.test.ts
+[verify-manual-paths] over-report:bare AGENTS.md:714 -> mpd.jsonc
+[verify-manual-paths] over-report:bare AGENTS.md:737 -> meta.json
+[verify-manual-paths] census bucket=under-report:glob direction=under-report count=41 reason="a glob pattern — there is no single file to stat"
+[verify-manual-paths] under-report:glob AGENTS.md:10 -> docs/*.md
+[verify-manual-paths] under-report:glob AGENTS.md:10 -> packages/*/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:11 -> *.zh-CN.md
+[verify-manual-paths] under-report:glob AGENTS.md:12 -> *.md
+[verify-manual-paths] under-report:glob AGENTS.md:12 -> extensions/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:12 -> templates/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:12 -> packages/*/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:13 -> agent-references/**
+[verify-manual-paths] under-report:glob AGENTS.md:13 -> *.zh-CN.md
+[verify-manual-paths] under-report:glob AGENTS.md:13 -> *.md
+[verify-manual-paths] under-report:glob AGENTS.md:13 -> docs/agent/**
+[verify-manual-paths] under-report:glob AGENTS.md:14 -> docs/plan-*.md
+[verify-manual-paths] under-report:glob AGENTS.md:22 -> docs/plan-*.md
+[verify-manual-paths] under-report:glob AGENTS.md:40 -> packages/mpd-agent-teams-plugin/**
+[verify-manual-paths] under-report:glob AGENTS.md:233 -> packages/*/src
+[verify-manual-paths] under-report:glob AGENTS.md:240 -> extensions/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:240 -> templates/**/README.md
+[verify-manual-paths] under-report:glob AGENTS.md:240 -> README*.md
+[verify-manual-paths] under-report:glob AGENTS.md:240 -> docs/**
+[verify-manual-paths] under-report:glob AGENTS.md:240 -> packages/*/README*.md
+[verify-manual-paths] under-report:glob AGENTS.md:240 -> extensions/**
+[verify-manual-paths] under-report:glob AGENTS.md:240 -> templates/**/README*.md
+[verify-manual-paths] under-report:glob AGENTS.md:273 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:342 -> lib/mpd-*.js
+[verify-manual-paths] under-report:glob AGENTS.md:394 -> lib/mpd-*.js
+[verify-manual-paths] under-report:glob AGENTS.md:486 -> <repo>/.mpd/team/mpd-default-*
+[verify-manual-paths] under-report:glob AGENTS.md:524 -> packages/*/dist/**
+[verify-manual-paths] under-report:glob AGENTS.md:524 -> dist/mpd-package/**
+[verify-manual-paths] under-report:glob AGENTS.md:525 -> .mpd/plans/**
+[verify-manual-paths] under-report:glob AGENTS.md:526 -> src/**
+[verify-manual-paths] under-report:glob AGENTS.md:531 -> dist/**
+[verify-manual-paths] under-report:glob AGENTS.md:569 -> ./packages/*
+[verify-manual-paths] under-report:glob AGENTS.md:570 -> ./skills/*
+[verify-manual-paths] under-report:glob AGENTS.md:570 -> ./presets/*
+[verify-manual-paths] under-report:glob AGENTS.md:584 -> *.zh-CN.md
+[verify-manual-paths] under-report:glob AGENTS.md:611 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:615 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:634 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:641 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:643 -> skills/**
+[verify-manual-paths] under-report:glob AGENTS.md:655 -> skills/**
+[verify-manual-paths] census bucket=under-report:home direction=under-report count=10 reason="home-relative (`~`) — it resolves in the user's HOME, not in the repo"
+[verify-manual-paths] under-report:home AGENTS.md:85 -> ~/.mpd/workmate/
+[verify-manual-paths] under-report:home AGENTS.md:163 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:427 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:443 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:477 -> ~/.dsh
+[verify-manual-paths] under-report:home AGENTS.md:490 -> ~/.agents
+[verify-manual-paths] under-report:home AGENTS.md:579 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:677 -> ~/.mpd/workmate
+[verify-manual-paths] under-report:home AGENTS.md:723 -> ~/.mpd/workmate/
+[verify-manual-paths] under-report:home AGENTS.md:732 -> ~/.mpd/workmate/.archive/<key>-<stamp>/
+[verify-manual-paths] census bucket=under-report:absolute direction=under-report count=8 reason="absolute (`/`) — it is outside the repo root"
+[verify-manual-paths] under-report:absolute AGENTS.md:12 -> /<path>
+[verify-manual-paths] under-report:absolute AGENTS.md:12 -> /docs/index.md
+[verify-manual-paths] under-report:absolute AGENTS.md:135 -> /ulw
+[verify-manual-paths] under-report:absolute AGENTS.md:135 -> /ultrawork
+[verify-manual-paths] under-report:absolute AGENTS.md:137 -> /ulw
+[verify-manual-paths] under-report:absolute AGENTS.md:150 -> /agent-teams
+[verify-manual-paths] under-report:absolute AGENTS.md:655 -> /tmp
+[verify-manual-paths] under-report:absolute AGENTS.md:668 -> /tmp
+[verify-manual-paths] census bucket=under-report:outside direction=under-report count=2 reason="escapes the repo root (`../`) — it is outside the repo root"
+[verify-manual-paths] under-report:outside AGENTS.md:12 -> ../<path>
+[verify-manual-paths] under-report:outside AGENTS.md:184 -> ../../../
+[verify-manual-paths] census bucket=under-report:placeholder direction=under-report count=27 reason="carries a placeholder (`<name>`, `$VAR`, `{a,b}`) — not a literal path"
+[verify-manual-paths] under-report:placeholder AGENTS.md:12 -> ./<path>
+[verify-manual-paths] under-report:placeholder AGENTS.md:17 -> [English](./<name>.md)
+[verify-manual-paths] under-report:placeholder AGENTS.md:70 -> personas/<id>.md
+[verify-manual-paths] under-report:placeholder AGENTS.md:92 -> .archive/<key>-<stamp>/
+[verify-manual-paths] under-report:placeholder AGENTS.md:122 -> <profile>/node_modules
+[verify-manual-paths] under-report:placeholder AGENTS.md:189 -> <bundle>/packages/mpd-ext-plugin/dist/validator.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:209 -> <workspace>/.mpd/team/watchdog/
+[verify-manual-paths] under-report:placeholder AGENTS.md:210 -> <workspace>/.mpd/team-compact/<teamId>/
+[verify-manual-paths] under-report:placeholder AGENTS.md:238 -> skills/dsh-qa/scripts/<case>.mjs
+[verify-manual-paths] under-report:placeholder AGENTS.md:284 -> feature/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:285 -> fix/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:300 -> backup/<branch>-<sha>
+[verify-manual-paths] under-report:placeholder AGENTS.md:327 -> packages/<pkg>/dist/index.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:328 -> @mpd-dsh/<name>
+[verify-manual-paths] under-report:placeholder AGENTS.md:439 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:440 -> <bundle>/presets
+[verify-manual-paths] under-report:placeholder AGENTS.md:484 -> <DSH_HOME>/sessions/<projectKey(realCwd)>
+[verify-manual-paths] under-report:placeholder AGENTS.md:487 -> .mpd/{memory,boulder.json,hashline-files.json,verif,plans,ulw}
+[verify-manual-paths] under-report:placeholder AGENTS.md:489 -> <DSH_HOME>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:490 -> <agentsHome>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:502 -> <DSH_HOME>/sessions/<projectKey(cwd)>/<sessionId>/
+[verify-manual-paths] under-report:placeholder AGENTS.md:511 -> evidence/<domain>/<slug>/<timestamp>/{result.json,
+[verify-manual-paths] under-report:placeholder AGENTS.md:527 -> packages/<pkg>/dist/index.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:574 -> <profile>/node_modules/@mpd-dsh/mpd
+[verify-manual-paths] under-report:placeholder AGENTS.md:577 -> <bundle>/presets
+[verify-manual-paths] under-report:placeholder AGENTS.md:578 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:599 -> $DSH_HOME/.agent-presets/
+[verify-manual-paths] census bucket=under-report:elided direction=under-report count=4 reason="contains an elision mark — the path is not written out, so no literal target exists"
+[verify-manual-paths] under-report:elided AGENTS.md:16 -> [中文](./<name>.zh-CN.md) [non-ASCII/elision characters]
+[verify-manual-paths] under-report:elided AGENTS.md:260 -> …/20260910T132303Z-mount/mount-proof.result.json [non-ASCII/elision characters]
+[verify-manual-paths] under-report:elided AGENTS.md:507 -> /mcp__…/ [non-ASCII/elision characters]
+[verify-manual-paths] under-report:elided AGENTS.md:528 -> …/dist/index.js [non-ASCII/elision characters]
+[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason="a directory spelled in words rather than as a token — nothing to stat"
+[verify-manual-paths] census family=over-report direction=over-report total=87 buckets=6 (counted apart from under-report and from unresolved)
+[verify-manual-paths] census family=under-report direction=under-report total=92 buckets=7 (counted apart from over-report and from unresolved)
+[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)
+[verify-manual-paths] PASS resolved=116 over-report=87 under-report=92 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+exit=0 
+### node scripts/verify-vendor.mjs
+[verify-vendor] commit OK: 8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29
+[verify-vendor] version OK: 5.0.0-beta.20
+[verify-vendor] stats OK: 9131 files / 1470231 loc
+[verify-vendor] asset OK: skills 327 files
+[verify-vendor] asset OK: packages/mpd-agent-teams-plugin/_deps 635 files
+[verify-vendor] asset OK: packages/mpd-mcp-astgrep/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS
+exit=0 

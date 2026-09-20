@@ -1,0 +1,2 @@
+d141f70771c18cc06dd2492aae0cab92423929ab554a3c1031e2bbb9d3c1c23a  packages/mpd-bundle/cordis.patch.yml
+ef7d0884e56df8cafd8a485a870dcab49b895c6e81e200139c28d1a58ec4f763  package.json

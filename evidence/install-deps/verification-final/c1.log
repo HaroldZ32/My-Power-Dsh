@@ -1,0 +1,156 @@
+{
+  "task": "t17 final independent verification on the frozen post-repair revision",
+  "lane": "Lead",
+  "runDir": "/root/dshProj/my-power-dsh/evidence/install-deps/verification-final",
+  "sandboxRoot": "/tmp/t17-c1",
+  "startedAt": "2026-09-20T04:38:51Z",
+  "endedAt": "2026-09-20T04:40:55Z",
+  "hashDiscipline": {
+    "settleMs": 1000,
+    "start": {
+      "label": "start",
+      "atUtc": "2026-09-20T04:38:51Z",
+      "files": {
+        "package.json": {
+          "sha256": "64e9797767e086db02428946fa9c4764786695f493fe9c14352b065a099a634f",
+          "bytes": 2714
+        },
+        "bun.lock": {
+          "sha256": "92b9f18df2eb4d5f53c4f89e229b9021008a3e6be4d0fb2422513cbdf39aab7a",
+          "bytes": 86182
+        },
+        "packages/mpd-bundle/cordis.patch.yml": {
+          "sha256": "1b316b68850fbe3958b16088ac723abcd50faabd178668de7ed6044811107e8f",
+          "bytes": 43630
+        },
+        "scripts/install-profile.mjs": {
+          "sha256": "2809ccfc23b37fd9f8eff73d0feb689397fc92c7c958aec93d39045049affc67",
+          "bytes": 31817
+        },
+        "scripts/pack-mpd.mjs": {
+          "sha256": "52b4245dc46e8f3f1de87b7f16ac0adda11370fb5606a420d9ea97b7836cdb07",
+          "bytes": 33529
+        },
+        "skills/dsh-qa/scripts/install-dependencies.mjs": {
+          "sha256": "108134dc4698af32c93e3ec716fb3444bf5950ce00ff098491b40f1a216a5a66",
+          "bytes": 39240
+        },
+        "skills/dsh-qa/cases.json": {
+          "sha256": "646e16d2518d8f95d6efe3ffff641838f3ccd678da8211ce2af43cd79da8b381",
+          "bytes": 23852
+        },
+        "skills/dsh-qa/SKILL.md": {
+          "sha256": "8afc6a716321eeabe095c26bfcd565fb1c688de2fd466bd4fa19a9d500fb63a5",
+          "bytes": 56376
+        }
+      }
+    },
+    "end": {
+      "label": "end",
+      "atUtc": "2026-09-20T04:38:52Z",
+      "files": {
+        "package.json": {
+          "sha256": "64e9797767e086db02428946fa9c4764786695f493fe9c14352b065a099a634f",
+          "bytes": 2714
+        },
+        "bun.lock": {
+          "sha256": "92b9f18df2eb4d5f53c4f89e229b9021008a3e6be4d0fb2422513cbdf39aab7a",
+          "bytes": 86182
+        },
+        "packages/mpd-bundle/cordis.patch.yml": {
+          "sha256": "1b316b68850fbe3958b16088ac723abcd50faabd178668de7ed6044811107e8f",
+          "bytes": 43630
+        },
+        "scripts/install-profile.mjs": {
+          "sha256": "2809ccfc23b37fd9f8eff73d0feb689397fc92c7c958aec93d39045049affc67",
+          "bytes": 31817
+        },
+        "scripts/pack-mpd.mjs": {
+          "sha256": "52b4245dc46e8f3f1de87b7f16ac0adda11370fb5606a420d9ea97b7836cdb07",
+          "bytes": 33529
+        },
+        "skills/dsh-qa/scripts/install-dependencies.mjs": {
+          "sha256": "108134dc4698af32c93e3ec716fb3444bf5950ce00ff098491b40f1a216a5a66",
+          "bytes": 39240
+        },
+        "skills/dsh-qa/cases.json": {
+          "sha256": "646e16d2518d8f95d6efe3ffff641838f3ccd678da8211ce2af43cd79da8b381",
+          "bytes": 23852
+        },
+        "skills/dsh-qa/SKILL.md": {
+          "sha256": "8afc6a716321eeabe095c26bfcd565fb1c688de2fd466bd4fa19a9d500fb63a5",
+          "bytes": 56376
+        }
+      }
+    },
+    "startEqualsEnd": true,
+    "moved": [],
+    "postRun": {
+      "label": "post-run",
+      "atUtc": "2026-09-20T04:40:55Z",
+      "files": {
+        "package.json": {
+          "sha256": "64e9797767e086db02428946fa9c4764786695f493fe9c14352b065a099a634f",
+          "bytes": 2714
+        },
+        "bun.lock": {
+          "sha256": "92b9f18df2eb4d5f53c4f89e229b9021008a3e6be4d0fb2422513cbdf39aab7a",
+          "bytes": 86182
+        },
+        "packages/mpd-bundle/cordis.patch.yml": {
+          "sha256": "1b316b68850fbe3958b16088ac723abcd50faabd178668de7ed6044811107e8f",
+          "bytes": 43630
+        },
+        "scripts/install-profile.mjs": {
+          "sha256": "2809ccfc23b37fd9f8eff73d0feb689397fc92c7c958aec93d39045049affc67",
+          "bytes": 31817
+        },
+        "scripts/pack-mpd.mjs": {
+          "sha256": "52b4245dc46e8f3f1de87b7f16ac0adda11370fb5606a420d9ea97b7836cdb07",
+          "bytes": 33529
+        },
+        "skills/dsh-qa/scripts/install-dependencies.mjs": {
+          "sha256": "108134dc4698af32c93e3ec716fb3444bf5950ce00ff098491b40f1a216a5a66",
+          "bytes": 39240
+        },
+        "skills/dsh-qa/cases.json": {
+          "sha256": "646e16d2518d8f95d6efe3ffff641838f3ccd678da8211ce2af43cd79da8b381",
+          "bytes": 23852
+        },
+        "skills/dsh-qa/SKILL.md": {
+          "sha256": "8afc6a716321eeabe095c26bfcd565fb1c688de2fd466bd4fa19a9d500fb63a5",
+          "bytes": 56376
+        }
+      }
+    },
+    "movedDuringRun": [],
+    "unchangedThroughRun": true
+  },
+  "arms": [
+    {
+      "id": "C1-pre-repair-patch-layer-control",
+      "ok": false,
+      "failedChecks": [
+        "load.booted",
+        "load.noFatalSignature"
+      ],
+      "guard": {
+        "decision": "ENABLED",
+        "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+      },
+      "route": null,
+      "served": null,
+      "signatureHits": [
+        "entryApplyFailed",
+        "duplicatePrefixRoute",
+        "pluginTreeFailed"
+      ],
+      "rowIds": [
+        "mpd-better-sidebar",
+        "t17-profile-sidebar"
+      ],
+      "backend": null
+    }
+  ],
+  "allArmsOk": false
+}

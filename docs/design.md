@@ -24,9 +24,9 @@ is added:
 
 - a **patch layer** that inserts the bundle's rows into any profile the bundle is installed into,
   and two id-targets that make the bundle's own `mpd` preset the default there,
-- **25 plugin rows** (6 MCP client rows, 17 `mpd-*` plugin rows, the `mpd-web-compat` self-row and
-  the adopted `agent-teams` row), and the services, tools, commands, routes and state each one owns
-  (§4),
+- **26 plugin rows** (6 MCP client rows, 17 `mpd-*` plugin rows, the `mpd-web-compat` self-row, the
+  adopted `agent-teams` row and the `mpd-better-sidebar` host row that mounts the bundle's declared
+  sidebar dependency), and the services, tools, commands, routes and state each one owns (§4),
 - a **web client** and a **TUI surface** that render the bundle's surfaces inside the host's own
   shells (§7, §7b),
 - the **state layout** the bundle writes under the session workspace and under the user home (§6),
@@ -75,10 +75,12 @@ session's request header. my-power-dsh ships as an **npm bundle** (`@mpd-dsh/mpd
 `dsh.bundle.patch` (`packages/mpd-bundle/cordis.patch.yml`) adds rows to any profile it
 is installed into. It contributes:
 
-- **25 inserted rows** in ONE additive patch layer: 6 MCP client rows (local ast-grep,
+- **26 inserted rows** in ONE additive patch layer: 6 MCP client rows (local ast-grep,
   git-bash [disabled by default], LSP, codegraph; remote context7, grep.app), 17 `mpd-*`
-  plugin rows, the `mpd-web-compat` self-row that makes the bundle a loader entry, and the
-  adopted `agent-teams` plugin row — §4 lists every one of them,
+  plugin rows, the `mpd-web-compat` self-row that makes the bundle a loader entry, the
+  adopted `agent-teams` plugin row, and the `mpd-better-sidebar` row that mounts the
+  bundle's one external runtime dependency (the community sidebar host) — §4 lists every
+  one of them,
 - **2 id-targets** (not inserts) that make the bundle's own preset the default in each
   composition: the `agent-presets` row on the web/base plane and `dsh-tui-agent-presets` on
   the dsh-tui plane (§2, §6c),
@@ -119,6 +121,14 @@ Manifest invariants (why they exist):
   `dsh plugin add`) never links a bundle's transitive deps into the profile root, so a
   plain package-name row would silently self-disable (the E4 defect, see
   `docs/plan-e.md`). The adopted plugin is main code + its own vendored closure.
+- **Exactly one external `dependencies` entry: `dsh-better-sidebar`** — the community
+  sidebar bundle that hosts the two mpd tabs. It is DECLARED so a plain install is
+  enough, and it is resolvable because `@deepseek-ai/dsh-app-boot#healProfileModuleFallback`
+  materializes the dependency closure of non-installation bundle layers into
+  `<profile>/node_modules` before the loader runs; a checkout install materializes it in
+  the repository (`bun install`). The row that mounts it (`mpd-better-sidebar`) is guarded
+  and order-independent (§4), so a composition that mounts the package itself keeps
+  working and an unresolvable package degrades to "no sidebar", never a dead boot.
 
 `scripts/build-mpd-client.mjs` composes the combined client (see §7).
 
@@ -162,8 +172,8 @@ to bare package names.
 ## 4. Plugin inventory
 
 **Every row of `packages/mpd-bundle/cordis.patch.yml`, by composition.** The patch layer is
-additive and carries **25 `insert` rows**; `node scripts/verify-rows-parity.mjs` asserts that this
-list and the repository's own row bookkeeping agree (exit 0, all 25 ids named). Two further entries
+additive and carries **26 `insert` rows**; `node scripts/verify-rows-parity.mjs` asserts that this
+list and the repository's own row bookkeeping agree (exit 0, all 26 ids named). Two further entries
 are **id-targets**, not inserts — they REPLACE a row that exactly one composition already owns — so
 they are listed in their own table below.
 
@@ -202,6 +212,7 @@ COMPOSITION ONLY — it never executes plugin code, so it is never load evidence
 | `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | asset provisioning BY REFERENCE: registers `<bundle>/skills` as a skill provider through the adapter (rank 600 `bundled`) and removes the version-stamped home copies written by bundle <= 0.2.6 | effect only | `skillsDir`, `skipSkills`, `skipPresets`, `skipLegacyCleanup` |
 | `mpd-tui` | mpd-tui-plugin | web + dsh-tui (active in dsh-tui, degrades elsewhere) | the dsh-tui edition's native surface: binds the host's activation-gated TUI seams and probes each one with `ctx.get(id, false)` + warn-once degrade, so a web/headless composition loses the TUI surfaces and not the boot (§7b) | no model-facing tools; TUI status / settings section / board / command tree / shortcuts / dialogs / transcript renderer | — |
 | `agent-teams` | mpd-agent-teams-plugin (adopted, MIT) | web + dsh-tui | multi-agent team collaboration (captain, members, tasks, scheduler; its views back the AgentTeams sidebar tab) | `agent_teams_*` | `stateDir`, `memberProvider`, `memberMaxDepth`, `maxMembers`, `profiles` |
+| `mpd-better-sidebar` | dsh-better-sidebar (the bundle's declared dependency; entry id is `mpd-`-prefixed on purpose, never the package's own `better-sidebar` or an aggregate's id) | web (the guard disables it when no enabled `@deepseek-ai/dsh-host-webserver` entry exists, `dsh-tui` included) | mounts the community sidebar bundle that HOSTS the AgentTeams and Workmates tabs, so the tabs exist without a second manual plugin install; the guard is order-independent and disables the row where ANY composed patch layer already names the package — every declared bundle layer's `dsh.bundle.patch` (e.g. the `@linxin666/dsh-web-all` aggregate), `<profileDir>/cordis.patch.yml`, `$DSH_HOME/cordis.patch.yml`, and every `--patch` overlay path read from `process.argv` (both spellings, repeatable) — where `dsh-better-sidebar` is itself a bundle layer, where the package is unresolvable, or where no enabled `@deepseek-ai/dsh-host-webserver` ENTRY exists (a webserver row disabled by an expression does not count). A foreign layer suppresses the row only when its patch contains a ROW that mounts the package — a row naming `dsh-better-sidebar` whose `disabled` is not literally `true` (YAML comments are stripped first); a mention inside a comment, or a row that is literally `disabled: true`, mounts nothing and does not suppress our mount, and any form the row scanner cannot parse falls back to the conservative behaviour (treated as a mount), because a false disable costs the sidebar while a false enable kills the boot with `duplicate prefix route`. Every path degrades to "no sidebar" with one log line, never a dead boot | sidebar host + its tab registry (`ctx.betterSidebar`) | `disabled: !!js` mount guard |
 
 **The two id-targets** (each replaces one composition's own preset-roster row; an id-target is a
 per-key shallow override, so the host row's other keys survive, and a composition that does not
@@ -469,7 +480,10 @@ by `registerSidebarTab` as a **DSH-better-sidebar** tab
 (`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`, `single: true`, order 90) and the
 AgentTeams page by `registerTeamSidebarTab`. Without DSH-better-sidebar each logs exactly one
 warning (`… has no host (no floating fallback by design)`) and registers nothing, so no
-surface exists outside the sidebar. `scripts/build-mpd-client.mjs` enforces this at build
+surface exists outside the sidebar. The host itself is not an optional third-party extra:
+`dsh-better-sidebar` is a declared runtime dependency and the guarded `mpd-better-sidebar` row
+mounts it (§4), so that warning path is what a missing or broken dependency produces, not
+something a normal install sees. `scripts/build-mpd-client.mjs` enforces this at build
 time: it fails if any mpd client source registers `agent-teams-activity`,
 `conversation.chat.node`, `shell.overlay` or `sidebar.footer.action` — the removed card, the
 removed activity floater and the removed workmate floater/footer toggle.
@@ -566,7 +580,9 @@ document should carry, stated rather than left to be discovered:
 - **The web client is sidebar-only.** There is no in-conversation fallback: both mpd pages live as
   sidebar tabs, and an optional seam must be mounted with `ctx.inject([...])` rather than probed
   with a one-shot `ctx.get` — a probe cannot see a service another plugin owns and cannot recover
-  when that provider mounts late (§7).
+  when that provider mounts late (§7). The sidebar host is installed with the bundle (the declared
+  `dsh-better-sidebar` dependency plus the guarded `mpd-better-sidebar` row, §4), so this limit
+  describes the code path, not an extra install step the user owes.
 - **Two rows are inert or degraded by design.** `mcp-gitbash` ships disabled (Windows-only upstream)
   and `mpd-tui` degrades warn-once in a composition with no TUI seams, so "the row is composed" and
   "the capability is present" are different statements (§4).

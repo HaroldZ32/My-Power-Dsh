@@ -1,0 +1,33 @@
+{
+  "task": "t5 independent verification — revision pin",
+  "lane": "Lead",
+  "repo": "/root/dshProj/my-power-dsh",
+  "settled_revision": {
+    "measured_at_utc": ["2026-09-20T03:54:15Z", "2026-09-20T03:55:10Z"],
+    "settle_window_s": 55,
+    "start_equals_end": true,
+    "files": {
+      "packages/mpd-bundle/cordis.patch.yml": "e70a179e1ed13c5e4fa9926fb89fda9de4e17c1935aac1d517b37fa0b7b4b28e",
+      "scripts/install-profile.mjs": "1820242d3a9af2a8ad5d4949bb6b61ae53229e3d4cb5b237b1ad0b6ea9ec1dd6",
+      "scripts/pack-mpd.mjs": "52b4245dc46e8f3f1de87b7f16ac0adda11370fb5606a420d9ea97b7836cdb07",
+      "package.json": "64e9797767e086db02428946fa9c4764786695f493fe9c14352b065a099a634f",
+      "bun.lock": "92b9f18df2eb4d5f53c4f89e229b9021008a3e6be4d0fb2422513cbdf39aab7a",
+      "skills/dsh-qa/scripts/install-dependencies.mjs": "108134dc4698af32c93e3ec716fb3444bf5950ce00ff098491b40f1a216a5a66"
+    }
+  },
+  "premature_revision": {
+    "note": "The tree MOVED during this lane's first full matrix run (pass 2). Those arms were measured against this revision and are kept as arms/ for audit, never as a verdict about the shipped revision.",
+    "packages/mpd-bundle/cordis.patch.yml": "6ab4df7eb2e4dbe515406044ef580c698f004b355f4ea0bde4d2e327baeb711a",
+    "scripts/install-profile.mjs": "98b29e101bd0e7d146311e9f191905389d0fd0c645275044950bde232220b94a",
+    "pinned_at_utc": "2026-09-20T03:45:28Z (pass-2 start pin), re-read 2026-09-20T03:46:18Z (equal)",
+    "move_detected_at_utc": "2026-09-20T03:53:54Z",
+    "measured_symptom_of_the_move": "arm A4 (tui) reported the guard reason 'no enabled @deepseek-ai/dsh-host-webserver entry in this composition', a message the previously pinned revision did not contain; a re-hash showed cordis.patch.yml had changed from 6ab4df7e… (38544 bytes) to e70a179e…, and scripts/install-profile.mjs from 98b29e10… to 1820242d…",
+    "action": "the FULL matrix (A0, A1, A2, A3, A4, A5, F1, F2, F3, F4) was re-run on the settled revision into arms-final/ and result-final.json; the E2E shipped-command install + boot was re-run into real-web-final/"
+  },
+  "revision_delta_observed_by_this_lane": {
+    "guard_predicate_3": "now SKIPS a layer whose package name is '@mpd-dsh/mpd' (was: skipped any patch text containing 'mpd-better-sidebar')",
+    "guard_new_predicate": "PATCH-LAYER scan: <profile>/cordis.patch.yml, <profile>/../../cordis.patch.yml, $DSH_HOME/cordis.patch.yml and --patch overlay paths are read, and a mention of 'dsh-better-sidebar' disables the row ('patch layer … already mounts it')",
+    "guard_predicate_4": "now requires an ENABLED '@deepseek-ai/dsh-host-webserver' ENTRY and no longer falls back to 'a @deepseek-ai/dsh-web-app bundle layer exists'",
+    "installer": "scripts/install-profile.mjs now carries the byte-identical guard (SIDEBAR_GUARD) and its self-test asserts parity with the bundle patch text"
+  }
+}

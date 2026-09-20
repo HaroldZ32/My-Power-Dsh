@@ -1,0 +1,4 @@
+- insert:
+    - id: probe3-c
+      name: '@mpd-dsh/mpd/packages/mpd-config-plugin/dist/index.js'
+      disabled: !!js "(console.warn('PROBE3-C evaluated'), true)"

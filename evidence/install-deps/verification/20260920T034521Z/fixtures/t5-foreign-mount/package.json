@@ -1,0 +1,12 @@
+{
+  "name": "t5-foreign-mount",
+  "version": "0.0.1-t5",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

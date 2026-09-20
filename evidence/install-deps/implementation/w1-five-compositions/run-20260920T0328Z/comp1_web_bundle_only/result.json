@@ -1,0 +1,76 @@
+{
+  "case": "install-deps/implementation/comp1_web_bundle_only",
+  "measured_at_utc": "2026-09-20T03:29:00.730Z",
+  "author_run_advisory": true,
+  "expectation": "guard ENABLED; exactly one sidebar mount (ours); client half served",
+  "exit": {
+    "code": 0,
+    "signal": null
+  },
+  "http": {
+    "attempted": true,
+    "probes": [
+      {
+        "url": "http://127.0.0.1:3401/plugins/??dsh-better-sidebar/client.js&rev=5d6dbe9fa63dd61f-52",
+        "status": 200,
+        "bytes": 870764,
+        "looksLikeModule": true
+      }
+    ],
+    "token": {
+      "status": 303,
+      "location": "/",
+      "setCookieBytes": 315
+    },
+    "index": {
+      "status": 200,
+      "bytes": 28318,
+      "cookie": "dsh-auth-WUwC3syINJYbZ3gnx4r3QU6xO7AKDTpax4F-9ryo5m4=v1.eyJ2ZXJzaW9uIjoxLCJhdXRob3JpdHkiOiIxMjcuMC4wLjE6MzQwMSIsImlzc3VlZEF0IjoxNzg5ODc0OTM3MTc0LCJleHBpcmVzQXQiOjE3OTI0NjY5MzcxNzR9.olrJM7cxZxLo8nI7Kj43uGbzQhBLlPmQyC55o-J7S6M"
+    },
+    "clientCompositeHasSidebar": true,
+    "clientStandalone": [
+      "/plugins/??dsh-better-sidebar/client.js&rev=5d6dbe9fa63dd61f-52"
+    ],
+    "sidebarApi": {
+      "status": 405,
+      "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+    }
+  },
+  "scan": {
+    "guard": [
+      {
+        "decision": "ENABLED",
+        "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+      }
+    ],
+    "probes": [
+      {
+        "total": 180,
+        "rows": [
+          "mpd-better-sidebar|js-guarded|fiber=false"
+        ],
+        "web_entry": true
+      },
+      {
+        "total": 182,
+        "rows": [
+          "mpd-better-sidebar|js-guarded|fiber=true"
+        ],
+        "web_entry": true
+      }
+    ],
+    "fatal": [],
+    "ready": true
+  },
+  "log_sha256": "e771f63d67dc4a8f3844e8f3de5fea0c0db07a2b8bbe6a2596a247c732f1e65d",
+  "log_read_at_utc": "2026-09-20T03:29:00.731Z",
+  "verdict": {
+    "fatal_signatures": [],
+    "guard_decisions": [
+      "ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+    ],
+    "sidebar_rows_in_entry_list": [
+      "mpd-better-sidebar|js-guarded|fiber=true"
+    ]
+  }
+}

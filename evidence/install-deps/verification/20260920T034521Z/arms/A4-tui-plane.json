@@ -1,0 +1,190 @@
+{
+  "id": "A4-tui-plane",
+  "plane": "tui",
+  "purpose": "the dsh-tui plane provides no webServer/webRuntime: the row disables and the real TUI boot stays green.",
+  "bundles": [
+    "@deepseek-ai/dsh-base",
+    "@deepseek-harness-tui/dsh-tui",
+    "@mpd-dsh/mpd"
+  ],
+  "profileName": "dsh-tui",
+  "stage": false,
+  "expect": {
+    "guard": "DISABLED",
+    "served": false
+  },
+  "ok": false,
+  "checks": [
+    {
+      "name": "composition.exit0",
+      "ok": true,
+      "detail": "exit=0"
+    },
+    {
+      "name": "composition.rowCount",
+      "ok": false,
+      "detail": "rows=1 in [undefined,undefined] ids=[\"mpd-better-sidebar\"]"
+    },
+    {
+      "name": "composition.literalEnabled",
+      "ok": false,
+      "detail": "literalEnabled=0 <= undefined []"
+    },
+    {
+      "name": "load.booted",
+      "ok": true,
+      "detail": "booted"
+    },
+    {
+      "name": "load.noFatalSignature",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "name": "load.guardDecision",
+      "ok": false,
+      "detail": "guard=null expected=DISABLED"
+    }
+  ],
+  "failedChecks": [
+    "composition.rowCount",
+    "composition.literalEnabled",
+    "load.guardDecision"
+  ],
+  "findingArm": false,
+  "findingIf": null,
+  "sandbox": {
+    "root": "<pruned:sandbox>",
+    "dshHome": "<pruned:sandbox>",
+    "userHome": "<pruned:sandbox>",
+    "ws": "<pruned:sandbox>",
+    "profile": "<pruned:sandbox>"
+  },
+  "install": null,
+  "nodeModulesAfterBoot": [
+    "@alcalzone",
+    "@deepseek-harness-tui",
+    "@mpd-dsh",
+    "ansi-regex",
+    "ansi-styles",
+    "any-promise",
+    "auto-bind",
+    "bidi-js",
+    "chalk",
+    "cli-boxes",
+    "cli-highlight",
+    "cliui",
+    "code-excerpt",
+    "convert-to-spaces",
+    "dsh-better-sidebar",
+    "dsh-working-activity",
+    "emoji-regex",
+    "escalade",
+    "escape-string-regexp",
+    "figures",
+    "get-caller-file",
+    "get-east-asian-width",
+    "has-flag",
+    "highlight.js",
+    "indent-string",
+    "is-fullwidth-code-point",
+    "is-unicode-supported",
+    "lodash-es",
+    "lodash.debounce",
+    "marked",
+    "mz",
+    "parse5",
+    "parse5-htmlparser2-tree-adapter",
+    "react",
+    "react-reconciler",
+    "require-directory",
+    "scheduler",
+    "signal-exit",
+    "sixel",
+    "stack-utils",
+    "string-width",
+    "strip-ansi",
+    "supports-color",
+    "supports-hyperlinks",
+    "tagged-tag",
+    "thenify",
+    "thenify-all",
+    "type-fest",
+    "usehooks-ts",
+    "wrap-ansi",
+    "y18n",
+    "yargs",
+    "yargs-parser"
+  ],
+  "moduleFallbackAfterBoot": [
+    "node_modules"
+  ],
+  "composition": {
+    "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; composes rows, never executes plugin code — AGENTS.md §4). NEVER cited as load evidence.",
+    "command": "node scripts/dump-config.mjs --profile dsh-tui --json",
+    "exitCode": 0,
+    "envelopeParsed": true,
+    "rows": [
+      {
+        "id": "mpd-better-sidebar",
+        "disabledRaw": "!!js >-",
+        "enabled": false
+      }
+    ],
+    "stderrTail": [
+      "[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.",
+      "[dump-config] ---- the composed rows below are the child's own output ----",
+      "dsh: [@mpd-dsh/mpd] patch: entry \"agent-presets\" not found",
+      "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+    ],
+    "composedTextFile": null,
+    "rowCount": 1,
+    "rowIds": [
+      "mpd-better-sidebar"
+    ],
+    "literalEnabledCount": 0,
+    "literalEnabledIds": [],
+    "ok": false
+  },
+  "load": {
+    "claim": "REAL dsh-tui mounting boot in tmux (verifier-owned driver), pane capture + raw pipe log",
+    "bootCommand": "tmux new-session -d -s t5-A4-tui-plane 'env DSH_HOME=… HOME=… dsh-tui'",
+    "tmuxCreate": {
+      "status": 0,
+      "stderr": ""
+    },
+    "session": "t5-A4-tui-plane",
+    "paneFile": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A4-tui-plane.tui-pane.txt",
+    "rawLogFile": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A4-tui-plane.tui-raw.log",
+    "booted": true,
+    "signatures": {
+      "hits": [],
+      "markers": [],
+      "healthy": true
+    },
+    "guard": null,
+    "guardLines": [
+      "[mpd-better-sidebar] mount guard: DISABLED - no web plane in this composition\r"
+    ],
+    "sidebarMentions": [],
+    "paneTail": [
+      "                                            ⚠ The dsh engine (0.1.5-rc.2) is newer than the 0.1.5-rc.1 this UI is validated against, so issues are possible; downgrade via npm i -g @deepseek-ai/dsh@0.1.5-rc.1 for ",
+      "                                            stability, or wait for a dsh-tui update.",
+      "          Explore the uncharted!",
+      "   ▶ （Ctrl+P to expand） Context loaded · System prompt 17 sections · Runtime context 2 items · Skills 18 · Tools 101",
+      "  mpd: team MPD Install-Deps 11·6/12 · failed 1 · boulder 1/1 · plans 23 · workmates 0 · notes 2 · watchdog: 208 unread incidents",
+      "                                                                                                                                                                                                                         ",
+      "  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮",
+      "  ❯                                                                                                                                                                                                                      ⛶",
+      "  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯",
+      "   deepseek-flash · max · my-power-dsh"
+    ]
+  },
+  "pruned": {
+    "atUtc": "2026-09-20T04:24:55Z",
+    "sandboxTreesDeleted": true,
+    "durableEvidence": [],
+    "rewrotePrunedCitations": 7,
+    "note": "sandbox working trees (DSH homes, node_modules mirrors, caches, staged copies) were deleted before the commit; every dead path is marked <pruned:sandbox> and the durable boot log is the anchor"
+  }
+}

@@ -1,0 +1,5 @@
+# t5 falsification fixture: this layer MOUNTS NOTHING. It merely mentions the package name
+# 'dsh-better-sidebar' in a comment, the way a documentation block would.
+- insert:
+    - id: t5-decoy-comment-row
+      name: '@deepseek-ai/cordis-plugin-timer'

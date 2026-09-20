@@ -1,0 +1,74 @@
+{
+  "task": "t1",
+  "team": "mpd-install-deps",
+  "author": "Architect",
+  "kind": "requirements",
+  "round": 1,
+  "attempt": 2,
+  "mode": "read-only analysis (no file edits, no shell)",
+  "markdown": "evidence/install-deps/requirements/requirements-and-inventory.md",
+  "captainMeasuredPremisesAdopted": ["CM-1 reconcilePlugins", "CM-2 initProfile hoisted workspace", "CM-3 healProfileModuleFallback", "CM-4 dsh-client-modules locatePkgJson", "CM-5 assertEntriesLoaded/assertEntriesActivated", "CM-6 !!js scope and precedents", "CM-7 dependency audit", "CM-8 skills single writer"],
+  "userClauseRestated": "`dsh plugin --profile <p> add @mpd-dsh/mpd` alone must leave the profile with the sidebar host plugin installed, resolvable and mounted so the shipped web GUI renders, covering the whole dependency class, without breaking non-web compositions or introducing a duplicate mount.",
+  "classDefinition": {
+    "runtimePluginDependency": "a package that must be (a) resolvable from the profile root at boot AND (b) mounted by a loader entry, for a capability the bundle ships to work",
+    "verdicts": ["HOST", "SELF", "MUST-BE-INSTALLED", "BUILTIN", "TOOLCHAIN-OPTIONAL", "SOFT-OPTIONAL"],
+    "mustBeInstalledToday": ["dsh-better-sidebar"]
+  },
+  "acceptanceCriteria": [
+    {"id": "AC-1", "title": "Declaration completeness", "falsifier": "extract every row name from packages/mpd-bundle/cordis.patch.yml and presets/mpd/agent.cordis.yml; subtract @deepseek-ai/*, @mpd-dsh/mpd*, cordis:* and every SELF id; require the remainder subset of package.json dependencies", "definitionOfDone": "check red-before/green-after with stored output; inventory covers the full reference set"},
+    {"id": "AC-2", "title": "Fresh-profile resolution after a REAL dsh plugin add", "falsifier": "realpath of <profileDir>/node_modules/dsh-better-sidebar/package.json exists after the real install (negative control: boot log `plugin(s) failed to load`)", "definitionOfDone": "install log + resolution evidence stored with UTC instants"},
+    {"id": "AC-3", "title": "Mounted on the web plane, no boot-fatal signature", "falsifier": "mounting boot log: `plugin(s) failed to load`, `did not activate`, `pending (waiting for service:`, `duplicate prefix route` all ABSENT; sidebar fibre activated; dsh-better-sidebar/client.js served HTTP 200", "definitionOfDone": "boot log + HTTP transcript stored; assertions recorded"},
+    {"id": "AC-4", "title": "mpd tabs actually get their host (positive evidence)", "falsifier": "skills/dsh-qa/scripts/agent-teams-sidebar.mjs driven by the REAL install with a betterSidebar-fired assertion; mpd-agent-teams and mpd-workmate registered", "definitionOfDone": "case passes with the real-boot arm named in result.json"},
+    {"id": "AC-5", "title": "Exactly one mount in BOTH install orders", "falsifier": "two isolated profiles (aggregate-first and mpd-first), each real install + mounting boot; no `duplicate prefix route`; exactly one enabled entry named dsh-better-sidebar", "definitionOfDone": "both boot logs stored; guard mechanism named; a documented limitation does NOT satisfy this criterion"},
+    {"id": "AC-6", "title": "Non-web plane (dsh-tui) stays green", "falsifier": "TUI composition dump shows the row disabled/absent AND a real TUI boot log lacks `did not activate` / `pending (waiting for service` / `failed to apply loader entry`", "definitionOfDone": "both stored; the guard expression quoted"},
+    {"id": "AC-7", "title": "No new hard inject in bundle-owned code", "falsifier": "textual assertion over every `export const inject` in packages/*/src/** plus a boot in a composition providing none of the optional seams", "definitionOfDone": "assertion output + webless boot log stored"},
+    {"id": "AC-8", "title": "Packed artifact keeps the guarantee", "falsifier": "node scripts/pack-mpd.mjs then read dist/mpd-package/package.json, install from the artifact, boot", "definitionOfDone": "pack + manifest + boot evidence stored; verify-pack-closure exit 0 (completeness/byte identity only, T-91)"},
+    {"id": "AC-9", "title": "Docs truthful and bilingual", "falsifier": "bun run verify:docs exit 0 + grep assertion that the web plane no longer instructs a second install", "definitionOfDone": "EN + zh-CN pairs updated in the same change"},
+    {"id": "AC-10", "title": "Standing gates unchanged", "falsifier": "bun test, bun run typecheck, bun run test:qa, bun run verify:rows, preset-conformance --self-test all exit 0", "definitionOfDone": "one evidence file listing every command, exit code and artifact; skills single-writer + single re-pin rule respected"}
+  ],
+  "fatalModes": [
+    {"id": "F1", "symbol": "assertEntriesLoaded", "message": "plugin(s) failed to load: <names>", "trigger": "enabled entry whose module does not resolve from the profile root", "source": "captain-measured CM-5"},
+    {"id": "F2", "symbol": "assertEntriesActivated", "message": "N entries did not activate / <name>: pending (waiting for services: ...)", "trigger": "enabled dsh-better-sidebar row in a composition lacking webServer/webRuntime (dsh-tui)", "source": "captain-measured CM-5 + verified inject list"},
+    {"id": "F3", "symbol": "duplicate prefix route (boot-time plugin tree failure)", "message": "two /sidebar/api registrations", "trigger": "two entries mounting dsh-better-sidebar", "source": "dsh-better-sidebar/cordis.patch.yml + lib/index.js ctx.webServer.register({path:'/sidebar/api'})"},
+    {"id": "F4", "symbol": "assertEntriesActive (client plane)", "message": "Failed to load plugins", "trigger": "client entry left pending on a service the web composition does not mount", "source": "packages/mpd-bundle-plugin/src/web-client.js#REQUIRED_SERVICES"}
+  ],
+  "inventory": [
+    {"id": "A1", "reference": "@deepseek-ai/dsh-agent-presets", "rows": 2, "location": "packages/mpd-bundle/cordis.patch.yml (agent-presets, dsh-tui-agent-presets)", "verdict": "HOST", "fatalIfMissing": "F1", "evidence": "/root/.dsh/profiles/node_modules/@deepseek-ai/dsh-agent-presets/package.json v0.1.5-rc.2"},
+    {"id": "A2", "reference": "@deepseek-ai/dsh-mcp-client", "rows": 6, "location": "packages/mpd-bundle/cordis.patch.yml (mcp-astgrep, mcp-gitbash disabled, mcp-lsp, mcp-codegraph, mcp-context7, mcp-grepapp)", "verdict": "HOST", "fatalIfMissing": "F1", "evidence": "/root/.dsh/profiles/node_modules/@deepseek-ai/dsh-mcp-client/package.json v0.1.5-rc.2"},
+    {"id": "A3", "reference": "@mpd-dsh/mpd", "rows": 1, "location": "packages/mpd-bundle/cordis.patch.yml (mpd-web-compat)", "verdict": "SELF", "fatalIfMissing": "F1", "evidence": "package.json#main, #exports; row name is what dsh-client-modules requires"},
+    {"id": "A4", "reference": "@mpd-dsh/mpd/packages/<pkg>/dist/index.js", "rows": 17, "location": "packages/mpd-bundle/cordis.patch.yml", "verdict": "SELF", "fatalIfMissing": "F1", "evidence": "repo tree + exports map ./packages/*"},
+    {"id": "A5", "reference": "@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js", "rows": 1, "location": "packages/mpd-bundle/cordis.patch.yml (agent-teams)", "verdict": "SELF", "fatalIfMissing": "F1", "evidence": "vendored _deps closure; row intentionally unguarded"},
+    {"id": "B1", "reference": "@deepseek-ai/dsh-* preset rows", "rows": 28, "packages": 24, "location": "presets/mpd/agent.cordis.yml", "verdict": "HOST", "fatalIfMissing": "preset refuses to mount", "evidence": "preset-conformance case"},
+    {"id": "B2", "reference": "cordis:group", "rows": 3, "location": "presets/mpd/agent.cordis.yml", "verdict": "BUILTIN", "fatalIfMissing": null, "evidence": "loader builtin"},
+    {"id": "C1", "reference": "mpd-ext-example (skills/flows/roles + stdio MCP via `node server.mjs`)", "rows": 1, "location": "extensions/mpd-ext-example/mpd-ext.json", "verdict": "SELF", "fatalIfMissing": null, "evidence": "enabled:false; bundled dependency-free script"},
+    {"id": "D1", "reference": "dsh.client.inject: [] / platform web", "location": "package.json#dsh.client; scripts/pack-mpd.mjs#writeBundleManifest; scripts/install-profile.mjs shim", "verdict": "SELF", "fatalIfMissing": null},
+    {"id": "D2", "reference": "slots, locale (hard client injects)", "location": "packages/mpd-bundle-plugin/src/web-client.js#REQUIRED_SERVICES", "verdict": "HOST", "fatalIfMissing": "F4"},
+    {"id": "D3", "reference": "betterSidebar (runtime ctx.inject)", "location": "packages/mpd-bundle-plugin/src/web-client.js#mountSidebarPages", "verdict": "MUST-BE-INSTALLED", "fatalIfMissing": "silent (no tabs registered)", "evidence": "the reported defect; dsh-better-sidebar@0.19.0-alpha.1"},
+    {"id": "D4", "reference": "modelDirectories, remote.session", "location": "packages/mpd-bundle-plugin/src/team-page.js", "verdict": "SOFT-OPTIONAL", "fatalIfMissing": "degrade"},
+    {"id": "D5", "reference": "settingsScope", "location": "packages/mpd-bundle-plugin/src/settings-card.js", "verdict": "SOFT-OPTIONAL", "fatalIfMissing": "degrade"},
+    {"id": "D6", "reference": "@nanmicoder/dsh-agent-teams (client require)", "location": "scripts/build-mpd-client.mjs", "verdict": "SELF", "fatalIfMissing": "F4 class", "evidence": "embedded verbatim; self-registers the id"},
+    {"id": "E1", "reference": "package.json dependencies", "location": "package.json", "verdict": "ABSENT (the defect)", "fatalIfMissing": null},
+    {"id": "E2", "reference": "@ast-grep/cli, @colbymchenry/codegraph, @code-yeongyu/comment-checker", "location": "package.json#optionalDependencies", "verdict": "TOOLCHAIN-OPTIONAL", "fatalIfMissing": "degrade"},
+    {"id": "E3", "reference": "@typescript/native-preview, bun-types", "location": "package.json#devDependencies", "verdict": "not runtime", "fatalIfMissing": null},
+    {"id": "E4", "reference": "cordis, dsh-agent, dsh-llm, dsh-scope, dsh-session, dsh-subagent, dsh-timeout, dsh-tools, schemastery (vendored)", "location": "packages/mpd-agent-teams-plugin/_deps/**", "verdict": "SELF", "fatalIfMissing": "F1"},
+    {"id": "F1n", "reference": "node (MCP rows spawn `command: node`)", "location": "packages/mpd-bundle/cordis.patch.yml MCP rows", "verdict": "HOST", "fatalIfMissing": null},
+    {"id": "F2n", "reference": "wave-mcp / traceweave-mcp (python servers, rows commented out)", "location": "packages/mpd-bundle/cordis.patch.yml (commented block)", "verdict": "excluded by design", "fatalIfMissing": null}
+  ],
+  "findings": [
+    {"id": "N1", "severity": "high", "statement": "The duplicate-mount arm is real in the user's own profile: @linxin666/dsh-web-all@0.3.20 declares dsh-better-sidebar and mounts it with an UNGUARDED row web-ui-better-sidebar, so a new mpd row must back off there.", "evidence": "/root/.dsh/profiles/web/node_modules/@linxin666/dsh-web-all/package.json#dependencies + cordis.patch.yml"},
+    {"id": "N2", "severity": "high", "statement": "Order B (mpd installed before an aggregate) becomes a fatal duplicate mount under a naive guarded insert; the sidebar's own guard is forward-blind and documents the same limitation. Requires an order-independent guard or a blocking finding.", "evidence": "dsh-better-sidebar/cordis.patch.yml; captain-measured CM-6"},
+    {"id": "N3", "severity": "medium", "statement": "A runtime ctx.plugin() mount can never satisfy the requirement: the browser half is discovered from LOADER ENTRIES (dsh.client + exports['./client']), so a real row named dsh-better-sidebar is mandatory.", "evidence": "captain-measured CM-4 + sidebar package.json"},
+    {"id": "N4", "severity": "medium", "statement": "Tension to settle by measurement: scripts/pack-mpd.mjs#writeBundleManifest still claims a plain dependencies entry is not enough (repro evidence/plan-e/e1-team-route, whose bundleDependency step is a manifest check), while CM-3 says the harness heals the profile closure. Settle with a real install + boot.", "evidence": "scripts/pack-mpd.mjs#writeBundleManifest; evidence/plan-e/e1-team-route/2026-08-27T07-38-13.142Z/result.json"},
+    {"id": "N5", "severity": "medium", "statement": "scripts/pack-mpd.mjs writes its own manifest, so a root-only dependency declaration is lost in the packed artifact.", "evidence": "scripts/pack-mpd.mjs#writeBundleManifest"},
+    {"id": "N6", "severity": "low", "statement": "Composition evidence gives two evidence-backed non-web guard predicates: @deepseek-ai/dsh-host-webserver (recommended) or entry id agent-presets; both precede the mpd band in the web dump and are absent in the TUI dump.", "evidence": "evidence/tui/composition/20260915T053445Z/raw/web-dump-config-final.txt + tui-dump-config-final.txt"}
+  ],
+  "handoff": [
+    "One actionable package: dsh-better-sidebar (pin 0.19.0-alpha.1 family).",
+    "Deliver BOTH the manifest declaration (incl. pack-mpd.mjs) and a real loader row.",
+    "Two guards on the row: non-web plane and duplicate mount.",
+    "Proof is a mounting boot, never --dump-config; assert F1-F3 absent.",
+    "Sandbox DSH_HOME, HOME and the workspace cwd.",
+    "Do not declare @deepseek-ai/* host packages.",
+    "skills/** single-writer + single re-pin if any skill file changes."
+  ]
+}

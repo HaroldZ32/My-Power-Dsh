@@ -1,0 +1,7 @@
+# t17 falsification fixture: MOUNTS NOTHING. It only MENTIONS the package name
+# 'dsh-better-sidebar' inside this comment, the way a documentation block would; its single
+# row is a DISABLED timer so the fixture cannot perturb the boot. t14's repair must ignore it.
+- insert:
+    - id: t17-decoy-comment-row
+      name: '@deepseek-ai/cordis-plugin-timer'
+      disabled: true

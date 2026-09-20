@@ -19,6 +19,17 @@ cd <repo> && dsh plugin --profile dsh-tui add .    # 终端界面（DSH-TUI）
 语料库以及扩展根目录。没有别的步骤 —— 不需要打包，也不需要复制。重启 `dsh`，然后在
 **MPD（Main Working Agent）** preset 上开启会话。
 
+本 bundle 声明了一个外部运行时依赖：**`dsh-better-sidebar`**，即承载 AgentTeams 与 Workmates
+标签页的社区侧边栏 bundle（§8）。检出目录安装会直接读取本仓库，因此请先把仓库依赖落到本地：
+
+```bash
+cd <repo> && bun install          # 只需一次：把声明的侧边栏依赖落到仓库 node_modules
+```
+
+如果 `node-gyp` 不可用（侧边栏的传递依赖 `node-pty` 需要它），可以用
+`bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` 跳过构建脚本安装 —— 只有侧边栏的
+终端面板会降级。从打包产物安装时无需额外步骤：pnpm 会替你装好声明的依赖（见下方 *打包产物*）。
+
 **每条 `dsh plugin` 命令都必须带 `--profile`**，`--help` 与 `remove` 也不例外：不带时 CLI 会直接
 停下并提示 `error: required option '--profile <name>' not specified`。profile 名就是你实际运行的
 那个 —— Web GUI 用 `web`，终端界面用 `dsh-tui`（脚本化运行用 `headless`）。
@@ -270,7 +281,6 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 |---|---|
 | AgentTeams 侧边栏标签页 | `tuiScenes` 全屏看板 + 带 key 的 `tuiStatus` 状态行 |
 | Workmates 侧边栏标签页 | `/mpd` 命令树（`tuiCommandTrees`）+ `tuiDialogs` |
-| bundle 悬浮面板 | `tuiStatus` 状态行 |
 | 设置 → MPD 栏 | `/settings` 分区（`tuiSettingsSections`） |
 | — | `tuiShortcuts` 快捷键 |
 
@@ -315,7 +325,7 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 ## 8. Web GUI
 
 - **AgentTeams 侧边栏标签页**（唯一的团队界面）：整个团队 GUI 是 **DSH-better-sidebar**
-  （社区侧边栏 bundle；标签 id `mpd-agent-teams`）中的一个标签页。它列出 *本会话* 的团队 ——
+  （社区侧边栏 bundle，随本 bundle 一起安装；标签 id `mpd-agent-teams`）中的一个标签页。它列出 *本会话* 的团队 ——
   先活跃团队（成员及其实时动态、带状态的任务行、依赖图、captain 上下文、停止团队控制），再是
   已归档团队 —— 并且承载暂存计划的审批编辑器，因此计划在它被创建的地方被审阅和编辑。标签徽标
   显示本会话中活跃团队的数量，`single: true` 会让标签页重新定位而不是打开第二份副本。当出现团队
@@ -331,7 +341,9 @@ stdout 不是 TTY 时 `dsh-tui` 拒绝启动
   `POST /plugins/mpd-workmate/{init,rename,delete}`。侧边栏 **标签条上的文字** 仍然保持英文
   `Workmates`（这是一个已记录的推迟项：标签条文字的解析处没有本地化翻译器，AgentTeams 标签页
   同样如此）；页面正文跟随你的语言。
-- **两个页面都只存在于侧边栏中**：都没有降级方案。没有 DSH-better-sidebar 时，两者各自只会打印
+- **两个页面都只存在于侧边栏中**：都没有降级方案；而侧边栏宿主本身随 bundle 一起安装 ——
+  `dsh-better-sidebar` 是已声明的运行时依赖，由 `mpd-better-sidebar` patch 行负责挂载，因此那条
+  警告路径对应的是**依赖缺失或损坏**，而不是需要用户手动安装。没有宿主时，两者各自只会打印
   一条警告且不注册任何东西。团队工作仍然可以通过 `agent_teams_*` 工具与 `.mpd/team` 状态运行，
   workmate 库也仍然可以通过 `mpd_workmate_*` 工具完整使用。
 
@@ -472,8 +484,11 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # 从一个可工作的骨�
   （`~/.mpd/extensions/`、`<bundle>/extensions/`）可以贡献工具与 provider。请移动该目录，或从
   清单中去掉不支持的种类。
 - 侧边栏缺少 AgentTeams 标签页 → 重新构建随包客户端（`node scripts/build-mpd-client.mjs`，然后
-  刷新页面），并确认 profile 中存在 `dsh-better-sidebar`（没有它，团队页面只打印一条警告且没有
-  宿主）。
+  刷新页面），并确认 profile 中存在侧边栏宿主。bundle 会自行安装它（已声明依赖 +
+  `mpd-better-sidebar` 行）；如果 profile 中缺少 `dsh-better-sidebar`，说明安装时没有把该依赖
+  落到本地 —— 在检出目录执行 `bun install`（或
+  `bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts`），然后重新安装 bundle。
+  没有宿主时，团队页面只打印一条警告且不注册任何内容。
 - GUI 中完全没有客户端界面 → `mpd-web-compat` 自引用行必须存在，并且需要重新安装 bundle
   （`dsh plugin --profile <p> add <repo-or-package>`）。
 - `MISSING_CREDENTIAL` → 该 provider 路由需要在你的 DSH 凭据中有密钥；本 bundle 从不配置密钥。
@@ -694,7 +709,7 @@ agent_teams_update_task { "task_id": "t5", "status": "completed", "attempt_id": 
 | `mcp__codegraph__*` 与 `mpd-codegraph` 行 | **codegraph**，作者 Yeongyu Kim —— 可选依赖 `@colbymchenry/codegraph` | MIT；`1.5.0`；预构建服务器已搬运并做 sha256 固定 | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`；`VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker**，作者 code-yeongyu（`@code-yeongyu/comment-checker`） | MIT；`0.8.0`；**不**随包分发 —— 按需安装到 `.toolchain`（`--with-comment-checker`） | `LICENSE-NOTICES.md`；`MPD_DSH_COMMENT_CHECKER_BIN` |
 | 插件系统、工具 / 技能 / preset / agent 接缝、模型 provider、Web 外壳 | DeepSeek Harness —— **`@deepseek-ai/*`** 包 | MIT；仅作为依赖引用 | `LICENSE-NOTICES.md` |
-| AgentTeams 与 Workmates 两个侧边栏标签页 | 由社区 bundle **`dsh-better-sidebar`** 承载；没有它两个页面各打印一条警告且什么都不注册，但工具仍然可用 | — | 见上文 §8 |
+| AgentTeams 与 Workmates 两个侧边栏标签页 | 由社区 bundle **`dsh-better-sidebar`** 承载，它是本 bundle 的已声明运行时依赖（随本 bundle 安装并挂载） | — | 见上文 §8；`package.json` 的 `dependencies`；patch 行 `mpd-better-sidebar` |
 | DSH 接线（adapter、运行时插件、`mpd` preset、合并后的 Web 客户端）、TUI 版本、QA 套件、文档、扩展接口 | 本项目自己编写 | SUL-1.0 | `README.md`（鸣谢）；`LICENSE.md` |
 
 有两条值得记住的结论：组件即使在 bundle 内也各自保留**自己的**许可证（被采纳的 `agent-teams`
