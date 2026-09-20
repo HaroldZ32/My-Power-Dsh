@@ -20,6 +20,19 @@ and the `exports` map live in its manifest, so this one command installs every p
 `mpd` preset, the whole skill corpus and the extension root. Nothing else to run — no pack step,
 no copy step. Restart `dsh`, then start a session on the **MPD (Main Working Agent)** preset.
 
+The bundle declares one external runtime dependency: **`dsh-better-sidebar`**, the community sidebar
+bundle that hosts the AgentTeams and Workmates tabs (§8). A checkout install reads this repository,
+so materialize the repository's dependencies first:
+
+```bash
+cd <repo> && bun install          # required once: materializes the declared sidebar dependency
+```
+
+If `node-gyp` is unavailable (the sidebar's transitive `node-pty` builds with it),
+`bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` installs the dependency without build
+scripts — only the sidebar's terminal panel degrades. A packed install needs no extra step: pnpm
+installs the declared dependency for you (see *Packed package* below).
+
 `--profile` is **required on every `dsh plugin` command**, including `--help` and `remove`:
 without it the CLI stops with `error: required option '--profile <name>' not specified`. The
 profile names are the ones you actually run — `web` for the Web GUI and `dsh-tui` for the
@@ -296,7 +309,6 @@ pipe.
 |---|---|
 | AgentTeams sidebar tab | the `tuiScenes` full-screen board plus the keyed `tuiStatus` line |
 | Workmates sidebar tab | the `/mpd` command tree (`tuiCommandTrees`) plus `tuiDialogs` |
-| Bundle floater | the `tuiStatus` line |
 | Settings → MPD section | the `/settings` section (`tuiSettingsSections`) |
 | — | `tuiShortcuts` keyboard shortcuts |
 
@@ -347,7 +359,8 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 ## 8. Web GUI
 
 - **AgentTeams sidebar tab** (the only team surface): the whole team GUI is one tab in
-  **DSH-better-sidebar** (the community sidebar bundle; tab id `mpd-agent-teams`). It lists the
+  **DSH-better-sidebar** (the community sidebar bundle, installed with this bundle; tab id
+  `mpd-agent-teams`). It lists the
   teams of *this conversation* — live teams first (members and their live activity, task rows with
   status, the dependency map, the captain context, the stop-team control) and then archived ones —
   and it hosts the staged-plan approval editor, so a plan is reviewed and edited where it was
@@ -367,10 +380,12 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
   `POST /plugins/mpd-workmate/{init,rename,delete}`. The sidebar **tab-strip label** itself stays
   the English `Workmates` (a documented deferral: the strip label is resolved where no localized
   translator is in scope, like the AgentTeams tab); the page body follows your language.
-- **Sidebar-only, for both pages**: neither page has a fallback. Without DSH-better-sidebar each
-  logs exactly one warning and registers nothing. Team work still runs through the `agent_teams_*`
-  tools and the `.mpd/team` state, and the workmate library is still fully usable through the
-  `mpd_workmate_*` tools.
+- **Sidebar-only, for both pages**: neither page has a fallback, and the sidebar host itself is
+  installed with the bundle — `dsh-better-sidebar` is a declared runtime dependency and the
+  `mpd-better-sidebar` patch row mounts it, so the one warning path is a **missing or broken
+  dependency**, not a missing manual install. Without a host each page logs exactly one warning and
+  registers nothing. Team work still runs through the `agent_teams_*` tools and the `.mpd/team`
+  state, and the workmate library is still fully usable through the `mpd_workmate_*` tools.
 
 ## 9. Configuration (`mpd.jsonc`)
 
@@ -522,8 +537,12 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # start from a working skel
   roots (`~/.mpd/extensions/`, `<bundle>/extensions/`) may contribute tools and providers. Move
   the directory, or drop the unsupported kinds from the manifest.
 - AgentTeams tab missing from the sidebar → rebuild the shipped client
-  (`node scripts/build-mpd-client.mjs`, then reload) and confirm the profile has
-  `dsh-better-sidebar` (without it the team page logs one warning and has no host).
+  (`node scripts/build-mpd-client.mjs`, then reload) and confirm the profile has the sidebar host.
+  The bundle installs it itself (declared dependency + the `mpd-better-sidebar` row); if
+  `dsh-better-sidebar` is absent from the profile, the install did not materialize the dependency —
+  run `bun install` in the checkout (or
+  `bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts`) and reinstall the bundle. Without the
+  host the team page logs one warning and registers nothing.
 - Client surface missing entirely in the GUI → the `mpd-web-compat` self-row must exist and the
   bundle must be reinstalled (`dsh plugin --profile <p> add <repo-or-package>`).
 - `MISSING_CREDENTIAL` → the provider route needs a key in your DSH credentials; keys are never
@@ -758,7 +777,7 @@ other people's. The authoritative record, with the full licence texts, is
 | `mcp__codegraph__*` and the `mpd-codegraph` row | **codegraph** by Yeongyu Kim — the optional dependency `@colbymchenry/codegraph` | MIT; `1.5.0`; the prebuilt server is vendored and sha256-pinned | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`; `VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker** by code-yeongyu (`@code-yeongyu/comment-checker`) | MIT; `0.8.0`; **not** redistributed — installed on demand into `.toolchain` (`--with-comment-checker`) | `LICENSE-NOTICES.md`; `MPD_DSH_COMMENT_CHECKER_BIN` |
 | The plugin system, the tool / skill / preset / agent seams, the model providers, the Web shell | DeepSeek Harness — the **`@deepseek-ai/*`** packages | MIT; referenced as dependencies only | `LICENSE-NOTICES.md` |
-| The AgentTeams and Workmates sidebar tabs | hosted by the community bundle **`dsh-better-sidebar`**; without it both pages log one warning and register nothing, while the tools keep working | — | §8 above |
+| The AgentTeams and Workmates sidebar tabs | hosted by the community bundle **`dsh-better-sidebar`**, a declared runtime dependency of this bundle (installed and mounted with it) | — | §8 above; `package.json` `dependencies`; patch row `mpd-better-sidebar` |
 | The DSH plumbing (adapter, runtime plugins, `mpd` preset, combined web client), the TUI edition, the QA suite, the documentation, the extension interface | written here | SUL-1.0 | `README.md` (Acknowledgements); `LICENSE.md` |
 
 Two consequences worth carrying away: a component keeps its **own** licence even inside this bundle

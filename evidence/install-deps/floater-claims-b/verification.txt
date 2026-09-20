@@ -1,0 +1,64 @@
+# FLOATER-CLAIMS-B — re-verification from the sources (t13), BEFORE any edit
+# moment: 2026-09-20T03:48:38Z
+
+## 1. build gate: the removed surfaces (scripts/build-mpd-client.mjs)
+46:const LEGACY_SURFACES = [
+47-  ["agent-teams activity floater", 'id: "agent-teams-activity"'],
+48-  ["in-conversation chat card", 'inject("conversation.chat.node"'],
+49-  ["workmate overlay floater", 'inject("shell.overlay"'],
+50-  ["workmate footer toggle", 'inject("sidebar.footer.action"'],
+51-]
+52:for (const [label, legacy] of LEGACY_SURFACES) {
+53-  if (webClientFactory.includes(legacy) || teamPageFactory.includes(legacy)) {
+54-    console.error(`[build-mpd-client] FAIL: the removed ${label} (${legacy}) is still registered by an mpd client source`)
+55-    process.exit(1)
+56-  }
+57-}
+58-const out = agentTeamsClient
+59-  + "\n\n// ==== @mpd-dsh/team-page: AgentTeams rendered inside a DSH-better-sidebar tab ====\n"
+60-  + "window.__ModuleLoader__.load({ id: \"@mpd-dsh/team-page\", factory: " + teamPageFactory + " });\n"
+61-  + "\n// ==== @mpd-dsh/settings-card: the mpd settings card (t35, additive + isolated) ====\n"
+
+## 2. mpd client SOURCES: zero removed-surface registrations (expect NO match)
+NO MATCH in packages/mpd-bundle-plugin/src/
+
+## 3. web-client.js own prose (no overlay floater, no footer toggle)
+7:// overlay, NO chat node and no footer toggle. The adopted agent-teams client is required
+135:  const SIDEBAR_TAB_ID = "mpd-workmate";
+352:  // this bundle contributes nothing else (no overlay floater, no footer toggle). A
+656:        id: SIDEBAR_TAB_ID,
+732:  module.exports = { inject, apply, WorkmateLibraryView, SIDEBAR_TAB_ID, describeFailure, failureReason, dictionaries, loadSettingsCard };
+
+## 4. the SIDEBAR HOST guard log line (the remedy the troubleshooting row must point at)
+147:# decision with the stable prefix `[mpd-better-sidebar] mount guard: ` — that line is
+154:      disabled: !!js "(() => { const say = (decision, reason) => { try { const seen = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen 
+4
+
+## 5. CLAIM SITES (current bytes)
+--- packages/mpd-tui-plugin/README.md:60-63 ---
+
+The board is the TUI-native equivalent of the web-only surfaces (agent-teams
+sidebar, workmate tab, bundle floater). It reads state — it never writes:
+- `<workspace>/.mpd/team/<teamId>/team.json` (newest record wins)
+--- packages/mpd-tui-plugin/README.md:183-188 ---
+   rendering (the Web card's browser render is verified by the user in their GUI).
+3. **Web-only surfaces have no TUI rendering face.** The agent-teams sidebar,
+   the workmate tab and the bundle floater (`dsh.client.platform = web`) do not
+   render in the TUI. The board, the status line and the dialogs are equivalents
+   — not a pixel or feature parity claim. The web profile is untouched.
+4. **The packaged skill is an asset only.** `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` ships with
+--- packages/mpd-tui-plugin/README.zh-CN.md:52-56 ---
+`settings section mpd slot options: provider=live(N)|declared(N) model=… reasoningEffort=… catalog=live|degraded|unavailable`。
+
+面板是 web 专有界面（agent-teams 侧边栏、workmate 标签页、bundle 浮层）的
+TUI 原生等价物。它**只读**状态：
+
+--- packages/mpd-tui-plugin/README.zh-CN.md:156-161 ---
+   生效；状态行会显示对应的运行时提示。不声明：某个具体前门的渲染效果（Web 卡片的
+   浏览器渲染由用户在自己的 GUI 中验证）。
+3. **web 专有界面在 TUI 中没有渲染面。** agent-teams 侧边栏、workmate 标签页与
+   bundle 浮层（`dsh.client.platform = web`）在 TUI 中不渲染。面板、状态行与
+   对话框是**等价物**，不是像素或功能对齐声明。web profile 未受影响。
+4. **随包技能仅为资产。** `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` 随包分发，但技能语料由
+--- agent-references/troubleshooting.md:64 (full row) ---
+| the Workmates tab is missing from the DSH-better-sidebar tab strip | the tab is contributed at client-apply time through `ctx.betterSidebar.registerTab` — check the boot log/console for `[mpd] better-sidebar not installed` (the sidebar bundle is not composed) and that `packages/mpd-bundle-plugin/client.js` contains `SIDEBAR_TAB_ID = "mpd-workmate"` (rebuild with `node scripts/build-mpd-client.mjs`). A profile without that sidebar intentionally falls back to the bundle floater + sidebar-foot toggle, so the page is still reachable. `bun test packages/mpd-bundle-plugin/test/sidebar-tab.test.mjs` pins both hosts |

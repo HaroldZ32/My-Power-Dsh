@@ -55,6 +55,20 @@ The repository root is the bundle package, so this single command installs every
 `mpd` preset, the 18-skill corpus and the extension root — no pack step, no copy step. Then restart
 `dsh` and pick the **MPD (Main Working Agent)** preset in a session.
 
+The bundle declares one external runtime dependency — `dsh-better-sidebar`, the community sidebar
+bundle that hosts the two mpd tabs (see *Web GUI*) — so a checkout install materializes the
+repository's dependencies first:
+
+```bash
+cd <repo> && bun install                     # materializes the declared sidebar dependency
+cd <repo> && dsh plugin --profile web add .
+```
+
+If `node-gyp` is unavailable (the sidebar's transitive `node-pty` builds with it), install the
+dependency without build scripts: `bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` —
+only the sidebar's terminal panel degrades. A packed install takes care of this itself (pnpm
+installs the declared dependency), see *Install from a packed artifact* below.
+
 A checkout install reads the checkout directly: after a code change, rebuild the touched package's
 `dist/` and restart `dsh`.
 
@@ -111,9 +125,9 @@ state.
 ### What the install mounts
 
 Every plugin below is declared by the bundle patch `packages/mpd-bundle/cordis.patch.yml` and is
-mounted by the one `dsh plugin add` above. That patch carries **27 `- id:` entries in two kinds**:
-**25 rows this bundle INSERTS** (grouped below) and **2 host rows it id-TARGETS (replace, not
-insert)**. `node scripts/verify-rows-parity.mjs` asserts the 25 insert ids.
+mounted by the one `dsh plugin add` above. That patch carries **28 `- id:` entries in two kinds**:
+**26 rows this bundle INSERTS** (grouped below) and **2 host rows it id-TARGETS (replace, not
+insert)**. `node scripts/verify-rows-parity.mjs` asserts the 26 insert ids.
 
 **Bundle host plugins — 18 inserted rows**
 
@@ -156,6 +170,16 @@ boot down.
 | Row id | Package | What it provides |
 |---|---|---|
 | `agent-teams` | `mpd-agent-teams-plugin` | The multi-agent team engine (MIT, adopted from `dsh-agent-teams` and shipped as first-class main code): the `agent_teams_*` tools, the scheduler, the Web panel. See *Acknowledgements* |
+
+**The sidebar host — 1 inserted row**
+
+The community sidebar bundle that hosts the AgentTeams and Workmates tabs is a **declared runtime
+dependency** of this bundle (`package.json` → `dependencies`, `dsh-better-sidebar`), not an optional
+extra the user installs by hand: the row below mounts it, so one install command is enough.
+
+| Row id | Package | What it provides |
+|---|---|---|
+| `mpd-better-sidebar` | `dsh-better-sidebar` | The sidebar host for the two mpd tabs (see *Web GUI*). It mounts **once**: the row disables itself wherever any composed patch layer already mounts the package — every declared bundle layer's `dsh.bundle.patch` (e.g. the `@linxin666/dsh-web-all` aggregate), the profile's `cordis.patch.yml`, `$DSH_HOME/cordis.patch.yml`, or a `--patch` overlay path read from the command line (both `--patch X` and `--patch=X`) — or when no enabled `@deepseek-ai/dsh-host-webserver` **entry** exists (the `dsh-tui` / headless profile), or when the package cannot be resolved. A foreign layer suppresses this row only when its patch contains a **row that mounts** the package — a row naming `dsh-better-sidebar` whose `disabled` is not literally `true`; a mention inside a comment, or a row that is literally `disabled: true`, mounts nothing and does not suppress our mount. Any form the row scanner cannot parse falls back to the conservative behaviour (treated as a mount), because a false disable costs only the sidebar while a false enable dies with `duplicate prefix route`. The session then degrades to "no sidebar" with one log line instead of failing to boot |
 
 **Remote MCP rows — 2 inserted rows** (public services: network required, optional per use)
 
@@ -542,10 +566,14 @@ team. Keep one team per wave: end it when the wave lands, then start the next on
   confirmation, with a typed name for a permanent purge).
 
 Both tabs are contributed to the community sidebar bundle `dsh-better-sidebar` and appear in its tab
-strip; without that bundle each page logs one warning and registers nothing, and everything stays
-usable through the `agent_teams_*` and `mpd_workmate_*` tools. The bundle's own web client (loaded
-through the `mpd-web-compat` row) is what provides these pages, with a floating panel as the
-fallback.
+strip. That sidebar is **installed and mounted with this bundle**: `dsh-better-sidebar` is a declared
+runtime dependency and the `mpd-better-sidebar` row mounts it (see *What the install mounts*), so the
+tabs work out of the box after the one install command above. The pages are **sidebar-only** — no
+floating-panel fallback: the one warning path (`… has no host`) is what a missing or broken
+dependency produces (a checkout install that never ran `bun install`, or a non-web composition,
+where the row disables itself on purpose). Everything stays usable through the `agent_teams_*` and
+`mpd_workmate_*` tools, and the bundle's own web client (loaded through the `mpd-web-compat` row) is
+what provides these pages.
 
 ## The DSH-TUI edition
 
@@ -716,8 +744,8 @@ This bundle stands on other people's work, and it is worth being precise about w
   comment/docstring detector behind `mpd_comment_check`, consumed as the optional dependency
   `@code-yeongyu/comment-checker@0.8.0`.
 - **`dsh-better-sidebar`** — the community sidebar bundle that hosts the AgentTeams and Workmates
-  tabs; the pages are contributed to it, and the `agent_teams_*` / `mpd_workmate_*` tools work
-  without it.
+  tabs; it is a **declared runtime dependency of this bundle** (installed and mounted with it, see
+  *What the install mounts*), and the `agent_teams_*` / `mpd_workmate_*` tools work without it.
 - **Written here.** The DSH plumbing (the harness adapter, the runtime plugins, the `mpd` preset, the
   combined web client), the DSH-TUI edition, the QA suite, the documentation and the extension
   interface are this project's own work.

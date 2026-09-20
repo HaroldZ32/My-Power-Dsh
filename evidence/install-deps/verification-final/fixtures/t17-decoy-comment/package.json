@@ -1,0 +1,12 @@
+{
+  "name": "t17-decoy-comment",
+  "version": "0.0.1-t17",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

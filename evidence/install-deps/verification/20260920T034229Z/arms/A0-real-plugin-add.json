@@ -1,0 +1,189 @@
+{
+  "id": "A0-real-plugin-add",
+  "plane": "web",
+  "purpose": "the ACTUAL install path (never re-run by the QA case): the profile starts with [base, web-app] and NO bundle; `dsh plugin --profile w add <repo>` reconciles it, then the profile boots for real.",
+  "bundles": [
+    "@deepseek-ai/dsh-base",
+    "@deepseek-ai/dsh-web-app"
+  ],
+  "profileName": "w",
+  "stage": false,
+  "expect": {
+    "rowsMin": 1,
+    "rowsMax": 1,
+    "literalEnabledMax": 0,
+    "guard": "ENABLED",
+    "served": true,
+    "routeMounted": true
+  },
+  "ok": false,
+  "checks": [
+    {
+      "name": "composition.exit0",
+      "ok": false,
+      "detail": "exit=1"
+    },
+    {
+      "name": "composition.rowCount",
+      "ok": false,
+      "detail": "rows=0 in [1,1] ids=[]"
+    },
+    {
+      "name": "composition.literalEnabled",
+      "ok": true,
+      "detail": "literalEnabled=0 <= 0 []"
+    },
+    {
+      "name": "load.booted",
+      "ok": true,
+      "detail": "booted"
+    },
+    {
+      "name": "load.noFatalSignature",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "name": "load.guardDecision",
+      "ok": false,
+      "detail": "guard=null expected=ENABLED"
+    },
+    {
+      "name": "load.routeMounted",
+      "ok": false,
+      "detail": "GET /sidebar/api -> 404 body=\"\""
+    },
+    {
+      "name": "load.clientServed",
+      "ok": false,
+      "detail": "servedClientCarriesSidebar=false module=null"
+    },
+    {
+      "name": "load.oneSidebarMount",
+      "ok": false,
+      "detail": "exactly-once / expected-absent verdict"
+    }
+  ],
+  "failedChecks": [
+    "composition.exit0",
+    "composition.rowCount",
+    "load.guardDecision",
+    "load.routeMounted",
+    "load.clientServed",
+    "load.oneSidebarMount"
+  ],
+  "findingArm": false,
+  "findingIf": null,
+  "sandbox": {
+    "root": "<pruned:sandbox>",
+    "dshHome": "<pruned:sandbox>",
+    "userHome": "<pruned:sandbox>",
+    "ws": "<pruned:sandbox>",
+    "profile": "<pruned:sandbox>"
+  },
+  "install": {
+    "command": "dsh plugin --profile w add /root/dshProj/my-power-dsh/evidence",
+    "exitCode": 0,
+    "stdout": "\ndependencies:\n+ evidence link:/root/dshProj/my-power-dsh/evidence\n\nAlready up to date\nDone in 181ms using pnpm v11.23.0\n\n   ╭─────────────────────────────────────────╮\n   │                                         │\n   │   Update available! 11.23.0 → 12.5.1.   │\n   │   Changelog: https://pnpm.io/v/12.5.1   │\n   │    To update, run: pnpm self-update     │\n   │                                         │\n   ╰─────────────────────────────────────────╯\n\n",
+    "stderrTail": [
+      "dsh: warning: evidence declares no dsh.bundle — installed as a plain dependency, not a profile layer (a later update that gains one activates it automatically)"
+    ],
+    "manifestBefore": {
+      "name": "dsh-profile-w",
+      "private": true,
+      "dependencies": {},
+      "dsh": {
+        "profile": {
+          "bundles": [
+            "@deepseek-ai/dsh-base",
+            "@deepseek-ai/dsh-web-app"
+          ]
+        }
+      }
+    },
+    "manifestAfter": {
+      "name": "dsh-profile-w",
+      "private": true,
+      "dependencies": {
+        "evidence": "link:/root/dshProj/my-power-dsh/evidence"
+      },
+      "dsh": {
+        "profile": {
+          "bundles": [
+            "@deepseek-ai/dsh-base",
+            "@deepseek-ai/dsh-web-app"
+          ]
+        }
+      }
+    }
+  },
+  "nodeModulesAfterBoot": [
+    ".modules.yaml",
+    ".package-map.json",
+    ".pnpm",
+    ".pnpm-workspace-state-v1.json",
+    "@mpd-dsh",
+    "evidence"
+  ],
+  "moduleFallbackAfterBoot": [
+    "node_modules"
+  ],
+  "composition": {
+    "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; composes rows, never executes plugin code — AGENTS.md §4). NEVER cited as load evidence.",
+    "command": "node scripts/dump-config.mjs --profile w --json",
+    "exitCode": 1,
+    "envelopeParsed": false,
+    "rows": [],
+    "stderrTail": [
+      "  code: 'MODULE_NOT_FOUND',",
+      "  requireStack: []",
+      "}",
+      "Node.js v24.16.0"
+    ],
+    "composedTextFile": null,
+    "rowCount": 0,
+    "rowIds": [],
+    "literalEnabledCount": 0,
+    "literalEnabledIds": [],
+    "ok": false
+  },
+  "load": {
+    "claim": "REAL mounting boot + HTTP probes (no --dump-config anywhere in this claim)",
+    "bootCommand": "dsh --profile w --port 3510 --no-open",
+    "logPath": "<pruned:sandbox>",
+    "port": 3510,
+    "booted": true,
+    "index": {
+      "status": 200,
+      "bytes": 27724
+    },
+    "servedClientCarriesSidebar": false,
+    "servedClientUrlCount": 57,
+    "sidebarClientUrl": null,
+    "sidebarRoute": {
+      "path": "/sidebar/api",
+      "status": 404,
+      "body": ""
+    },
+    "sidebarRouteMounted": false,
+    "signatures": {
+      "hits": [],
+      "markers": [],
+      "healthy": true
+    },
+    "guard": null,
+    "guardLines": [],
+    "sidebarMentions": [],
+    "logTail": [
+      "dsh web: http://127.0.0.1:3510/?token=<redacted>"
+    ],
+    "logBytes": 82
+  },
+  "pruned": {
+    "atUtc": "2026-09-20T04:24:55Z",
+    "sandboxTreesDeleted": true,
+    "durableEvidence": [],
+    "rewrotePrunedCitations": 6,
+    "note": "sandbox working trees (DSH homes, node_modules mirrors, caches, staged copies) were deleted before the commit; every dead path is marked <pruned:sandbox> and the durable boot log is the anchor"
+  }
+}

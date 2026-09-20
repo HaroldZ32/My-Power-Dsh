@@ -355,9 +355,15 @@ function decouplePatch(srcPatch) {
   // be no-ops that imply a resolution that no longer exists.
   // nested !!js (env || <expr>) fix: drop the inner YAML tag so the outer JS sees one expression
   t = t.replace(/\|\| !!js '([^']+)'/g, "|| ($1)")
-  // generic YAML-safety: any remaining UNQUOTED !!js value containing ': ' breaks plain-scalar
-  // parsing; wrap it in single quotes (the JS bodies use double quotes only, so no escaping).
-  t = t.replace(/(!!js )((?!')([^\n]*))/g, (m, tag, body) => body.includes(": ") ? tag + "'" + body + "'" : m)
+  // generic YAML-safety: a PLAIN (unquoted) !!js value containing ': ' breaks
+  // plain-scalar parsing; wrap it in single quotes (those JS bodies use double
+  // quotes only, so no escaping). A value that already starts with a quote is a
+  // QUOTED scalar — its ': ' is literal YAML, and re-wrapping it would corrupt
+  // it: `!!js "(expr)"` became `!!js '"(expr)"'`, i.e. the expression turned into
+  // a string literal, so a guarded row shipped in the packed artifact as
+  // always-disabled (a boolean of any non-empty string is true). Measured on the
+  // sidebar guard's packed row; the lookahead now skips both quote styles.
+  t = t.replace(/(!!js )((?!['"])[^\n]*)/g, (m, tag, body) => body.includes(": ") ? tag + "'" + body + "'" : m)
   return t
 }
 
@@ -415,11 +421,30 @@ function writeManifest() {
     // The adopted agent-teams plugin (MIT provenance, upstream @nanmicoder/
     // dsh-agent-teams 0.1.16-rc.3-mpd) is FIRST-CLASS MAIN CODE under
     // packages/mpd-agent-teams-plugin and is copied wholesale into the bundle
-    // (lib + _deps + assets), loaded through the exports map above. A plain
-    // `dependencies` entry is NOT enough: pnpm (the engine behind `dsh plugin add`)
-    // never links a bundle's transitive deps into the profile root, so the plugin's
-    // row would silently self-disable at boot (repro: evidence/plan-e/e1-team-route
-    // 2026-08-27T07-38-13.142Z FAIL bundleDependency).
+    // (lib + _deps + assets), loaded through the exports map above — it is NOT an
+    // npm dependency and must not become one.
+    //
+    // `dependencies` carries the bundle's THIRD-PARTY RUNTIME PLUGIN dependencies —
+    // packages a loader row mounts and nothing in the dsh installation provides.
+    // Today exactly one (the sidebar HOST the bundle's two GUI pages register into).
+    // BOTH halves are required, and both are measured
+    // (evidence/install-deps/implementation/**):
+    //  • pnpm (the engine behind `dsh plugin add`) does NOT link a bundle's
+    //    transitive deps into the profile root, so the declaration alone never
+    //    materializes the package — this half of the former claim still holds;
+    //  • `@deepseek-ai/dsh-app-boot#healProfileModuleFallback` DOES resolve the
+    //    dependency closure (dependencies + peerDependencies) of every
+    //    NON-INSTALLATION bundle layer into `<profile>/node_modules` before the
+    //    loader runs, so the declared package IS resolvable for the guarded row
+    //    this bundle ships in cordis.patch.yml — this half is what the former
+    //    claim missed.
+    // The former sentence here ("a plain `dependencies` entry is NOT enough … the
+    // row would silently self-disable at boot", repro evidence/plan-e/e1-team-route
+    // 2026-08-27T07-38-13.142Z) is therefore CORRECTED rather than deleted: that
+    // repro is a manifest/relocation check (version: null, min 0.1.13), not a
+    // proof about pnpm's linking, and the boot-time fallback above is the missing
+    // half. A dependency declared only here, with no row, mounts nothing.
+    dependencies: { "dsh-better-sidebar": "0.19.0-alpha.1" },
     // Toolchain binaries stay as optionalDependencies (installed separately):
     //  - @ast-grep/cli / @colbymchenry/codegraph / @code-yeongyu/comment-checker
     optionalDependencies: { "@ast-grep/cli": "0.45.2", "@colbymchenry/codegraph": "1.5.0", "@code-yeongyu/comment-checker": "0.8.0" }

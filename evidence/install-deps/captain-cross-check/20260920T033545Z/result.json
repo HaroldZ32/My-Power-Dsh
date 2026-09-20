@@ -1,0 +1,37 @@
+{
+  "case": "install-deps/captain-cross-check",
+  "kind": "INDEPENDENT captain measurement (not the author's): own hand-built sandbox, own boot, own HTTP fetches",
+  "measured_at_utc": "2026-09-20T03:35:45+00:00",
+  "profile": {
+    "bundles": [
+      "@deepseek-ai/dsh-base",
+      "@deepseek-ai/dsh-web-app",
+      "@mpd-dsh/mpd"
+    ],
+    "bundle_dependency": "link:<repo>",
+    "dsh_better_sidebar_declared_by_the_profile": false
+  },
+  "claims": {
+    "guard_decision_line": [
+      "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+    ],
+    "healer_materialized_the_bundle_dependency": true,
+    "fatal_signature_count_in_boot_log": 0,
+    "sidebar_server_route_/sidebar/api_http": 405,
+    "sidebar_client_bundle_composed_into_the_served_page": true,
+    "mpd_client_bundle_composed_into_the_served_page": true,
+    "http_authorize_status": 303,
+    "http_index_bytes": 28318
+  },
+  "why_this_is_the_user_symptom_fixed": "Before the fix a bundle-only install composed ZERO better-sidebar rows (evidence/install-deps/red-baseline/<ts>/result.json), so the betterSidebar service never existed and the bundle's two sidebar-only pages registered nothing. On the fixed tree the healer materializes the package into the profile, the guarded row mounts it exactly once, its server route answers, and its browser bundle is composed into the served page.",
+  "source_hashes": {
+    "packages/mpd-bundle/cordis.patch.yml": "6ab4df7eb2e4dbe515406044ef580c698f004b355f4ea0bde4d2e327baeb711a",
+    "package.json": "64e9797767e086db02428946fa9c4764786695f493fe9c14352b065a099a634f",
+    "scripts/pack-mpd.mjs": "52b4245dc46e8f3f1de87b7f16ac0adda11370fb5606a420d9ea97b7836cdb07",
+    "scripts/install-profile.mjs": "98b29e101bd0e7d146311e9f191905389d0fd0c645275044950bde232220b94a"
+  },
+  "bounds": [
+    "The single client.js fetch returned 404 because this check extracted the batch URL from HTML where '&' is escaped as '&amp;'; the composed client list in the page IS the load evidence and the author's run fetched the same bundle 200. No defect is claimed from that 404.",
+    "A real browser render was not performed by this check; the verification lane (t5) owns the independent re-measurement including the TUI and aggregate arms."
+  ]
+}

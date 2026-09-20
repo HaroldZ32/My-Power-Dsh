@@ -1,0 +1,4 @@
+d141f70771c18cc06dd2492aae0cab92423929ab554a3c1031e2bbb9d3c1c23a  packages/mpd-bundle/cordis.patch.yml
+ef7d0884e56df8cafd8a485a870dcab49b895c6e81e200139c28d1a58ec4f763  package.json
+95d55ab9fda96bafc16e3a3e6388c4ab6e773706b71e9b8f75c0510e5071dbcd  scripts/pack-mpd.mjs
+c01cf1a822a93870ef3e82618af2ad3129262baff0b5d1f110ae5e55fe6b0d09  scripts/install-profile.mjs

@@ -44,7 +44,11 @@ node scripts/pack-mpd.mjs          # 仅发布用：重新生成可迁移的 dis
 ```
 
 本地安装不需要打包：仓库根 manifest **就是** bundle 包，在仓库根执行 `dsh plugin add .` 即可装好全部内容；
-改完代码后重建对应包的 `dist/` 并重启 dsh 即可。
+改完代码后重建对应包的 `dist/` 并重启 dsh 即可。安装前请先把仓库依赖落到本地（`bun install`）：
+manifest 声明了一个外部运行时依赖 `dsh-better-sidebar`（承载 mpd 两个标签页的社区侧边栏宿主），
+而检出目录安装读取的正是本仓库。如果它的传递依赖 `node-pty` 所需的 `node-gyp` 不可用，可以用
+`bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` 跳过构建脚本安装（只有侧边栏的终端
+面板会降级）。打包安装则由 pnpm 负责。
 
 MCP 服务器由 `node scripts/build-mcp.mjs` 构建（从仓库内源码离线构建）。
 

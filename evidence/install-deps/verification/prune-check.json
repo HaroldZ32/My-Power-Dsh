@@ -1,0 +1,196 @@
+{
+  "atUtc": "2026-09-20T04:24:55Z",
+  "prunedRoots": [
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034229Z/sandboxes",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034229Z/real-web",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034229Z/real-web-final",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034229Z/r1-f3-recheck/sandboxes",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034229Z/.debug",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034229Z/real-install/dsh",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034229Z/real-install/home",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034229Z/real-install/ws",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034229Z/real-install/cache",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/sandboxes",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/real-web",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/real-web-final",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/sandboxes",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/.debug",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/real-install/dsh",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/real-install/home",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/real-install/ws",
+    "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/real-install/cache"
+  ],
+  "annotatedArms": 33,
+  "sanitizedFiles": 0,
+  "repairedCitations": [],
+  "annotationReport": [
+    {
+      "file": "20260920T034229Z/arms/A0-real-plugin-add.json",
+      "rewrote": 0,
+      "durable": null
+    },
+    {
+      "file": "20260920T034521Z/arms-final/A0-real-plugin-add.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A0-real-plugin-add.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/A1-bundle-only.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A1-bundle-only.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/A2-aggregate-first.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A2-aggregate-first.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/A3-mpd-first-aggregate-after.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A3-mpd-first-aggregate-after.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/A4-tui-plane.json",
+      "rewrote": 0,
+      "durable": null
+    },
+    {
+      "file": "20260920T034521Z/arms-final/A5-package-absent.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A5-package-absent.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/E2E-real-web-profile.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/E2E-real-web-profile.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/F1-sidebar-as-bundle-layer.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F1-sidebar-as-bundle-layer.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/F2-foreign-layer-mounts-after.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F2-foreign-layer-mounts-after.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/F3-decoy-comment-layer.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F3-decoy-comment-layer.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/F4-decoy-disabled-row.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F4-decoy-disabled-row.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/F5-web-layer-after.json",
+      "rewrote": 0,
+      "durable": null
+    },
+    {
+      "file": "20260920T034521Z/arms-final/R1-prefix-controlled-red.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/R1-prefix-controlled-red.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/R2-shipped-controlled-green.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/R2-shipped-controlled-green.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-final/client-module-probe.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/client-module-probe.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms/A0-real-plugin-add.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A0-real-plugin-add.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms/A1-bundle-only.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A1-bundle-only.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms/A2-aggregate-first.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A2-aggregate-first.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms/A3-mpd-first-aggregate-after.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A3-mpd-first-aggregate-after.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms/A4-tui-plane.json",
+      "rewrote": 0,
+      "durable": null
+    },
+    {
+      "file": "20260920T034521Z/arms/A5-package-absent.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A5-package-absent.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms/E2E-real-web-profile.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/E2E-real-web-profile.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms/F1-sidebar-as-bundle-layer.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F1-sidebar-as-bundle-layer.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms/F2-foreign-layer-mounts-after.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F2-foreign-layer-mounts-after.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms/F3-decoy-comment-layer.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F3-decoy-comment-layer.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms/F4-decoy-disabled-row.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F4-decoy-disabled-row.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms/client-module-probe.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/client-module-probe.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-recheck/A4-tui-plane.json",
+      "rewrote": 0,
+      "durable": null
+    },
+    {
+      "file": "20260920T034521Z/arms-recheck/A5-package-absent.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A5-package-absent.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/arms-recheck/F3-decoy-comment-layer.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F3-decoy-comment-layer.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/r1-f3-recheck/arms/P1-live-profile-patch-mounts-sidebar.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/logs/P1-live-profile-patch-mounts-sidebar.boot.log"
+    },
+    {
+      "file": "20260920T034521Z/r1-f3-recheck/arms/P2-pre-repair-staged-copy.json",
+      "rewrote": 0,
+      "durable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/logs/P2-pre-repair-staged-copy.boot.log"
+    }
+  ],
+  "citationsIntoPrunedRootsRemaining": [],
+  "missingCitedDurablePaths": [],
+  "ok": true
+}

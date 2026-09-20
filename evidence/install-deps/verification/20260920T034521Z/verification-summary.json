@@ -1,0 +1,649 @@
+{
+  "task": "t5 independent verification of the install-dependency fix",
+  "lane": "Lead (this lane wrote evidence only: evidence/install-deps/verification/**)",
+  "generatedAtUtc": "2026-09-20T04:15:18Z",
+  "verdict": {
+    "reproduced": true,
+    "allArmsOk": true,
+    "boundaryProven": true,
+    "settledRevision": "e70a179e1ed13c5e4fa9926fb89fda9de4e17c1935aac1d517b37fa0b7b4b28e",
+    "treeMovedMidRun": true,
+    "midRunMoveDetectedAtUtc": "2026-09-20T03:53:54Z"
+  },
+  "hashDiscipline": {
+    "pin": [
+      "2026-09-20T03:54:15Z",
+      "2026-09-20T03:55:10Z"
+    ],
+    "settleStartEqualsEnd": true,
+    "matrixWindow": [
+      "2026-09-20T04:01:28Z",
+      "2026-09-20T04:02:18Z",
+      "2026-09-20T04:04:15Z"
+    ],
+    "movedDuringRun": []
+  },
+  "arms": [
+    {
+      "id": "A0-real-plugin-add",
+      "ok": true,
+      "plane": "web",
+      "purpose": "the ACTUAL install path (never re-run by the QA case): the profile starts with [base, web-app] and NO bundle; `dsh plugin --profile w add <repo>` reconciles it, then the profile boots for real.",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app"
+      ],
+      "installExit": 0,
+      "composition": {
+        "rows": 1,
+        "rowIds": [
+          "mpd-better-sidebar"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "ENABLED",
+          "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+        },
+        "route": 405,
+        "routeBody": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}",
+        "servedClientCarriesSidebar": true,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A0-real-plugin-add.boot.log",
+        "tuiPane": null,
+        "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A0-real-plugin-add.composed.txt"
+      }
+    },
+    {
+      "id": "A1-bundle-only",
+      "ok": true,
+      "plane": "web",
+      "purpose": "the reported user composition: the bundle alone on the web plane mounts ONE ACTIVE sidebar and really serves it.",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "installExit": null,
+      "composition": {
+        "rows": 1,
+        "rowIds": [
+          "mpd-better-sidebar"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "ENABLED",
+          "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+        },
+        "route": 405,
+        "routeBody": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}",
+        "servedClientCarriesSidebar": true,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A1-bundle-only.boot.log",
+        "tuiPane": null,
+        "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A1-bundle-only.composed.txt"
+      }
+    },
+    {
+      "id": "A2-aggregate-first",
+      "ok": true,
+      "plane": "web",
+      "purpose": "an aggregate that also mounts the sidebar is installed FIRST: still exactly one mount, healthy boot.",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@linxin666/dsh-web-all",
+        "@mpd-dsh/mpd"
+      ],
+      "installExit": null,
+      "composition": {
+        "rows": 2,
+        "rowIds": [
+          "web-ui-better-sidebar",
+          "mpd-better-sidebar"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "DISABLED",
+          "reason": "bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+        },
+        "route": 405,
+        "routeBody": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}",
+        "servedClientCarriesSidebar": true,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A2-aggregate-first.boot.log",
+        "tuiPane": null,
+        "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A2-aggregate-first.composed.txt"
+      }
+    },
+    {
+      "id": "A3-mpd-first-aggregate-after",
+      "ok": true,
+      "plane": "web",
+      "purpose": "the SAME aggregate installed AFTER the bundle — the order a forward-blind guard cannot see.",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd",
+        "@linxin666/dsh-web-all"
+      ],
+      "installExit": null,
+      "composition": {
+        "rows": 2,
+        "rowIds": [
+          "mpd-better-sidebar",
+          "web-ui-better-sidebar"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "DISABLED",
+          "reason": "bundle layer @linxin666/dsh-web-all already mounts it in its own patch"
+        },
+        "route": 405,
+        "routeBody": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}",
+        "servedClientCarriesSidebar": true,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A3-mpd-first-aggregate-after.boot.log",
+        "tuiPane": null,
+        "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A3-mpd-first-aggregate-after.composed.txt"
+      }
+    },
+    {
+      "id": "A4-tui-plane",
+      "ok": true,
+      "plane": "tui",
+      "purpose": "the dsh-tui plane provides no webServer/webRuntime: the row disables and the real TUI boot stays green.",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-harness-tui/dsh-tui",
+        "@mpd-dsh/mpd"
+      ],
+      "installExit": null,
+      "composition": {
+        "rows": 1,
+        "rowIds": [
+          "mpd-better-sidebar"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "DISABLED",
+          "reason": "no enabled @deepseek-ai/dsh-host-webserver entry in this composition"
+        },
+        "route": null,
+        "routeBody": null,
+        "servedClientCarriesSidebar": null,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": null,
+        "tuiPane": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A4-tui-plane.tui-pane.txt",
+        "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A4-tui-plane.composed.txt"
+      }
+    },
+    {
+      "id": "A5-package-absent",
+      "ok": true,
+      "plane": "web",
+      "purpose": "the declared dependency is NOT resolvable (staged bundle copy with no node_modules on its chain): boot SUCCEEDS, degraded to no sidebar.",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "installExit": null,
+      "composition": {
+        "rows": 1,
+        "rowIds": [
+          "mpd-better-sidebar"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "DISABLED",
+          "reason": "dsh-better-sidebar is not resolvable from the profile node_modules"
+        },
+        "route": 404,
+        "routeBody": "",
+        "servedClientCarriesSidebar": false,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A5-package-absent.boot.log",
+        "tuiPane": null,
+        "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/A5-package-absent.composed.txt"
+      }
+    },
+    {
+      "id": "E2E-real-web-profile",
+      "ok": true,
+      "plane": null,
+      "purpose": null,
+      "bundles": null,
+      "installExit": null,
+      "composition": {
+        "rows": null,
+        "rowIds": [],
+        "exitCode": null
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "ENABLED",
+          "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+        },
+        "route": 405,
+        "routeBody": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}",
+        "servedClientCarriesSidebar": true,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/E2E-real-web-profile.boot.log"
+      }
+    },
+    {
+      "id": "F1-sidebar-as-bundle-layer",
+      "ok": true,
+      "plane": "web",
+      "purpose": "falsify (b): dsh-better-sidebar is ITSELF a declared bundle layer -> its own patch mounts it; ours must back off, the boot must stay green, the sidebar must still be served EXACTLY once.",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "dsh-better-sidebar",
+        "@mpd-dsh/mpd"
+      ],
+      "installExit": null,
+      "composition": {
+        "rows": 2,
+        "rowIds": [
+          "better-sidebar",
+          "mpd-better-sidebar"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "DISABLED",
+          "reason": "dsh-better-sidebar is itself a declared bundle layer"
+        },
+        "route": 405,
+        "routeBody": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}",
+        "servedClientCarriesSidebar": true,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F1-sidebar-as-bundle-layer.boot.log",
+        "tuiPane": null,
+        "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F1-sidebar-as-bundle-layer.composed.txt"
+      }
+    },
+    {
+      "id": "F2-foreign-layer-mounts-after",
+      "ok": true,
+      "plane": "web",
+      "purpose": "falsify (a) with a VERIFIER-AUTHORED foreign layer (not the real aggregate) that mounts the sidebar and appears AFTER ours.",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd",
+        "t5-foreign-mount"
+      ],
+      "installExit": null,
+      "composition": {
+        "rows": 2,
+        "rowIds": [
+          "mpd-better-sidebar",
+          "t5-foreign-sidebar"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "DISABLED",
+          "reason": "bundle layer t5-foreign-mount already mounts it in its own patch"
+        },
+        "route": 405,
+        "routeBody": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}",
+        "servedClientCarriesSidebar": true,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F2-foreign-layer-mounts-after.boot.log",
+        "tuiPane": null,
+        "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F2-foreign-layer-mounts-after.composed.txt"
+      }
+    },
+    {
+      "id": "F3-decoy-comment-layer",
+      "ok": true,
+      "plane": "web",
+      "purpose": "adversarial over-approximation probe: a foreign layer that only MENTIONS 'dsh-better-sidebar' in a comment (mounts nothing). Guard predicate 3 is a substring test over the whole patch text.",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd",
+        "t5-decoy-comment"
+      ],
+      "installExit": null,
+      "composition": {
+        "rows": 1,
+        "rowIds": [
+          "mpd-better-sidebar"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "DISABLED",
+          "reason": "bundle layer t5-decoy-comment already mounts it in its own patch"
+        },
+        "route": 404,
+        "routeBody": "",
+        "servedClientCarriesSidebar": false,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F3-decoy-comment-layer.boot.log",
+        "tuiPane": null,
+        "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F3-decoy-comment-layer.composed.txt"
+      }
+    },
+    {
+      "id": "F4-decoy-disabled-row",
+      "ok": true,
+      "plane": "web",
+      "purpose": "adversarial over-approximation probe: a foreign layer that inserts a DISABLED sidebar row (mounts nothing).",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd",
+        "t5-decoy-disabled"
+      ],
+      "installExit": null,
+      "composition": {
+        "rows": 2,
+        "rowIds": [
+          "mpd-better-sidebar",
+          "t5-decoy-disabled-row"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "DISABLED",
+          "reason": "bundle layer t5-decoy-disabled already mounts it in its own patch"
+        },
+        "route": 404,
+        "routeBody": "",
+        "servedClientCarriesSidebar": false,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F4-decoy-disabled-row.boot.log",
+        "tuiPane": null,
+        "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F4-decoy-disabled-row.composed.txt"
+      }
+    },
+    {
+      "id": "F5-web-layer-after",
+      "ok": false,
+      "plane": "web",
+      "purpose": "adversarial ORDER probe for the guard's web-plane predicate: the web-app layer (whose patch inserts the @deepseek-ai/dsh-host-webserver row) sits AFTER this bundle, so that entry may not be visible when our row is first evaluated. Correct behaviour = ENABLED + served.",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@mpd-dsh/mpd",
+        "@deepseek-ai/dsh-web-app"
+      ],
+      "installExit": null,
+      "composition": {
+        "rows": 1,
+        "rowIds": [
+          "mpd-better-sidebar"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": false,
+        "guard": {
+          "decision": "DISABLED",
+          "reason": "no enabled @deepseek-ai/dsh-host-webserver entry in this composition"
+        },
+        "route": null,
+        "routeBody": null,
+        "servedClientCarriesSidebar": null,
+        "fatalSignatureHits": [
+          "entriesNotLoaded",
+          "pluginTreeFailed"
+        ]
+      },
+      "evidence": {
+        "bootLog": null,
+        "bootLogMissing": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F5-web-layer-after.boot.log"
+      }
+    },
+    {
+      "id": "R1-prefix-controlled-red",
+      "ok": true,
+      "plane": null,
+      "purpose": null,
+      "bundles": null,
+      "installExit": null,
+      "composition": {
+        "rows": 0,
+        "rowIds": [],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": null,
+        "route": 404,
+        "routeBody": "",
+        "servedClientCarriesSidebar": false,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/R1-prefix-controlled-red.boot.log"
+      }
+    },
+    {
+      "id": "R2-shipped-controlled-green",
+      "ok": true,
+      "plane": null,
+      "purpose": null,
+      "bundles": null,
+      "installExit": null,
+      "composition": {
+        "rows": 1,
+        "rowIds": [
+          "mpd-better-sidebar"
+        ],
+        "exitCode": 0
+      },
+      "load": {
+        "booted": true,
+        "guard": {
+          "decision": "ENABLED",
+          "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+        },
+        "route": 405,
+        "routeBody": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}",
+        "servedClientCarriesSidebar": true,
+        "fatalSignatureHits": []
+      },
+      "evidence": {
+        "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/R2-shipped-controlled-green.boot.log"
+      }
+    }
+  ],
+  "redGreen": {
+    "red": {
+      "id": "R1-prefix-controlled-red",
+      "rows": 0,
+      "route": 404,
+      "served": false,
+      "bootHealthy": true,
+      "guard": null
+    },
+    "green": {
+      "id": "R2-shipped-controlled-green",
+      "rows": 1,
+      "route": 405,
+      "served": true,
+      "bootHealthy": true,
+      "guard": {
+        "decision": "ENABLED",
+        "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+      }
+    },
+    "boundaryProven": true
+  },
+  "gates": [
+    {
+      "log": "gates/rows-installer-preset.log",
+      "exit": 0,
+      "summary": "[verify-rows-parity] ok: 26 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ul"
+    },
+    {
+      "log": "gates/docs-final.log",
+      "exit": 0,
+      "summary": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS"
+    },
+    {
+      "log": "gates/dist-fresh.log",
+      "exit": 0,
+      "summary": "[verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 480ms"
+    },
+    {
+      "log": "gates/pack.log",
+      "exit": 0,
+      "summary": ""
+    },
+    {
+      "log": "gates/pack-closure.log",
+      "exit": 0,
+      "summary": "[verify-pack-closure] ok: 17 dist/index.js row(s) + 1 adopted lib/index.js row(s) + 4 mcp row(s) of the bundle patch all resolve; 18 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /root/dshProj/my-power-dsh/dist/mpd-package (383 asset files); agent referenc"
+    },
+    {
+      "log": "gates/qa-case-selftest.log",
+      "exit": 0,
+      "summary": "[install-dependencies self-test] ok: sidebar-row parsing (0/1/2 rows, raw !!js guard, decoys), F1-F3 signature scanning, two-sided route + served-client verdicts, the hand-built profile recipe, the hermetic ARM-5 stage, the pre-fix RED anchor and the cases.json/SKILL.md wiring are verified offline"
+    }
+  ],
+  "packerRoundTrip": {
+    "command": "node scripts/pack-mpd.mjs",
+    "artifact": "dist/mpd-package/package.json",
+    "dependenciesArm": {
+      "dsh-better-sidebar": "0.19.0-alpha.1"
+    },
+    "packedPatchCarriesRow": true,
+    "note": "read from the GENERATED artifact, not from the source manifest; dist/mpd-package/** is gitignored"
+  },
+  "findings": [
+    {
+      "id": "F1-guard-textual-over-approximation",
+      "severity": "medium",
+      "kind": "robustness, degradation-only (never a dead boot)",
+      "statement": "The guard's 'another layer already mounts it' predicate is a substring test over patch TEXT (other layers, --patch overlays, $DSH_HOME/cordis.patch.yml). A layer that merely MENTIONS dsh-better-sidebar (comment) or inserts it with disabled: true suppresses our only mount, and the sidebar disappears (route 404) while the boot stays healthy.",
+      "measuredArms": [
+        "F3-decoy-comment-layer",
+        "F4-decoy-disabled-row"
+      ],
+      "evidence": [
+        "arms-final/F3-decoy-comment-layer.json",
+        "arms-final/F4-decoy-disabled-row.json",
+        "logs/F3-decoy-comment-layer.boot.log",
+        "logs/F4-decoy-disabled-row.boot.log"
+      ],
+      "repairedByThisLane": false
+    },
+    {
+      "id": "F2-web-plane-predicate-forward-blindness",
+      "severity": "probe/informational (composition not valid)",
+      "statement": "[base, mpd, web-app] does not boot at all (plugin(s) failed to load + plugin tree failed to load), so it cannot decide whether predicate 4 is forward-blind; the raw log does show TWO evaluations (first DISABLED - no enabled webserver entry, later ENABLED).",
+      "measuredArms": [
+        "F5-web-layer-after"
+      ],
+      "evidence": [
+        "arms-final/F5-web-layer-after.json"
+      ],
+      "repairedByThisLane": false
+    },
+    {
+      "id": "F3-standalone-client-module-claim",
+      "severity": "low (claim, not behaviour)",
+      "statement": "t2's standalone /plugins/??dsh-better-sidebar/client.js probe (200 / 870764 B) was not reproduced with the combined bundle's rev (404); the combined URL the index serves IS 200 / 12361294 B and carries the sidebar module.",
+      "measuredArms": [
+        "client-module-probe"
+      ],
+      "evidence": [
+        "arms-final/client-module-probe.json",
+        "client-module-final.log"
+      ],
+      "repairedByThisLane": false
+    }
+  ],
+  "residualRisks": [
+    {
+      "id": "R1",
+      "statement": "F1 over-approximation (a mentioning layer suppresses the mount)",
+      "closingCommand": "node t5-repro.mjs --only F3-decoy-comment-layer,F4-decoy-disabled-row (after the guard reads ROWS, not text)"
+    },
+    {
+      "id": "R2",
+      "statement": "predicate 4 depends on the webserver entry being visible at first evaluation",
+      "closingCommand": "build a composition whose webserver row is inserted by a layer after @mpd-dsh/mpd and still boots; not constructible from today's shipped layers"
+    },
+    {
+      "id": "R3",
+      "statement": "standalone client-module URL needs the entry's own rev",
+      "closingCommand": "extend t5-client-module.mjs to take the rev from the per-entry client table, then rerun it"
+    },
+    {
+      "id": "R4",
+      "statement": "the PACKED artifact was built and read but never installed+booted in this environment",
+      "closingCommand": "DSH_HOME=<sb>/dsh HOME=<sb>/home dsh plugin --profile web add <repo>/dist/mpd-package && boot it"
+    },
+    {
+      "id": "R5",
+      "statement": "the aggregate arm uses the already-installed @linxin666/dsh-web-all@0.3.20 (mirror link); its installation was not exercised (no registry in this sandbox)",
+      "closingCommand": "dsh plugin --profile web add @linxin666/dsh-web-all@0.3.20 in a networked sandbox, then rerun A2/A3"
+    }
+  ],
+  "verifierSideDefectsFixed": [
+    "pass-1 harness resolved the repo root 3 levels up instead of 4 (discarded; DISCARDED-pass1-harness-bug.md)",
+    "first client-URL probe kept the HTML entity &amp; and read a 404",
+    "tmux panes are CRLF; the guard regex missed the trailing \\r until lines were normalized",
+    "t5-red.mjs wiped the stage it had just built (buildSandbox rm -rf) -> both arms measured a dangling link; order fixed and named in the code"
+  ],
+  "isolation": {
+    "sandboxes": "DSH_HOME + HOME + cwd per arm (T5_SANDBOX_ROOT), never the real ~/.dsh",
+    "realWorkspaceStateWrites": "none attributable to any boot (checked .mpd/{memory,boulder.json,hashline-files.json,plans,ulw} and <sandbox>/dsh/sessions)"
+  }
+}

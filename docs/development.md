@@ -45,7 +45,12 @@ node scripts/pack-mpd.mjs          # RELEASE only: regenerate the relocatable di
 
 A local install needs no pack step: the repo root manifest IS the bundle package, so
 `dsh plugin add .` (in the repo root) installs everything; after a code change rebuild the
-touched `dist/` and restart dsh.
+touched `dist/` and restart dsh. Materialize the repository's dependencies first (`bun install`):
+the manifest declares one external runtime dependency, `dsh-better-sidebar` — the community
+sidebar host for the two mpd tabs — and a checkout install reads this repository. Where
+`node-gyp` is unavailable for its transitive `node-pty`,
+`bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` installs it without build scripts
+(only the sidebar's terminal panel degrades). A packed install gets it from pnpm.
 
 MCP servers are built by `node scripts/build-mcp.mjs` (offline from in-repo sources).
 

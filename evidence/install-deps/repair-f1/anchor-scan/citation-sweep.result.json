@@ -1,0 +1,384 @@
+{
+  "case": "install-deps/repair-f1/citation-sweep",
+  "measured_at_utc": "2026-09-20T04:37:11.785Z",
+  "scope": "evidence/install-deps",
+  "files_scanned": 422,
+  "distinct_cited": 271,
+  "resolved": 232,
+  "non_anchor_patterns": 0,
+  "unresolved": 39,
+  "unresolved_detail": [
+    {
+      "value": "evidence/install-deps/implementation/w1-five-compositions/20260920T033700Z",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/implementation/scratch/compositions-final.log",
+          "line": 13
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/implementation/w1-five-compositions/20260920T032600Z",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/implementation/scratch/compositions-run.log",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/implementation/sandbox/comp1/ws",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp1_web_bundle_only/boot.log",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/implementation/sandbox/comp2/ws",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp2_web_aggregate_after/boot.log",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/implementation/sandbox/comp3/ws",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp3_web_aggregate_before/boot.log",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/implementation/sandbox/comp4/ws",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp4_tui/boot.log",
+          "line": 1
+        },
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp4_tui/boot.log",
+          "line": 4
+        },
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp4_tui/boot.log",
+          "line": 4
+        },
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp4_tui/boot.log",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/implementation/sandbox/comp4/dsh",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp4_tui/boot.log",
+          "line": 1
+        },
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp4_tui/boot.log",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/implementation/sandbox/comp4/home",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp4_tui/boot.log",
+          "line": 1
+        },
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp4_tui/boot.log",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/implementation/sandbox/comp5/ws",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp5_web_package_absent/boot.log",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/implementation/sandbox/comp5/shadow-mpd/package.json",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp5_web_package_absent/result.json",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/implementation/sandbox/comp6/ws",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/implementation/w1-five-compositions/run-20260920T0328Z/comp6_packed_artifact/boot.log",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/fixtures/t5-decoy-",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/repair-f1/RESULT.md",
+          "line": 26
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/qa-case/2026-09-20T04-23-33.669Z/tui-tui-plane/",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/repair-f1/citation-fixes.txt",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/qa-case/2026-09-20T03-59-54.395Z/tui-tui-plane/",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/repair-f1/citation-fixes.txt",
+          "line": 2
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/captain-cross-check/20260920T033505Z/result.json",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/repair-f1/citation-fixes.txt",
+          "line": 3
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/repair-r2/pack",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/repair-r2/RESULT.md",
+          "line": 127
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/captain-cross-check/20260920T035736Z-f3-repro/",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/ADDENDUM.md",
+          "line": 54
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/sandboxes/P1-live-profile-patch-mounts-sidebar/dsh/profiles/w/cordis.patch.yml",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/logs/P1-live-profile-patch-mounts-sidebar.composed.txt",
+          "line": 917
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/sandboxes/P2-pre-repair-staged-copy/dsh/profiles/w/cordis.patch.yml",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/logs/P2-pre-repair-staged-copy.composed.txt",
+          "line": 904
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/logs/F5-web-layer-after.boot.log",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/20260920T034521Z/verification-summary.json",
+          "line": 448
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034229Z/sandboxes",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034229Z/real-web",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 5
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034229Z/real-web-final",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034229Z/r1-f3-recheck/sandboxes",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034229Z/.debug",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034229Z/real-install/dsh",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 9
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034229Z/real-install/home",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 10
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034229Z/real-install/ws",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034229Z/real-install/cache",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 12
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/sandboxes",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 13
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/real-web",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 14
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/real-web-final",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 15
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/sandboxes",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 16
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/.debug",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 17
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/real-install/dsh",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/real-install/home",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/real-install/ws",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 20
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification/20260920T034521Z/real-install/cache",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification/prune-check.json",
+          "line": 21
+        }
+      ]
+    },
+    {
+      "value": "evidence/install-deps/verification-final/logs/A4-tui-plane.boot.log",
+      "citedBy": [
+        {
+          "file": "evidence/install-deps/verification-final/arms/A4-tui-plane.json",
+          "line": 68
+        }
+      ]
+    }
+  ],
+  "non_anchor_detail": []
+}

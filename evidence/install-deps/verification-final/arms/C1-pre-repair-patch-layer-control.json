@@ -1,0 +1,146 @@
+{
+  "id": "C1-pre-repair-patch-layer-control",
+  "plane": "web",
+  "purpose": "CONTROL: the same profile-patch composition against a frozen copy of the shipped tree with the patch-layer clause removed — the boundary must be red-able (duplicate prefix route, dead boot).",
+  "profileName": "w",
+  "bundles": [
+    "@deepseek-ai/dsh-base",
+    "@deepseek-ai/dsh-web-app",
+    "@mpd-dsh/mpd"
+  ],
+  "expect": {
+    "rowsMin": 2,
+    "rowsMax": 2,
+    "literalEnabledMax": 1,
+    "guard": "ENABLED",
+    "served": false,
+    "routeMounted": false,
+    "expectDead": true
+  },
+  "ok": true,
+  "checks": [
+    {
+      "name": "composition.exit0",
+      "ok": true,
+      "detail": "exit=0 stderr=[\"[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.\",\"[dump-config] ---- the composed rows below are the child's own output ----\",\"dsh: [@mpd-dsh/mpd] patch: entry \\\"dsh-tui-agent-presets\\\" not found\",\"[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).\"]"
+    },
+    {
+      "name": "composition.rowCount",
+      "ok": true,
+      "detail": "rows=2 ids=[\"mpd-better-sidebar\",\"t17-profile-sidebar\"]"
+    },
+    {
+      "name": "composition.literalEnabled",
+      "ok": true,
+      "detail": "literalEnabled=1 [\"t17-profile-sidebar\"]"
+    },
+    {
+      "name": "control.deadBoot",
+      "ok": true,
+      "detail": "booted=false hits=[\"entryApplyFailed\",\"duplicatePrefixRoute\",\"pluginTreeFailed\"]"
+    },
+    {
+      "name": "control.duplicateRouteLine",
+      "ok": true,
+      "detail": "\"Error: dsh: plugin tree failed to load: failed to apply loader entry t17-profile-sidebar (dsh-better-sidebar): webserver: duplicate prefix route \\\"/sidebar/api\\\"\""
+    }
+  ],
+  "failedChecks": [],
+  "findingArm": true,
+  "install": null,
+  "stage": {
+    "staged": "/tmp/t17-c1b/C1-pre-repair-patch-layer-control/stage/pre-repair",
+    "shippedPatchSha256": "1b316b68850fbe3958b16088ac723abcd50faabd178668de7ed6044811107e8f",
+    "stagedPatchSha256": "c3064355445b37405124f17e54b187f7a339c01c2f5aa5f5221ca249ae543290",
+    "clauseRemoved": true,
+    "clausePresentInShipped": true
+  },
+  "overlayArgs": [],
+  "profilePatch": "# t17 patch-layer fixture: the PROFILE's own patch layer mounts the sidebar host.\n- insert:\n    - id: t17-profile-sidebar\n      name: 'dsh-better-sidebar'\n",
+  "nodeModulesAfterBoot": [
+    "@mpd-dsh",
+    "dsh-better-sidebar"
+  ],
+  "evidence": {
+    "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification-final/logs/C1-pre-repair-patch-layer-control.boot.log",
+    "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification-final/logs/C1-pre-repair-patch-layer-control.composed.txt"
+  },
+  "composition": {
+    "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never executes plugin code, AGENTS.md §4). NEVER cited as load evidence.",
+    "command": "node scripts/dump-config.mjs --profile w --json",
+    "exitCode": 0,
+    "envelopeParsed": true,
+    "rows": [
+      {
+        "id": "mpd-better-sidebar",
+        "disabledRaw": "!!js >-",
+        "enabled": false
+      },
+      {
+        "id": "t17-profile-sidebar",
+        "disabledRaw": null,
+        "enabled": true
+      }
+    ],
+    "rowIds": [
+      "mpd-better-sidebar",
+      "t17-profile-sidebar"
+    ],
+    "stderrTail": [
+      "[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.",
+      "[dump-config] ---- the composed rows below are the child's own output ----",
+      "dsh: [@mpd-dsh/mpd] patch: entry \"dsh-tui-agent-presets\" not found",
+      "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+    ],
+    "rowCount": 2,
+    "literalEnabledCount": 1,
+    "literalEnabledIds": [
+      "t17-profile-sidebar"
+    ],
+    "ok": true
+  },
+  "load": {
+    "claim": "REAL mounting boot + HTTP probes (no --dump-config in this claim)",
+    "bootCommand": "dsh --profile w --port 3610 --no-open",
+    "logPath": "/tmp/t17-c1b/C1-pre-repair-patch-layer-control/boot.log",
+    "port": 3610,
+    "booted": false,
+    "reason": "no token+cookie within 120000ms",
+    "signatures": {
+      "hits": [
+        "entryApplyFailed",
+        "duplicatePrefixRoute",
+        "pluginTreeFailed"
+      ],
+      "markers": [
+        "failed to apply loader entry",
+        "duplicate prefix route",
+        "plugin tree failed to load"
+      ],
+      "healthy": false
+    },
+    "guardLines": [
+      "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+    ],
+    "guard": {
+      "decision": "ENABLED",
+      "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+    },
+    "duplicateRouteLines": [
+      "Error: dsh: plugin tree failed to load: failed to apply loader entry t17-profile-sidebar (dsh-better-sidebar): webserver: duplicate prefix route \"/sidebar/api\"",
+      "Error: webserver: duplicate prefix route \"/sidebar/api\"",
+      "  [cause]: Error: failed to apply loader entry t17-profile-sidebar (dsh-better-sidebar): webserver: duplicate prefix route \"/sidebar/api\"",
+      "    [cause]: Error: webserver: duplicate prefix route \"/sidebar/api\""
+    ],
+    "logTail": [
+      "        at new apply (file:///root/dshProj/my-power-dsh/node_modules/.bun/dsh-better-sidebar@0.19.0-alpha.1+71811f0e33e58638/node_modules/dsh-better-sidebar/lib/index.js:4870:6)",
+      "        at Fiber.execute (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1067:24)",
+      "        at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34",
+      "        at file:///tmp/t17-c1b/C1-pre-repair-patch-layer-control/dsh/profiles/w/#t17-profile-sidebar",
+      "        at file:///tmp/t17-c1b/C1-pre-repair-patch-layer-control/dsh/profiles/w/#include",
+      "  }",
+      "}",
+      "Node.js v24.16.0"
+    ]
+  }
+}

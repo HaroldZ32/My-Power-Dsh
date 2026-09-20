@@ -1,0 +1,170 @@
+{
+  "id": "F5-web-layer-after",
+  "plane": "web",
+  "purpose": "adversarial ORDER probe for the guard's web-plane predicate: the web-app layer (whose patch inserts the @deepseek-ai/dsh-host-webserver row) sits AFTER this bundle, so that entry may not be visible when our row is first evaluated. Correct behaviour = ENABLED + served.",
+  "bundles": [
+    "@deepseek-ai/dsh-base",
+    "@mpd-dsh/mpd",
+    "@deepseek-ai/dsh-web-app"
+  ],
+  "profileName": "w",
+  "stage": false,
+  "expect": {
+    "rowsMin": 1,
+    "rowsMax": 1,
+    "literalEnabledMax": 0,
+    "guard": "ENABLED",
+    "served": true,
+    "routeMounted": true
+  },
+  "ok": false,
+  "checks": [
+    {
+      "name": "composition.exit0",
+      "ok": true,
+      "detail": "exit=0"
+    },
+    {
+      "name": "composition.rowCount",
+      "ok": true,
+      "detail": "rows=1 in [1,1] ids=[\"mpd-better-sidebar\"]"
+    },
+    {
+      "name": "composition.literalEnabled",
+      "ok": true,
+      "detail": "literalEnabled=0 <= 0 []"
+    },
+    {
+      "name": "load.booted",
+      "ok": false,
+      "detail": "reason=no token + session cookie within 90000ms"
+    },
+    {
+      "name": "load.noFatalSignature",
+      "ok": false,
+      "detail": "[\"entriesNotLoaded\",\"pluginTreeFailed\"]"
+    },
+    {
+      "name": "load.guardDecision",
+      "ok": false,
+      "detail": "guard={\"decision\":\"DISABLED\",\"reason\":\"no enabled @deepseek-ai/dsh-host-webserver entry in this composition\"} expected=ENABLED"
+    },
+    {
+      "name": "load.routeMounted",
+      "ok": false,
+      "detail": "GET /sidebar/api -> n/a body=\"\""
+    },
+    {
+      "name": "load.clientServed",
+      "ok": false,
+      "detail": "servedClientCarriesSidebar=undefined module=null"
+    },
+    {
+      "name": "load.oneSidebarMount",
+      "ok": false,
+      "detail": "exactly-once / expected-absent verdict"
+    }
+  ],
+  "failedChecks": [
+    "load.booted",
+    "load.noFatalSignature",
+    "load.guardDecision",
+    "load.routeMounted",
+    "load.clientServed",
+    "load.oneSidebarMount"
+  ],
+  "findingArm": true,
+  "findingIf": "guard DISABLED although a web plane IS present (the webserver entry is not visible at first evaluation) -> the sidebar is lost in a valid web composition",
+  "sandbox": {
+    "root": "<pruned:sandbox>",
+    "dshHome": "<pruned:sandbox>",
+    "userHome": "<pruned:sandbox>",
+    "ws": "<pruned:sandbox>",
+    "profile": "<pruned:sandbox>"
+  },
+  "install": null,
+  "nodeModulesAfterBoot": [
+    "@mpd-dsh",
+    "dsh-better-sidebar"
+  ],
+  "moduleFallbackAfterBoot": [
+    "node_modules"
+  ],
+  "composition": {
+    "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; composes rows, never executes plugin code — AGENTS.md §4). NEVER cited as load evidence.",
+    "command": "node scripts/dump-config.mjs --profile w --json",
+    "exitCode": 0,
+    "envelopeParsed": true,
+    "rows": [
+      {
+        "id": "mpd-better-sidebar",
+        "disabledRaw": "!!js >-",
+        "enabled": false
+      }
+    ],
+    "stderrTail": [
+      "[dump-config] ---- the composed rows below are the child's own output ----",
+      "dsh: [@mpd-dsh/mpd] patch: entry \"agent-presets\" not found",
+      "dsh: [@mpd-dsh/mpd] patch: entry \"dsh-tui-agent-presets\" not found",
+      "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+    ],
+    "composedTextFile": null,
+    "rowCount": 1,
+    "rowIds": [
+      "mpd-better-sidebar"
+    ],
+    "literalEnabledCount": 0,
+    "literalEnabledIds": [],
+    "ok": true
+  },
+  "load": {
+    "claim": "REAL mounting boot + HTTP probes (no --dump-config anywhere in this claim)",
+    "bootCommand": "dsh --profile w --port 3510 --no-open",
+    "logPath": "<pruned:sandbox>",
+    "port": 3510,
+    "booted": false,
+    "reason": "no token + session cookie within 90000ms",
+    "signatures": {
+      "hits": [
+        "entriesNotLoaded",
+        "pluginTreeFailed"
+      ],
+      "markers": [
+        "plugin(s) failed to load",
+        "plugin tree failed to load"
+      ],
+      "healthy": false
+    },
+    "guard": {
+      "decision": "DISABLED",
+      "reason": "no enabled @deepseek-ai/dsh-host-webserver entry in this composition"
+    },
+    "guardLines": [
+      "[mpd-better-sidebar] mount guard: DISABLED - no enabled @deepseek-ai/dsh-host-webserver entry in this composition",
+      "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+    ],
+    "sidebarMentions": [
+      "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar",
+      "Error: dsh: plugin tree failed to load: dsh: plugin(s) failed to load: dsh-better-sidebar; Cordis startup failed because these plugin(s) could not be resolved (see the error(s) logged above)",
+      "  [cause]: Error: dsh: plugin(s) failed to load: dsh-better-sidebar; Cordis startup failed because these plugin(s) could not be resolved (see the error(s) logged above)"
+    ],
+    "logTail": [
+      "      at assertEntriesLoaded (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1438:9)",
+      "      at assertEntriesActivated (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1466:2)",
+      "      at boot (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1537:9)",
+      "      at async runProfile (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:311:14)",
+      "      at async runCli (file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)",
+      "      at async file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23",
+      "}",
+      "Node.js v24.16.0"
+    ],
+    "logBytes": 4067
+  },
+  "pruned": {
+    "atUtc": "2026-09-20T04:24:55Z",
+    "sandboxTreesDeleted": true,
+    "durableEvidence": [],
+    "rewrotePrunedCitations": 6,
+    "note": "sandbox working trees (DSH homes, node_modules mirrors, caches, staged copies) were deleted before the commit; every dead path is marked <pruned:sandbox> and the durable boot log is the anchor"
+  }
+}

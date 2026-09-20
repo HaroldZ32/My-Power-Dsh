@@ -1,0 +1,122 @@
+{
+  "task": "t4",
+  "kind": "implementation",
+  "attemptId": "6935c387-dbc4-4180-8caa-3214d5f7b86c",
+  "member": "Junior Engineer",
+  "wave": "w1",
+  "measuredAt": {
+    "recount": "2026-09-20T03:38:5xZ",
+    "hashSandwichStart": "2026-09-20T03:38:51Z",
+    "hashSandwichEnd": "2026-09-20T03:39:07Z"
+  },
+  "shippedFacts": {
+    "sourceFiles": [
+      "packages/mpd-bundle/cordis.patch.yml",
+      "package.json"
+    ],
+    "patchIdEntriesTotal": 28,
+    "patchInserts": 26,
+    "patchIdTargets": 2,
+    "insertIdsFromGate": "node scripts/verify-rows-parity.mjs -> ok: 26 row ids match the bundle patch insert list (incl. mpd-better-sidebar)",
+    "declaredDependency": "package.json dependencies = {\"dsh-better-sidebar\":\"0.19.0-alpha.1\"} (materialized in the repository: node_modules/dsh-better-sidebar@0.19.0-alpha.1)",
+    "sidebarRow": "insert id mpd-better-sidebar, name dsh-better-sidebar, guarded by disabled: !!js (order-independent; disables on: package unresolvable / dsh-better-sidebar is itself a bundle layer / another layer's patch names the package and is not our own row / no web plane)",
+    "architectureMd": "docs/architecture.md DOES NOT EXIST (ls docs | grep -i arch -> none). It is the FORMER name of docs/design.md: docs/user-guide.md says 'the design document was RENAMED in this release (it used to be architecture.md, and docs/design.zh-CN.md is the Chinese twin of the current name)'. The architecture content is updated in docs/design.md + docs/design.zh-CN.md."
+  },
+  "changedPaths": [
+    "README.md",
+    "README.zh-CN.md",
+    "docs/user-guide.md",
+    "docs/user-guide.zh-CN.md",
+    "docs/design.md",
+    "docs/design.zh-CN.md",
+    "docs/development.md",
+    "docs/development.zh-CN.md",
+    "evidence/install-deps/docs/result.json",
+    "evidence/install-deps/docs/recount.txt",
+    "evidence/install-deps/docs/gates.log",
+    "evidence/install-deps/docs/hashes.start.txt",
+    "evidence/install-deps/docs/hashes.end.txt"
+  ],
+  "notTouched": [
+    "skills/** (single skills writer is t3)",
+    "VENDOR_LOCK.json",
+    "package.json / packages/** / scripts/** (t2 ownership)",
+    "docs/plan-*.md, docs/decisions.md and the prior-phase reports (process records exempt from the bilingual rule)"
+  ],
+  "changesByFile": {
+    "README.md": [
+      "Install from the checkout: the declared external runtime dependency dsh-better-sidebar is named, with the prerequisite `bun install` (fallback `bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts` when node-gyp is unavailable; only the sidebar's terminal panel degrades) and the note that a packed install gets it from pnpm.",
+      "What the install mounts: counts moved 27/25 -> 28 `- id:` entries / 26 inserts (2 id-targets unchanged); 'verify-rows-parity asserts the 26 insert ids'.",
+      "New row group 'The sidebar host — 1 inserted row' with the mpd-better-sidebar row, its package and its user-visible guard contract (mounts once; backs off for an aggregate mount / non-web composition / unresolvable package -> 'no sidebar', never a dead boot).",
+      "Web GUI: rewritten — the sidebar is installed and mounted with the bundle, so the tabs work out of the box; the 'no host' warning path is the missing/broken-dependency case only. The stale claim of a floating-panel fallback was corrected (the floater is removed; scripts/build-mpd-client.mjs fails the build if a client source registers one).",
+      "Acknowledgements: dsh-better-sidebar listed as a declared runtime dependency installed and mounted with the bundle."
+    ],
+    "README.zh-CN.md": [
+      "Full mirror of the five README.md changes (install prerequisite, 28/26 counts, sidebar host row group, Web GUI rewrite, acknowledgements)."
+    ],
+    "docs/user-guide.md": [
+      "§1 Install: the declared dsh-better-sidebar dependency and the `bun install` prerequisite (plus the --ignore-scripts fallback and the packed-install note).",
+      "§8 Web GUI: the sidebar host is installed with the bundle; the sidebar-only warning path is the missing/broken dependency, not a missing manual install.",
+      "§11 Troubleshooting 'AgentTeams tab missing': diagnose the dependency materialization (bun install / bun add --ignore-scripts) before rebuilding the client.",
+      "§13 Attribution table: dsh-better-sidebar recorded as a declared runtime dependency with its package.json field and patch row id."
+    ],
+    "docs/user-guide.zh-CN.md": [
+      "Full mirror of the four user-guide.md changes."
+    ],
+    "docs/design.md": [
+      "§0: 25 -> 26 plugin rows (+ the mpd-better-sidebar host row).",
+      "§1: 25 -> 26 inserted rows (+ the dependency-mounting row).",
+      "§2 manifest invariants: new bullet for the ONE external dependencies entry dsh-better-sidebar, its resolution path (@deepseek-ai/dsh-app-boot#healProfileModuleFallback materializes the closure of non-installation bundle layers into <profile>/node_modules) and the order-independent guard; the existing 'no dependencies on @nanmicoder/dsh-agent-teams' bullet stays (the adopted plugin remains main code).",
+      "§4: 25 -> 26 insert rows / all 26 ids named; new table row mpd-better-sidebar with package, composition, purpose, seam and guard.",
+      "§7: the sidebar host is declared + mounted by the guarded row, so the 'no host' warning path is the missing/broken dependency, not a normal install.",
+      "§8b limits: 'the web client is sidebar-only' now states the limit describes the code path, not an extra install step."
+    ],
+    "docs/design.zh-CN.md": [
+      "Full mirror of the seven design.md changes."
+    ],
+    "docs/development.md": [
+      "Local install paragraph: materialize the repository's dependencies (`bun install`) because the manifest declares dsh-better-sidebar; --ignore-scripts fallback; packed install handled by pnpm."
+    ],
+    "docs/development.zh-CN.md": [
+      "Mirror of the development.md change."
+    ]
+  },
+  "verification": {
+    "command": "bun run verify:docs",
+    "exitCode": 0,
+    "resultLine": "[verify-docs-parity] root=/root/dshProj/my-power-dsh pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS",
+    "log": "evidence/install-deps/docs/gates.log",
+    "supportingCommand": "node scripts/verify-rows-parity.mjs -> exit 0, 'ok: 26 row ids match the bundle patch insert list'",
+    "hashSandwich": {
+      "start": "2026-09-20T03:38:51Z",
+      "end": "2026-09-20T03:39:07Z (after a 10 s settle)",
+      "result": "IDENTICAL for all 8 files (evidence/install-deps/docs/hashes.start.txt == hashes.end.txt)",
+      "files": {
+        "README.md": "a32d515e6dfa7eab8c948938b63ddb27aedcb3f05c175ee47bd66e975a7a8d3c",
+        "README.zh-CN.md": "061801c903560a4357c4877f58fa51a7a87c9a08d2175579b19476585e2fd8b0",
+        "docs/user-guide.md": "897046cf22d84cb42cf04d76cda6cbafa74f2ad8cc15fad13820d92b674ec5ad",
+        "docs/user-guide.zh-CN.md": "29a3443dfc9d83ec488fcd26ff5587fd15657dca7f7f93bd3cb8b869e3454b04",
+        "docs/design.md": "3f9499e2bbfb964ccf25a8c0d21cd41f66b663879ee2f1e46404167db2d206e9",
+        "docs/design.zh-CN.md": "da44da870b57be2545d7a024d6f8090fdb97b2e6ff4691fc80ba33863b836030",
+        "docs/development.md": "c421b7a303035d98eb218f6ec1096eebc040f9ccf9e677d5ed70208d14099801",
+        "docs/development.zh-CN.md": "e7961d6f9533fdefe3fed90f5133063a6aca28052cd8c2d0bffe49578ad54d9d"
+      }
+    }
+  },
+  "residualsReportedNotFixed": [
+    {
+      "file": "AGENTS.md",
+      "claim": "§3 describes mpd-bundle-plugin as 'the combined web client (client.js = adopted agent-teams panel + the workmate library registered as a DSH-better-sidebar tab, with the bundle floater as fallback)'.",
+      "why": "The floater was removed; packages/mpd-bundle-plugin/src/web-client.js registers no shell.overlay/footer and scripts/build-mpd-client.mjs FAILS the build if one reappears. Out of this task's inScope (README.md + docs/** + evidence/install-deps/docs/**), so reported, not edited."
+    },
+    {
+      "file": "docs/tui.md + docs/tui.zh-CN.md",
+      "claim": "'web-only faces — the agent-teams sidebar, the workmate tab and the bundle floater' (NOT-CLAIMED item 3; the zh twin's line 60 table row also names the bundle floater).",
+      "why": "Same removed-floater reference; the NOT-CLAIMED list is a frozen historical record of the TUI edition and the clause is incidental to its point (web-plane faces do not render in the TUI). Left untouched to keep this diff scoped to the install story; flagged for the captain."
+    }
+  ],
+  "notes": [
+    "All counts were taken from the shipped files AFTER t2 landed, never from the assignment prose: 28 `- id:` entries, 26 of them 4-space-indented inserts under a column-0 `- insert:`, 2 column-0 id-targets (agent-presets, dsh-tui-agent-presets); the independent gate agrees on the 26 insert ids.",
+    "docs/architecture.md does not exist; it is the pre-rename name of docs/design.md (cited in docs/user-guide.md's own troubleshooting entry), so the architecture doc requirement is satisfied by the design pair."
+  ]
+}

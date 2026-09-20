@@ -1,0 +1,9 @@
+{
+  "case": "install-deps/repair-f1/scanner-unit",
+  "measuredAtUtc": "2026-09-20T04:19:35.925Z",
+  "guardBytes": 5915,
+  "guardSha256": "5859cb4e571ff1d97d6dcc6a68aa78e4522b323223fb62301d00802f3ca077cb",
+  "cases": 11,
+  "failures": 0,
+  "ok": true
+}

@@ -20,8 +20,9 @@ my-power-dsh 的详细设计：它设计什么、遵循哪些设计原则、如�
 
 - 一层 **patch**：把 bundle 的各行插入到安装该 bundle 的任意 profile 中；并用两个 id-target 让
   bundle 自带的 `mpd` 预设成为这些 composition 的默认预设，
-- **25 个插件行**（6 个 MCP client 行、17 个 `mpd-*` 插件行、`mpd-web-compat` 自引用行，以及
-  采纳的 `agent-teams` 行），以及每一行各自拥有的服务、工具、命令、路由与状态（§4），
+- **26 个插件行**（6 个 MCP client 行、17 个 `mpd-*` 插件行、`mpd-web-compat` 自引用行、
+  采纳的 `agent-teams` 行，以及挂载 bundle 已声明侧边栏依赖的 `mpd-better-sidebar` 宿主行），
+  以及每一行各自拥有的服务、工具、命令、路由与状态（§4），
 - 在 host 自有外壳中渲染 bundle 界面的 **web client** 与 **TUI 界面**（§7、§7b），
 - bundle 写入会话工作区与用户 home 的**状态布局**（§6），以及让 QA 与这两处保持隔离的规则（§8）。
 
@@ -60,9 +61,10 @@ scope provide/consume，模型路由由会话的 request header 解析。my-powe
 bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch`
 （`packages/mpd-bundle/cordis.patch.yml`）向它安装到的任意 profile 添加行。它贡献：
 
-- **25 个插入行**，全部位于同一层增量 patch 中：6 个 MCP client 行（本地 ast-grep、git-bash
+- **26 个插入行**，全部位于同一层增量 patch 中：6 个 MCP client 行（本地 ast-grep、git-bash
   [默认禁用]、LSP、codegraph；远端 context7、grep.app）、17 个 `mpd-*` 插件行、使 bundle 成为
-  loader entry 的 `mpd-web-compat` 自引用行，以及采纳的 `agent-teams` 插件行——§4 逐一列出，
+  loader entry 的 `mpd-web-compat` 自引用行、采纳的 `agent-teams` 插件行，以及挂载 bundle 唯一
+  外部运行时依赖（社区侧边栏宿主）的 `mpd-better-sidebar` 行——§4 逐一列出，
 - **2 个 id-target**（不是插入行）：让 bundle 自带预设成为各 composition 默认的 `agent-presets`
   行（web/base 面）与 `dsh-tui-agent-presets`（dsh-tui 面）（§2、§6c），
 - Harness 适配器（`mpd-dsh-adapter`）：所有其他行都经由它调用，
@@ -98,6 +100,12 @@ Manifest 不变式（为什么存在）：
 - **`dependencies` 中不出现 `@nanmicoder/dsh-agent-teams`** —— pnpm（`dsh plugin add`
   背后的引擎）从不把 bundle 的传递依赖链到 profile 根，所以普通的包名行会静默自禁用
   （E4 缺陷，见 `docs/plan-e.md`）。采纳的插件是主代码 + 自带 vendored closure。
+- **`dependencies` 中恰好有一个外部条目：`dsh-better-sidebar`** —— 承载 mpd 两个标签页的社区
+  侧边栏 bundle。它被**声明**出来，普通安装即可生效；它可被解析，是因为
+  `@deepseek-ai/dsh-app-boot#healProfileModuleFallback` 会在 loader 运行前把非安装型 bundle 层的
+  依赖闭包落到 `<profile>/node_modules`；检出目录安装则先把它落到仓库里（`bun install`）。挂载它
+  的行（`mpd-better-sidebar`）带守卫且与层序无关（§4），因此自己挂载该包的组合照常工作，无法解析
+  的包只降级为"没有侧边栏"，绝不会让启动失败。
 
 `scripts/build-mpd-client.mjs` 组合出合并 client（见 §7）。
 
@@ -136,8 +144,8 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 ## 4. 插件清单
 
 **`packages/mpd-bundle/cordis.patch.yml` 的每一行，按 composition 列出。** patch 层是增量的，
-共携带 **25 个 `insert` 行**；`node scripts/verify-rows-parity.mjs` 断言这份列表与本仓库自身的行
-账目一致（退出码 0，并逐一列出全部 25 个 id）。另有两条 **id-target**（不是插入行）——它们**替换**
+共携带 **26 个 `insert` 行**；`node scripts/verify-rows-parity.mjs` 断言这份列表与本仓库自身的行
+账目一致（退出码 0，并逐一列出全部 26 个 id）。另有两条 **id-target**（不是插入行）——它们**替换**
 某个 composition 已有的行——因此单独列在下面的表里。
 
 `Composition` 列回答"该行进入哪个 composition"：`insert` 行进入安装该 bundle 的每一个 profile
@@ -175,6 +183,7 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 | `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | 按引用供给：经由适配器把 `<bundle>/skills` 注册为 skill provider（rank 600 `bundled`），并清理 bundle <= 0.2.6 写入 home 的带版本戳副本 | 仅 effect | `skillsDir`、`skipSkills`、`skipPresets`、`skipLegacyCleanup` |
 | `mpd-tui` | mpd-tui-plugin | web + dsh-tui（在 dsh-tui 中生效，其他 composition 降级） | dsh-tui 版本的原生界面：绑定 host 的激活门控 TUI 接缝，并用 `ctx.get(id, false)` + warn-once 降级逐个探测，因此 web/headless composition 失去的是 TUI 界面而不是启动（§7b） | 无面向模型的工具；TUI 状态行 / 设置区块 / 看板 / 命令树 / 快捷键 / 对话框 / 转录渲染器 | — |
 | `agent-teams` | mpd-agent-teams-plugin（采纳，MIT） | web + dsh-tui | 多代理团队协作（captain、成员、任务、调度器；其视图为 AgentTeams 侧边栏 Tab 提供内容） | `agent_teams_*` | `stateDir`、`memberProvider`、`memberMaxDepth`、`maxMembers`、`profiles` |
+| `mpd-better-sidebar` | dsh-better-sidebar（bundle 已声明的依赖；entry id 有意带 `mpd-` 前缀，绝不复用该包自己的 `better-sidebar`，也不复用聚合包的 id） | web（当不存在已启用的 `@deepseek-ai/dsh-host-webserver` 条目时，守卫会禁用它，`dsh-tui` 亦然） | 挂载**承载** AgentTeams 与 Workmates 两个标签页的社区侧边栏 bundle，因此无需第二次手动安装插件；守卫与层序无关：只要**任何被组合的 patch 层**已经点名该包 —— 每个已声明 bundle 层自身的 `dsh.bundle.patch`（例如 `@linxin666/dsh-web-all` 聚合包）、`<profileDir>/cordis.patch.yml`、`$DSH_HOME/cordis.patch.yml`，以及从 `process.argv` 读到的每个 `--patch` 覆盖层路径（两种写法、可重复）—— 或者当 `dsh-better-sidebar` 本身就是一个 bundle 层、当该包无法解析、当不存在**已启用**的 `@deepseek-ai/dsh-host-webserver` 条目（被表达式禁用的 webserver 行不算）时，本行就会禁用。外部层只有在其 patch 里含有**真正挂载该包的行**时才会抑制本行 —— 即某行的 `name` 为 `dsh-better-sidebar` 且其 `disabled` 不是字面量 `true`（匹配前先剥离 YAML 注释）；注释里的提及、或字面量 `disabled: true` 的行都不挂载任何东西，因此不会抑制我们的挂载；行扫描器无法解析的形式一律回退到保守行为（视作挂载）—— 误禁只损失侧边栏，误启用会让启动以 `duplicate prefix route` 直接失败。以上每条路径都只打印一行日志并降级为"没有侧边栏"，绝不让启动失败 | 侧边栏宿主 + 它的 tab 注册表（`ctx.betterSidebar`） | `disabled: !!js` 挂载守卫 |
 
 **两条 id-target**（各自替换某个 composition 自带的名册行；id-target 是按 key 的浅覆盖，因此 host
 行其余 key 会保留；没有该行的 composition 只记录 `patch: entry … not found` 并跳过）：
@@ -399,7 +408,9 @@ Harness 所附 `standard` 预设的逐行镜像**，而这种镜像关系是承�
 （`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`，`single: true`，order 90），
 AgentTeams 页面由 `registerTeamSidebarTab` 注册。没有 DSH-better-sidebar 时两者各自只输出一条
 警告（`… has no host (no floating fallback by design)`）并且什么都不注册，因此侧边栏之外不存在
-任何界面。`scripts/build-mpd-client.mjs` 在构建期就强制这一点：只要有 mpd client 源注册了
+任何界面。宿主本身并不是可选第三方附加项：`dsh-better-sidebar` 是已声明的运行时依赖，由带守卫的
+`mpd-better-sidebar` 行挂载（§4），因此那条警告路径对应的是依赖缺失或损坏，而不是普通安装会遇到
+的情形。`scripts/build-mpd-client.mjs` 在构建期就强制这一点：只要有 mpd client 源注册了
 `agent-teams-activity`、`conversation.chat.node`、`shell.overlay` 或 `sidebar.footer.action`
 其中之一，构建即失败 —— 那正是被移除的对话内卡片、活动浮窗与 workmate 浮窗/页脚切换按钮。
 
@@ -483,7 +494,9 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —�
   一处本地启动安全适配（§6b）；其 client 部分严格作为视图库使用，它自己的 `apply` 从不被调用（§7）。
 - **web client 只做侧边栏。** 没有会话内回退：mpd 的两个页面都是侧边栏 Tab；可选接缝必须用
   `ctx.inject([...])` 挂载，而不是用一次性 `ctx.get` 探测——探测既看不见别的插件拥有的服务，也无法
-  在该提供方晚挂载时恢复（§7）。
+  在该提供方晚挂载时恢复（§7）。侧边栏宿主随 bundle 一起安装（已声明的 `dsh-better-sidebar`
+  依赖 + 带守卫的 `mpd-better-sidebar` 行，§4），因此这条限制描述的是代码路径，而不是用户需要
+  自己补做的一步安装。
 - **有两行按设计是惰性或降级的。** `mcp-gitbash` 默认禁用（上游为 Windows 专属），`mpd-tui` 在没有
   TUI 接缝的 composition 中 warn-once 降级，因此"该行已被组合"与"该能力已存在"是两个不同的陈述
   （§4）。

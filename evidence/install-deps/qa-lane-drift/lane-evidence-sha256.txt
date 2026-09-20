@@ -1,0 +1,7 @@
+=== sha256 of relocated evidence:
+108700c71533efa8c866ee04e835fe3ce8fc954258dcf0982c2f919620ac0bef  ./output.log
+383307a28ac4d4771ac6f4527a44af86de6638a097c78f0732b51948b7c173a5  ./raw/arm-gesture.session.decoded.jsonl
+f7b4f3cdf34e59541a4f88a918488ba1c0dd2bc5c3e17ec41bbd9fa3ef64426e  ./raw/arm-gesture.session.jsonl.zstd
+3742882fc734fe096c4283b5e482e54d1ffaa996a5a9ec0176cf6c5adfc6bb7e  ./raw/arm-shipped.session.decoded.jsonl
+252fc5db9bbd9322aac6ea5919a9b1be9a12eae2e7af5921b0b25a398ed0e6f6  ./raw/arm-shipped.session.jsonl.zstd
+999fa2f06d51a9bf3ad32b3610767d4d43ce0dcf2c72aa6c7df20f09dbd7cf20  ./result.json

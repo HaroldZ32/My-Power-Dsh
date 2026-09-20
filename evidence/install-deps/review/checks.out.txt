@@ -1,0 +1,31 @@
+patchGuard bytes      : 2493
+installer const bytes : 2493
+PATCH == INSTALLER CONST : true
+PATCH == RENDERED SCALAR : false
+PACKED ROW guard bytes   : 2493
+PACKED == PATCH GUARD    : true
+root dependencies arm    : {"dsh-better-sidebar":"0.19.0-alpha.1"}
+packed dependencies arm  : {"dsh-better-sidebar":"0.19.0-alpha.1"}
+PACKED DEPS == ROOT DEPS : true
+patch insert ids         : 26 ["mpd-better-sidebar","mcp-astgrep","mcp-gitbash","mcp-lsp","mcp-codegraph","mpd-web-compat","mpd-dsh-adapter","mpd-config","mpd-team-watchdog","mpd-tools","mpd-modelchain","mpd-ext","mpd-roles","mpd-ulw","mpd-hashline","mpd-boulder","mpd-comment-checker","mpd-codegraph","mpd-memory","mpd-workmate","mpd-team-compact","mpd-bootstrap","mpd-tui","agent-teams","mcp-context7","mcp-grepapp"]
+packed insert ids equal  : true
+[mpd-better-sidebar] mount guard: DISABLED - no web plane in this composition
+[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar
+[mpd-better-sidebar] mount guard: DISABLED - bundle layer @linxin666/dsh-web-all already mounts it in its own patch
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules
+[mpd-better-sidebar] mount guard: DISABLED - guard threw Cannot read properties of undefined (reading 'entries')
+[mpd-better-sidebar] mount guard: DISABLED - guard threw baseUrl is not defined
+
+--- synthetic composition probes (guard evaluated verbatim, real fs) ---
+OK   TUI-shape: no web entry, no web layer, pkg present -> true (expected true)
+OK   web: web-app layer declared, webserver entry present -> false (expected false)
+DIFF web: web-app layer declared, webserver entry DISABLED by !!js (raw marker) -> false (expected true)
+DIFF web-app layer declared, webserver entry MISSING at eval time -> false (expected true)
+OK   aggregate layer (IN bundles) mounts it -> disabled -> true (expected true)
+OK   aggregate FIRST in bundles -> disabled (order-independent) -> true (expected true)
+OK   other layer's patch mentions mpd-better-sidebar too -> guard state -> true (expected true)
+OK   pkg absent -> disabled -> true (expected true)
+OK   no ctx.loader -> throw path returns disabled -> true (expected true)
+OK   baseUrl undefined -> throw path returns disabled -> true (expected true)
+OK   F4: foreign layer mounts it AND mentions mpd-better-sidebar -> guard state -> false (expected false)
+OK   F1: overlay-only mount (invisible to guard) -> guard state -> false (expected false)

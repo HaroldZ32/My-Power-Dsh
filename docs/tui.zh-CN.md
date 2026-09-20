@@ -57,7 +57,7 @@ TUI 会话默认使用 **mpd** 预设，由组合中的 `dsh-tui-agent-presets` 
 |---|---|---|
 | AgentTeams 侧边栏面板 | `tuiScenes` 全屏面板 + `tuiStatus` 状态行 | 已在实机通道中渲染——`evidence/tui/live/20260915T063140Z/result.json`（t8；7 个界面中 6 个） |
 | Workmate 库标签页 | `tuiCommandTrees`（`/mpd …`）+ `tuiDialogs` | 同上（同一实机通道证据） |
-| Bundle 悬浮窗 | `tuiStatus` 状态行；`tuiRenderers` 转写行**宿主未投影** | 状态行已渲染；渲染器行**未渲染**——见明确不声明第 10 条 |
+| — | `tuiStatus` 状态行；`tuiRenderers` 转写行**宿主未投影** | 状态行已渲染；渲染器行**未渲染**——见明确不声明第 10 条 |
 | — | `tuiSettingsSections`（mpd.jsonc 可调项的 `/settings` 区块） | 已渲染——同上；该区块写明与 `<workspace>/.mpd/mpd.jsonc` 的**打通**、重启提示与"绝不丢失"条款（§6.2），通道以 `allPatterns` 断言这段披露文本 |
 | — | `tuiShortcuts` | 已渲染——同上 |
 | AgentTeams 团队工作流面板（id/名称/阶段、计划审阅状态、成员表、带 `failed-dep=` 标记的任务 DAG、邮箱尾部） | `mpd-tui-team` 场景 —— `/mpd team` | 由同一份持久记录渲染；界面契约、完整行清单与每一行的证据层级见一致性台账 `docs/tui-parity.md`（打开方式见下文 §3.2） |
@@ -388,7 +388,7 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
    任何拦截。
 2. **身份门控服务** —— `storage.local`、`messages.observe` 与受中介的 `registerCommand` 路径需要
    同样的已核实组件身份；因此效果台账目前把我们的界面记为 `undeclared`。
-3. **仅 Web 的界面** —— agent-teams **侧边栏**、workmate 标签页与 bundle 悬浮窗
+3. **仅 Web 的界面** —— agent-teams **侧边栏**、workmate 标签页
    （`dsh.client.platform = web`）在 TUI 中不渲染。§3 的 TUI 等价物不是像素级或功能级对齐声明。
 4. **引擎版本偏差** —— 宿主打印
    `⚠ dsh 引擎为 0.1.5-rc.2，比本界面验证过的 0.1.5-rc.1 新`，并继续运行。我们的验证针对已安装的

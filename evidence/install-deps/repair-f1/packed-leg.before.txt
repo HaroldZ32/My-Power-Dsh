@@ -1,0 +1,4 @@
+measured_at_utc: 2026-09-20T04:36:10Z
+packed patch BEFORE: e70a179e1ed13c5e4fa9926fb89fda9de4e17c1935aac1d517b37fa0b7b4b28e
+source patch:       1b316b68850fbe3958b16088ac723abcd50faabd178668de7ed6044811107e8f
+packed carries F1 guard BEFORE: false

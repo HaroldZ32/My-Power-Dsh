@@ -1,0 +1,92 @@
+{
+  "id": "P2-pre-repair-staged-copy",
+  "kind": "PRE-REPAIR staged copy (patch-layer clause removed)",
+  "stage": {
+    "staged": "<pruned:sandbox>",
+    "shippedPatchSha256": "e70a179e1ed13c5e4fa9926fb89fda9de4e17c1935aac1d517b37fa0b7b4b28e",
+    "stagedPatchSha256": "c1051f2728ed2563dae0b798ff68d1d9ed0a3be46419332611c219d1c90abfc9",
+    "clauseRemoved": true,
+    "clausePresentInShipped": true,
+    "stagedNote": "staged copy deleted before the commit; its frozen patch sha256 above is the durable anchor"
+  },
+  "profilePatch": "# t5 R1-class fixture: the PROFILE's own patch layer mounts the sidebar host, exactly the shape\n# review round 1 named (the loader applies this AFTER every bundle layer).\n- insert:\n    - id: p1-profile-sidebar\n      name: 'dsh-better-sidebar'\n",
+  "patchAtStart": {
+    "sha256": "e70a179e1ed13c5e4fa9926fb89fda9de4e17c1935aac1d517b37fa0b7b4b28e",
+    "atUtc": "2026-09-20T04:17:41Z",
+    "of": "c1051f2728ed2563dae0b798ff68d1d9ed0a3be46419332611c219d1c90abfc9 (staged pre-repair)"
+  },
+  "patchAtEnd": {
+    "sha256": "7c7e36b85ce277e2afa613d6eb9ab1aecb8355c0a175b151a37ce11860bf61a8",
+    "atUtc": "2026-09-20T04:19:43Z"
+  },
+  "livePatchMovedDuringArm": true,
+  "composition": {
+    "command": "node scripts/dump-config.mjs --profile w --json",
+    "exitCode": 0,
+    "rows": [
+      {
+        "id": "mpd-better-sidebar",
+        "enabled": false
+      },
+      {
+        "id": "p1-profile-sidebar",
+        "enabled": true
+      }
+    ],
+    "rowIds": [
+      "mpd-better-sidebar",
+      "p1-profile-sidebar"
+    ]
+  },
+  "load": {
+    "claim": "REAL mounting boot + HTTP probes",
+    "bootCommand": "dsh --profile w --port 3603 --no-open",
+    "logPath": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/logs/P2-pre-repair-staged-copy.boot.log",
+    "port": 3603,
+    "booted": false,
+    "reason": "no token+cookie within 120000ms",
+    "signatures": {
+      "hits": [
+        "failed to apply loader entry",
+        "duplicate prefix route",
+        "plugin tree failed to load"
+      ],
+      "healthy": false
+    },
+    "guard": {
+      "decision": "ENABLED",
+      "reason": "web plane present and no other layer mounts dsh-better-sidebar"
+    },
+    "guardLines": [
+      "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar"
+    ],
+    "duplicateRouteLines": [
+      "Error: dsh: plugin tree failed to load: failed to apply loader entry p1-profile-sidebar (dsh-better-sidebar): webserver: duplicate prefix route \"/sidebar/api\"",
+      "Error: webserver: duplicate prefix route \"/sidebar/api\"",
+      "  [cause]: Error: failed to apply loader entry p1-profile-sidebar (dsh-better-sidebar): webserver: duplicate prefix route \"/sidebar/api\"",
+      "    [cause]: Error: webserver: duplicate prefix route \"/sidebar/api\""
+    ],
+    "logTail": [
+      "        at file:///root/.nvm/versions/node/v24.16.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1141:34",
+      "        at file://<sandbox>/P2-pre-repair-staged-copy/dsh/profiles/w/#p1-profile-sidebar",
+      "        at file://<sandbox>/P2-pre-repair-staged-copy/dsh/profiles/w/#include",
+      "  }",
+      "}",
+      "Node.js v24.16.0"
+    ],
+    "logPathDurable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/logs/P2-pre-repair-staged-copy.boot.log"
+  },
+  "evidence": {
+    "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/logs/P2-pre-repair-staged-copy.boot.log",
+    "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/logs/P2-pre-repair-staged-copy.composed.txt"
+  },
+  "pruned": {
+    "atUtc": "2026-09-20T04:24:55Z",
+    "sandboxTreesDeleted": true,
+    "durableEvidence": [
+      "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/r1-f3-recheck/logs/P2-pre-repair-staged-copy.boot.log"
+    ],
+    "rewrotePrunedCitations": 2,
+    "note": "sandbox working trees (DSH homes, node_modules mirrors, caches, staged copies) were deleted before the commit; every dead path is marked <pruned:sandbox> and the durable boot log is the anchor"
+  }
+}

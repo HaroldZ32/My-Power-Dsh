@@ -51,7 +51,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 没有该接缝的读取方则同步注册声明列表。每次注册都会记录产生选项的分支：
 `settings section mpd slot options: provider=live(N)|declared(N) model=… reasoningEffort=… catalog=live|degraded|unavailable`。
 
-面板是 web 专有界面（agent-teams 侧边栏、workmate 标签页、bundle 浮层）的
+面板是 web 专有界面（agent-teams 侧边栏、workmate 标签页）的
 TUI 原生等价物。它**只读**状态：
 
 - `<workspace>/.mpd/team/<teamId>/team.json`（取最新记录）
@@ -155,9 +155,9 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
    `ambiguous-multi-root` 并列出全部候选；只读/不可解析/冲突的文件），而设置值仍然
    生效；状态行会显示对应的运行时提示。不声明：某个具体前门的渲染效果（Web 卡片的
    浏览器渲染由用户在自己的 GUI 中验证）。
-3. **web 专有界面在 TUI 中没有渲染面。** agent-teams 侧边栏、workmate 标签页与
-   bundle 浮层（`dsh.client.platform = web`）在 TUI 中不渲染。面板、状态行与
-   对话框是**等价物**，不是像素或功能对齐声明。web profile 未受影响。
+3. **web 专有界面在 TUI 中没有渲染面。** agent-teams 侧边栏与 workmate 标签页
+   （`dsh.client.platform = web`）在 TUI 中不渲染。面板、状态行与对话框是**等价物**，
+   不是像素或功能对齐声明。web profile 未受影响。
 4. **随包技能仅为资产。** `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` 随包分发，但技能语料由
    `mpd-bootstrap` 从 `<bundle>/skills` 提供；本包内这份副本并未由该行注册。
 5. **引擎版本偏差。** 宿主会提示 dsh 引擎比其 UI 验证版本更新；验证针对已安装

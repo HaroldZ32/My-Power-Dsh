@@ -1,0 +1,28 @@
+{
+  "case": "install-deps/implementation/comp4_tui",
+  "measured_at_utc": "2026-09-20T03:30:51.969Z",
+  "author_run_advisory": true,
+  "expectation": "guard DISABLED (no web plane); zero pending/failed entries",
+  "pane": "\n\n                                            ✦ dsh-TUI  v0.10.1\n                                            █▀▀▀▄ █▀▀▀▀ █▀▀▀▀ █▀▀▀▄ █▀▀▀▀ █▀▀▀▀ █▀▀▀▀ █   █\n                  ▀▀▀▀                      █   █ █     █     █   █ █     █     █     █ █\n                  ▄▀▄▄   ▄▀▄       ▄        █   █ █▀▀▀  █▀▀▀  █▄▄▄▀  ▀▀▀▄ █▀▀▀  █▀▀▀  ██\n             ▄▄▄▄        ▀▀▀▀▄  ▄▄▀▀▀       █   █ █     █     █         █ █     █     █ █\n         ▄▄▄▄▄▄▀▄▄       ▀▀▀▀▀▀▀▀▀▀▀▀       █▄▄▄▀ █▄▄▄▄ █▄▄▄▄ █     █▄▄▄▀ █▄▄▄▄ █▄▄▄▄ █   █\n       ▄▀▀▀▀▀▀▀▀▀▀▀▀▄▄     ▀▀▀▀▀▀▀▀▀        █   █  ▄▀▄  █▀▀▀▄ █   █ █▀▀▀▀ █▀▀▀▀ █▀▀▀▀\n     ▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄  ▄▀▀▀▀▀           █   █ █   █ █   █ ██  █ █     █     █\n     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀           █▀▀▀█ █▀▀▀█ █▄▄▄▀ █ █ █ █▀▀▀   ▀▀▀▄  ▀▀▀▄\n     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀            █   █ █   █ █ █   █  ██ █         █     █\n     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀             █   █ █   █ █   █ █   █ █▄▄▄▄ █▄▄▄▀ █▄▄▄▀\n      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              deepseek-flash · Max effort\n        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄             /root/dshProj/my-power-dsh\n           ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             Tip: /login shows credential status; /logout signs out · /tips more tips\n                                            ⚠ The dsh engine (0.1.5-rc.2) is newer than the 0.1.5-rc.1 this UI is validated against, so issues are possible; downgrade via npm i -g @deepseek-ai/dsh@0.1.5-rc.1 for \n                                            stability, or wait for a dsh-tui update.\n\n          Explore the uncharted!\n\n\n   ▶ （Ctrl+P to expand） Context loaded · System prompt 17 sections · Runtime context 2 items · Skills 18 · Tools 101\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n  mpd: team MPD Install-Deps 11·1/7 · boulder 1/1 · plans 23 · workmates 0 · notes 2 · watchdog: 208 unread incidents\n                                                                                                                                                                                                                         \n  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n  ❯                                                                                                                                                                                                                      ⛶\n  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n   deepseek-flash · max · my-power-dsh\n\n\n",
+  "scan": {
+    "guard": [
+      {
+        "decision": "DISABLED",
+        "reason": "no web plane in this composition"
+      }
+    ],
+    "probes": [],
+    "fatal": [],
+    "ready": false
+  },
+  "paneChars": 2659,
+  "log_sha256": "a33233f1536d07b09fbc25fbb7cccc154ebd8aeeb9d34302d6808004741ca7ef",
+  "log_read_at_utc": "2026-09-20T03:30:51.972Z",
+  "verdict": {
+    "fatal_signatures": [],
+    "guard_decisions": [
+      "DISABLED - no web plane in this composition"
+    ],
+    "sidebar_rows_in_entry_list": []
+  }
+}

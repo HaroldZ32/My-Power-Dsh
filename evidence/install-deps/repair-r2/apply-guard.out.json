@@ -1,0 +1,18 @@
+{
+  "guardBytes": 3367,
+  "guardSha256": "e0429ff54f8eaca1cd371e49925a32d91233850126ebd8afc66bbb601f40aeb6",
+  "before": {
+    "patch": "6ab4df7eb2e4dbe515406044ef580c698f004b355f4ea0bde4d2e327baeb711a",
+    "installer": "98b29e101bd0e7d146311e9f191905389d0fd0c645275044950bde232220b94a"
+  },
+  "after": {
+    "patch": "bd7c0c9a44cb9f118ce03e4ea035a9d4f4335da6c499599dfddd1db9583e4110",
+    "installer": "1820242d3a9af2a8ad5d4949bb6b61ae53229e3d4cb5b237b1ad0b6ea9ec1dd6"
+  },
+  "parity": {
+    "inPatch": true,
+    "inInstaller": true,
+    "patchLineBytes": 3390
+  }
+}
+[apply-guard] ok: one guard body carried into the bundle patch and the installer

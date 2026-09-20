@@ -1,0 +1,4 @@
+[run-qa-lanes] discovery: 48 lane script(s) discovered (48 listed, 0 unlisted, 19 outside every suite); .mjs entries 48, underscore-excluded 0
+[run-qa-lanes] immutability required=10: team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=38
+[run-qa-lanes] manifest and disk agree (54 entries, 48 lane script(s) discovered) and the immutability guard is declared
+exit=0

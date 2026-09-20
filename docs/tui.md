@@ -60,7 +60,7 @@ The bundle's former web-only faces have TUI **equivalents**, not parity:
 |---|---|---|
 | AgentTeams sidebar panel | `tuiScenes` full-screen board + `tuiStatus` keyed status line | Rendered in the live lane — `evidence/tui/live/20260915T063140Z/result.json` (t8; 6 of 7 surfaces) |
 | Workmate library tab | `tuiCommandTrees` (`/mpd …`) + `tuiDialogs` | same lane evidence |
-| Bundle floater | `tuiStatus` status line; the `tuiRenderers` transcript row is **not projected by the host** | status line rendered; renderer row **does not render** — see NOT-CLAIMED #10 |
+| — | `tuiStatus` status line; the `tuiRenderers` transcript row is **not projected by the host** | status line rendered; renderer row **does not render** — see NOT-CLAIMED #10 |
 | — | `tuiSettingsSections` (`/settings` section for the mpd.jsonc knobs) | rendered — same lane evidence; the section states the **bridge** to `<workspace>/.mpd/mpd.jsonc`, its restart caveat and the never-lost clause (§6.2), and the lane asserts that disclosure text (`allPatterns`) |
 | — | `tuiShortcuts` | rendered — same lane evidence |
 | AgentTeams team-workflow panel (id/name/phase, plan-review state, roster, task DAG with `failed-dep=` marking, mailbox tail) | `mpd-tui-team` scene — `/mpd team` | rendered from the same durable record; the surface contract, the full row list and the evidence level of every row are in the parity ledger `docs/tui-parity.md` (§3.2 below for the openers) |
@@ -455,7 +455,7 @@ Nothing in this section is a working feature.
 2. **Identity-gated services** — `storage.local`, `messages.observe` and the mediated
    `registerCommand` path need the same verified Component identity; the effect ledger therefore
    attributes our surface as `undeclared` today.
-3. **web-only faces** — the agent-teams **sidebar**, the workmate tab and the bundle floater
+3. **web-only faces** — the agent-teams **sidebar** and the workmate tab
    (`dsh.client.platform = web`) do not render in the TUI. The TUI-native equivalents (§3) are
    not a pixel or feature-parity claim.
 4. **Engine version skew** — the host prints

@@ -1,0 +1,35 @@
+{
+  "case": "install-deps/red-baseline",
+  "measured_at_utc": "2026-09-20T03:08:32+00:00",
+  "measurement_kind": "composition only (dsh --dump-config): proves the row is ABSENT, never a plugin load",
+  "sandbox": {
+    "DSH_HOME": ".qa-dep-red/dsh (inside the workspace)",
+    "HOME": ".qa-dep-red/home",
+    "profile": "web",
+    "bundles": [
+      "@deepseek-ai/dsh-base",
+      "@deepseek-ai/dsh-web-app",
+      "@mpd-dsh/mpd"
+    ],
+    "bundle_dependency": "link:/root/dshProj/my-power-dsh"
+  },
+  "claim": "A clean install of ONLY the bundle composes NO dsh-better-sidebar row, so the betterSidebar service never exists and the bundle's two sidebar-only pages register nothing (the reported 'sidebar cannot display').",
+  "counts": {
+    "better_sidebar_rows": 0,
+    "mpd_rows": 18
+  },
+  "source_hashes_at_measurement": {
+    "packages/mpd-bundle/cordis.patch.yml": "d141f70771c18cc06dd2492aae0cab92423929ab554a3c1031e2bbb9d3c1c23a",
+    "package.json": "ef7d0884e56df8cafd8a485a870dcab49b895c6e81e200139c28d1a58ec4f763",
+    "scripts/pack-mpd.mjs": "95d55ab9fda96bafc16e3a3e6388c4ab6e773706b71e9b8f75c0510e5071dbcd",
+    "scripts/install-profile.mjs": "c01cf1a822a93870ef3e82618af2ad3129262baff0b5d1f110ae5e55fe6b0d09"
+  },
+  "how_to_reproduce": [
+    "mkdir -p $SB/dsh/profiles/web/node_modules/@mpd-dsh $SB/home",
+    "write profiles/web/package.json with dsh.profile.bundles = [dsh-base, dsh-web-app, @mpd-dsh/mpd] and dependencies {'@mpd-dsh/mpd':'link:<repo>'}",
+    "write profiles/web/pnpm-workspace.yaml = packages ['.'] / nodeLinker: hoisted / autoInstallPeers: false",
+    "ln -s <repo> profiles/web/node_modules/@mpd-dsh/mpd",
+    "DSH_HOME=$SB/dsh HOME=$SB/home dsh --profile web --dump-config | grep -c better-sidebar  => 0"
+  ],
+  "note": "The `dsh plugin --profile web add .` path cannot be exercised in this environment: pnpm's store index (outside the workspace) is unwritable under the workspace-write sandbox, so pnpm exits with ERR_SQLITE_ERROR. The hand-built profile is byte-equivalent for the row-composition question, and the repo's own QA cases (preset-conformance.mjs, settings-bridge-lane.mjs) build their sandbox profiles the same way."
+}

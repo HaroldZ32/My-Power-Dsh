@@ -1,0 +1,73 @@
+{
+  "case": "install-deps/repair-r2/ledger",
+  "ok": true,
+  "guardBodySha256": "c7472a32a58680908fc830a306fd0e2dbd1eee6f021b54ab0be50635c7bf7a47",
+  "patchSha256AtMeasurement": "e70a179e1ed13c5e4fa9926fb89fda9de4e17c1935aac1d517b37fa0b7b4b28e",
+  "measuredAtUtc": "2026-09-20T03:55:17.687Z",
+  "compositions": [
+    {
+      "name": "overlay-mount",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "overlay": "- insert:\n    - id: overlay-sidebar-probe\n      name: 'dsh-better-sidebar'\n",
+      "overlaySpelling": "--patch",
+      "expectDecision": "DISABLED",
+      "expectServed": true,
+      "fatalMode": "F3 (--patch overlay)",
+      "composition": {
+        "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; never load evidence)",
+        "command": "--profile w --json -- --patch /tmp/mpd-r2-overlay-mount-2bBEfN/overlay.yml",
+        "exitCode": 0,
+        "envelopeParsed": true,
+        "sidebarRows": [
+          {
+            "id": "mpd-better-sidebar",
+            "disabledRaw": "!!js >-",
+            "enabled": false
+          },
+          {
+            "id": "overlay-sidebar-probe",
+            "disabledRaw": null,
+            "enabled": true
+          }
+        ],
+        "literalEnabled": [
+          "overlay-sidebar-probe"
+        ]
+      },
+      "load": {
+        "claim": "REAL mounting boot + HTTP",
+        "bootCommand": "dsh --profile w --patch /tmp/mpd-r2-overlay-mount-2bBEfN/overlay.yml --port 3411 --no-open",
+        "logPath": "/tmp/mpd-r2-overlay-mount-2bBEfN/web.log",
+        "port": 3411,
+        "booted": true,
+        "servedSidebarClient": true,
+        "sidebarRoute": {
+          "status": 405,
+          "body": "{\"ok\":false,\"error\":{\"code\":\"method-error\",\"message\":\"method not allowed\"}}"
+        },
+        "guardLines": [
+          "[mpd-better-sidebar] mount guard: DISABLED - patch layer /tmp/mpd-r2-overlay-mount-2bBEfN/overlay.yml already mounts it"
+        ],
+        "guardDecision": "DISABLED",
+        "fatalSignatures": [],
+        "logTail": [
+          "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+          "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+          "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+          "dsh web: http://127.0.0.1:3411/?token[redacted:43ch]"
+        ]
+      },
+      "served": true,
+      "isolation": {
+        "ok": true,
+        "checked": 0,
+        "keys": []
+      },
+      "ok": true
+    }
+  ]
+}

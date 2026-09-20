@@ -1,0 +1,86 @@
+manifest: skills/dsh-qa/cases.json (sha256 646e16d2518d)
+cases: 54 (48 lanes + 6 gates; the all suite selects 29 lanes + 6 gates)
+
+CASE	KIND	SUITES	SCRIPT
+agent-teams-adopt	lane	all	skills/dsh-qa/scripts/agent-teams-adopt.mjs
+agent-teams-dispatch	lane	all	skills/dsh-qa/scripts/agent-teams-dispatch.mjs
+agent-teams-messaging	lane	-	skills/dsh-qa/scripts/agent-teams-messaging.mjs
+agent-teams-sidebar	lane	all	skills/dsh-qa/scripts/agent-teams-sidebar.mjs
+bundle-lifecycle	lane	all	skills/dsh-qa/scripts/bundle-lifecycle.mjs
+codegraph-smoke	lane	all	skills/dsh-qa/scripts/codegraph-smoke.mjs
+dual-track-smoke	lane	all	skills/dsh-qa/scripts/dual-track-smoke.mjs
+explicit-team-trigger	lane	-	skills/dsh-qa/scripts/explicit-team-trigger.mjs
+extension-isolation	lane	-	skills/dsh-qa/scripts/extension-isolation.mjs
+extension-lifecycle	lane	all	skills/dsh-qa/scripts/extension-lifecycle.mjs
+extension-mcp-bridge	lane	all	skills/dsh-qa/scripts/extension-mcp-bridge.mjs
+extension-template	lane	all	skills/dsh-qa/scripts/extension-template.mjs
+install-dependencies	lane	all	skills/dsh-qa/scripts/install-dependencies.mjs
+mcp-call	lane	all	skills/dsh-qa/scripts/mcp-call.mjs
+memory-smoke	lane	all	skills/dsh-qa/scripts/memory-smoke.mjs
+mount-assert	lane	all	skills/dsh-qa/scripts/mount-assert.mjs
+plan-c-smoke	lane	all	skills/dsh-qa/scripts/plan-c-smoke.mjs
+preset-conformance	lane	all	skills/dsh-qa/scripts/preset-conformance.mjs
+preset-register	lane	all	skills/dsh-qa/scripts/preset-register.mjs
+readonly-deny	lane	-	skills/dsh-qa/scripts/readonly-deny.mjs
+relocate-smoke	lane	all	skills/dsh-qa/scripts/relocate-smoke.mjs
+session-start-team	lane	all	skills/dsh-qa/scripts/session-start-team.mjs
+skill-catalog-probe	lane	all	skills/dsh-qa/scripts/skill-catalog-probe.mjs
+software-smoke	lane	all	skills/dsh-qa/scripts/software-smoke.mjs
+team-route-rewire	lane	all	skills/dsh-qa/scripts/team-route-rewire.mjs
+team-watchdog-boot	lane	-	skills/dsh-qa/scripts/team-watchdog-boot.mjs
+team-watchdog-config	lane	-	skills/dsh-qa/scripts/team-watchdog-config.mjs
+team-watchdog-fault	lane	-	skills/dsh-qa/scripts/team-watchdog-fault.mjs
+team-watchdog-heartbeat	lane	-	skills/dsh-qa/scripts/team-watchdog-heartbeat.mjs
+team-watchdog-notify	lane	-	skills/dsh-qa/scripts/team-watchdog-notify.mjs
+team-watchdog-scene	lane	-	skills/dsh-qa/scripts/team-watchdog-scene.mjs
+tool-output-validation	lane	all	skills/dsh-qa/scripts/tool-output-validation.mjs
+tui-admission	lane	-	skills/dsh-qa/scripts/tui-admission.mjs
+tui-distribution	lane	-	skills/dsh-qa/scripts/tui-distribution.mjs
+tui-mount	lane	-	skills/dsh-qa/scripts/tui-mount.mjs
+tui-panels	lane	-	skills/dsh-qa/scripts/tui-panels.mjs
+tui-settings-bridge	lane	-	skills/dsh-qa/scripts/tui-settings-bridge.mjs
+tui-spec-conformance	lane	-	skills/dsh-qa/scripts/tui-spec-conformance.mjs
+tui-team-surface	lane	-	skills/dsh-qa/scripts/tui-team-surface.mjs
+ulw-command	lane	all	skills/dsh-qa/scripts/ulw-command.mjs
+ultrawork-smoke	lane	all	skills/dsh-qa/scripts/ultrawork-smoke.mjs
+vision-smoke	lane	all	skills/dsh-qa/scripts/vision-smoke.mjs
+watchdog-redesign	lane	-	skills/dsh-qa/scripts/watchdog-redesign.mjs
+web-client-adapt	lane	all	skills/dsh-qa/scripts/web-client-adapt.mjs
+web-settings-bridge	lane	all	skills/dsh-qa/scripts/web-settings-bridge.mjs
+workmate-library	lane	all	skills/dsh-qa/scripts/workmate-library.mjs
+workmate-team-member	lane	all	skills/dsh-qa/scripts/workmate-team-member.mjs
+wave2b-lane-d	lane	-	skills/dsh-qa/scripts/wave2b-lane-d.mjs
+qa-lane-drift	gate	all	-
+qa-runner-self-test	gate	all	-
+mpd-ext-self-test	gate	all	-
+mpd-ext-validate-example	gate	all	-
+mpd-ext-validate-template	gate	all	-
+pack-closure	gate	all	-
+
+outside every suite (19) — explicit, with reason:
+  - agent-teams-messaging: live fix lane (R1 message channel): plants real team records and re-runs a RED arm against a pre-fix tools.js, so it is heavier than the standing sweep — run it explicitly: node scripts/run-qa-lanes.mjs --only=agent-teams-messaging
+  - explicit-team-trigger: live fix lane (R4 explicit entry): boots the entry surface end to end — run it explicitly: node scripts/run-qa-lanes.mjs --only=explicit-team-trigger
+  - extension-isolation: shared proof helper for the three extension cases, not a case: it has no lane mode (without --self-test it does nothing and exits 0) — SKILL.md documents this — run it explicitly: node scripts/run-qa-lanes.mjs --only=extension-isolation
+  - readonly-deny: live fix lane (read-only spawn): starts a real child and measures the tool filter it really got — run it explicitly: node scripts/run-qa-lanes.mjs --only=readonly-deny
+  - team-watchdog-boot: team-watchdog lane: a real dsh spawn plus a live model call (heavy) — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-boot
+  - team-watchdog-config: team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-config
+  - team-watchdog-fault: team-watchdog lane: in-process over the built plugin dists and the verified fault fixture — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-fault
+  - team-watchdog-heartbeat: team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-heartbeat
+  - team-watchdog-notify: team-watchdog lane: payloads and built bytes only, in-process — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-notify
+  - team-watchdog-scene: team-watchdog lane: in-process over the built plugin dists — run it explicitly: node scripts/run-qa-lanes.mjs --only=team-watchdog-scene
+  - tui-admission: DSH-TUI edition lane: needs the dsh-tui binary plus a TUI sandbox profile (absent on a headless host) — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-admission
+  - tui-distribution: DSH-TUI edition lane: needs pnpm and the dsh-distribution protocol CLI — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-distribution
+  - tui-mount: DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile (the TUI refuses a non-TTY) — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-mount
+  - tui-panels: DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-panels
+  - tui-settings-bridge: DSH-TUI edition lane: judged against the built packages/mpd-tui-plugin dist — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-settings-bridge
+  - tui-spec-conformance: DSH-TUI edition lane: needs the populated dsh-ecosystem-spec checkout at the pinned revision — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-spec-conformance
+  - tui-team-surface: DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile — run it explicitly: node scripts/run-qa-lanes.mjs --only=tui-team-surface
+  - watchdog-redesign: contract §9 RED→GREEN driver (t24): needs the .mpd/red-baseline worktree and drives BOTH trees in-process, each with its own modules (heavy) — run it explicitly: node scripts/run-qa-lanes.mjs --only=watchdog-redesign
+  - wave2b-lane-d: wave-2b lane D corpus arms: the six rows are asserted by their own --self-test and by a named run; the suite sweep is not where a corpus-property scan belongs.
+
+immutabilityGuard required (10): team-watchdog-boot, team-watchdog-config, team-watchdog-fault, team-watchdog-heartbeat, team-watchdog-notify, team-watchdog-scene, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge
+immutabilityGuard exempt (38) — each with a declared reason; no lane may be silent
+
+discovery (48 lane script(s); .mjs entries 48, underscore-excluded 0, outside-suite 19)
+drift unlistedScripts (0): none
+drift missingScripts (0): none

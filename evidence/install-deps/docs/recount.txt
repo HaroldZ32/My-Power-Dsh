@@ -1,0 +1,53 @@
+# RECOUNT — t4 docs wave, measured against the SHIPPED files
+# moment: 2026-09-20T03:38:48Z
+
+## 1. patch id entries (packages/mpd-bundle/cordis.patch.yml)
+28:- id: agent-presets
+93:- id: dsh-tui-agent-presets
+152:    - id: mpd-better-sidebar
+165:    - id: mcp-astgrep
+176:    - id: mcp-gitbash
+186:    - id: mcp-lsp
+205:    - id: mcp-codegraph
+260:    - id: mpd-web-compat
+267:    - id: mpd-dsh-adapter
+271:    - id: mpd-config
+282:    - id: mpd-team-watchdog
+299:    - id: mpd-tools
+304:    - id: mpd-modelchain
+327:    - id: mpd-ext
+331:    - id: mpd-roles
+333:    - id: mpd-ulw
+337:    - id: mpd-hashline
+341:    - id: mpd-boulder
+343:    - id: mpd-comment-checker
+347:    - id: mpd-codegraph
+352:    - id: mpd-memory
+356:    - id: mpd-workmate
+364:    - id: mpd-team-compact
+371:    - id: mpd-bootstrap
+384:    - id: mpd-tui
+396:    - id: agent-teams
+551:    - id: mcp-context7
+558:    - id: mcp-grepapp
+
+totals: total=28 inserts=26 idTargets=2
+
+## 2. verify-rows-parity (the gate the README names)
+[verify-rows-parity] ok: 26 row ids match the bundle patch insert list (agent-teams, mcp-astgrep, mcp-codegraph, mcp-context7, mcp-gitbash, mcp-grepapp, mcp-lsp, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-team-compact, mpd-team-watchdog, mpd-tools, mpd-tui, mpd-ulw, mpd-web-compat, mpd-workmate)
+verify-rows-parity exit=0
+
+## 3. the declared dependency (package.json)
+dependencies = {"dsh-better-sidebar":"0.19.0-alpha.1"}
+
+## 4. the sidebar insert row (patch lines 151-154)
+- insert:
+    - id: mpd-better-sidebar
+      name: dsh-better-sidebar
+      disabled: !!js "(() => { const say = (decision, reason) => { try { const seen = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen = {}); const key = decision + '|' + reason; 
+
+## 5. architecture.md: former name of design.md
+567:  to be `architecture.md`, and `docs/design.zh-CN.md` is the Chinese twin of the current name), so an
+
+## 6. installed dependency present in the repository
+dsh-better-sidebar@0.19.0-alpha.1

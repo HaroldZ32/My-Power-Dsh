@@ -1,0 +1,180 @@
+{
+  "id": "F4-decoy-disabled-row",
+  "plane": "web",
+  "purpose": "adversarial over-approximation probe: a foreign layer that inserts a DISABLED sidebar row (mounts nothing).",
+  "bundles": [
+    "@deepseek-ai/dsh-base",
+    "@deepseek-ai/dsh-web-app",
+    "@mpd-dsh/mpd",
+    "t5-decoy-disabled"
+  ],
+  "profileName": "w",
+  "stage": false,
+  "expect": {
+    "rowsMin": 1,
+    "rowsMax": 2,
+    "literalEnabledMax": 0,
+    "guard": "DISABLED",
+    "served": false,
+    "routeMounted": false
+  },
+  "ok": true,
+  "checks": [
+    {
+      "name": "composition.exit0",
+      "ok": true,
+      "detail": "exit=0"
+    },
+    {
+      "name": "composition.rowCount",
+      "ok": true,
+      "detail": "rows=2 in [1,2] ids=[\"mpd-better-sidebar\",\"t5-decoy-disabled-row\"]"
+    },
+    {
+      "name": "composition.literalEnabled",
+      "ok": true,
+      "detail": "literalEnabled=0 <= 0 []"
+    },
+    {
+      "name": "load.booted",
+      "ok": true,
+      "detail": "booted"
+    },
+    {
+      "name": "load.noFatalSignature",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "name": "load.guardDecision",
+      "ok": true,
+      "detail": "guard={\"decision\":\"DISABLED\",\"reason\":\"bundle layer t5-decoy-disabled already mounts it in its own patch\"} expected=DISABLED"
+    },
+    {
+      "name": "load.routeMounted",
+      "ok": true,
+      "detail": "GET /sidebar/api -> 404 body=\"\""
+    },
+    {
+      "name": "load.clientServed",
+      "ok": true,
+      "detail": "servedClientCarriesSidebar=false module=null"
+    },
+    {
+      "name": "load.oneSidebarMount",
+      "ok": true,
+      "detail": "exactly-once / expected-absent verdict"
+    }
+  ],
+  "failedChecks": [],
+  "findingArm": true,
+  "findingIf": "guard DISABLED although the only other mention mounts nothing (sidebar lost)",
+  "sandbox": {
+    "root": "<pruned:sandbox>",
+    "dshHome": "<pruned:sandbox>",
+    "userHome": "<pruned:sandbox>",
+    "ws": "<pruned:sandbox>",
+    "profile": "<pruned:sandbox>"
+  },
+  "install": null,
+  "nodeModulesAfterBoot": [
+    "@mpd-dsh",
+    "dsh-better-sidebar",
+    "t5-decoy-disabled"
+  ],
+  "moduleFallbackAfterBoot": [
+    "node_modules"
+  ],
+  "persisted": {
+    "bootLog": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F4-decoy-disabled-row.boot.log",
+    "tuiPane": null,
+    "composed": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F4-decoy-disabled-row.composed.txt"
+  },
+  "composition": {
+    "claim": "COMPOSITION ONLY (scripts/dump-config.mjs; composes rows, never executes plugin code — AGENTS.md §4). NEVER cited as load evidence.",
+    "command": "node scripts/dump-config.mjs --profile w --json",
+    "exitCode": 0,
+    "envelopeParsed": true,
+    "rows": [
+      {
+        "id": "mpd-better-sidebar",
+        "disabledRaw": "!!js >-",
+        "enabled": false
+      },
+      {
+        "id": "t5-decoy-disabled-row",
+        "disabledRaw": "true",
+        "enabled": false
+      }
+    ],
+    "stderrTail": [
+      "[dump-config] `node skills/dsh-qa/scripts/preset-conformance.mjs`, or a boot with registration instrumentation.",
+      "[dump-config] ---- the composed rows below are the child's own output ----",
+      "dsh: [@mpd-dsh/mpd] patch: entry \"dsh-tui-agent-presets\" not found",
+      "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4)."
+    ],
+    "composedTextFile": null,
+    "rowCount": 2,
+    "rowIds": [
+      "mpd-better-sidebar",
+      "t5-decoy-disabled-row"
+    ],
+    "literalEnabledCount": 0,
+    "literalEnabledIds": [],
+    "ok": true
+  },
+  "load": {
+    "claim": "REAL mounting boot + HTTP probes (no --dump-config anywhere in this claim)",
+    "bootCommand": "dsh --profile w --port 3537 --no-open",
+    "logPath": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F4-decoy-disabled-row.boot.log",
+    "port": 3537,
+    "booted": true,
+    "index": {
+      "status": 200,
+      "bytes": 27913
+    },
+    "servedClientCarriesSidebar": false,
+    "servedClientUrlCount": 58,
+    "sidebarClientUrl": null,
+    "sidebarRoute": {
+      "path": "/sidebar/api",
+      "status": 404,
+      "body": ""
+    },
+    "sidebarRouteMounted": false,
+    "signatures": {
+      "hits": [],
+      "markers": [],
+      "healthy": true
+    },
+    "guard": {
+      "decision": "DISABLED",
+      "reason": "bundle layer t5-decoy-disabled already mounts it in its own patch"
+    },
+    "guardLines": [
+      "[mpd-better-sidebar] mount guard: DISABLED - bundle layer t5-decoy-disabled already mounts it in its own patch"
+    ],
+    "sidebarMentions": [],
+    "logTail": [
+      "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on",
+      "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+      "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+      "[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter",
+      "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+      "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+      "[CodeGraph MCP] File watcher active — graph will auto-sync on changes",
+      "dsh web: http://127.0.0.1:3537/?token=<redacted>"
+    ],
+    "logBytes": 1928,
+    "logPathDurable": "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F4-decoy-disabled-row.boot.log"
+  },
+  "pruned": {
+    "atUtc": "2026-09-20T04:24:55Z",
+    "sandboxTreesDeleted": true,
+    "durableEvidence": [
+      "/root/dshProj/my-power-dsh/evidence/install-deps/verification/20260920T034521Z/logs/F4-decoy-disabled-row.boot.log"
+    ],
+    "rewrotePrunedCitations": 6,
+    "note": "sandbox working trees (DSH homes, node_modules mirrors, caches, staged copies) were deleted before the commit; every dead path is marked <pruned:sandbox> and the durable boot log is the anchor"
+  }
+}

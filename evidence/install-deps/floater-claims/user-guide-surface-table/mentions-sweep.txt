@@ -1,0 +1,28 @@
+=== floater alias sweep (repo-wide, read-only) ===
+moment_utc: 2026-09-20T03:48:42Z
+pattern: floater|悬浮|浮窗|浮层|浮动
+roots: docs/ AGENTS.md README.md README.zh-CN.md packages/*/README*.md extensions/ templates/
+format: file:line:content (truncated to 200 chars)
+
+docs/design.zh-CN.md:375:   页面渲染的是浮窗自己的内部结构 —— 同一个带采纳 `panel` 类的 `aside` 根（该类正是那份样式表
+docs/design.zh-CN.md:415:其中之一，构建即失败 —— 那正是被移除的对话内卡片、活动浮窗与 workmate 浮窗/页脚切换按钮。
+docs/design.md:442:   requirement**: the page renders the floater's own interior — the same `aside` root
+docs/design.md:489:removed activity floater and the removed workmate floater/footer toggle.
+docs/tui-parity.zh-CN.md:21:| `not-applicable` | 该 Web 界面在终端里没有意义（浮动几何、HTTP 状态码、图片资源、浏览器侧本地化） | 有什么坏了；根本没有可移
+docs/tui-parity.zh-CN.md:61:| `activity-panel/panel-geometry + drag/resize` | `lib/client/panel-geometry.js:121` | not-applicable | — | — | 终端场景没有浮动几何（§7.1） |
+docs/tui-parity.zh-CN.md:79:**面板几何（第 17 行）、本地化（第 18 行）、成员插图（第 19 行）。** 不移植，因为目标媒介没有等价物：终端场景没有可拖拽�
+docs/feature-audit.md:16:| Workmate library | durable evolving agent pool (~/.mpd/workmate), base→instance, self-reflect, note-based reuse, rename/delete | ✅ | mpd-workmate-plugin: roster BASE →
+docs/feature-audit.zh-CN.md:15:| Workmate 库 | 持久演化 agent 池（~/.mpd/workmate），base→instance、自反思、note 复用、重命名/删除 | ✅ | mpd-workmate-plugin：roster BASE →
+docs/plan-tui-edition.md:289:  the bundle floater (`dsh.client.platform = web`) do not render in the TUI; the TUI-native
+docs/tui-edition-report.md:119:4. **Web-only surfaces** — the agent-teams sidebar, the workmate tab and the bundle floater
+AGENTS.md:208:│   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client (client.js = adopted agent-teams panel + the workmate library registe
+README.zh-CN.md:527:**只存在于侧边栏** —— 没有浮动面板兜底：唯一的警告路径（`… has no host`）对应依赖缺失或损坏的
+packages/mpd-bundle-plugin/README.md:19:     team card and activity floater,
+packages/mpd-bundle-plugin/README.md:25:     removed floater's own interior — the adopted `panel` class (which scopes the
+packages/mpd-bundle-plugin/README.zh-CN.md:9:   - 逐字采用 agent-teams 的 `lib/client.js`（注册 `@nanmicoder/dsh-agent-teams`）。它严格作为**视图库**使用：由 `scripts/patch-agent
+packages/mpd-bundle-plugin/README.zh-CN.md:10:   - 一个 `@mpd-dsh/team-page` 注册，其 factory 为 `src/team-page.js`：**AgentTeams 页面**，作为 **DSH-better-sidebar** 的一个 Tab 注册�
+packages/mpd-bundle-plugin/README.zh-CN.md:11:   - 一个 `@mpd-dsh/mpd` 注册，其 factory 把 workmate 库贡献为它自己的 **DSH-better-sidebar** Tab（`mpd-workmate`，order 90，`single: tr
+packages/mpd-tui-plugin/README.md:62:sidebar, workmate tab, bundle floater). It reads state — it never writes:
+packages/mpd-tui-plugin/README.md:185:   the workmate tab and the bundle floater (`dsh.client.platform = web`) do not
+packages/mpd-tui-plugin/README.zh-CN.md:54:面板是 web 专有界面（agent-teams 侧边栏、workmate 标签页、bundle 浮层）的
+packages/mpd-tui-plugin/README.zh-CN.md:159:   bundle 浮层（`dsh.client.platform = web`）在 TUI 中不渲染。面板、状态行与

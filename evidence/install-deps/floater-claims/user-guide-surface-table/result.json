@@ -1,0 +1,106 @@
+{
+  "case": "install-deps/floater-claims/user-guide-surface-table",
+  "task": "t10",
+  "member": "Senior Engineer",
+  "attempt_id": "d53d2093-8c5b-4f60-9edf-c909d3ccbd67",
+  "kind": "implementation",
+  "author_run_advisory": true,
+  "measured_at_utc": "2026-09-20T03:48:17.649Z",
+  "verdict_source": {
+    "inherited_from": "t8",
+    "artifact": "evidence/install-deps/floater-claims/verification.txt",
+    "artifact_sha256": "3a3e233febe3e8d8bf17098ebed3de37c3f9748a9d458cca1fd15c790a086371",
+    "conclusion": "the bundle floater does not ship (registration gate scripts/build-mpd-client.mjs#LEGACY_SURFACES + zero registrations in packages/mpd-bundle-plugin/src/**); therefore the user-guide rows are corrected, not preserved"
+  },
+  "edits": [
+    {
+      "file": "docs/user-guide.md",
+      "locus": "§7.1 surface-mapping table",
+      "change": "deleted the stale row | Bundle floater | the `tuiStatus` line |"
+    },
+    {
+      "file": "docs/user-guide.zh-CN.md",
+      "locus": "§7.1 surface-mapping table",
+      "change": "deleted the stale row | bundle 悬浮面板 | `tuiStatus` 状态行 |"
+    }
+  ],
+  "attribution_note": "both files also carry t4 uncommitted sidebar-dependency edits; this lane changed exactly the two rows above",
+  "hashes_at_moment": {
+    "docs/user-guide.md": "1245a6138839ef25e17b20d8ec24bbfb7fdc1036a29c9382430f6b3cd85a8d82",
+    "docs/user-guide.zh-CN.md": "74eaab3a5561d9ed8b890f625e7eaa74b0702d36e69427bb38ed2addef038e09"
+  },
+  "gates": {
+    "bun run verify:docs": {
+      "exit": 0,
+      "summary": "pairs=38 failed=0 violations=0 exempt=19 derived=3 links=234 dead=0 — PASS"
+    },
+    "node scripts/verify-manual-paths.mjs": {
+      "exit": 0,
+      "summary": "PASS resolved=116 over-report=87 under-report=91 declared=2",
+      "note": "extra, not required by the contract"
+    }
+  },
+  "triage": {
+    "fixed_in_scope": [
+      "docs/user-guide.md:312",
+      "docs/user-guide.zh-CN.md:284"
+    ],
+    "already_correct": [
+      "docs/design.md:442",
+      "docs/design.md:489",
+      "docs/design.zh-CN.md:375",
+      "docs/design.zh-CN.md:415",
+      "docs/feature-audit.md:16",
+      "docs/feature-audit.zh-CN.md:15",
+      "packages/mpd-bundle-plugin/README.md:19",
+      "packages/mpd-bundle-plugin/README.md:25",
+      "AGENTS.md:208 (t8)",
+      "README.zh-CN.md:527 (t4)"
+    ],
+    "exempt_process_records": [
+      "docs/plan-tui-edition.md:289",
+      "docs/tui-edition-report.md:119"
+    ],
+    "different_subject": [
+      "docs/tui-parity.zh-CN.md:21",
+      "docs/tui-parity.zh-CN.md:61",
+      "docs/tui-parity.zh-CN.md:79"
+    ],
+    "out_of_scope_live_stale": [
+      "packages/mpd-tui-plugin/README.md:62",
+      "packages/mpd-tui-plugin/README.md:185",
+      "packages/mpd-tui-plugin/README.zh-CN.md:54",
+      "packages/mpd-tui-plugin/README.zh-CN.md:158"
+    ]
+  },
+  "residual_finding": "packages/mpd-tui-plugin/README.md (+ README.zh-CN.md) still lists the removed bundle floater as a live web-only surface; outside t10 inScope, so reported for a follow-up task, not edited",
+  "evidence_files": [
+    "mentions-sweep.txt",
+    "triage.md",
+    "gates.log"
+  ],
+  "evidence_hashes": {
+    "mentions-sweep.txt": {
+      "sha256": "e615876053840b823adb7908954929034979ad96d8380a32f675291e751067e8",
+      "read_at_utc": "2026-09-20T03:48:54.453Z"
+    },
+    "triage.md": {
+      "sha256": "2431f4a4a502e04960d9bbb91c61c1cb35a665a2bafba975620884f8524b34c0",
+      "read_at_utc": "2026-09-20T03:48:54.456Z"
+    },
+    "gates.log": {
+      "sha256": "b1373b5326e55a6a482e53c1d9dc749aa5145e085e34a79ba8f3ed9bd348327c",
+      "read_at_utc": "2026-09-20T03:48:54.460Z"
+    }
+  },
+  "final_doc_hashes": {
+    "docs/user-guide.md": {
+      "sha256": "1245a6138839ef25e17b20d8ec24bbfb7fdc1036a29c9382430f6b3cd85a8d82",
+      "read_at_utc": "2026-09-20T03:48:54.464Z"
+    },
+    "docs/user-guide.zh-CN.md": {
+      "sha256": "74eaab3a5561d9ed8b890f625e7eaa74b0702d36e69427bb38ed2addef038e09",
+      "read_at_utc": "2026-09-20T03:48:54.467Z"
+    }
+  }
+}

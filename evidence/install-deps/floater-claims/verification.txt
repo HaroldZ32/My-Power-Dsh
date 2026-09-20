@@ -1,0 +1,49 @@
+# FLOATER VERIFICATION — measured BEFORE any edit
+# moment: 2026-09-20T03:42:09Z
+
+## 1. mpd client SOURCES: any removed-surface registration? (expect NO match)
+NO MATCH in packages/mpd-bundle-plugin/src/{web-client.js,team-page.js,settings-card.js,index.ts,watchdog-web.ts}
+
+## 2. build gate: LEGACY_SURFACES (scripts/build-mpd-client.mjs)
+46:const LEGACY_SURFACES = [
+47-  ["agent-teams activity floater", 'id: "agent-teams-activity"'],
+48-  ["in-conversation chat card", 'inject("conversation.chat.node"'],
+49-  ["workmate overlay floater", 'inject("shell.overlay"'],
+50-  ["workmate footer toggle", 'inject("sidebar.footer.action"'],
+51-]
+52:for (const [label, legacy] of LEGACY_SURFACES) {
+53-  if (webClientFactory.includes(legacy) || teamPageFactory.includes(legacy)) {
+54-    console.error(`[build-mpd-client] FAIL: the removed ${label} (${legacy}) is still registered by an mpd client source`)
+55-    process.exit(1)
+56-  }
+57-}
+58-const out = agentTeamsClient
+59-  + "\n\n// ==== @mpd-dsh/team-page: AgentTeams rendered inside a DSH-better-sidebar tab ====\n"
+60-  + "window.__ModuleLoader__.load({ id: \"@mpd-dsh/team-page\", factory: " + teamPageFactory + " });\n"
+
+## 3. adopted client apply() is the ONLY registrant, and it is exported, never invoked
+1:window.__ModuleLoader__.load({
+3660:		function apply(ctx) {
+3696:		exports.apply = apply;
+3678:				id: "agent-teams-activity",
+
+## 4. loader entries named @nanmicoder/dsh-agent-teams? (bundle patch row names)
+391:    # @nanmicoder/dsh-agent-teams 0.1.16-rc.3-mpd) and loads through the bundle exports map:
+agent-teams row:
+396:    - id: agent-teams
+397-      name: '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js'
+398-      config:
+399-        stateDir: .mpd/team
+
+## 5. dsh-qa case: agent-teams-sidebar.mjs assertions
+69:const LEGACY_PATTERNS = [
+280:  steps.noLegacyRegistration = {
+290:  steps.adoptedNeverApplied = {
+292:    artifactStillContainsAdoptedStrings: artifactText.includes("agent-teams-activity"),
+295:  steps.noFloaterDefined = { ok: overlayDefinitions.length === 0 }
+382:    for (const pattern of LEGACY_PATTERNS) {
+386:  steps.sourcesRegisterNoRemovedSurface = { ok: hits.length === 0, hits }
+393:  steps.buildGatePresent = {
+
+## 6. shipped artifact text still contains the adopted strings (expected) — the gate is REGISTRATION, not text
+3
