@@ -336,11 +336,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config2, signal) {
+    llmResolveCallConfig(config, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config2, signal);
+      return llm.resolveCallConfig.call(llm, config, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -384,7 +384,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -677,11 +677,11 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -689,24 +689,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -749,9 +749,9 @@ async function apply(ctx) {
   const ids = (roles?.list?.() ?? []).map((r) => r.id);
   console.log("[roles-probe] ROSTER=" + ids.join(","));
   const byName = ids.map((id) => {
-    const name2 = String((roles?.list?.() ?? []).find((r) => r.id === id)?.name ?? "");
-    const resolved = roles?.get?.(name2);
-    return resolved?.id === id ? name2 : name2 + "!=" + String(resolved?.id);
+    const name = String((roles?.list?.() ?? []).find((r) => r.id === id)?.name ?? "");
+    const resolved = roles?.get?.(name);
+    return resolved?.id === id ? name : name + "!=" + String(resolved?.id);
   });
   console.log("[roles-probe] ROSTER_NAMES=" + byName.join(","));
   const LIVE_TOOLS = [
@@ -765,22 +765,22 @@ async function apply(ctx) {
   ];
   try {
     const tools = ctx.tools;
-    const seen = (name2) => {
+    const seen = (name) => {
       if (tools === undefined)
         return false;
       if (typeof tools.get === "function")
-        return tools.get(name2) !== undefined;
+        return tools.get(name) !== undefined;
       if (typeof tools.has === "function")
-        return tools.has(name2);
+        return tools.has(name);
       return false;
     };
     const deadline = Date.now() + 3000;
     while (Date.now() < deadline && !LIVE_TOOLS.every(seen)) {
-      await new Promise((resolve2) => setTimeout(resolve2, 250));
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
-    const present2 = LIVE_TOOLS.filter(seen);
-    const missing = LIVE_TOOLS.filter((name2) => !seen(name2));
-    console.log("[roles-probe] AGENT_TEAMS_TOOLS=" + present2.length + "/" + LIVE_TOOLS.length + (missing.length > 0 ? " MISSING=" + missing.join(",") : ""));
+    const present = LIVE_TOOLS.filter(seen);
+    const missing = LIVE_TOOLS.filter((name) => !seen(name));
+    console.log("[roles-probe] AGENT_TEAMS_TOOLS=" + present.length + "/" + LIVE_TOOLS.length + (missing.length > 0 ? " MISSING=" + missing.join(",") : ""));
     console.log("[roles-probe] AGENT_TEAMS_NEW_TOOLS_OK=" + (missing.length === 0));
   } catch (e) {
     console.log("[roles-probe] AGENT_TEAMS_TOOLS=fail:" + String(e?.message ?? e));
@@ -788,20 +788,20 @@ async function apply(ctx) {
   const COMPACT_TOOLS = ["mpd_team_compact_run", "mpd_team_compact_status"];
   try {
     const tools = ctx.tools;
-    const seenTool = (name2) => {
+    const seenTool = (name) => {
       if (tools === undefined)
         return false;
       if (typeof tools.get === "function")
-        return tools.get(name2) !== undefined;
+        return tools.get(name) !== undefined;
       if (typeof tools.has === "function")
-        return tools.has(name2);
+        return tools.has(name);
       return false;
     };
     const deadline = Date.now() + 3000;
     while (Date.now() < deadline && !COMPACT_TOOLS.every(seenTool)) {
-      await new Promise((resolve2) => setTimeout(resolve2, 250));
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
-    const missing = COMPACT_TOOLS.filter((name2) => !seenTool(name2));
+    const missing = COMPACT_TOOLS.filter((name) => !seenTool(name));
     console.log("[roles-probe] TEAM_COMPACT_TOOLS=" + (COMPACT_TOOLS.length - missing.length) + "/" + COMPACT_TOOLS.length + (missing.length > 0 ? " MISSING=" + missing.join(",") : ""));
   } catch (e) {
     console.log("[roles-probe] TEAM_COMPACT_TOOLS=fail:" + String(e?.message ?? e));
@@ -824,7 +824,7 @@ async function apply(ctx) {
     const summaries = await dsh.listSkills();
     const bundled = summaries.filter((summary) => summary.source === "bundled");
     const servedNames = new Set(summaries.map((summary) => String(summary.name)));
-    const missingFixtures = FIXTURE_SKILLS.filter((name2) => !servedNames.has(name2));
+    const missingFixtures = FIXTURE_SKILLS.filter((name) => !servedNames.has(name));
     console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length + " SKILL_FIXTURES=" + (FIXTURE_SKILLS.length - missingFixtures.length) + "/" + FIXTURE_SKILLS.length + (missingFixtures.length > 0 ? " MISSING=" + missingFixtures.join(",") : "") + (summaries.length === bundled.length ? "" : " NON_BUNDLED=" + summaries.filter((summary) => summary.source !== "bundled").map((summary) => String(summary.name) + ":" + String(summary.source)).join(",")));
     const fixture = await dsh.loadSkill(FIXTURE_SKILL);
     const base = fixture?.resourceBase?.path ?? "unknown";
@@ -840,7 +840,7 @@ async function apply(ctx) {
     process.exitCode = 1;
 }
 export {
-  name,
+  apply,
   inject,
-  apply
+  name
 };

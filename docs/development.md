@@ -36,6 +36,15 @@ Per plugin (zero runtime deps preferred):
 bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js
 ```
 
+The committed `dist/` bytes ARE a build product: `bun run verify:dist` rebuilds every
+`packages/*/src` entry twice into a temp dir and compares the result byte-for-byte with the
+committed file, so a source change and its rebuild belong in the SAME commit. The build
+toolchain is recorded by the `buildToolchain` field in `package.json` (`bun@1.4.2`), because a different
+bun minor rewrites the injected helper preamble and the minifier's variable names - the
+rebuild is byte-identical on the pinned version and reddens `verify:dist` plus the F1 arms of
+`packages/mpd-ext-plugin/test/adapter-identity.test.ts` and
+`packages/mpd-roles-plugin/test/adapter-identity.test.ts` on a drifted one, with no semantic
+change to ship.
 Then, for the bundle:
 
 ```bash

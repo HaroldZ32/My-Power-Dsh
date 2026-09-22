@@ -15,6 +15,7 @@ import { join, dirname, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 import { findToolCall, readSessionEvents, recordedToolNames } from "./lib/session-evidence.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -129,7 +130,8 @@ function runReal() {
   const realWmBefore = existsSync(realWm) ? readdirSync(realWm).sort().join(",") : null
   const steps = {}
   function runSync(cmd, args, opts = {}) {
-    const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
+    const spec = cmd === "dsh" ? dshCommand(args, env) : { command: cmd, args }
+    const r = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
     return { status: r.status, out: (r.stdout || "") + (r.stderr || ""), stdout: r.stdout || "" }
   }
 

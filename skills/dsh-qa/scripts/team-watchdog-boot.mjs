@@ -40,6 +40,7 @@ import { fileURLToPath } from "node:url"
 import { randomUUID } from "node:crypto"
 import { decodeSessionLog } from "./lib/session-evidence.mjs"
 import { exitOnRefusal, refuseOverwrite } from "./lib/immutable-output.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolve(HERE, "..", "..", "..")
@@ -174,14 +175,14 @@ function makeSandbox() {
     const target = join(profile, "node_modules", name)
     mkdirSync(dirname(target), { recursive: true })
     if (name === "@mpd-dsh/mpd") {
-      symlinkSync(REPO, target, "dir")
+      symlinkSync(REPO, target, "junction")
       mirrored.push(name + " -> " + REPO + " (checkout)")
       continue
     }
     const source = join(USER_PROFILE_MODULES, name)
     if (!existsSync(source)) { unresolved.push(name + " (not resolved in " + USER_PROFILE + ")"); continue }
     try {
-      symlinkSync(source, target, "dir")
+      symlinkSync(source, target, "junction")
       mirrored.push(name + " -> " + source)
     } catch (error) {
       unresolved.push(name + " (" + String(error?.message ?? error) + ")")
@@ -236,7 +237,9 @@ async function runReal(argv) {
   const port = await freePort()
   const logPath = join(dir, "raw", "boot.log")
   const fd = openSync(logPath, "w")
-  const child = spawn("dsh", ["--profile", "w", "--port", String(port), "--no-open"], { env: s.env, cwd: s.ws, stdio: ["ignore", fd, fd] })
+  const childSpec = dshCommand(["--profile", "w", "--port", String(port), "--no-open"], s.env)
+  if (childSpec === null) throw new Error(DSH_MISSING)
+  const child = spawn(childSpec.command, childSpec.args, { env: s.env, cwd: s.ws, stdio: ["ignore", fd, fd] })
   const readLog = () => { try { return readFileSync(logPath, "utf8") } catch { return "" } }
   const captured = []
   const out = (text) => { const line = "[" + SLUG + "] " + text; captured.push(line); console.log(line) }

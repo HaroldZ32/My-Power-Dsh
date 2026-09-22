@@ -24,7 +24,7 @@ import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { delimiter, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const SELF = fileURLToPath(import.meta.url)
@@ -164,8 +164,41 @@ function must(condition, message) {
 }
 
 /** Run the installed hook exactly as git would: the file itself, executable, cwd = repo root. */
+/**
+ * The shell a Git hook is written for, when this host cannot execute the hook file itself.
+ *
+ * A Git hook is a POSIX shell script BY CONTRACT: Git for Windows runs it with a `sh.exe` it
+ * ships, and a direct spawn of the file answers ENOENT there. Measured 2026-09-22: four arms
+ * below failed on win32 with `spawnSync ...\\pre-commit ENOENT` while the hook on disk was
+ * exactly right. POSIX answers null: the file stays executable as-is.
+ * @returns {string|null}
+ */
+function hookShell() {
+  if (process.platform !== "win32") return null
+  for (const bundled of [
+    "C:\\Program Files\\Git\\bin\\sh.exe",
+    "C:\\Program Files (x86)\\Git\\bin\\sh.exe",
+    "C:\\Program Files\\Git\\usr\\bin\\sh.exe",
+  ]) {
+    if (existsSync(bundled)) return bundled
+  }
+  const suffixes = [".exe", ".cmd", ".bat", ".com", ""]
+  for (const dir of String(process.env.PATH ?? "").split(delimiter)) {
+    if (dir.length === 0) continue
+    for (const suffix of suffixes) {
+      const candidate = join(dir, "sh" + suffix)
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return null
+}
+
 function runHook(hookPath, cwd) {
-  const result = spawnSync(hookPath, [], { cwd, encoding: "utf8" })
+  const shell = hookShell()
+  if (shell === null && process.platform === "win32") {
+    must(false, `no sh to run a Git hook with: install Git for Windows (or put its bin dir on PATH) and rerun --self-test (${hookPath})`)
+  }
+  const result = shell === null ? spawnSync(hookPath, [], { cwd, encoding: "utf8" }) : spawnSync(shell, [hookPath], { cwd, encoding: "utf8" })
   must(result.status !== null || result.error === undefined, `hook could not be executed: ${result.error?.message ?? "unknown"}`)
   return { code: result.status, out: `${result.stdout ?? ""}${result.stderr ?? ""}`, stdout: result.stdout ?? "", stderr: result.stderr ?? "" }
 }

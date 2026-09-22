@@ -8,7 +8,7 @@
 //   4) .toolchain (network install of ast-grep + codegraph when missing)
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname, join, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { spawnSync } from "node:child_process"
 
@@ -334,7 +334,9 @@ function selfTest() {
   // the extension interface) and the team-compact row (absent since it landed in the
   // patch). Both are pinned here so a future removal fails the self-test too.
   if (!rows.includes("mpd-ext") || !rows.includes("mpd-team-compact")) { console.error("[install-profile self-test] FAIL: mpd-ext/team-compact rows"); process.exit(1) }
-  if (!plan.agentTeamsRow.name.includes("packages/mpd-agent-teams-plugin/lib/index.js")) { console.error("[install-profile self-test] FAIL: agent-teams main-code path"); process.exit(1) }
+  // The row name is a native absolute path, so compare it POSIX-spelled: the pinned fragment is the
+  // path the ROW means, not a spelling, and `p()` builds it with `join` (backslashes on Windows).
+  if (!plan.agentTeamsRow.name.split(sep).join("/").includes("packages/mpd-agent-teams-plugin/lib/index.js")) { console.error("[install-profile self-test] FAIL: agent-teams main-code path"); process.exit(1) }
   // web-compat entry name must be exactly the bare bundle specifier (client-modules
   // contract) — never an absolute path
   const webCompat = plan.rows.find((r) => r.id === "mpd-web-compat")

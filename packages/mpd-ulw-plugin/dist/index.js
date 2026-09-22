@@ -341,11 +341,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config2, signal) {
+    llmResolveCallConfig(config, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config2, signal);
+      return llm.resolveCallConfig.call(llm, config, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -389,7 +389,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -682,11 +682,11 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -694,24 +694,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -801,34 +801,34 @@ function stateRoot(cfg, dsh, exec) {
 function writeJson(p, v) {
   writeFileSync(p, JSON.stringify(v, null, 2));
 }
-function messageText(message2) {
-  if (!Array.isArray(message2?.content))
+function messageText(message) {
+  if (!Array.isArray(message?.content))
     return;
-  const parts = message2.content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text);
+  const parts = message.content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text);
   return parts.length === 0 ? undefined : parts.join(String.fromCharCode(10));
 }
 var GESTURE_PATTERN = /^(?:\/ulw|\/ultrawork)(?:[\t\n\r ]+|$)/u;
 function claimGesture(messages) {
   if (!Array.isArray(messages))
     return;
-  for (const message2 of messages) {
-    if (message2?.role !== "user")
+  for (const message of messages) {
+    if (message?.role !== "user")
       continue;
-    const text = messageText(message2);
+    const text = messageText(message);
     if (text === undefined)
       continue;
     const match = GESTURE_PATTERN.exec(text.trim());
     if (match !== null)
-      return { message: message2, text, match };
+      return { message, text, match };
   }
   return;
 }
-function rewriteMessageText(message2, text) {
-  const content = Array.isArray(message2?.content) ? message2.content : [];
+function rewriteMessageText(message, text) {
+  const content = Array.isArray(message?.content) ? message.content : [];
   const at = content.findIndex((block) => block?.type === "text");
   if (at < 0)
-    return message2;
-  return { ...message2, content: content.map((block, index) => index === at ? { ...block, text } : block) };
+    return message;
+  return { ...message, content: content.map((block, index) => index === at ? { ...block, text } : block) };
 }
 function apply(ctx, config = {}) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
@@ -904,8 +904,8 @@ function apply(ctx, config = {}) {
       mkdirSync(planDir, { recursive: true });
       const stateFile = join(dir, "state.json");
       const ledgerFile = join(dir, "ledger.jsonl");
-      function stamp(lane, verdict2, detail) {
-        appendFileSync(ledgerFile, JSON.stringify({ lane, verdict: verdict2, detail, at: new Date().toISOString() }) + String.fromCharCode(10));
+      function stamp(lane, verdict, detail) {
+        appendFileSync(ledgerFile, JSON.stringify({ lane, verdict, detail, at: new Date().toISOString() }) + String.fromCharCode(10));
       }
       const state = { id, objective, tier, plan, hyperplan, strictReview, rounds, planFile: null, verdict: null, criteria: [], wave: 0, fruitlessWaves: 0 };
       writeJson(stateFile, state);
@@ -1090,7 +1090,7 @@ function apply(ctx, config = {}) {
       return { kind: "error", text: "ULW could not start: no live agent turn surface to submit the activation directive for " + JSON.stringify(objective) };
     return { kind: "success", text: "ULW activated: " + objective };
   };
-  const commandDisposers = ["ulw", "ultrawork"].map((name2) => dsh.registerCommand({ name: name2, description: ULW_COMMAND_DESCRIPTION(name2 === "ulw" ? "/ultrawork" : "/ulw"), input: { hint: "objective" }, handler: runUlwCommand }));
+  const commandDisposers = ["ulw", "ultrawork"].map((name) => dsh.registerCommand({ name, description: ULW_COMMAND_DESCRIPTION(name === "ulw" ? "/ultrawork" : "/ulw"), input: { hint: "objective" }, handler: runUlwCommand }));
   const gestureDispose = dsh.onEvent("agent/pre-step", async (payload, next) => {
     const decision = typeof next === "function" ? await next() : undefined;
     try {
@@ -1105,7 +1105,7 @@ function apply(ctx, config = {}) {
       const objective = claimed.text.trim().slice(claimed.match[0].length).trim();
       if (objective === "")
         return decision;
-      return { ...decision, messages: messages.map((message2) => message2 === claimed.message ? rewriteMessageText(message2, activationDirective(objective)) : message2) };
+      return { ...decision, messages: messages.map((message) => message === claimed.message ? rewriteMessageText(message, activationDirective(objective)) : message) };
     } catch {
       return decision;
     }
@@ -1118,9 +1118,9 @@ function apply(ctx, config = {}) {
     }, "mpd-ulw.commands");
 }
 export {
-  name,
-  inject,
-  apply,
+  ULW_ACTIVATION_DIRECTIVE,
   activationDirective,
-  ULW_ACTIVATION_DIRECTIVE
+  apply,
+  inject,
+  name
 };

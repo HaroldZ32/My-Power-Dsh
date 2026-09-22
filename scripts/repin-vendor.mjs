@@ -29,7 +29,7 @@ import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname, join, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const SELF = fileURLToPath(import.meta.url)
@@ -64,6 +64,7 @@ const AUTHORITY_TOKENS = [
   'if (entry === "__pycache__" || entry.endsWith(".pyc") || entry.endsWith(".pyo")) continue',
   'h.update(f + "\\n" + fh + "\\n")',
   '.update(readBytes(join(dir, f))).digest("hex")',
+  '.split(sep).join("/")',
 ]
 
 /** Fail loudly when scripts/verify-vendor.mjs no longer carries the algorithm this file mirrors. */
@@ -106,7 +107,7 @@ function listFiles(dir) {
 /** Mirror of the authority's tree fold, for the LF-normalized value AND the raw-bytes variant. */
 function fingerprint(dir) {
   const files = listFiles(dir)
-  const rels = files.map((f) => f.slice(dir.length + 1)).sort()
+  const rels = files.map((f) => f.slice(dir.length + 1).split(sep).join("/")).sort()
   const lf = createHash("sha256")
   const raw = createHash("sha256")
   let normalizedFiles = 0

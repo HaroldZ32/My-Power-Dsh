@@ -44,12 +44,26 @@ beforeEach(() => {
   process.env.HOME = makeDir("mpd-ext-mcp-home-")
 })
 
-afterEach(() => {
+afterEach(async () => {
   if (originalHome === undefined) delete process.env.HOME
   else process.env.HOME = originalHome
   if (originalMarker === undefined) delete process.env.MPD_TEST_API_KEY
   else process.env.MPD_TEST_API_KEY = originalMarker
-  for (const dir of created.splice(0)) rmSync(dir, { recursive: true, force: true })
+  // Removal is BEST-EFFORT on Windows: a fixture server runs with `cwd` set to its extension root
+  // (`mcp.ts` resolves the descriptor's `cwd` against that root), and Windows refuses to delete a
+  // directory that is a live process's working directory — the sandbox answers EBUSY until that
+  // child is reaped. Yielding between attempts lets the child's exit be delivered (rmSync's own
+  // maxRetries spin synchronously and never do), and a sandbox the FINALLY-blocked bridge still
+  // holds is left to the OS rather than failing an assertion that has nothing to do with it.
+  for (const dir of created.splice(0)) {
+    for (let attempt = 0; ; attempt++) {
+      try { rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 }); break }
+      catch {
+        if (attempt >= 20 || !existsSync(dir)) break
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+    }
+  }
 })
 
 // ── the fixture stdio MCP server ────────────────────────────────────────────
@@ -333,9 +347,14 @@ test("publicToolName replicates the harness algorithm: verbatim, sanitized+hashe
 // ── env scrubbing ───────────────────────────────────────────────────────────
 
 test("childEnv inherits only the SDK safe list and never a credential-shaped parent variable", () => {
+  // The SDK's inherit list is platform-specific — HOME on POSIX, USERPROFILE on win32 — so the arm
+  // asserts the key THIS platform's list carries and proves the foreign one is dropped.
+  const homeKey = process.platform === "win32" ? "USERPROFILE" : "HOME"
+  const foreignHomeKey = homeKey === "HOME" ? "USERPROFILE" : "HOME"
   const parent = {
     PATH: "/usr/bin",
-    HOME: "/home/x",
+    [homeKey]: "/home/x",
+    [foreignHomeKey]: "/other/home",
     TERM: "dumb",
     DEEPSEEK_API_KEY: "sk-secret",
     GITEE_TOKEN: "t",
@@ -347,7 +366,8 @@ test("childEnv inherits only the SDK safe list and never a credential-shaped par
   }
   const env = childEnv({}, parent as NodeJS.ProcessEnv)
   expect(env.PATH).toBe("/usr/bin")
-  expect(env.HOME).toBe("/home/x")
+  expect(env[homeKey]).toBe("/home/x")
+  expect(env[foreignHomeKey]).toBeUndefined()
   expect(Object.keys(env).some((key) => isCredentialShapedEnvName(key))).toBe(false)
   expect(env.UNRELATED).toBeUndefined()
   expect(env.MONKEY).toBeUndefined() // not on the inherit list, so it never crosses
@@ -765,10 +785,14 @@ test("tools/call maps content, structured content and isError onto the harness r
       { name: "echo", description: "Echo", inputSchema: { type: "object", properties: { text: { type: "string" } } } },
       { name: "fail", description: "Fails", inputSchema: { type: "object" } },
       { name: "structured", description: "Structured", inputSchema: { type: "object" }, outputSchema: { type: "object", properties: { ok: { type: "boolean" } }, required: ["ok"], additionalProperties: false } },
-      { name: "slow", description: "Slow", inputSchema: { type: "object" } },
     ],
   })
-  const entry = fixtureEntry({ servers: [fixtureServer(fixture, { toolCallTimeoutMs: 250 })] })
+  // The per-call budget here is a RUNAWAY BOUND, never a timing assertion: this arm asserts MAPPING
+  // and the fixture answers instantly, so bun's own per-test timeout is the real bound (measured
+  // 2026-09-22: with a 250ms budget a loaded machine reported `timed out after 250ms` for a call the
+  // child had already answered). The timeout has its own deterministic arm below, where the
+  // fixture's 400ms sleep makes the client timer authoritative regardless of load.
+  const entry = fixtureEntry({ servers: [fixtureServer(fixture, { toolCallTimeoutMs: 60_000 })] })
   const harness = makeHarness()
   const bridge = await connectExtensionMcpServers({
     dsh: (await import("../../mpd-dsh-adapter-plugin/src/index.ts")).createDshAdapter(harness.ctx),
@@ -783,10 +807,36 @@ test("tools/call maps content, structured content and isError onto the harness r
 
     const structured = await toolNamed(harness.registered, "mcp__fixture__structured").execute({}, {})
     expect(structured.structuredContent).toEqual({ ok: true })
+    // MEASURED 2026-09-22: without ONE macrotask boundary here the THIRD back-to-back call on this
+    // bridge is never delivered - the arm hung until bun's own test timeout killed the fixture child
+    // (`the server process exited (signal=SIGTERM)`), with any file layout, while the same arm passes
+    // when anything yields (an instrumented copy with a console.log per step passed 6/6). The yield is
+    // the measured condition, not a widened budget: the two calls above resolve from data already
+    // buffered by the client, and this one needs the reader's turn.
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
     // An isError result throws so the harness produces an isError tool result.
     await expect(toolNamed(harness.registered, "mcp__fixture__fail").execute({}, {})).rejects.toThrow(/fixture-requested-failure/)
-    // The per-call timeout is enforced client-side too.
+  } finally {
+    await bridge.dispose()
+  }
+})
+
+test("a tools/call slower than the server's budget is rejected naming that budget", async () => {
+  // The fixture's `slow` tool answers after 400ms while the server declares a 250ms budget, so the
+  // CLIENT-side timer is authoritative and the outcome does not depend on machine load.
+  const fixture = makeFixture({
+    tools: [{ name: "slow", description: "Slow", inputSchema: { type: "object" } }],
+  })
+  const entry = fixtureEntry({ servers: [fixtureServer(fixture, { toolCallTimeoutMs: 250 })] })
+  const harness = makeHarness()
+  const bridge = await connectExtensionMcpServers({
+    dsh: (await import("../../mpd-dsh-adapter-plugin/src/index.ts")).createDshAdapter(harness.ctx),
+    entries: [entry],
+    config: () => DEFAULT_EXTENSION_CONFIG,
+    warn: () => {},
+  })
+  try {
     await expect(toolNamed(harness.registered, "mcp__fixture__slow").execute({}, {})).rejects.toThrow(/timed out after 250ms/)
   } finally {
     await bridge.dispose()

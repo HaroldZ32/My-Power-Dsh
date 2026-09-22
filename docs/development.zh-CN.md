@@ -36,6 +36,12 @@
 bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js
 ```
 
+提交进仓库的 `dist/` 字节本身就是构建产物：`bun run verify:dist` 会把每个 `packages/*/src` 入口
+在临时目录中重建两次并与已提交文件逐字节比较，因此源码改动与其重建必须放在同一个提交里。
+构建工具链记录在 `package.json` 的 `buildToolchain` 字段（`bun@1.4.2`）：bun 小版本不同会改写注入的
+helper 前导代码与压缩器变量名——在固定版本上重建字节完全一致，而在版本漂移时会点亮 `verify:dist`
+以及 `packages/mpd-ext-plugin/test/adapter-identity.test.ts`、
+`packages/mpd-roles-plugin/test/adapter-identity.test.ts` 的 F1 断言，但语义上并无变化。
 然后，对 bundle：
 
 ```bash

@@ -43,10 +43,11 @@ import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname, join, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PLUGIN_LIB = join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib")
@@ -101,12 +102,15 @@ function buildTreeSha(dir) {
     for (const entry of readdirSync(d)) {
       const p = join(d, entry)
       if (entry === "node_modules") continue
+      if (entry === "__pycache__" || entry.endsWith(".pyc") || entry.endsWith(".pyo")) continue
       if (statSync(p).isDirectory()) walk(p)
       else out.push(p)
     }
   }
   walk(dir)
-  const rel = out.map((f) => f.slice(dir.length + 1)).sort()
+  // POSIX-spelled relpaths, exactly like scripts/verify-vendor.mjs: a native separator would fold
+  // a DIFFERENT hash on Windows than the lock records (see that gate's treeSha comment).
+  const rel = out.map((f) => f.slice(dir.length + 1).split(sep).join("/")).sort()
   const h = createHash("sha256")
   for (const f of rel) h.update(f + "\n" + sha256Of(join(dir, f)) + "\n")
   return { fileCount: rel.length, treeSha: h.digest("hex") }
@@ -413,11 +417,20 @@ function selfTest() {
   if (cols.length !== 4 || cols.some((c) => c === "")) fail("SKILL.md row is not 4 populated columns: " + cols.length)
 
   // (e) the runner would actually pick this case up.
+  //
+  // The contract is that `test:qa` DISCOVERS this case directory - not the shell spelling it used to
+  // have. The POSIX `for f in skills/dsh-qa/scripts/*.mjs; do ... done` loop this arm used to pin
+  // could not run on Windows at all (`bun run` hands the body to cmd.exe: `bun: command not found:
+  // for`), so the sweep is `node scripts/run-qa-selftests.mjs` now and THAT is what must stay wired:
+  // the arm reads the runner's own source for the directory it discovers.
   const runner = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")).scripts["test:qa"]
-  if (!runner.includes("skills/dsh-qa/scripts/*.mjs")) fail("test:qa no longer globs the case directory")
+  const runnerPath = join(repoRoot, "scripts", "run-qa-selftests.mjs")
+  const runnerSource = existsSync(runnerPath) ? readFileSync(runnerPath, "utf8") : ""
+  const sweepsCases = runner.includes("scripts/run-qa-selftests.mjs") && runnerSource.includes("skills/dsh-qa/scripts")
+  if (!sweepsCases) fail("test:qa no longer sweeps the case directory (expected scripts/run-qa-selftests.mjs to discover skills/dsh-qa/scripts)")
 
   console.log("[" + CASE_SLUG + " self-test] ok: R1 exports + SHIPPED send/clear/interject wiring + this case drives the tool surface + scheduler exclusion on both reads + RED-arm transform applies (member revert consumed by its stable head) + VENDOR_LOCK skills pin current ("
-    + computed.fileCount + " files/" + computed.treeSha.slice(0, 12) + ") + treeSha falsifiability probe on a temp COPY (nothing written under <repoRoot>/skills) + SKILL.md row + test:qa glob")
+    + computed.fileCount + " files/" + computed.treeSha.slice(0, 12) + ") + treeSha falsifiability probe on a temp COPY (nothing written under <repoRoot>/skills) + SKILL.md row + test:qa sweeps the case directory")
 }
 
 // ------------------------------------------------------------------ real run
@@ -472,7 +485,8 @@ async function runReal() {
   if (env.DSH_HOME !== sandbox || env.HOME !== sandbox) fail("isolation assertion failed")
 
   function runSync(cmd, args, opts = {}) {
-    const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
+    const spec = cmd === "dsh" ? dshCommand(args, env) : { command: cmd, args }
+    const r = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
     const out = (r.stdout || "") + (r.stderr || "")
     LOG.push("$ " + cmd + " " + args.join(" ") + "\n[[exit=" + r.status + "]]\n" + out.slice(0, 20000))
     return { status: r.status, out }

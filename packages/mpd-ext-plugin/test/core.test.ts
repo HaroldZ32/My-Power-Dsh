@@ -30,6 +30,19 @@ import { extensionRoles } from "../../mpd-roles-plugin/src/index.ts"
 const created: string[] = []
 const originalHome = process.env.HOME
 const originalWorkspace = process.env.DSH_WORKSPACE_ROOT
+/**
+ * Disposers collected from every fake ctx this file builds (`ctx.effect`), run BEFORE the
+ * sandbox directories are removed.
+ *
+ * Why this is not optional on Windows: when a test lets the MCP bridge CONNECT (the default
+ * `extensions.mcp.enabled`), `apply` spawns the declared server and registers its teardown
+ * through `ctx.effect`. A fake ctx without `effect` (the pre-fix shape) left that child alive
+ * for the whole run, and a live child on Windows holds the inherited directory handle of the
+ * sandbox under `$HOME/.mpd/extensions/**` — so `rmSync` answered `EBUSY` for the FULL process
+ * lifetime (measured: still EBUSY after 20 x 250 ms of retries, green the moment the run
+ * exited). Retries can never fix a handle the run itself keeps open; disposing first can.
+ */
+const effects: Array<() => unknown> = []
 
 function makeDir(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix))
@@ -41,12 +54,34 @@ beforeEach(() => {
   process.env.HOME = makeDir("mpd-ext-home-")
 })
 
-afterEach(() => {
+afterEach(async () => {
   if (originalHome === undefined) delete process.env.HOME
   else process.env.HOME = originalHome
   if (originalWorkspace === undefined) delete process.env.DSH_WORKSPACE_ROOT
   else process.env.DSH_WORKSPACE_ROOT = originalWorkspace
-  for (const dir of created.splice(0)) rmSync(dir, { recursive: true, force: true })
+  // `apply` is async and these cases deliberately do NOT await it (they assert the PRE-connect
+  // report), so a declared MCP server can still be spawning when the sandbox is torn down. Let the
+  // pending continuation reach `ctx.effect` first, then dispose what it registered.
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  for (const dispose of effects.splice(0)) {
+    try { await dispose() } catch { /* a teardown failure must not fail the suite */ }
+  }
+  // Removal is BEST-EFFORT, and deliberately so on Windows: an MCP server runs with `cwd` set to
+  // its extension root (`mcp.ts` resolves the descriptor's `cwd` against that root), and Windows
+  // refuses to delete a directory that is a live process's working directory — the sandbox then
+  // answers EBUSY until that child dies, which for a case that never awaited `apply` is when the
+  // run exits. Retrying with a YIELD between attempts (rmSync's own maxRetries spin synchronously
+  // and never let the child's exit be delivered) covers the ordinary case; a sandbox the run still
+  // holds is left to the OS rather than failing an assertion that has nothing to do with it.
+  for (const dir of created.splice(0)) {
+    for (let attempt = 0; ; attempt++) {
+      try { rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 }); break }
+      catch {
+        if (attempt >= 20 || !existsSync(dir)) break
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+    }
+  }
 })
 
 // ── fixtures ────────────────────────────────────────────────────────────────
@@ -137,6 +172,11 @@ function makeCtx(config?: any): FakeCtx {
     logger: { warn: () => {}, info: () => {}, error: () => {} },
     get: (key: string) => (key === "mpdConfig" ? config : undefined),
     provide: (key: string, value: any) => { provided[key] = value },
+    /**
+     * The teardown seam the harness owns: `apply` registers the MCP bridge's `dispose` here, so a
+     * ctx that omits `effect` leaks every spawned server for the run (see `effects` above).
+     */
+    effect: (setup: () => unknown) => { effects.push(setup()); return () => {} },
     tools: {
       register: (definition: any) => { registered.push(definition); return () => {} },
       guard: () => () => {},

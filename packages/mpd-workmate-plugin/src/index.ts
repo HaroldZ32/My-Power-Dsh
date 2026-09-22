@@ -116,6 +116,15 @@ export const WORKMATE_ALLOW_REAL_HOME_ENV = "MPD_DSH_WORKMATE_ALLOW_REAL_HOME"
  * `userInfo()` is passwd-derived, but bun's follows $HOME, so the passwd entry for the effective uid is
  * consulted first and `userInfo()` stays as the fallback. `undefined` means undeterminable. */
 function realUserHome(): string | undefined {
+  // Windows first: %USERPROFILE% is the OS profile variable and is HOME-INDEPENDENT by
+  // construction, which is exactly what this function needs. It is also the only source that
+  // survives a failing libuv passwd emulation — measured on a Windows host: node's
+  // `userInfo()` throws `uv_os_get_passwd returned ENOMEM`, which collapsed the real home to
+  // `undefined` and made the guard REFUSE the sanctioned sandboxed boot (T-43).
+  if (process.platform === "win32") {
+    const profile = process.env.USERPROFILE
+    if (typeof profile === "string" && profile !== "") return profile
+  }
   try {
     const uid = typeof process.getuid === "function" ? process.getuid() : undefined
     if (uid !== undefined) {

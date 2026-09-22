@@ -46,7 +46,7 @@ import { execFileSync, spawnSync } from "node:child_process"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
-import { delimiter, dirname, join, resolve } from "node:path"
+import { delimiter, dirname, extname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { resolveAstGrepBinary, resolveCodegraphBinary } from "../packages/mpd-mcp-shared/bin-resolve.mjs"
 
@@ -89,8 +89,17 @@ function oneLine(text, max = MAX_PROBE_OUTPUT) {
  * @returns {{ ok:boolean, out:string, reason:string, timedOut:boolean, fault:boolean }}
  */
 function probe(file, args = ["--version"]) {
+  // A candidate is not always directly executable: a `.cmd`/`.bat` needs the platform shell
+  // (EINVAL without one) and a `.js` bin entry needs a runtime (EFTYPE without one). Both
+  // shapes mirror the real consumers - `spawnChild` in scripts/dump-config.mjs and
+  // `resolveServeProcessInvocation` in packages/mpd-mcp-codegraph/dist/serve.js - so the
+  // reported version is the version the product itself would see.
+  const commandScript = isCommandScript(file)
+  const nodeScript = !commandScript && isNodeScript(file) && existsSync(file)
+  const spawnFile = commandScript ? commandInterpreter() : nodeScript ? process.execPath : file
+  const spawnArgs = commandScript ? ["/d", "/c", file, ...args] : nodeScript ? [file, ...args] : args
   try {
-    const stdout = execFileSync(file, args, {
+    const stdout = execFileSync(spawnFile, spawnArgs, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
       timeout: PROBE_TIMEOUT_MS,
@@ -126,12 +135,34 @@ function probeFailureReason(error) {
   return oneLine(e.message ?? String(error))
 }
 
+/**
+ * The spellings of a bare command name this platform resolves on PATH, in probe order.
+ * win32 resolves a bare name through `%PATHEXT%` (the on-disk name of `node` ends in
+ * `.exe`), so the extensionless POSIX spelling alone is not a lookup there. Measured
+ * 2026-09-22: with only the bare spelling, this doctor reported that no `node` was on PATH
+ * on a host whose PATH node was `C:/Program Files/nodejs/node.exe`.
+ * @param {string} command @param {Record<string,string|undefined>} env @param {string} [platform]
+ * @returns {string[]}
+ */
+function pathSpellings(command, env, platform = process.platform) {
+  if (platform !== "win32") return [command]
+  const declared = String(env.PATHEXT ?? "")
+    .split(";")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 0)
+  const suffixes = declared.length > 0 ? declared : [".exe", ".com", ".cmd", ".bat"]
+  return [...suffixes.map((suffix) => command + suffix), command]
+}
+
 /** @param {string} command @param {Record<string,string|undefined>} env @returns {string|null} */
 function pathLookup(command, env) {
+  const spellings = pathSpellings(command, env)
   for (const dir of String(env.PATH ?? "").split(delimiter)) {
     if (dir.length === 0) continue
-    const candidate = join(dir, command)
-    if (existsSync(candidate)) return candidate
+    for (const spelling of spellings) {
+      const candidate = join(dir, spelling)
+      if (existsSync(candidate)) return candidate
+    }
   }
   return null
 }
@@ -213,10 +244,70 @@ function astGrepPathFallback(env) {
     const candidate = pathLookup(name, env)
     if (candidate === null) continue
     const probed = probe(candidate)
+    // The adopted chain accepts any EXISTING file here (its own isExecutable is F_OK on
+    // win32), but the ast-grep RUNNER cannot start a command script: refuse it explicitly
+    // rather than advertising a candidate that dies with EINVAL on the first tool call.
+    if (!astGrepDirectlySpawnable(candidate)) {
+      rejected.push(candidate + " (" + spawnShapeReason(candidate) + ")")
+      continue
+    }
     if (probed.ok && probed.out.toLowerCase().includes("ast-grep")) return { path: candidate, rejected }
     rejected.push(candidate + " (" + (probed.ok ? 'answered "' + probed.out + '"' : probed.reason) + ")")
   }
   return { path: null, rejected }
+}
+
+/**
+ * The platform command interpreter a command script needs, as an ABSOLUTE path. A minimal
+ * child env has neither ComSpec nor System32 on PATH (this doctor's own self-test fixture
+ * drops everything but PATH/HOME), and a bare `cmd.exe` then answers ENOENT - the measured
+ * reason a fixture stub was reported unrunnable instead of its probe being run.
+ * @returns {string}
+ */
+function commandInterpreter() {
+  const comspec = nonEmpty(process.env.ComSpec)
+  if (comspec !== null) return comspec
+  const systemRoot = nonEmpty(process.env.SystemRoot) ?? nonEmpty(process.env.windir)
+  if (systemRoot !== null) return join(systemRoot, "System32", "cmd.exe")
+  return "C:\\Windows\\System32\\cmd.exe"
+}
+
+/**
+ * Why the adopted ast-grep runner cannot start this path, in the shape of the file.
+ * @param {string} path @returns {string}
+ */
+function spawnShapeReason(path) {
+  const extension = extname(path).toLowerCase()
+  if (extension === ".cmd" || extension === ".bat") return "a command script needs a shell, and the adopted runner starts its child with shell:false (EINVAL)"
+  if (isNodeScript(path)) return "a node script needs a runtime, and the adopted runner execs the file itself (EFTYPE)"
+  return "not an executable image, and the adopted runner execs the file itself (EFTYPE)"
+}
+
+/**
+ * win32-only diagnosis for the ast-grep entry: a shim that exists in one of the searched bin
+ * directories yet cannot be started shell-lessly. Naming the file is the point - a bare
+ * "no candidate resolved" leaves a Windows user with a working `ast-grep.cmd` on disk and
+ * nothing to act on.
+ * @param {{ env:Record<string,string|undefined>, bundleRoot:string }} ctx @returns {string[]}
+ */
+function astGrepShimNotes(ctx) {
+  const notes = []
+  const dirs = [
+    nonEmpty(ctx.env.MPD_AST_GREP_BIN_DIR),
+    join(ctx.bundleRoot, ".toolchain", "node_modules", ".bin"),
+    join(ctx.bundleRoot, "node_modules", ".bin"),
+  ]
+  for (const dir of dirs) {
+    if (dir === null) continue
+    for (const name of ["ast-grep", "sg"]) {
+      for (const spelling of pathSpellings(name, ctx.env)) {
+        const candidate = join(dir, spelling)
+        if (!existsSync(candidate) || astGrepDirectlySpawnable(candidate)) continue
+        notes.push("refused " + candidate + ": " + spawnShapeReason(candidate) + " - install the native ast-grep.exe or point MPD_AST_GREP_SG_PATH at one")
+      }
+    }
+  }
+  return notes
 }
 
 /** @param {"ok"|"missing"|"not-required"} status */
@@ -328,10 +419,11 @@ const ENTRY_SPECS = [
           checked,
         })
       }
+      const shimNotes = astGrepShimNotes(ctx)
       return result("missing", {
         rule: "env pin unset and no candidate accepted by the MPD resolver, and the adopted chain's PATH fallback accepts nothing either",
         reason: "no candidate resolved: pin unset, $MPD_AST_GREP_BIN_DIR " + (binDir === null ? "unset" : binDir) + ", @ast-grep/cli not resolvable from " + ctx.bundleRoot + ", no accepted " + toolchainPair + "/{ast-grep,sg}",
-        notes,
+        notes: notes.concat(shimNotes),
         checked,
       })
     },
@@ -469,6 +561,43 @@ const ENTRY_SPECS = [
     },
   },
 ]
+
+/**
+ * win32-only: a `.cmd`/`.bat` is NOT directly spawnable - Node refuses one without a shell
+ * (measured 2026-09-22: `execFileSync` on a command script answers EINVAL), and the adopted
+ * ast-grep runner starts its child with `shell: false` (measured in
+ * `packages/mpd-mcp-astgrep/dist/cli.js`). An npm/global install leaves exactly that shape
+ * behind, so the doctor names the file it must refuse instead of losing the evidence.
+ * @param {string} path @returns {boolean}
+ */
+function isCommandScript(path) {
+  if (process.platform !== "win32") return false
+  const extension = extname(path).toLowerCase()
+  return extension === ".cmd" || extension === ".bat"
+}
+
+/**
+ * A `bin` entry that is a node script. The adopters run one through the runtime rather than
+ * exec it (measured 2026-09-22: `execFileSync` on `npm-shim.js` answers EFTYPE); the mirror
+ * is `resolveServeProcessInvocation` in packages/mpd-mcp-codegraph/dist/serve.js.
+ * @param {string} path @returns {boolean}
+ */
+function isNodeScript(path) {
+  return /\.[cm]?js$/i.test(path)
+}
+
+/**
+ * Can the ADOPTED ast-grep runner start this path directly? It spawns with `shell: false`,
+ * so win32 accepts an executable image only: an npm `.cmd` shim has no shell and a node shim
+ * has no runtime (measured: EINVAL / EFTYPE). A candidate that fails this is still REPORTED -
+ * as refused, by name - never silently dropped.
+ * @param {string} path @returns {boolean}
+ */
+function astGrepDirectlySpawnable(path) {
+  if (process.platform !== "win32") return true
+  const extension = extname(path).toLowerCase()
+  return extension === ".exe" || extension === ".com"
+}
 
 /** @param {string} path @returns {boolean} */
 function isFile(path) {
@@ -621,17 +750,18 @@ function buildFixture(root, options) {
   mkdirSync(bundle, { recursive: true })
   writeFileSync(join(bundle, "package.json"), JSON.stringify({ name: "mpd-doctor-fixture", version: "0.0.0" }) + "\n")
   try { symlinkSync(process.execPath, join(bin, "node")) } catch { /* a fixture without a PATH node is reported by the node entry, never fatal */ }
+  const binDir = join(bundle, ".toolchain", "node_modules", ".bin")
   const stubs = [
-    { id: "ast-grep", file: join(bundle, ".toolchain", "node_modules", ".bin", "ast-grep"), body: shStub("ast-grep 9.9.9") },
-    { id: "codegraph", file: join(bundle, ".toolchain", "node_modules", ".bin", "codegraph"), body: shStub("9.9.9") },
-    { id: "comment-checker", file: join(bundle, ".toolchain", "node_modules", "@code-yeongyu", "comment-checker", "vendor", process.platform + "-" + process.arch, "comment-checker"), body: shStub("9.9.9") },
+    { id: "ast-grep", file: stubPath(binDir, "ast-grep"), body: versionStub("ast-grep 9.9.9") },
+    { id: "codegraph", file: stubPath(binDir, "codegraph"), body: versionStub("9.9.9") },
+    // No suffix here on purpose: the plugin's own order names this file literally.
+    { id: "comment-checker", file: join(bundle, ".toolchain", "node_modules", "@code-yeongyu", "comment-checker", "vendor", process.platform + "-" + process.arch, "comment-checker"), body: versionStub("9.9.9") },
   ]
   for (const stub of stubs) {
     if (omit.has(stub.id)) continue
-    // `exec` keeps the hang in ONE process, so the SIGKILL lands on the sleeper itself.
-    writeStub(stub.file, hang.has(stub.id) ? "#!/bin/sh\nexec /bin/sleep 30\n" : stub.body)
+    writeStub(stub.file, hang.has(stub.id) ? hangStub() : stub.body)
   }
-  if (options.pathAstGrep) writeStub(join(bin, "ast-grep"), shStub("ast-grep 9.9.9"))
+  if (options.pathAstGrep) writeStub(stubPath(bin, "ast-grep"), versionStub("ast-grep 9.9.9"))
   if (options.foreignSg) writeStub(join(bin, "sg"), "#!/bin/sh\necho 'sg: shadow-utils look-alike, not ast-grep' >&2\nexit 1\n")
   for (const pkg of ["mpd-mcp-lsp", "mpd-mcp-gitbash"]) {
     writeStub(join(bundle, "packages", pkg, "dist", "cli.js"), "// fixture row entrypoint: like the real CLIs it has no --version flag\nprocess.exit(2)\n")
@@ -640,8 +770,32 @@ function buildFixture(root, options) {
   return { home, bin, bundle }
 }
 
-/** @param {string} text */
-function shStub(text) { return "#!/bin/sh\necho \"" + text + "\"\n" }
+/**
+ * A fixture stub is written as the PLATFORM's own kind of command. A `#!/bin/sh` file is not
+ * executable on win32 (the probe answers ENOENT/EINVAL), so a POSIX-shaped fixture can only
+ * ever measure the POSIX half of an entry there. Measured 2026-09-22: with `#!/bin/sh` stubs
+ * four of the seven arms below failed on win32 for fixture reasons, not product reasons.
+ * @param {string} name @returns {string}
+ */
+function stubName(name) { return process.platform === "win32" ? name + ".cmd" : name }
+
+/** @param {string} dir @param {string} name @returns {string} */
+function stubPath(dir, name) { return join(dir, stubName(name)) }
+
+/** @param {string} text @returns {string} */
+function versionStub(text) {
+  return process.platform === "win32" ? "@echo off\r\necho " + text + "\r\n" : "#!/bin/sh\necho \"" + text + "\"\n"
+}
+
+/**
+ * A stub that never answers `--version`. On win32 the wait must burn INSIDE the one process the
+ * probe kills: a `ping`/`timeout` child would hold the pipe after the kill, so the arm would
+ * measure a lingering grandchild instead of the no-hang rule.
+ * @returns {string}
+ */
+function hangStub() {
+  return process.platform === "win32" ? "@echo off\r\n:loop\r\ngoto loop\r\n" : "#!/bin/sh\nexec /bin/sleep 30\n"
+}
 
 /** @param {string} file @param {string} body */
 function writeStub(file, body) {
@@ -685,9 +839,27 @@ const ARMS = [
     const fx = buildFixture(root, { name: "all-present" })
     const child = runChild(["--bundle-root", fx.bundle], fixtureEnv(fx))
     if (child.leak.length > 0) return armFail("hermeticity: the child names the real repo root " + child.leak.join(","), child)
-    if (child.code !== EXIT.ok) return armFail("exit=" + child.code + " (want 0)", child)
-    const bad = ENTRY_SPECS.map((spec) => spec.id).filter((id) => !/\[(REQUIRED|OPTIONAL)\]: ok /.test(entryLine(child.stdout, id)))
+    // Two entries cannot be fabricated as PRESENT on win32: no fixture can conjure a native
+    // ast-grep, and a command script is refused by name (the adopted runner spawns with
+    // shell:false), while comment-checker's plugin-owned order names its file literally, so a
+    // stub there is unprobeable on win32 as well. Both are the platform's declared limit and
+    // both must still be REPORTED - hence the per-platform expectation below.
+    // git-bash joins them for a different reason: whether Git Bash exists is a property of the
+    // HOST, not of the fixture, so the arm cannot demand it be ok - only that it is reported.
+    const win32Limited = ["ast-grep", "comment-checker", "git-bash"]
+    const want = process.platform === "win32" ? EXIT.optionalMissing : EXIT.ok
+    if (child.code !== want) return armFail("exit=" + child.code + " (want " + want + ")", child)
+    const bad = ENTRY_SPECS.map((spec) => spec.id).filter((id) => !(process.platform === "win32" && win32Limited.includes(id)) && !/\[(REQUIRED|OPTIONAL)\]: ok /.test(entryLine(child.stdout, id)))
     if (bad.length > 0) return armFail("entries not reported ok: " + bad.join(","), child)
+    if (process.platform === "win32") {
+      const fixtureBin = join(fx.bundle, ".toolchain", "node_modules", ".bin")
+      const refused = entryLine(child.stdout, "ast-grep")
+      if (!refused.includes("MISSING ⇒ degrades: ") || !refused.includes("refused " + stubPath(fixtureBin, "ast-grep")) || !refused.includes("shell:false")) {
+        return armFail("the fixture ast-grep shim is not refused BY NAME with its reason", child)
+      }
+      if (!entryLine(child.stdout, "comment-checker").includes("MISSING ⇒ degrades: ")) return armFail("the unprobeable comment-checker stub is not reported MISSING ⇒ degrades:", child)
+      return { ok: true, detail: "win32: node/lsp/codegraph resolved, the shim-shaped ast-grep is refused BY NAME and the literal comment-checker stub is reported, exit 2" }
+    }
     if (child.stdout.includes("MISSING")) return armFail("a MISSING line appeared in an all-present fixture", child)
     if (!/ast-grep \[OPTIONAL\]: ok path=.* version="ast-grep 9\.9\.9"/.test(entryLine(child.stdout, "ast-grep"))) return armFail("ast-grep version was not probed from the fixture stub", child)
     return { ok: true, detail: ENTRY_SPECS.length + "/" + ENTRY_SPECS.length + " entries ok, exit 0" }
@@ -739,9 +911,15 @@ const ARMS = [
     if (!line.includes("MISSING ⇒ degrades: ")) return armFail("the absent ast-grep is not reported as MISSING ⇒ degrades:", child)
     if (/\[OPTIONAL\]: ok /.test(line)) return armFail("the absent ast-grep was reported ok", child)
     if (!line.includes(join(fx.bin, "sg"))) return armFail("the foreign `sg` look-alike on PATH is not named as a rejected candidate", child)
-    for (const id of ["node", "lsp", "git-bash", "comment-checker"]) {
+    // Containment is asserted over the entries the FIXTURE builds. git-bash is a property of
+    // the host (Git Bash installed or not) that no fixture can control, so it is asserted to be
+    // REPORTED, not to be ok - and comment-checker's stub is unprobeable on win32.
+    const mustBeOk = process.platform === "win32" ? ["node", "lsp", "codegraph"] : ["node", "lsp", "codegraph", "comment-checker"]
+    for (const id of mustBeOk) {
       if (!/\[(REQUIRED|OPTIONAL)\]: ok /.test(entryLine(child.stdout, id))) return armFail("unrelated entry " + id + " was disturbed by the absent ast-grep", child)
     }
+    const bashLine = entryLine(child.stdout, "git-bash")
+    if (!(bashLine.includes(": ok ") || bashLine.includes("MISSING ⇒ degrades: "))) return armFail("the host-dependent git-bash entry was not reported at all", child)
     return { ok: true, detail: "absent ast-grep NAMED with its degrade sentence; the foreign `sg` was rejected, exit 2" }
   }],
   ["hung-probe-is-missing", (root) => {
@@ -752,11 +930,12 @@ const ARMS = [
     const line = entryLine(child.stdout, "codegraph")
     // The fixture stub must be the candidate that was probed: a mis-built fixture
     // has to fail HERE as a fixture-build error, never pass as an `ok`.
-    const stub = join(fx.bundle, ".toolchain", "node_modules", ".bin", "codegraph")
+    const stub = stubPath(join(fx.bundle, ".toolchain", "node_modules", ".bin"), "codegraph")
     if (!line.includes(stub)) return armFail("the arm did not probe the fixture stub " + stub, child)
     if (!line.includes("MISSING ⇒ degrades: ")) return armFail("a hung --version probe must report MISSING ⇒ degrades:", child)
     if (!/timeout after \d+ms/.test(line)) return armFail("the line does not name the probe timeout", child)
-    for (const id of ["node", "ast-grep", "lsp", "comment-checker"]) {
+    const mustStayOk = process.platform === "win32" ? ["node", "lsp"] : ["node", "ast-grep", "lsp", "comment-checker"]
+    for (const id of mustStayOk) {
       if (!/\[(REQUIRED|OPTIONAL)\]: ok /.test(entryLine(child.stdout, id))) return armFail("the hung probe leaked into entry " + id, child)
     }
     return { ok: true, detail: "the fixture stub hung: MISSING-with-reason (timeout named, stub path named) and contained to its own entry, exit 2" }
@@ -765,12 +944,13 @@ const ARMS = [
     const fx = buildFixture(root, { name: "json-mode" })
     const child = runChild(["--bundle-root", fx.bundle, "--json"], fixtureEnv(fx))
     if (child.leak.length > 0) return armFail("hermeticity: the child names the real repo root " + child.leak.join(","), child)
-    if (child.code !== EXIT.ok) return armFail("exit=" + child.code + " (want 0)", child)
+    const want = process.platform === "win32" ? EXIT.optionalMissing : EXIT.ok
+    if (child.code !== want) return armFail("exit=" + child.code + " (want " + want + ")", child)
     const line = child.stdout.split("\n").find((l) => l.startsWith(PREFIXED_JSON))
     if (line === undefined) return armFail("no `" + PREFIXED_JSON + "{...}` line on stdout", child)
     let parsed
     try { parsed = JSON.parse(line.slice(PREFIXED_JSON.length)) } catch (error) { return armFail("the json line does not parse: " + oneLine(error && error.message ? error.message : String(error)), child) }
-    if (parsed.verdict?.code !== EXIT.ok || parsed.entries?.length !== ENTRY_SPECS.length) return armFail("the payload carries verdict.code=" + parsed.verdict?.code + " and " + parsed.entries?.length + " entries", child)
+    if (parsed.verdict?.code !== want || parsed.entries?.length !== ENTRY_SPECS.length) return armFail("the payload carries verdict.code=" + parsed.verdict?.code + " and " + parsed.entries?.length + " entries", child)
     if (!parsed.entries.every((entry) => typeof entry.id === "string" && typeof entry.degrade === "string" && typeof entry.resolution === "string" && entry.envKeys !== undefined)) return armFail("an entry record is missing id/degrade/resolution/envKeys", child)
     return { ok: true, detail: "one prefixed JSON line, " + parsed.entries.length + " entry records with degrade + resolution, exit 0" }
   }],

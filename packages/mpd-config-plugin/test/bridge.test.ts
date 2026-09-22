@@ -32,11 +32,14 @@ const WITH_COMMENTS = `{
 
 describe("target set (design §A.1 — never a guessed root)", () => {
   test("U14: exactly one live root is written; two live roots REFUSE and name both candidates", () => {
-    expect(resolveTargets(["/a"])).toEqual({ kind: "write", targets: [{ root: "/a", file: "/a/.mpd/mpd.jsonc" }] })
+    // The file operand is DERIVED with the platform's own join: hard-coding "/a/.mpd/mpd.jsonc"
+    // pins the POSIX separator (win32 answers "\a\.mpd\mpd.jsonc"), not the behaviour under test.
+    const at = (root: string) => ({ root, file: join(root, ".mpd", "mpd.jsonc") })
+    expect(resolveTargets(["/a"])).toEqual({ kind: "write", targets: [at("/a")] })
     const two = resolveTargets(["/a", "/b"])
     expect(two).toEqual({ kind: "refuse", reason: "ambiguous-multi-root", candidates: ["/a", "/b"] })
     // a duplicated root is still ONE candidate, and a projectFile override applies only to the single-root case
-    expect(resolveTargets(["/a", "/a"])).toEqual({ kind: "write", targets: [{ root: "/a", file: "/a/.mpd/mpd.jsonc" }] })
+    expect(resolveTargets(["/a", "/a"])).toEqual({ kind: "write", targets: [at("/a")] })
     expect(resolveTargets(["/a"], "/custom.jsonc")).toEqual({ kind: "write", targets: [{ root: "/a", file: "/custom.jsonc" }] })
   })
 

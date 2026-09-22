@@ -44,7 +44,7 @@
 // truncate a still-buffered stream.
 
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { constants as osConstants, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -99,6 +99,50 @@ function parseArgs(argv) {
 // The exact argv handed to the child: no profile flag at all when none was requested.
 const childArgs = (opts) => [...(opts.profile === null ? [] : ["--profile", opts.profile]), "--dump-config", ...opts.extra];
 
+/**
+ * Node's PATH resolution on win32, which does NOT apply `PATHEXT` for a bare command name
+ * (`spawnSync("dsh")` answers ENOENT while `dsh.cmd` sits on PATH); `undefined` = nothing to run.
+ */
+function resolveOnPath(bin) {
+  if (process.platform !== "win32") return bin;
+  if (bin.includes("/") || bin.includes("\\")) return existsSync(bin) ? bin : undefined;
+  const extensions = (process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";").filter((extension) => extension.length > 0);
+  for (const dir of (process.env.PATH ?? "").split(";")) {
+    if (dir === "") continue;
+    for (const extension of extensions) {
+      const candidate = join(dir, bin + extension);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Spawn the child so the SAME argv array works on every platform.
+ *
+ * Windows cannot CreateProcess a `.cmd`/`.bat` shim (`EINVAL`; measured with the npm-installed
+ * `dsh`) and does not resolve a bare name through `PATHEXT` (`ENOENT`), so `node scripts/dump-config.mjs`
+ * answered 127 / `wrapper-missing-binary` on a host where the harness IS installed. Two shapes cover
+ * every child this wrapper has, and both still hand the child an argv ARRAY — never a shell string,
+ * so no argument value can be injected:
+ *   * a `.js`/`.mjs` file (the self-test's fixtures, and the QA lanes' fixture children) is not an
+ *     executable there at all (`EFTYPE`) — node runs it, exactly as the POSIX shebang would;
+ *   * anything else is a program shim, so `cmd.exe /c` runs it natively.
+ * POSIX is untouched: the child is spawned directly, shebang and all.
+ */
+function spawnChild(bin, args, opts) {
+  if (process.platform !== "win32") return spawnSync(bin, args, opts);
+  // `existsSync` matters: an ABSENT fixture must still take the plain-spawn path below, so the
+  // ENOENT -> 127 contract stays observable instead of turning into node's own "cannot find module".
+  if (/\.m?js$/i.test(bin) && existsSync(bin)) return spawnSync(process.execPath, [bin, ...args], opts);
+  const resolved = resolveOnPath(bin);
+  // Nothing to run: keep the plain spawn so the ENOENT -> 127 "command not found" contract (and
+  // the self-test arm that pins it) is preserved verbatim.
+  if (resolved === undefined) return spawnSync(bin, args, opts);
+  if (/\.(cmd|bat)$/i.test(resolved)) return spawnSync(process.env.ComSpec ?? "cmd.exe", ["/d", "/c", resolved, ...args], opts);
+  return spawnSync(resolved, args, opts);
+}
+
 // Display-only quoting for the banner's `command:` line. Never executed: the child always gets the
 // argv array above.
 const quoteForDisplay = (arg) => (/^[A-Za-z0-9_@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", `'\\''`)}'`);
@@ -132,7 +176,7 @@ function runDumpConfig(opts) {
   const notice = opts.json ? process.stderr : process.stdout;
   notice.write((opts.quiet ? QUIET_LINE : bannerLines(opts, args).join("\n")) + "\n");
 
-  const result = spawnSync(opts.bin, args, opts.json ? { encoding: "utf8" } : { stdio: "inherit" });
+  const result = spawnChild(opts.bin, args, opts.json ? { encoding: "utf8" } : { stdio: "inherit" });
   const displayBin = quoteForDisplay(opts.bin);
   const jsonNotice = (exitCode, exitCodeSource, childSpawnError, stdout) => {
     process.stdout.write(
@@ -215,7 +259,10 @@ function selfTest() {
       ["cannot-witness clause", aOut.includes("CANNOT witness a plugin load")],
       ["mounting-boot remedy", aOut.includes("bundle-lifecycle.mjs") && aOut.includes("preset-conformance.mjs")],
       ["AGENTS.md §4 citation", aOut.includes("AGENTS.md §4")],
-      ["exact command line", aOut.includes(`command: ${okFixture} --dump-config`)],
+      // The banner QUOTES a display-unsafe argument (a Windows temp path carries `~`, which the
+      // display-quoting rule escapes), so the clause reads the LINE: it must name the exact bin and
+      // end with the child's own argv — never the presenter's quoting, which is a separate concern.
+      ["exact command line", aOut.split("\n").some((line) => line.startsWith(`${TAG} command: `) && line.includes(okFixture) && line.trimEnd().endsWith("--dump-config"))],
       ["no-profile case stated", aOut.includes("dsh uses its OWN default profile")],
     ];
     const openAt = aOut.indexOf(OPENING);

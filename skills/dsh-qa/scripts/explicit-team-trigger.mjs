@@ -15,6 +15,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const NOTICE = "[AgentTeams] Explicit team activation"
@@ -59,7 +60,8 @@ function install(sandbox) {
 /** Boot a session with NO credentials (the deterministic 'model cannot act' condition). */
 function bootNoModel(sandbox, ws, prompt) {
   const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: sandbox  })
-  const r = spawnSync("dsh", ["--profile", "mpd-headless", prompt], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: ws, env, stdio: ["ignore", "pipe", "pipe"] })
+  const spec = dshCommand(["--profile", "mpd-headless", prompt], env)
+  const r = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(spec.command, spec.args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: ws, env, stdio: ["ignore", "pipe", "pipe"] })
   LOG.push("$ dsh --profile mpd-headless " + JSON.stringify(prompt) + "\n[[exit=" + r.status + "]]\n" + ((r.stdout || "") + (r.stderr || "")).slice(0, 3000))
   return r
 }

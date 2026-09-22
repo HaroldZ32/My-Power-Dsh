@@ -14,7 +14,7 @@
 import { describe, expect, test } from "bun:test"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
 const PLUGIN = dirname(import.meta.dir)
@@ -22,7 +22,10 @@ const DIST = join(PLUGIN, "dist", "index.js")
 
 /** One probe, spawned per arm: it imports the artifact under test and reports the observable surface. */
 const PROBE = `
-const { assertMutationSandboxed } = await import(process.env.ARM_DIST)
+import { pathToFileURL } from "node:url"
+// pathToFileURL: node's ESM loader refuses a bare Windows path
+// (ERR_UNSUPPORTED_ESM_URL_SCHEME, received protocol "c:"), which broke every node arm.
+const { assertMutationSandboxed } = await import(pathToFileURL(process.env.ARM_DIST).href)
 try { assertMutationSandboxed("suite arm probe"); console.log("ALLOWED") }
 catch (e) { console.log("REFUSED:" + (e.status ?? "?") + ":" + (e.code ?? "?")) }
 `
@@ -69,7 +72,11 @@ export function assertMutationSandboxed(operation) {
   if (process.env.MPD_DSH_WORKMATE_ALLOW_REAL_HOME === "1") return
   const root = join(process.env.HOME || homedir(), ".mpd", "workmate")
   const home = process.env.HOME
-  const realHome = homedir()
+  // The pre-fix predicate derived its "real home" from $HOME exactly as the guard derived the
+  // library root, which is the tautology the arms must catch. os.homedir() reads $HOME on POSIX
+  // but %USERPROFILE% on win32, so a faithful port of the DEFECT has to name the HOME-first source
+  // explicitly (otherwise the arm proves nothing on Windows).
+  const realHome = process.env.HOME || homedir()
   const inside = (h) => root === h || root.startsWith(h.endsWith(sep) ? h : h + sep)
   if (home !== undefined && home !== "" && resolve(home) !== resolve(realHome) && inside(resolve(home))) return
   const e = new Error("refusing to " + operation + " inside the REAL library " + root)
@@ -92,7 +99,12 @@ describe("T-43 real-home guard — both sides, in the shape production uses", ()
   // The real user home must be HOME-independent for the arm's expectation to mean anything.
   const realHome = (() => {
     const r = spawnSync("node", ["-e", "process.stdout.write(require('node:os').userInfo().homedir)"], { encoding: "utf8", timeout: 20000 })
-    return r.status === 0 && r.stdout ? r.stdout.trim() : "/root"
+    if (r.status === 0 && r.stdout) return r.stdout.trim()
+    // node's passwd emulation can fail on a Windows host (`uv_os_get_passwd returned ENOMEM`),
+    // which used to fall back to the POSIX literal "/root" — a path that is not the real home
+    // anywhere on Windows and made the real-home arm expect the wrong outcome. `homedir()` is
+    // HOME-INDEPENDENT there (%USERPROFILE%), which is exactly what this arm needs.
+    return homedir()
   })()
 
   const ARMS: Array<{ id: string; label: string; expect: "ALLOWED" | "REFUSED"; env: Record<string, string>; unsetHome?: boolean }> = [

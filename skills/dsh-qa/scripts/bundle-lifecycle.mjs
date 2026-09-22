@@ -23,6 +23,7 @@ import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshAppSpec, resolveOnPath, spawnSpec } from "./lib/dsh-launcher.mjs"
 
 const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -54,12 +55,17 @@ function selfTest() {
   const dist = readFileSync(join(repoRoot, "packages", "mpd-bootstrap-plugin", "dist", "index.js"), "utf8")
   if (!dist.includes("registerProvider") || dist.includes("syncTree")) fail("self-test: mpd-bootstrap must serve the corpus (registerProvider), not copy it")
   if (!existsSync(PROBE)) fail("self-test: roles probe dist missing (bun build first)")
-  if (spawnSync("pnpm", ["--version"], { encoding: "utf8" }).status !== 0) fail("self-test: pnpm is required for the official install flow")
+  const pnpmProbe = spawnSpec("pnpm", ["--version"])
+  if (spawnSync(pnpmProbe.command, pnpmProbe.args, { encoding: "utf8" }).status !== 0) fail("self-test: pnpm is required for the official install flow")
   console.log("[bundle-lifecycle self-test] ok: repo root IS the bundle + bundle-served preset row + provider wiring + probe + pnpm")
 }
 
 function runSync(cmd, args, env, opts = {}) {
-  const result = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 600000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
+  // EVERY bare name is resolved (not just `dsh`): `pnpm` is a `.cmd` shim on win32 too, and node
+  // refuses to exec a command script without a shell (measured 2026-09-22).
+  if (cmd === "dsh" && resolveOnPath("dsh", env) === "") return { status: null, out: DSH_MISSING, stdout: "" }
+  const spec = spawnSpec(cmd, args, env)
+  const result = spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 600000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
   return { status: result.status, out: (result.stdout || "") + (result.stderr || ""), stdout: result.stdout || "" }
 }
 
@@ -127,7 +133,12 @@ async function runReal() {
   // ── 3) real boot: preset + corpus served from the installed bundle ─────────
   const bootLog = join(outDir, "boot.log")
   const fd = openSync(bootLog, "w")
-  const web = spawn("dsh", ["--profile", "w", "--patch", probePatch, "--port", String(PORT), "--no-open"], { env, cwd: sandbox, detached: false, stdio: ["ignore", fd, fd] })
+  // The app form of the launcher: a direct node child where the layout allows it, so the kill below
+  // really disposes of it (a `.cmd`-spawned app is a CHILD of cmd.exe, survives the kill and keeps
+  // the profile directory busy - measured 2026-09-22 as an uninstall residue and a held port).
+  const webSpec = dshAppSpec(["--profile", "w", "--patch", probePatch, "--port", String(PORT), "--no-open"], env)
+  if (webSpec === null) fail(DSH_MISSING)
+  const web = spawn(webSpec.command, webSpec.args, { env, cwd: sandbox, detached: false, stdio: ["ignore", fd, fd] })
   let up = false
   const deadline = Date.now() + 120000
   while (Date.now() < deadline) {
@@ -141,6 +152,12 @@ async function runReal() {
   }
   web.kill("SIGTERM")
   await new Promise((resolve) => setTimeout(resolve, 1500))
+  web.kill("SIGKILL")
+  if (process.platform === "win32" && typeof web.pid === "number") {
+    // Best effort for the interpreter fallback: `/T` takes the tree (see lib/dsh-launcher.mjs).
+    try { spawnSync("taskkill", ["/PID", String(web.pid), "/T", "/F"], { stdio: "ignore" }) } catch { /* denied: the direct-child path needs no tree kill */ }
+  }
+  await new Promise((resolve) => setTimeout(resolve, 500))
   const boot = readFileSync(bootLog, "utf8")
   // The installed package is a pnpm link, so the plugin's own location resolves to
   // the real package dir while the preset roster keeps the node_modules path —

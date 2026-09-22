@@ -540,7 +540,7 @@ export function seedProfile(root, log, explicitSource) {
     if (!existsSync(join(source, "package.json"))) continue
     mkdirSync(join(root, "dshhome", "profiles"), { recursive: true })
     rmSync(profileDir, { recursive: true, force: true })
-    symlinkSync(source, profileDir, "dir")
+    symlinkSync(source, profileDir, "junction")
     for (const file of [".credentials.yaml", "settings.yaml"]) {
       const from = join(candidate, file)
       const to = join(root, "dshhome", file)

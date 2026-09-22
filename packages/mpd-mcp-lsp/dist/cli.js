@@ -5624,7 +5624,7 @@ function defaultDaemonPlatform() {
     homedir: homedir2,
     tmpdir,
     getuid: () => typeof process.getuid === "function" ? process.getuid() : undefined,
-    username: () => userInfo().username,
+    username: () => { try { return userInfo().username; } catch { return process.env.USERNAME || process.env.USER || "user"; } },
     path
   };
 }

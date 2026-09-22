@@ -428,7 +428,7 @@ async function runReinjection(tree, rawRoot, workspace, captain, member) {
   const scratch = mkdtempSync(join(rawRoot, "c-" + tree.label + "-reinject-"))
   mkdirSync(join(scratch, "lib"), { recursive: true })
   for (const entry of readdirSync(libDir, { withFileTypes: true })) if (entry.isFile()) cpSync(join(libDir, entry.name), join(scratch, "lib", entry.name))
-  symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "dir")
+  symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "junction")
   const scratchTools = join(scratch, "lib", "tools.js")
   const source = readFileSync(scratchTools, "utf8")
   const registration = source.indexOf("name: 'agent_teams_update_task'")

@@ -5,7 +5,8 @@
 import { test, expect } from "bun:test"
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
+import { pathToFileURL } from "node:url"
 import { resolveAstGrepBinary, resolveCodegraphBinary, probeAstGrep, bundleRootFrom } from "./bin-resolve.mjs"
 
 function sandbox() {
@@ -112,8 +113,106 @@ test("codegraph: createRequire tier reads the package's own bin entry", () => {
   expect(r.binary).toBe(join(pkg, "npm-shim.js"))
 })
 
+// --- win32 name expansion -------------------------------------------------
+// A win32 install names a candidate through %PATHEXT% (the linker writes
+// `node_modules/.bin/ast-grep.exe`), while POSIX names it bare. Measured 2026-09-22:
+// with only the bare spelling offered, the ast_grep MCP answered BINARY_NOT_FOUND
+// on win32 although `.bin/ast-grep.exe --version` printed `ast-grep 0.45.2`.
+const okAstGrepSpelling = (p) => /ast-grep(\.(exe|com))?$/.test(p)
+
+test("ast-grep: win32 resolves the .exe spelling of a candidate", () => {
+  const s = sandbox()
+  const dir = join(s, "cache")
+  const exe = touch(join(dir, "ast-grep.exe"))
+  const r = resolveAstGrepBinary(launcher, {
+    env: { MPD_AST_GREP_BIN_DIR: dir },
+    platform: "win32",
+    probe: okAstGrepSpelling,
+    bundleRoot: join(s, "bundle"),
+  })
+  expect(r).not.toBeNull()
+  expect(r.binary).toBe(exe)
+})
+
+test("ast-grep: win32 honours the caller's own PATHEXT order", () => {
+  const s = sandbox()
+  const dir = join(s, "cache")
+  touch(join(dir, "ast-grep.exe"))
+  const com = touch(join(dir, "ast-grep.com"))
+  const r = resolveAstGrepBinary(launcher, {
+    env: { MPD_AST_GREP_BIN_DIR: dir, PATHEXT: ".COM;.EXE" },
+    platform: "win32",
+    probe: okAstGrepSpelling,
+    bundleRoot: join(s, "bundle"),
+  })
+  expect(r.binary).toBe(com)
+})
+
+test("ast-grep: win32 never offers a .cmd/.bat candidate (a shell-less spawn cannot start one)", () => {
+  const s = sandbox()
+  const dir = join(s, "cache")
+  touch(join(dir, "ast-grep.cmd"))
+  touch(join(dir, "ast-grep.bat"))
+  const r = resolveAstGrepBinary(launcher, {
+    env: { MPD_AST_GREP_BIN_DIR: dir },
+    platform: "win32",
+    probe: () => true,
+    bundleRoot: join(s, "bundle"),
+  })
+  expect(r).toBeNull()
+})
+
+test("ast-grep: POSIX keeps the bare name as the only spelling", () => {
+  const s = sandbox()
+  const dir = join(s, "cache")
+  const bare = touch(join(dir, "ast-grep"))
+  touch(join(dir, "ast-grep.exe"))
+  const r = resolveAstGrepBinary(launcher, {
+    env: { MPD_AST_GREP_BIN_DIR: dir },
+    platform: "linux",
+    probe: okAstGrep,
+    bundleRoot: join(s, "bundle"),
+  })
+  expect(r.binary).toBe(bare)
+})
+
+test("ast-grep: <bundle>/node_modules/.bin tier resolves a bundle-root install", () => {
+  const s = sandbox()
+  const exe = touch(join(s, "bundle", "node_modules", ".bin", "ast-grep.exe"))
+  const r = resolveAstGrepBinary(launcher, {
+    env: {},
+    platform: "win32",
+    probe: okAstGrepSpelling,
+    bundleRoot: join(s, "bundle"),
+    requireResolve: () => { throw new Error("no such package") },
+  })
+  expect(r).not.toBeNull()
+  expect(r.source).toBe("bundle-bin")
+  expect(r.binary).toBe(exe)
+})
+
+test("ast-grep: .toolchain still wins over the bundle-root tier", () => {
+  const s = sandbox()
+  const toolchain = touch(join(s, "bundle", ".toolchain", "node_modules", ".bin", "ast-grep.exe"))
+  touch(join(s, "bundle", "node_modules", ".bin", "ast-grep.exe"))
+  const r = resolveAstGrepBinary(launcher, {
+    env: {},
+    platform: "win32",
+    probe: okAstGrepSpelling,
+    bundleRoot: join(s, "bundle"),
+    requireResolve: () => { throw new Error("no such package") },
+  })
+  expect(r.source).toBe("toolchain")
+  expect(r.binary).toBe(toolchain)
+})
+
 test("bundleRootFrom: <bundle>/packages/<pkg>/launch.mjs -> <bundle>", () => {
-  expect(bundleRootFrom("file:///x/y/packages/mpd-mcp-astgrep/launch.mjs")).toBe("/x/y")
+  // Platform-neutral fixture: `new URL("file:///x/y")` is not a valid file URL on
+  // Windows (no drive letter), and fileURLToPath throws "File URL path must be an
+  // absolute path". Build the URL FROM a native absolute path instead, so the two
+  // dirname hops are what is asserted on every platform.
+  const bundle = resolve("/x/y")
+  expect(bundleRootFrom(pathToFileURL(join(bundle, "packages", "mpd-mcp-astgrep", "launch.mjs")).href)).toBe(bundle)
 })
 
 // The mandatory rule the captain re-measured: the real `.toolchain` `sg` entry is

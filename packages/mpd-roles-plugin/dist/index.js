@@ -468,11 +468,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config2, signal) {
+    llmResolveCallConfig(config, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config2, signal);
+      return llm.resolveCallConfig.call(llm, config, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -516,7 +516,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -809,11 +809,11 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -821,24 +821,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -879,7 +879,7 @@ function createLazyDshAdapter(ctx, options) {
   let temporary;
   let warnedPending = false;
   let warnedMissing = false;
-  const resolve2 = () => {
+  const resolve = () => {
     if (mounted !== undefined)
       return mounted;
     const active = probeMpdDsh(ctx, true);
@@ -903,12 +903,12 @@ function createLazyDshAdapter(ctx, options) {
   };
   return new Proxy({}, {
     get(_target, property) {
-      const impl = resolve2();
+      const impl = resolve();
       const value = impl[property];
       return typeof value === "function" ? value.bind(impl) : value;
     },
     has(_target, property) {
-      return property in resolve2();
+      return property in resolve();
     }
   });
 }
@@ -943,8 +943,8 @@ function textBlock2(text) {
 function pkgRoot() {
   return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
 }
-function normalizeRoleNameKey(name2) {
-  return String(name2 ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+function normalizeRoleNameKey(name) {
+  return String(name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 var ROLE_ID_BY_NAME_KEY = Object.fromEntries(ROLES.map((r) => [normalizeRoleNameKey(r.name), r.id]));
 function rosterNameList() {
@@ -994,8 +994,8 @@ function text(value) {
 function errText(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function extensionRoleId(extensionId, name2) {
-  const slug = String(name2).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+function extensionRoleId(extensionId, name) {
+  const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   return "ext-" + extensionId + "-" + (slug || "role");
 }
 function readExtensionPersona(root, file) {
@@ -1045,29 +1045,29 @@ function extensionRoles(ctx, exec, warn) {
       continue;
     if (view?.plane === PROJECT_ONLY_PLANE) {
       for (const item of declared) {
-        const name2 = text(item?.name).trim();
-        if (name2 === "")
+        const name = text(item?.name).trim();
+        if (name === "")
           continue;
-        refused.push({ extension: extensionId, name: name2, reason: PROJECT_ROLES_REASON });
+        refused.push({ extension: extensionId, name, reason: PROJECT_ROLES_REASON });
       }
       continue;
     }
     const root = text(view?.root);
     declared.forEach((item, index) => {
-      const name2 = text(item?.name).trim();
-      if (name2 === "")
+      const name = text(item?.name).trim();
+      if (name === "")
         return;
       const refuse = (reason) => {
-        refused.push({ extension: extensionId, name: name2, reason });
+        refused.push({ extension: extensionId, name, reason });
       };
       const itemLabel = "contributes.roles[" + index + "]";
-      const key = normalizeRoleNameKey(name2);
+      const key = normalizeRoleNameKey(name);
       const takenBy = owner.get(key);
       if (takenBy !== undefined) {
-        refuse('role name "' + name2 + '" (' + itemLabel + ' of extension "' + extensionId + '") is already taken by ' + takenBy + " — this extension role is not exposed");
+        refuse('role name "' + name + '" (' + itemLabel + ' of extension "' + extensionId + '") is already taken by ' + takenBy + " — this extension role is not exposed");
         return;
       }
-      const id = extensionRoleId(extensionId, name2);
+      const id = extensionRoleId(extensionId, name);
       if (ROLE_BY_ID[id] !== undefined) {
         refuse('role id "' + id + '" collides with the base roster — this extension role is not exposed');
         return;
@@ -1082,7 +1082,7 @@ function extensionRoles(ctx, exec, warn) {
       owner.set(key, 'extension "' + extensionId + '"');
       roles.push({
         id,
-        name: name2,
+        name,
         description: text(item?.description),
         readonly: item?.readonly === true,
         chain,
@@ -1096,20 +1096,20 @@ function extensionRoles(ctx, exec, warn) {
 }
 function apply(ctx, config = {}) {
   const warn = (line) => {
-    const message2 = "[mpd-roles] " + line;
+    const message = "[mpd-roles] " + line;
     try {
       if (ctx?.logger && typeof ctx.logger.warn === "function")
-        ctx.logger.warn(message2);
+        ctx.logger.warn(message);
       else
-        console.log(message2);
+        console.log(message);
     } catch {}
   };
   const adapterWarn = (line) => {
-    const message2 = "[mpd-roles] " + line;
+    const message = "[mpd-roles] " + line;
     try {
-      console.log(message2);
+      console.log(message);
       if (ctx?.logger && typeof ctx.logger.warn === "function")
-        ctx.logger.warn(message2);
+        ctx.logger.warn(message);
     } catch {}
   };
   const dsh = createLazyDshAdapter(ctx, { label: "mpd-roles", warn: adapterWarn });
@@ -1242,19 +1242,19 @@ Work with the tools your role requires (read-only roles must never modify anythi
   } catch {}
 }
 export {
-  rosterNameList,
-  rosterFunctionList,
-  readPersona,
-  pkgRoot,
-  normalizeRoleNameKey,
-  normalizeRoleKey,
-  name,
-  inject,
-  extensionRoles,
-  extensionRoleId,
-  apply,
-  READONLY_DENY,
-  ADAPTER_IDENTITY_PENDING,
+  ADAPTER_IDENTITY_FALLBACK,
   ADAPTER_IDENTITY_MOUNTED,
-  ADAPTER_IDENTITY_FALLBACK
+  ADAPTER_IDENTITY_PENDING,
+  READONLY_DENY,
+  apply,
+  extensionRoleId,
+  extensionRoles,
+  inject,
+  name,
+  normalizeRoleKey,
+  normalizeRoleNameKey,
+  pkgRoot,
+  readPersona,
+  rosterFunctionList,
+  rosterNameList
 };

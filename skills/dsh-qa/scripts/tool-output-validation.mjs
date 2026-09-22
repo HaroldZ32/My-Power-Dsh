@@ -15,6 +15,7 @@ import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 
@@ -56,7 +57,8 @@ function selfTest() {
 function runProbe(probe, sandbox, ws, env) {
   const outDir = join(repoRoot, "evidence", "fix", probe.slug, new Date().toISOString().replaceAll(":", "-"))
   mkdirSync(outDir, { recursive: true })
-  const run = spawnSync("dsh", ["--profile", "mpd-headless", probe.task], { env, cwd: ws, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000, stdio: ["ignore", "pipe", "pipe"] })
+  const runSpec = dshCommand(["--profile", "mpd-headless", probe.task], env)
+  const run = runSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(runSpec.command, runSpec.args, { env, cwd: ws, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000, stdio: ["ignore", "pipe", "pipe"] })
   const out = (run.stdout || "") + (run.stderr || "")
   const steps = {
     live: { ok: run.status === 0, exit: run.status },

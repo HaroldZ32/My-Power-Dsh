@@ -7,7 +7,7 @@
 // Paths: <workspace>/.mpd/memory/agents/<slug>/{repo, runtime/...}.
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync, statSync } from "node:fs"
 import { spawnSync } from "node:child_process"
-import { basename, dirname, join, resolve } from "node:path"
+import { basename, dirname, join, resolve, sep } from "node:path"
 import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-memory"
@@ -130,8 +130,12 @@ function normalizeLogEntry(meta: any, file: string, body: string): any {
 }
 
 function safeMemoryPath(memoryDir: string, name: string): string {
-  const target = resolve(memoryDir, name)
-  if (!target.startsWith(resolve(memoryDir) + "/")) throw new Error("mpd-memory: path escapes memory dir: " + name)
+  // The containment prefix must use the PLATFORM separator: on win32 `resolve()` answers
+  // `C:\...\memory`, so a hard-coded "/" suffix made EVERY memory name look like an escape
+  // and the whole store was unusable (the C6 backend threw on the first write).
+  const base = resolve(memoryDir)
+  const target = resolve(base, name)
+  if (!target.startsWith(base + sep)) throw new Error("mpd-memory: path escapes memory dir: " + name)
   return target
 }
 

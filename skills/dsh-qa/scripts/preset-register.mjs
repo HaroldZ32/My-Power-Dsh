@@ -6,7 +6,7 @@
 // --self-test verifies the fixtures + the dev patch rewrite offline.
 import { cpSync, existsSync, mkdtempSync, mkdirSync, openSync, readdirSync, readFileSync, writeFileSync, closeSync } from "node:fs"
 import { tmpdir, homedir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname, join, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 
@@ -32,7 +32,7 @@ const PACKED_PRESETS_EXPR = '"/node_modules/@mpd-dsh/mpd/presets"'
 // caller pin wins untouched in the B8 launcher, so those pins bypassed exactly
 // the resolution chain a dev boot exists to exercise. Both halves are removed:
 // the operand becomes the bare checkout path and no CLI/binary pin is pre-set.
-const BASEURL_PREFIX = '(typeof baseUrl === "string" ? baseUrl.replace(/^file:\\/\\//, "").replace(/\\/+$/, "") : "") + '
+const BASEURL_PREFIX = '(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\\/\\/\\/(?=[A-Za-z]:)/, "").replace(/^file:\\/\\//, "")).replace(/\\/+$/, "") : "") + '
 function devPatch() {
   const t = readFileSync(join(repoRoot, "packages/mpd-bundle/cordis.patch.yml"), "utf8")
   return t
@@ -73,7 +73,16 @@ function selfTest() {
   for (const mcp of ["mpd-mcp-astgrep/launch.mjs", "mpd-mcp-gitbash/dist/cli.js", "mpd-mcp-lsp/dist/cli.js", "mpd-mcp-codegraph/launch.mjs"]) {
     const target = join(repoRoot, "packages", mcp)
     if (!existsSync(target)) { console.error("[preset-register self-test] FAIL: MCP launcher missing on disk: " + mcp); process.exit(1) }
-    if (!dev.includes('"' + target + '"')) { console.error("[preset-register self-test] FAIL: devPatch MCP operand is not the checkout-absolute " + mcp); process.exit(1) }
+    // The dev rewrite splices `repoRoot + "/"` onto the packed operand's tail, so on Windows the
+    // emitted operand is MIXED (`C:\\repo/packages/...`) while `join` answers a fully native path:
+    // the two spell the SAME checkout-absolute launcher. Normalizing both sides to "/" compares the
+    // path itself instead of enumerating spellings by hand — and it keeps `packages/` in the
+    // comparison, which a hand-built `repoRoot + "/" + mcp` silently dropped.
+    const emitted = '"' + target.split(sep).join("/") + '"'
+    if (!dev.split(sep).join("/").includes(emitted)) {
+      console.error("[preset-register self-test] FAIL: devPatch MCP operand is not the checkout-absolute " + mcp)
+      process.exit(1)
+    }
   }
   console.log("[preset-register self-test] ok: preset + roster fixtures + web-compat/preset-root/MCP-operand normalization verified")
 }
@@ -144,8 +153,11 @@ function runReal() {
 
 import { spawnSync } from "node:child_process"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 function runDsh(args, env, fd, cwd) {
-  return spawnSync("dsh", args, { env, cwd, encoding: "utf8", timeout: 180000, stdio: ["ignore", fd, fd] })
+  const spec = dshCommand(args, env)
+  if (spec === null) return { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) }
+  return spawnSync(spec.command, spec.args, { env, cwd, encoding: "utf8", timeout: 180000, stdio: ["ignore", fd, fd] })
 }
 
 const argv = process.argv.slice(2)

@@ -15,7 +15,8 @@
 // and evaluates the suite's own `requirements-v0.15.json` per requirement with the
 // pinned parser, so every requirement still gets a status.
 //
-// PREREQ: absent-fixture /root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec "check out the host repo with its submodules initialised"
+// PREREQ: absent-fixture dsh-ecosystem-spec (MPD_TUI_SPEC_ROOT, else /root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec
+//   on a POSIX host) "check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"
 //
 // Usage:
 //   bun skills/dsh-qa/scripts/tui-spec-conformance.mjs --self-test
@@ -25,10 +26,18 @@ import { cpSync, existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { spawnSync } from "node:child_process"
-import { REPO, artifactRevision, laneEvidenceDir, makeChecks, manifestDigest, parseSandboxArgs, resolveHostRoot, sandboxEnv, sha256File, structuralFindings, writeLaneEvidence, writeRevisionFile } from "./lib/tui-lane.mjs"
+import { REPO, artifactRevision, emitMarker, laneEvidenceDir, makeChecks, manifestDigest, parseSandboxArgs, resolveHostRoot, resolveSpecCheckout, sandboxEnv, sha256File, structuralFindings, writeLaneEvidence, writeRevisionFile } from "./lib/tui-lane.mjs"
 
 const SLUG = "tui-spec-conformance"
-const SPEC_ROOT = process.env.MPD_TUI_SPEC_ROOT ?? "/root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec"
+/**
+ * The pinned host suite checkout — an EXTERNAL fixture, resolved by `resolveSpecCheckout()`
+ * (`MPD_TUI_SPEC_ROOT` first, then the recorded POSIX location on POSIX hosts only: on win32 that
+ * literal would answer `C:\root\...`, a place no checkout lives). `undefined` means this host has
+ * no checkout, so the lane reports a declared skip (a FAIL under `--no-skip`), never a red.
+ */
+const SPEC_ROOT = resolveSpecCheckout()
+const SPEC_PROBE = "dsh-ecosystem-spec with conformance/requirements-v0.15.json"
+const SPEC_REMEDY = "check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"
 const MANIFEST = join(REPO, "dsh-plugin.json")
 
 /** The three-way identity measured in `.mpd/recon/UPSTREAM-RESEARCH.md` §3. */
@@ -44,6 +53,7 @@ export const CROSS_CHECK_IDENTITY = [
 ]
 
 export function suiteRevision(dir = SPEC_ROOT) {
+  if (dir === undefined) return undefined
   const run = spawnSync("git", ["-C", dir, "rev-parse", "--short", "HEAD"], { encoding: "utf8" })
   return (run.stdout ?? "").trim() || undefined
 }
@@ -103,6 +113,25 @@ export function evaluateRequirements(rows, context) {
 
 function selfTest() {
   const { check, problems } = makeChecks()
+  // The pinned suite checkout is an EXTERNAL fixture (see SPEC_ROOT). A host without it reports the
+  // absent fixture and SKIPS the fixture-dependent arms — rule T8-F1: the skip is legitimate
+  // because this self-test did not ask for the fixture, and `--no-skip` forces the FAIL instead.
+  // The LOCAL arm (the case-table row) always runs, so the skip cannot stand in for a broken lane.
+  const matrixPath = SPEC_ROOT === undefined ? undefined : join(SPEC_ROOT, "conformance", "requirements-v0.15.json")
+  if (matrixPath === undefined || !existsSync(matrixPath)) {
+    const strict = process.argv.includes("--no-skip")
+    emitMarker(strict ? "FAIL" : "SKIP", SLUG, "absent-fixture", SPEC_PROBE, SPEC_REMEDY)
+    if (strict) problems.push("the pinned suite checkout is absent on this host and --no-skip was requested")
+    const localSkill = join(REPO, "skills", "dsh-qa", "SKILL.md")
+    check(existsSync(localSkill) && readFileSync(localSkill, "utf8").includes("| tui-spec-conformance |"), "the case table does not list tui-spec-conformance")
+    if (problems.length > 0) {
+      console.error("[" + SLUG + " self-test] FAIL: " + problems.length + " check(s)")
+      for (const problem of problems) console.error("  - " + problem)
+      process.exit(1)
+    }
+    console.log("[" + SLUG + " self-test] ok: the pinned suite checkout is absent on this host; the local arms were verified (see the SKIP marker)")
+    return
+  }
   const matrix = requirementRows(JSON.parse(readFileSync(join(SPEC_ROOT, "conformance", "requirements-v0.15.json"), "utf8")))
   check(matrix.length >= 7, "the pinned requirement matrix must expose its rows (got " + matrix.length + ")")
   check(matrix.some((row) => row.id === "TUI-PKG-001"), "the matrix must carry TUI-PKG-001")
@@ -146,6 +175,13 @@ function selfTest() {
 
 async function real() {
   const argv = process.argv.slice(2)
+  // The pinned suite checkout is an EXTERNAL fixture (see SPEC_ROOT): without it every digest below
+  // would read a missing file, so the run reports the declared skip instead (`--no-skip` → FAIL).
+  if (SPEC_ROOT === undefined || !existsSync(join(SPEC_ROOT, "conformance", "requirements-v0.15.json"))) {
+    const strict = process.argv.includes("--no-skip")
+    emitMarker(strict ? "FAIL" : "SKIP", SLUG, "absent-fixture", SPEC_PROBE, SPEC_REMEDY)
+    process.exit(strict ? 1 : 0)
+  }
   const { root } = parseSandboxArgs(argv, SLUG)
   const outDir = laneEvidenceDir(SLUG)
   const revisionBefore = artifactRevision()
@@ -178,7 +214,7 @@ async function real() {
     if (existsSync(source)) cpSync(source, join(suiteDir, entry), { recursive: true, force: true })
   }
   if (hostRoot !== undefined && !existsSync(join(suiteDir, "node_modules"))) {
-    try { symlinkSync(join(hostRoot, "node_modules"), join(suiteDir, "node_modules"), "dir") } catch { /* reported by the run */ }
+    try { symlinkSync(join(hostRoot, "node_modules"), join(suiteDir, "node_modules"), "junction") } catch { /* reported by the run */ }
   }
   const env = sandboxEnv(root, { DSH_STD_ROOT: join(SPEC_ROOT, "vendor", "dsh-std") })
   const attempts = []

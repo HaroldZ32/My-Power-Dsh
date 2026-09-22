@@ -19,7 +19,7 @@ import { spawnSync } from "node:child_process"
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { createWriteStream } from "node:fs"
 import { homedir, tmpdir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+import { delimiter, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -44,6 +44,51 @@ const WAVE_ROW = `- id: mcp-wave-mcp
     transport: stdio
     command: !!js 'process.env.MPD_DSH_TRACEWEAVE_BIN || "traceweave-mcp"'
     toolCallTimeoutMs: 120000`
+
+// --- platform name resolution ----------------------------------------------
+// A bin NAME is not a path: win32 resolves it through %PATHEXT% (the toolchain tier holds
+// `sg.cmd`/`sg.exe`, not `sg`), and the venv/pipx layouts differ too. Measured 2026-09-22:
+// with the bare POSIX names this installer re-installed the toolchain on every run and then
+// reported it missing, and its pipx probing (`sh -c command -v pipx`) answered nothing at all.
+const BIN_SUFFIXES = process.platform === "win32" ? [".exe", ".cmd", ".bat", ".com", ""] : [""]
+
+/** The on-disk name of an installed console script for this platform. */
+function exeName(name) { return process.platform === "win32" ? name + ".exe" : name }
+
+/** @param {string} dir @param {string} name @returns {string|null} */
+function binIn(dir, name) {
+  for (const suffix of BIN_SUFFIXES) {
+    const candidate = join(dir, name + suffix)
+    if (existsSync(candidate)) return candidate
+  }
+  return null
+}
+
+/** @param {string} name @returns {string|null} */
+function onPath(name) {
+  for (const dir of String(process.env.PATH ?? "").split(delimiter)) {
+    if (dir.length === 0) continue
+    const found = binIn(dir, name)
+    if (found !== null) return found
+  }
+  return null
+}
+
+/** The platform command interpreter, absolute: a bare `cmd.exe` is not on PATH in a minimal env. */
+function commandInterpreter() {
+  if (process.platform !== "win32") return null
+  if (process.env.ComSpec) return process.env.ComSpec
+  const root = process.env.SystemRoot ?? process.env.windir ?? "C:\\Windows"
+  return join(root, "System32", "cmd.exe")
+}
+
+/** npm is a `.cmd` on win32: spawn it through the interpreter instead of a bare name. */
+function runNpm(args) {
+  if (process.env.npm_execpath) return sh(process.env.npm_execpath, args)
+  const interpreter = commandInterpreter()
+  if (interpreter === null) return sh("npm", args)
+  return sh(interpreter, ["/d", "/c", "npm", ...args])
+}
 
 const opts = parseArgs(process.argv.slice(2))
 
@@ -78,13 +123,13 @@ function installed(binPath) { return existsSync(binPath) }
 // --- 1) npm toolchain (sg + codegraph) -------------------------------------
 function ensureNpmToolchain() {
   const bin = join(opts.toolchain, "node_modules", ".bin")
-  const need = NPM_TOOLCHAIN.map((p) => join(bin, p.startsWith("@colbymchenry") ? "codegraph" : "sg"))
-  const missing = need.filter((p) => !installed(p))
+  const need = ["sg", "codegraph"]
+  const missing = need.filter((name) => binIn(bin, name) === null)
   if (missing.length === 0) { console.log("[install-mcp] npm toolchain up to date:", join(opts.toolchain, "node_modules/.bin")); return true }
   console.log("[install-mcp] installing npm toolchain:", NPM_TOOLCHAIN.join(" + "))
-  const r = sh(process.env.npm_execpath || "npm", ["install", "--prefix", opts.toolchain, "--no-save", "--no-audit", "--no-fund", "--cache", join(opts.toolchain, ".npm-cache"), ...NPM_TOOLCHAIN])
+  const r = runNpm(["install", "--prefix", opts.toolchain, "--no-save", "--no-audit", "--no-fund", "--cache", join(opts.toolchain, ".npm-cache"), ...NPM_TOOLCHAIN])
   if (r.status !== 0) { fail("npm toolchain install failed (network?): " + (r.stderr || "").slice(-300)); return false }
-  return need.every((p) => installed(p))
+  return need.every((name) => binIn(bin, name) !== null)
 }
 
 // --- 3) wave MCPs via PIPX (each app isolated; NO hand-made venv) ----------
@@ -97,9 +142,10 @@ function pipxBinDir() {
   return opts.waveHome ? join(opts.waveHome, "bin") : join(homedir(), ".local", "bin")
 }
 function ensureWave() {
-  const pipx = sh("sh", ["-c", "command -v pipx"], { silent: true })
-  if (pipx.status !== 0 || !pipx.stdout.trim()) { fail("pipx not found; install it (python3 -m pip install --user pipx) then rerun --with-wave"); return false }
-  const pipxCmd = pipx.stdout.trim()
+  // No shell probe: `sh -c command -v pipx` is POSIX-only, and on win32 it needs a sh that a
+  // stock host may not have at all. The PATH scan resolves pipx.cmd / pipx.exe too.
+  const pipxCmd = onPath("pipx")
+  if (pipxCmd === null) { fail("pipx not found; install it (python3 -m pip install --user pipx) then rerun --with-wave"); return false }
   const home = opts.waveHome || join(homedir(), ".local", "pipx")
   const binDir = pipxBinDir()
   // uv backend caches under ~/.cache/uv; redirect it next to the pipx home so
@@ -107,14 +153,15 @@ function ensureWave() {
   const uvCache = join(dirname(home), "uv-cache")
   const pipxEnv = { ...process.env, PIPX_HOME: home, PIPX_BIN_DIR: binDir, UV_CACHE_DIR: uvCache }
   for (const w of WAVE_INSTALL) {
-    const bin = join(binDir, w.cmd)
+    const bin = binIn(binDir, w.cmd) ?? join(binDir, exeName(w.cmd))
     const usable = existsSync(bin) && !opts.force
     if (usable) { console.log("[install-mcp] " + w.cmd + " already installed (pipx):", bin); continue }
     console.log("[install-mcp] pipx install " + w.pkg + " (own mcp SDK, isolated env) ...")
     const r = sh(pipxCmd, ["install", w.pkg], { timeout: 600000, silent: true, env: pipxEnv })
     if (r.status !== 0) { fail(w.pkg + " pipx install failed: " + (r.stderr || "").slice(-300) + "\ninstall manually: pipx install " + w.pkg); continue }
     // verify the mcp SDK module the dsh MCP client needs actually imports
-    const venvPy = join(home, "venvs", w.cmd, "bin", "python")
+    // venv layout: posix `<venv>/bin/python`, win32 `<venv>/Scripts/python.exe`.
+    const venvPy = process.platform === "win32" ? join(home, "venvs", w.cmd, "Scripts", "python.exe") : join(home, "venvs", w.cmd, "bin", "python")
     const v = sh(venvPy, ["-c", w.verify + "; print('verify OK')"], { silent: true })
     if (v.status !== 0) { fail(w.cmd + " verify failed: mcp SDK in its pipx env is missing/wrong (" + (v.stderr || "").slice(-200) + ")"); continue }
     console.log("[install-mcp] " + w.cmd + " verify OK (mcp SDK present in its pipx env) ->", bin)
@@ -129,14 +176,17 @@ const WAVE_INSTALL = [
 ]
 
 function envLines(toolchain, withWave = false, pipxBin = join(homedir(), ".local", "bin")) {
+  // The pin must name the file that EXISTS on this platform (`.bin/sg.exe` here, not `.bin/sg`):
+  // a wrong non-empty pin is worse than an unset one - it silently disables the MCP's own chain.
+  const toolchainBin = join(toolchain, "node_modules", ".bin")
   const l = [
     "# my-power-dsh MCP activation (generated by scripts/install-mcp.mjs; source before dsh)",
-    'export MPD_AST_GREP_SG_PATH="' + join(toolchain, "node_modules/.bin/sg") + '"',
-    'export MPD_CODEGRAPH_BIN="' + join(toolchain, "node_modules/.bin/codegraph") + '"',
+    'export MPD_AST_GREP_SG_PATH="' + (binIn(toolchainBin, "sg") ?? join(toolchainBin, "sg")) + '"',
+    'export MPD_CODEGRAPH_BIN="' + (binIn(toolchainBin, "codegraph") ?? join(toolchainBin, "codegraph")) + '"',
     'export PATH="' + join(toolchain, "bin") + ':$PATH"   # toolchain bin dir (optional user binaries)',
   ]
   if (!withWave) return l
-  for (const w of WAVE_INSTALL) l.push('export ' + w.envk + '="' + join(pipxBin, w.cmd) + '"')
+  for (const w of WAVE_INSTALL) l.push('export ' + w.envk + '="' + join(pipxBin, exeName(w.cmd)) + '"')
   return l
 }
 
@@ -144,8 +194,8 @@ function waveRef(pipxBin = join(homedir(), ".local", "bin")) {
   // Bake in ABSOLUTE pipx bin paths so the rows work even when the dsh
   // launching shell never sourced the env (web GUI / systemd services): the
   // command falls back from MPD_DSH_*_BIN to the pipx bin path directly.
-  const waveBin = join(pipxBin, "wave-mcp")
-  const traceBin = join(pipxBin, "traceweave-mcp")
+  const waveBin = join(pipxBin, exeName("wave-mcp"))
+  const traceBin = join(pipxBin, exeName("traceweave-mcp"))
   return [
     "# my-power-dsh wave-MCP activation (generated by scripts/install-mcp.mjs --activate-wave).",
     "# Boot dsh with: dsh --profile web --patch " + WAVE_PATCH + "  (GUI: merge these rows into",

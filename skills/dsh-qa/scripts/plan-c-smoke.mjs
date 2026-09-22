@@ -11,6 +11,7 @@ import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PROMPT = [""].join("")
@@ -67,7 +68,8 @@ async function runReal() {
     "Report: the config value, the workId and status, and the final note.txt content."
   ].join(" ")
 
-  const live = spawnSync("dsh", ["--profile", "mpd-headless", task], { env, cwd: ws, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
+  const liveSpec = dshCommand(["--profile", "mpd-headless", task], env)
+  const live = liveSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(liveSpec.command, liveSpec.args, { env, cwd: ws, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
   const out = (live.stdout || "") + (live.stderr || "")
   steps.live = { ok: live.status === 0, exit: live.status }
 

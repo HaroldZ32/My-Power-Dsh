@@ -35,14 +35,16 @@
 //      rewritten back to `text:` and asserts the mount really fails, so the
 //      positive assertion is falsifiable rather than vacuous.
 // Evidence -> evidence/dsh-qa/preset-conformance/<ts>/. Never touches the real ~/.dsh.
-import { execFileSync, spawn } from "node:child_process"
+import { spawn } from "node:child_process"
+import { createServer } from "node:net"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync, readdirSync } from "node:fs"
 import { createRequire } from "node:module"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 import { seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshAppSpec } from "./lib/dsh-launcher.mjs"
 
 const ROOT = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PORT = Number(process.env.MPD_QA_PRESET_PORT ?? 3198)
@@ -58,13 +60,57 @@ const HARNESS_ROW_PREFIX = "@deepseek-ai/"
 
 function fail(message) { console.error("[preset-conformance] FAIL: " + message); process.exit(1) }
 
-/** Absolute path of the installed `dsh` harness root (the package that owns node_modules). */
+/** Is `dir` the installed harness package (the one that owns node_modules)? */
+function isHarnessPackage(dir) {
+  try { return JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).name === "@deepseek-ai/dsh" } catch { return false }
+}
+
+/**
+ * The PATH-resolved `dsh` launcher — resolved in-process, WITHOUT `sh`.
+ *
+ * `sh -c "command -v dsh"` is a POSIX-only shape: on Windows the `sh` that answers is Git
+ * Bash / MSYS, and it prints a POSIX path (`/c/Users/<user>/AppData/Roaming/npm/dsh`) that
+ * `realpathSync` cannot resolve (measured: `ENOENT: lstat 'C:\c'`, which took the whole case
+ * down). The PATH scan below is the platform-native equivalent and needs no shell at all.
+ */
+function whichDsh() {
+  const dirs = (process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":")
+  const names = process.platform === "win32" ? ["dsh.cmd", "dsh.exe", "dsh.bat", "dsh"] : ["dsh"]
+  for (const dir of dirs) {
+    if (dir === "") continue
+    for (const name of names) {
+      const candidate = join(dir, name)
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return ""
+}
+
+/**
+ * Absolute path of the installed `dsh` harness root (the package that owns node_modules).
+ *
+ * The POSIX shape is a symlink chain — `realpath(bin)` lands INSIDE the package, so two
+ * `dirname` hops reach its root. npm's Windows launcher is NOT that: `<prefix>\dsh.cmd` is a
+ * shim whose `..` is the npm prefix, so the same two hops answer `<prefix>` (no `package.json`,
+ * no `node_modules`) and every schema lookup would read as "unresolved". The owning package is
+ * therefore located by WALKING UP for either the package itself (name `@deepseek-ai/dsh`) or
+ * the npm prefix's `node_modules/@deepseek-ai/dsh` child, whichever the layout offers.
+ */
 function harnessRoot() {
-  let bin = ""
-  try { bin = execFileSync("sh", ["-c", "command -v dsh"], { encoding: "utf8" }).trim() } catch { return "" }
+  const bin = whichDsh()
   if (bin === "") return ""
-  const real = realpathSync(bin)
-  return dirname(dirname(real))
+  let real = ""
+  try { real = realpathSync(bin) } catch { return "" }
+  let dir = dirname(real)
+  for (let i = 0; i < 8; i++) {
+    if (isHarnessPackage(dir)) return dir
+    const nested = join(dir, "node_modules", "@deepseek-ai", "dsh")
+    if (isHarnessPackage(nested)) return nested
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return ""
 }
 
 /** js-yaml resolved from the installed harness (no repo dependency). */
@@ -128,7 +174,9 @@ async function loadSchema(root, packageName, cache) {
   if (existsSync(entry)) {
     state = { kind: "schema-free" }
     try {
-      const mod = await import(entry)
+      // pathToFileURL: node's ESM loader rejects a bare Windows path
+      // (`ERR_UNSUPPORTED_ESM_URL_SCHEME: received protocol 'c:'`); POSIX paths pass either way.
+      const mod = await import(pathToFileURL(entry).href)
       const candidates = [mod.Config, mod.default?.Config]
       for (const value of Object.values(mod)) {
         if (typeof value === "function" && value.Config !== undefined) candidates.push(value.Config)
@@ -283,7 +331,7 @@ function makeSandbox(tag, presetRoot) {
   if (existsSync(settings)) cpSync(settings, join(home, "settings.yaml"))
   // A checkout install IS a link: node_modules/@mpd-dsh/mpd -> the repo, which is
   // what `dsh plugin add <repo>` writes and what the bundle exports resolve through.
-  symlinkSync(ROOT, join(profile, "node_modules", "@mpd-dsh", "mpd"), "dir")
+  symlinkSync(ROOT, join(profile, "node_modules", "@mpd-dsh", "mpd"), "junction")
   writeFileSync(join(profile, "package.json"), JSON.stringify({
     name: "dsh-profile-w", private: true, dependencies: {}, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@mpd-dsh/mpd"] } },
   }, null, 2))
@@ -311,6 +359,25 @@ function makeSandbox(tag, presetRoot) {
   return { sandbox, home, userHome, profile, ws, patches, env: { ...process.env, DSH_HOME: home, HOME: userHome } }
 }
 
+/**
+ * Fail fast when the sandbox port is already taken.
+ *
+ * MEASURED (2026-09-22): a crashed run left its web app behind on 3198 and the NEXT run then died
+ * inside the harness's own loader (`EADDRINUSE` -> `failed to apply loader entry webserver`) with
+ * no `token=` line, so this lane spent its whole budget and reported an unauthorized
+ * `session/create` plus a vacuous negative control - ninety seconds of symptoms for a one-line
+ * cause. `MPD_QA_PRESET_PORT` picks another port.
+ */
+async function assertPortFree(port) {
+  const taken = await new Promise((resolve) => {
+    const probe = createServer()
+    probe.once("error", () => resolve(true))
+    probe.once("listening", () => probe.close(() => resolve(false)))
+    probe.listen(port, "127.0.0.1")
+  })
+  if (taken) fail("port " + port + " is already in use: a previous run's web app is still alive (kill it) or set MPD_QA_PRESET_PORT to a free port")
+}
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
@@ -323,14 +390,23 @@ function redact(text) {
   return text.replace(/token=[A-Za-z0-9_-]+/g, "token=<redacted>")
 }
 
+/** Every web app this lane booted, so the CLI can never leave one holding its port. */
+const BOOTED = []
+
 /** Boot one sandbox and return its log path, token/cookie and the child handle. */
 async function boot(sandbox, logPath) {
   const fd = openSync(logPath, "w")
   // Launcher flags (`--patch`) come BEFORE the profile app's own flags: the
   // launcher hands everything after its first unrecognized argument to the app.
-  const child = spawn("dsh", ["--profile", "w", ...sandbox.patches, "--port", String(PORT), "--no-open"], {
+  // The launcher is spawned by its RESOLVED path: a bare `dsh` is not portable (npm installs a
+  // `.cmd` shim on win32 and node refuses that without a shell - measured 2026-09-22: the whole
+  // lane died with `spawn dsh ENOENT` before this).
+  const spec = dshAppSpec(["--profile", "w", ...sandbox.patches, "--port", String(PORT), "--no-open"], sandbox.env)
+  if (spec === null) fail(DSH_MISSING)
+  const child = spawn(spec.command, spec.args, {
     env: sandbox.env, cwd: sandbox.ws, stdio: ["ignore", fd, fd],
   })
+  BOOTED.push(child)
   const readLog = () => { try { return readFileSync(logPath, "utf8") } catch { return "" } }
   let token = ""
   let cookie = ""
@@ -362,20 +438,33 @@ async function createSession(cookie, presetId, cwd) {
     }),
     signal: AbortSignal.timeout(60000),
   }).catch((error) => ({ status: 0, json: async () => ({ transport: String(error?.cause?.code ?? error?.message ?? error) }) }))
-  const envelope = await response.json()
-  return { status: response.status, result: envelope?.result ?? null, transport: envelope?.transport ?? null }
+  // The server does NOT always answer JSON: an unauthenticated call answers the plain text
+  // `unauthorized`, and `await response.json()` then threw an unhandled SyntaxError that killed the
+  // lane (measured 2026-09-22) - so the lane reported NOTHING about the boot it had just made. The
+  // body is read as TEXT and surfaced in the step instead, whatever its shape.
+  const raw = await response.text().catch(() => "")
+  let envelope = null
+  try { envelope = JSON.parse(raw) } catch { envelope = null }
+  return { status: response.status, result: envelope?.result ?? null, transport: envelope?.transport ?? null, raw: raw.slice(0, 400) }
 }
 
 async function stop(child) {
   try { child.kill("SIGTERM") } catch { /* already gone */ }
   await sleep(1500)
   try { child.kill("SIGKILL") } catch { /* already gone */ }
+  // BEST EFFORT, win32 only: when the fallback interpreter spec was used the app is a CHILD of
+  // cmd.exe and survives the two kills above, still holding the port (measured 2026-09-22). `/T`
+  // takes the tree; a caller whose policy forbids taskkill simply keeps the old behaviour.
+  if (process.platform === "win32" && typeof child.pid === "number") {
+    try { spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" }) } catch { /* denied: the direct-child path needs no tree kill */ }
+  }
 }
 
 /** The mount-failure signatures a row that does not apply leaves in the boot log. */
 const FAILURE_SIGNATURES = ["invalid config", "failed to apply loader entry", "agent-preset/invalid", "did not activate"]
 
 async function runReal() {
+  await assertPortFree(PORT)
   const ts = new Date().toISOString().replaceAll(":", "-")
   const outDir = join(ROOT, "evidence", "dsh-qa", "preset-conformance", ts)
   mkdirSync(outDir, { recursive: true })
@@ -395,6 +484,7 @@ async function runReal() {
     error: created.result?.ok === false ? created.result.error : undefined,
     sessionId: value?.sessionId ?? null,
     agentPreset: value?.agentPreset ?? null,
+    raw: created.raw ?? null,
   }
   // Durable record: the session header names the preset it was composed from.
   let headerPreset = null
@@ -469,4 +559,18 @@ async function runReal() {
 
 const argv = process.argv.slice(2)
 if (argv.includes("--self-test")) await selfTest()
-else await runReal()
+else {
+  // A live lane must never leave its web app behind: the child holds the port, and the NEXT boot in
+  // the same run (the negative control) then dies with EADDRINUSE - measured 2026-09-22, after a step
+  // threw and no `stop()` was ever reached. Whatever happens, the booted children die here.
+  try {
+    await runReal()
+  } catch (error) {
+    console.error("[preset-conformance] FAIL: " + String(error?.stack ?? error).slice(0, 2000))
+    process.exitCode = 1
+  } finally {
+    for (const child of BOOTED) {
+      try { child.kill("SIGKILL") } catch { /* already gone */ }
+    }
+  }
+}

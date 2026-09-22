@@ -18,6 +18,7 @@ import { homedir, tmpdir } from "node:os"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const safeJson = (text) => { try { return JSON.parse(text) } catch { return null } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -78,7 +79,8 @@ function runReal() {
   const env = credentialEnv({ ...process.env, DSH_HOME: dshHome, HOME: wmHome  })
   const steps = {}
   function runSync(cmd, args, opts = {}) {
-    const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
+    const spec = cmd === "dsh" ? dshCommand(args, env) : { command: cmd, args }
+    const r = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
     return { status: r.status, out: (r.stdout || "") + (r.stderr || "") }
   }
 

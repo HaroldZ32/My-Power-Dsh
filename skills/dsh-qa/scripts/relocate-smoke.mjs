@@ -14,6 +14,7 @@ import { homedir } from "node:os"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const DEV = process.env.MPD_DEV_ROOT || repoRoot
@@ -108,7 +109,8 @@ async function runReal() {
     + "    - id: roles-probe\n      name: " + JSON.stringify(join(repoRoot, "packages", "mpd-qa-roles-probe", "dist", "index.js")) + "\n")
   // Deterministic boot proof (no model call: the QA machine has no model key):
   // the probe reads the LIVE preset + skill catalog out of the relocated package.
-  const live = spawnSync("dsh", ["--profile", "t", "ok"], { env, cwd: join(reloc, "ws"), encoding: "utf8", timeout: 600000, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] })
+  const liveSpec = dshCommand(["--profile", "t", "ok"], env)
+  const live = liveSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(liveSpec.command, liveSpec.args, { env, cwd: join(reloc, "ws"), encoding: "utf8", timeout: 600000, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] })
   const out = (live.stdout || "") + (live.stderr || "")
   const presetPath = /PRESET_PATH=([^\s]+) trust=(\w+)/.exec(out)
   const fixture = /SKILL_FIXTURE=(\w+) name=(\S+) base=(\S+) bytes=(\d+)/.exec(out)

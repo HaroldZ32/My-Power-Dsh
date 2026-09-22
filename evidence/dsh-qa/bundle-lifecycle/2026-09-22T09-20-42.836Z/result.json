@@ -1,0 +1,57 @@
+{
+  "ok": false,
+  "sandbox": "C:\\MyDoc\\DshProj\\my-power-dsh\\.qa-reloc\\bundle-lifecycle-2026-09-22T09-20-42.836Z",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0,
+      "dependency": "link:C:/MyDoc/DshProj/my-power-dsh",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "oneCommand": "dsh plugin --profile w add <repo root>"
+    },
+    "composed": {
+      "ok": true,
+      "exit": 0
+    },
+    "boot": {
+      "ok": false,
+      "http": true,
+      "corpus": "C:\\MyDoc\\DshProj\\my-power-dsh\\skills",
+      "preset": null,
+      "trust": null,
+      "bundleReal": "C:\\MyDoc\\DshProj\\my-power-dsh",
+      "adapterSeams": "tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection"
+    },
+    "noHomeCopy": {
+      "ok": true,
+      "skills": [],
+      "presets": []
+    },
+    "layerDurability": {
+      "ok": true,
+      "exit": 0,
+      "dependency": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ]
+    },
+    "uninstall": {
+      "ok": false,
+      "exit": 0,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app"
+      ],
+      "residue": [
+        "C:\\MyDoc\\DshProj\\my-power-dsh\\.qa-reloc\\bundle-lifecycle-2026-09-22T09-20-42.836Z\\home\\profiles\\w\\node_modules\\@mpd-dsh"
+      ],
+      "mpdState": []
+    }
+  }
+}

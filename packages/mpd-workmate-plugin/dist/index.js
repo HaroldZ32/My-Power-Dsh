@@ -341,11 +341,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config2, signal) {
+    llmResolveCallConfig(config, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config2, signal);
+      return llm.resolveCallConfig.call(llm, config, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -389,7 +389,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -682,11 +682,11 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -694,24 +694,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -742,8 +742,8 @@ class WorkmateError extends Error {
   code;
   status;
   blocking;
-  constructor(code, message2, status, blocking = []) {
-    super(message2);
+  constructor(code, message, status, blocking = []) {
+    super(message);
     this.name = "WorkmateError";
     this.code = code;
     this.status = status;
@@ -784,6 +784,11 @@ function workmateRoot() {
 }
 var WORKMATE_ALLOW_REAL_HOME_ENV = "MPD_DSH_WORKMATE_ALLOW_REAL_HOME";
 function realUserHome() {
+  if (process.platform === "win32") {
+    const profile = process.env.USERPROFILE;
+    if (typeof profile === "string" && profile !== "")
+      return profile;
+  }
   try {
     const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
     if (uid !== undefined) {
@@ -815,8 +820,8 @@ function assertMutationSandboxed(operation) {
     return;
   throw new WorkmateError("real-home-refused", "mpd_workmate: refusing to " + operation + " inside the REAL library " + root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + WORKMATE_ALLOW_REAL_HOME_ENV + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
 }
-function wmDir(name2) {
-  const key = sanitizeName(name2);
+function wmDir(name) {
+  const key = sanitizeName(name);
   if (key === "")
     throw new WorkmateError("invalid-name", "mpd_workmate: empty workmate name — the library root is not an instance", 400);
   return join(workmateRoot(), key);
@@ -971,8 +976,8 @@ ${revision.trim()}` : ""), PERSONA_CAP);
 `);
   return merged;
 }
-function ensureInstance(name2) {
-  const key = sanitizeName(name2);
+function ensureInstance(name) {
+  const key = sanitizeName(name);
   const dir = wmDir(key);
   const meta = readMeta(dir);
   if (!meta)
@@ -1213,20 +1218,20 @@ function apply(ctx) {
     assertMutationSandboxed("initialize a workmate");
     const base = resolveBase(baseKey);
     const given = sanitizeName(nameArg);
-    let name2 = given;
-    if (!name2) {
+    let name = given;
+    if (!name) {
       const slug = sanitizeName(base.name) || "workmate";
       const existing = listInstances();
       let n = existing.filter((i) => i.meta.baseId === base.id).length + 1;
       while (existing.some((i) => i.name === `${slug}-${n}`))
         n += 1;
-      name2 = `${slug}-${n}`;
+      name = `${slug}-${n}`;
     }
-    const dir = wmDir(name2);
+    const dir = wmDir(name);
     if (existsSync(dir))
-      throw new Error(`mpd_workmate: "${name2}" already exists — pick another name or reuse it via mpd_workmate_spawn`);
+      throw new Error(`mpd_workmate: "${name}" already exists — pick another name or reuse it via mpd_workmate_spawn`);
     mkdirSync(dir, { recursive: true });
-    const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: base.provider, model: base.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [] };
+    const meta = { name, baseId: base.id, baseName: base.name, description: base.description, provider: base.provider, model: base.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [] };
     writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
 `);
     writeFileSync(join(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + `
@@ -1235,29 +1240,29 @@ function apply(ctx) {
     const note = capText(String(noteArg ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP);
     writeFileSync(join(dir, "note.md"), note + `
 `);
-    writeIndexEntry(name2, meta);
-    return { name: name2, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
+    writeIndexEntry(name, meta);
+    return { name, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
   }
   const workmateLibrary = {
-    list: () => listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, renamedFrom: meta.renamedFrom, note })),
-    get: (name2) => {
+    list: () => listInstances().map(({ name, meta, note }) => ({ name, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, renamedFrom: meta.renamedFrom, note })),
+    get: (name) => {
       try {
-        const { meta, key } = ensureInstance(name2);
+        const { meta, key } = ensureInstance(name);
         return { ...publicMeta(meta), name: key, note: readNote(key) };
       } catch {
         return null;
       }
     },
-    read: (name2) => {
+    read: (name) => {
       try {
-        const { meta, key } = ensureInstance(name2);
+        const { meta, key } = ensureInstance(name);
         return { ...publicMeta(meta), name: key, persona: readPersona(key), memory: readMemory(key), note: readNote(key) };
       } catch {
         return null;
       }
     },
-    rename: (name2, newName, roots) => renameWorkmate(name2, newName, roots ?? agentlessRoots(dsh)),
-    delete: (name2, purge = false, confirm = "", roots) => deleteWorkmate(name2, purge, confirm, roots ?? agentlessRoots(dsh))
+    rename: (name, newName, roots) => renameWorkmate(name, newName, roots ?? agentlessRoots(dsh)),
+    delete: (name, purge = false, confirm = "", roots) => deleteWorkmate(name, purge, confirm, roots ?? agentlessRoots(dsh))
   };
   ctx.provide("mpdWorkmate", workmateLibrary);
   dsh.registerTool({
@@ -1268,7 +1273,7 @@ function apply(ctx) {
 ` + v.workmates.map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " :: " + String(w.note).slice(0, 140)).join(`
 `) || "(empty)") },
     execute: async () => {
-      const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
+      const list = listInstances().map(({ name, meta, note }) => ({ name, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
       return { workmates: list, count: list.length };
     }
   });
@@ -1371,10 +1376,10 @@ ${capText(outcome, 1200)}`);
       const task = String(args?.task ?? "").trim();
       if (!task)
         throw new Error("mpd_workmate_match: task required");
-      const matches = listInstances().map(({ name: name2, meta, note }) => {
-        const memoryTail = readMemory(name2, 600);
+      const matches = listInstances().map(({ name, meta, note }) => {
+        const memoryTail = readMemory(name, 600);
         const score = scoreMatch(task, { note, baseName: meta.baseName, description: meta.description, memoryTail });
-        return { name: name2, score: Math.round(score * 100) / 100, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, note };
+        return { name, score: Math.round(score * 100) / 100, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, note };
       }).sort((a, b) => b.score - a.score);
       const best = matches[0];
       const matched = !!best && best.score >= MATCH_THRESHOLD;
@@ -1429,7 +1434,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
       kind: "exact",
       path: "/plugins/mpd-workmate/list",
       handler: async (_req, res) => {
-        const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
+        const list = listInstances().map(({ name, meta, note }) => ({ name, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
         res.end(JSON.stringify({ workmates: list }));
       }
@@ -1455,11 +1460,11 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
       kind: "exact",
       path: "/plugins/mpd-workmate/get",
       handler: async (req, res) => {
-        const name2 = String(new URL(String(req.url ?? "/"), "http://dsh.invalid").searchParams.get("name") ?? "").trim();
-        const detail = name2 === "" ? null : workmateLibrary.read(name2);
+        const name = String(new URL(String(req.url ?? "/"), "http://dsh.invalid").searchParams.get("name") ?? "").trim();
+        const detail = name === "" ? null : workmateLibrary.read(name);
         if (detail == null) {
           res.writeHead(404, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-          res.end(JSON.stringify({ error: "unknown workmate: " + name2 }));
+          res.end(JSON.stringify({ error: "unknown workmate: " + name }));
           return;
         }
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -1544,23 +1549,23 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
   }
 }
 export {
-  scoreMatch,
-  sanitizeName,
-  renameWorkmate,
-  nameKey,
-  name,
-  inject,
-  deleteWorkmate,
-  capText,
-  busyTeams,
-  autoNote,
-  assertMutationSandboxed,
-  apply,
-  WorkmateError,
-  WORKMATE_ALLOW_REAL_HOME_ENV,
-  READONLY_DENY,
-  PERSONA_CAP,
-  NOTE_CAP,
+  MATCH_THRESHOLD,
   MEMORY_CAP,
-  MATCH_THRESHOLD
+  NOTE_CAP,
+  PERSONA_CAP,
+  READONLY_DENY,
+  WORKMATE_ALLOW_REAL_HOME_ENV,
+  WorkmateError,
+  apply,
+  assertMutationSandboxed,
+  autoNote,
+  busyTeams,
+  capText,
+  deleteWorkmate,
+  inject,
+  name,
+  nameKey,
+  renameWorkmate,
+  sanitizeName,
+  scoreMatch
 };

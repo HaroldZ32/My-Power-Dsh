@@ -23,11 +23,12 @@
 //   bun skills/dsh-qa/scripts/tui-admission.mjs [--sandbox-root <dir>] [--static-only]
 // Evidence -> evidence/tui/lanes/<timestamp>/{result.json,output.log,admission-static.json,plugins-check.pane.txt}
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { join, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
 import {
-  REPO, artifactRevision, manifestDigest, classifyAdmissionPane, gateTuiPrereqs, laneEvidenceDir, makeChecks, parseSandboxArgs, profileState,
-  resolveHostRoot, resolveSpecDataRoot, runTuiSession, sha256File, structuralFindings, tuiPrereqs, writeLaneEvidence, writeRevisionFile,
+  REPO, artifactRevision, manifestDigest, classifyAdmissionPane, emitMarker, gateTuiPrereqs, laneEvidenceDir, makeChecks, parseSandboxArgs,
+  profileState, resolveHostRoot, resolveSpecDataRoot, runTuiSession, sha256File, specDataRootCandidates, structuralFindings, tuiPrereqs,
+  writeLaneEvidence, writeRevisionFile,
 } from "./lib/tui-lane.mjs"
 
 const SLUG = "tui-admission"
@@ -160,11 +161,26 @@ function selfTest() {
   }
   check(!classifyAdmissionPane("nothing useful here").ok, "a pane with no five-state outcome must fail")
 
-  const spec = resolveSpecDataRoot(resolveHostRoot())
-  check(spec !== undefined, "the spec-data root must resolve from the installed payload or the user checkout")
-  if (spec !== undefined) {
-    check(spec.registrySha256.startsWith("sha256:"), "the spec-data root must record the registry digest")
-    check(!spec.dir.includes(".mpd/recon/dsh-TUI"), "the empty recon clone must never be the admission spec root")
+  // The spec-data root is an EXTERNAL fixture: the installed TUI payload carries the copy the
+  // running host resolves, and `resolveSpecCheckout()` names the operator's own checkout. A host
+  // with NEITHER is reported as an absent fixture and SKIPPED, exactly like the lane's own prereq
+  // gate (rule T8-F1: the skip is legitimate because this self-test did not ask for the fixture,
+  // and `--no-skip` still forces the FAIL). When a candidate DOES exist, resolution must succeed,
+  // so the assertion can never be vacuous on a host that has the data.
+  const hostRoot = resolveHostRoot()
+  const specCandidates = specDataRootCandidates(hostRoot)
+  const spec = resolveSpecDataRoot(hostRoot)
+  if (spec === undefined && !specCandidates.some((candidate) => existsSync(candidate.dir))) {
+    const strict = process.argv.includes("--no-skip")
+    emitMarker(strict ? "FAIL" : "SKIP", SLUG, "absent-fixture", "dsh-ecosystem-spec with registry/registry-0.15.json", "check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT")
+    if (strict) problems.push("the spec-data root is absent on this host and --no-skip was requested")
+  } else {
+    check(spec !== undefined, "the spec-data root must resolve from the installed payload or the user checkout")
+    if (spec !== undefined) {
+      check(spec.registrySha256.startsWith("sha256:"), "the spec-data root must record the registry digest")
+      // POSIX-spelled before the substring test: a native win32 path never contains "/".
+      check(!spec.dir.split(sep).join("/").includes(".mpd/recon/dsh-TUI"), "the empty recon clone must never be the admission spec root")
+    }
   }
   const skill = join(REPO, "skills", "dsh-qa", "SKILL.md")
   check(existsSync(skill) && readFileSync(skill, "utf8").includes("| tui-admission |"), "the case table does not list tui-admission")

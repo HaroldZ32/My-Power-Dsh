@@ -26,6 +26,12 @@
   sha 固定、由阻塞式 vendor 门禁（`scripts/verify-vendor.mjs`）保护的预构建文件，在那里打标记
   delta 要么使门禁失败，要么把门禁变成自我背书
   （`evidence/wave3/registry-redesign/t1-decision-record.txt` §A4）。
+- **预构建文件“加载失败”时同样降级（主机缺陷，2026-09-22 实测）**：该产物在**模块加载期**执行
+  `var ACCOUNT_HOME_DIR = userInfo().homedir`，因此在 libuv 的 `uv_os_get_passwd` 失败的主机上，
+  它在回答第一帧之前就抛出 `SystemError: ... ENOMEM`；而一个 MCP 子进程崩溃会把整个 bundle 的启动
+  一起拖垮（Web 应用始终无法提供服务）。因此 `launch.mjs` 现在包裹该 `import`：失败时由自身作为
+  UNAVAILABLE server 应答握手（0 个工具，原因输出到 stderr，退出码 0），会话照常启动、原因可读。
+  规则同上：delta 只写在 launcher 里，绝不写进受 sha 固定的预构建文件。
 - **共享 daemon 策略（`daemon-policy.mjs`）**：被采纳的 server 既可依托按项目根共享的 daemon
   （`<projectRoot>/.codegraph/daemon.{sock,pid}`），也可用自身进程内引擎服务会话。daemon 的消失
   并不受会话控制——上游会在空闲 30 分钟后回收它（即使仍有客户端连接，`DEFAULT_MAX_IDLE_MS`），

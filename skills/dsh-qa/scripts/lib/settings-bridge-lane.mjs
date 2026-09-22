@@ -56,6 +56,7 @@ import { homedir, tmpdir } from "node:os"
 import { dirname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import { sandboxWorkspace, assertSessionsSandboxed } from "./workspace-isolation.mjs"
+import { DSH_MISSING, dshCommand } from "./dsh-launcher.mjs"
 
 const REPO = dirname(dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url))))))
 export const LANE_SLUG = "settings-bridge"
@@ -258,7 +259,7 @@ function makeSandboxIn(sandbox, tag, mountRoot) {
   if (existsSync(creds)) cpSync(creds, join(home, ".credentials.yaml"))
   const settings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(settings)) cpSync(settings, join(home, "settings.yaml"))
-  symlinkSync(REPO, join(profile, "node_modules", "@mpd-dsh", "mpd"), "dir")
+  symlinkSync(REPO, join(profile, "node_modules", "@mpd-dsh", "mpd"), "junction")
   writeFileSync(join(profile, "package.json"), JSON.stringify({
     name: "dsh-profile-w", private: true, dependencies: {}, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@mpd-dsh/mpd"] } },
   }, null, 2))
@@ -297,7 +298,9 @@ function workspace(sandbox, name, value = VALUE_INITIAL) {
 
 async function boot(sandbox, logPath, port) {
   const fd = openSync(logPath, "w")
-  const child = spawn("dsh", ["--profile", "w", ...sandbox.patches, "--port", String(port), "--no-open"], {
+  const childSpec = dshCommand(["--profile", "w", ...sandbox.patches, "--port", String(port), "--no-open"], sandbox.env)
+  if (childSpec === null) throw new Error(DSH_MISSING)
+  const child = spawn(childSpec.command, childSpec.args, {
     env: sandbox.env, cwd: sandbox.sandbox, stdio: ["ignore", fd, fd],
   })
   const readLog = () => { try { return readFileSync(logPath, "utf8") } catch { return "" } }

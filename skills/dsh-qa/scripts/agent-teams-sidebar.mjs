@@ -40,6 +40,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 import { seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = dirname(dirname(dirname(HERE)))
@@ -465,7 +466,7 @@ async function bootProbe(sandbox, artifactText) {
   const credentials = join(homedir(), ".dsh", ".credentials.yaml")
   const needed = ["@deepseek-ai", "@linxin666", "dsh-better-sidebar"].map((name) => join(realProfileNodeModules, name))
   const missing = needed.filter((path) => !existsSync(path))
-  if (spawnSync("dsh", ["--version"], { encoding: "utf8" }).status !== 0) {
+  if (resolveDshLauncher() === "") {
     return { ok: false, mode: "source-and-row", skipped: "dsh binary not on PATH" }
   }
   if (missing.length > 0) {
@@ -477,10 +478,14 @@ async function bootProbe(sandbox, artifactText) {
   mkdirSync(join(profile, "node_modules", "@mpd-dsh"), { recursive: true })
   mkdirSync(join(home, ".agent-presets"), { recursive: true })
   mkdirSync(userHome, { recursive: true })
+  // "junction" on every directory link below: Windows directory SYMLINKS need
+  // SeCreateSymbolicLinkPrivilege (admin or Developer Mode) and fail with EPERM; junctions do not,
+  // and the type is ignored on POSIX. An untyped link is a FILE link on Windows, which cannot be
+  // traversed as the package directory these links stand in for.
   for (const name of ["@deepseek-ai", "@linxin666", "dsh-better-sidebar"]) {
-    symlinkSync(join(realProfileNodeModules, name), join(profile, "node_modules", name))
+    symlinkSync(join(realProfileNodeModules, name), join(profile, "node_modules", name), "junction")
   }
-  symlinkSync(ROOT, join(profile, "node_modules", "@mpd-dsh", "mpd"))
+  symlinkSync(ROOT, join(profile, "node_modules", "@mpd-dsh", "mpd"), "junction")
   seedSandboxCredentials(home, { credentialsFile: credentials })
   // AGENTS.md §7 — live cases must ALSO stage settings.yaml when present (gateway
   // providers keep the model route there; without it the boot dies with
@@ -496,7 +501,9 @@ async function bootProbe(sandbox, artifactText) {
   // Workspace isolation: the web boot's session workspace is its cwd, so it must be a
   // sandbox dir — never the real checkout (DSH_HOME/HOME do not cover workspace state).
   const ws = sandboxWorkspace(sandbox)
-  const web = spawn("dsh", ["--profile", "w", "--port", String(PORT), "--no-open"], {
+  const webSpec = dshCommand(["--profile", "w", "--port", String(PORT), "--no-open"], { ...process.env, DSH_HOME: home, HOME: userHome })
+  if (webSpec === null) throw new Error(DSH_MISSING)
+  const web = spawn(webSpec.command, webSpec.args, {
     env: { ...process.env, DSH_HOME: home, HOME: userHome }, cwd: ws, stdio: ["ignore", fd, fd],
   })
   const base = "http://127.0.0.1:" + PORT

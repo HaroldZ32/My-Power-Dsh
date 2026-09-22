@@ -341,11 +341,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config2, signal) {
+    llmResolveCallConfig(config, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config2, signal);
+      return llm.resolveCallConfig.call(llm, config, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -389,7 +389,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -682,11 +682,11 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -694,24 +694,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -840,7 +840,7 @@ function agentIsIdle(agent) {
 }
 async function compactTeamPass(dsh, team, options) {
   const now = options.now ?? (() => Date.now());
-  const sleep = options.sleep ?? ((ms) => new Promise((resolve2) => setTimeout(resolve2, ms)));
+  const sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   const at = now();
   const members = compactableMembers(team);
   const base = {
@@ -1103,20 +1103,20 @@ function apply(ctx) {
   });
 }
 export {
-  writeAudit,
-  terminalTaskStatuses,
-  teamIsFinished,
-  sameAuditOutcome,
-  readTeamRecord,
-  readAudits,
-  name,
-  listTeamIds,
-  isStagedMember,
-  inject,
-  compactableMembers,
-  compactTeamPass,
-  classifyCompactionError,
-  auditDir,
+  COMPACTION_FAILURE_CODES,
   apply,
-  COMPACTION_FAILURE_CODES
+  auditDir,
+  classifyCompactionError,
+  compactTeamPass,
+  compactableMembers,
+  inject,
+  isStagedMember,
+  listTeamIds,
+  name,
+  readAudits,
+  readTeamRecord,
+  sameAuditOutcome,
+  teamIsFinished,
+  terminalTaskStatuses,
+  writeAudit
 };

@@ -877,7 +877,10 @@ describe("§9.4 — the ONE render boundary strips control characters (finding F
     for (const control of ["\u001b", "\u0007", "\u009b", "\u001b]"]) expect(text).not.toContain(control)
   })
 
-  test("a control character in a team DIRECTORY name cannot reach a rendered row", () => {
+  // skipped on win32: a directory whose name carries C0 control characters cannot exist there
+  // (mkdir answers ENOENT, not a policy refusal), so the hostile-name direction has no fixture.
+  // The ESC-in-a-tool-error arm above exercises the same render boundary (safeLine) everywhere.
+  test.skipIf(process.platform === "win32")("a control character in a team DIRECTORY name cannot reach a rendered row", () => {
     // The second untrusted direction: the record/directory name feeds the problem notes.
     const root = mkdtempSync(join(tmpdir(), "mpd-tui-hostile-dir-"))
     temporary.push(root)

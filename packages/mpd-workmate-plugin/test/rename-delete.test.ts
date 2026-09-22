@@ -280,10 +280,15 @@ test("collision guard: ANY lstat hit on the target is a 409 collision and nothin
   await expect(h.byName("mpd_workmate_rename").execute({ name: "oracle-1", new_name: "oracle-4" }, h.exec)).rejects.toThrow(/already exists/)
   expect(readText(inst("oracle-4"))).toBe("not a directory")
 
-  // 4) a DANGLING symlink: invisible to existsSync, visible to lstatSync
-  symlinkSync(join(root(), "does-not-exist"), inst("oracle-5"))
-  expect(existsSync(inst("oracle-5"))).toBe(false)
-  await expect(h.byName("mpd_workmate_rename").execute({ name: "oracle-1", new_name: "oracle-5" }, h.exec)).rejects.toThrow(/already exists/)
+  // 4) a DANGLING symlink: invisible to existsSync, visible to lstatSync.
+  // Windows cannot create one without SeCreateSymbolicLinkPrivilege (admin or Developer Mode), and a
+  // junction always requires an EXISTING target, so this arm is POSIX-only. Arms 1-3 keep the
+  // lstat-vs-existsSync distinction itself; they are not skipped with it.
+  if (process.platform !== "win32") {
+    symlinkSync(join(root(), "does-not-exist"), inst("oracle-5"))
+    expect(existsSync(inst("oracle-5"))).toBe(false)
+    await expect(h.byName("mpd_workmate_rename").execute({ name: "oracle-1", new_name: "oracle-5" }, h.exec)).rejects.toThrow(/already exists/)
+  }
 
   expect(existsSync(inst("oracle-1"))).toBe(true)
   expect(indexKeys()).toEqual(["oracle-1"])
@@ -292,7 +297,9 @@ test("collision guard: ANY lstat hit on the target is a 409 collision and nothin
 test("a symlinked instance directory is refused, not resolved (§H)", async () => {
   const h = makeHarness()
   await initOne(h, "real-1")
-  symlinkSync(inst("real-1"), inst("link-1"))
+  // "junction": the target is an existing directory, and a junction needs no Windows privilege
+  // (a "dir" symlink fails with EPERM there). POSIX ignores the type.
+  symlinkSync(inst("real-1"), inst("link-1"), "junction")
   const before = readText(join(inst("real-1"), "meta.json"))
 
   await expect(h.byName("mpd_workmate_rename").execute({ name: "link-1", new_name: "link-2" }, h.exec)).rejects.toThrow(/symlink/)
@@ -648,20 +655,57 @@ test("a headless profile stays tool-only: no webServer, no route work, tools sti
 // actually returns — and pins the old shape as a FAILURE so the defect can never come back silently.
 import { createRequire } from "node:module"
 import { existsSync } from "node:fs"
+import { pathToFileURL } from "node:url"
 
-/** Every npm-global location the installed harness can live in, derived from the `dsh` binary. */
+/**
+ * The PATH-resolved `dsh` launcher, WITHOUT `sh` and WITHOUT `which`.
+ *
+ * `execFileSync("which", ["dsh"])` is a POSIX-only shape in two ways: `which` is not a
+ * program on Windows, and the MSYS `which` a Git-Bash host answers with prints a POSIX
+ * path (`/c/Users/...`) that `dirname` cannot walk. The PATH scan below is the
+ * platform-native equivalent and needs no shell at all — the same shape the QA lanes
+ * adopted (`skills/dsh-qa/scripts/preset-conformance.mjs`, `whichDsh`).
+ */
+function whichDsh(): string {
+  const dirs = (process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":")
+  const names = process.platform === "win32" ? ["dsh.cmd", "dsh.exe", "dsh.bat", "dsh"] : ["dsh"]
+  for (const dir of dirs) {
+    if (dir === "") continue
+    for (const name of names) {
+      const candidate = join(dir, name)
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return ""
+}
+
+/**
+ * Every npm-global location the installed harness can live in, derived from the `dsh` binary.
+ *
+ * The npm prefix keeps its global tree at `<prefix>/lib/node_modules` on POSIX and at
+ * `<prefix>/node_modules` on Windows, and `dsh` itself sits at `<prefix>/bin/dsh` there
+ * but directly at `<prefix>/dsh.cmd` here — so BOTH shapes are probed at every ancestor
+ * of the launcher, and a candidate that does not exist is dropped by the caller's
+ * `existsSync` filter.
+ */
 function harnessToolsCandidates(): string[] {
   const requireHere = createRequire(join(import.meta.dirname, "noop.js"))
   const candidates: string[] = []
   try { candidates.push(requireHere.resolve("@deepseek-ai/dsh-tools")) } catch { /* not a dependency of this checkout */ }
-  try {
-    const { execFileSync } = require("node:child_process")
-    const dsh = execFileSync("which", ["dsh"], { encoding: "utf8" }).trim()
-    const globalLib = join(dirname(dsh), "..", "lib", "node_modules")
-    for (const base of [join(globalLib, "@deepseek-ai", "dsh"), globalLib]) {
-      candidates.push(join(base, "node_modules", "@deepseek-ai", "dsh-tools", "lib", "index.js"))
+  const bin = whichDsh()
+  if (bin !== "") {
+    let dir = dirname(bin)
+    for (let i = 0; i < 8; i++) {
+      for (const modules of [join(dir, "lib", "node_modules"), join(dir, "node_modules")]) {
+        for (const base of [join(modules, "@deepseek-ai", "dsh"), modules]) {
+          candidates.push(join(base, "node_modules", "@deepseek-ai", "dsh-tools", "lib", "index.js"))
+        }
+      }
+      const parent = dirname(dir)
+      if (parent === dir) break
+      dir = parent
     }
-  } catch { /* dsh not on PATH */ }
+  }
   return candidates
 }
 
@@ -670,7 +714,9 @@ async function harnessValidator(): Promise<{ assertSupportedJsonSchema: (s: unkn
   for (const candidate of harnessToolsCandidates()) {
     if (candidate.endsWith(".js") && !existsSync(candidate)) continue
     try {
-      const mod: any = await import(candidate)
+      // pathToFileURL: node's ESM loader rejects a bare absolute Windows path
+      // (ERR_UNSUPPORTED_ESM_URL_SCHEME, received protocol 'c:').
+      const mod: any = await import(pathToFileURL(candidate).href)
       if (typeof mod.validateJsonSchemaValue === "function" && typeof mod.assertSupportedJsonSchema === "function") return mod
     } catch { /* try the next resolution route */ }
   }
