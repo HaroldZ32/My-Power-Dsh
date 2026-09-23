@@ -746,6 +746,15 @@
         return false;
       }
       autoOpenPolicyService = service;
+      // IDEMPOTENT by descriptor presence, for the same reason as the workmate tab: the
+      // sidebar's `registerTab` THROWS on a duplicate id, and `ctx.inject` re-fires on a
+      // provider remount. Skipping an ALREADY-registered tab keeps a re-fire harmless while a
+      // remount onto a FRESH service still gets the tab back.
+      try {
+        if (typeof service.getTab === "function" && service.getTab(TEAM_TAB_ID) !== undefined) return true;
+      } catch {
+        // a throwing getTab means "cannot tell": fall through and register as before
+      }
       const t = translatorFor(ctx);
       ctx.effect(() => ctx.locale.register(TEAM_LOCALE_NAMESPACE, { zh, en }), "mpd-agent-teams: dictionaries");
       ctx.effect(() => service.registerTab({

@@ -1,0 +1,3 @@
+http://127.0.0.1:3080/plugins/mpd-team-watchdog/state?reader=web-panel -> 404
+http://127.0.0.1:3080/plugins/mpd-workmate/list -> 200
+http://127.0.0.1:3080/plugins/mpd-workmate/roster -> 200

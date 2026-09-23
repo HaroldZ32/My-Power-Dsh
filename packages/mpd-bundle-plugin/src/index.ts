@@ -57,24 +57,61 @@ function stateDirResolver(ctx: any): () => string {
   }
 }
 
-function apply(ctx: any): void {
-  // Soft probe: a profile without a web server (headless, CLI) keeps this a marker plugin.
-  let webServer: any
+/**
+ * Resolve the web server for THIS row, once per successful registration.
+ *
+ * The `webServer` service is provided by ANOTHER plugin whose fiber activates
+ * independently of ours, so a ONE-SHOT `ctx.get` probe at apply() time RACES it
+ * and loses on a composition where the server's row mounts later — measured on a
+ * live profile (`@linxin666/dsh-web-all` + this bundle): `/plugins/mpd-workmate/*`
+ * answered 200 while this plugin's own `/plugins/mpd-team-watchdog/state` answered
+ * 404, because this file gave up where `mpd-workmate-plugin` retried.
+ *
+ * `internal/service` is the runtime's own binding event, so the resolver is
+ * re-entered on every later bind and the routes can never be silently lost.
+ * `httpServer` stays a fallback name (older hosts bind the same surface there).
+ */
+function webServerOf(ctx: any): any {
   try {
-    webServer = typeof ctx?.get === "function" ? ctx.get("webServer", false) : undefined
+    if (typeof ctx?.get !== "function") return undefined
+    return ctx.get("webServer", false) ?? ctx.get("httpServer", false)
   } catch {
-    webServer = undefined
+    // A probing failure is "not bound yet", never a reason to take the row down.
+    return undefined
   }
-  if (webServer === undefined || typeof webServer.register !== "function") return
-  if (typeof ctx?.effect !== "function") return
-  const workspace = workspaceResolver(ctx)
-  const result = registerWatchdogRoutes(webServer, {
-    roots: () => workspace.workspaceRootsAll(),
-    stateDir: stateDirResolver(ctx),
-    effect: (fn: () => unknown, label: string) => ctx.effect(fn, label),
-  })
-  if (!result.state) {
-    console.warn("[mpd] the web server refused the watchdog routes — the stuck-team banner has no data source")
+}
+
+function apply(ctx: any): void {
+  let registered = false
+  /**
+   * Bind the watchdog routes to the web server; retried until one answers.
+   * @returns whether the routes are registered now.
+   */
+  const registerRoutes = (): boolean => {
+    if (registered) return true
+    // No web server (headless, CLI) and no effect seam both keep this a marker plugin.
+    if (typeof ctx?.effect !== "function") return false
+    const webServer = webServerOf(ctx)
+    if (webServer === undefined || typeof webServer.register !== "function") return false
+    const workspace = workspaceResolver(ctx)
+    const result = registerWatchdogRoutes(webServer, {
+      roots: () => workspace.workspaceRootsAll(),
+      stateDir: stateDirResolver(ctx),
+      effect: (fn: () => unknown, label: string) => ctx.effect(fn, label),
+    })
+    if (!result.state) {
+      // A refusal stays retryable: a later rebind may accept the same routes.
+      console.warn("[mpd] the web server refused the watchdog routes — the stuck-team banner has no data source")
+      return false
+    }
+    registered = true
+    return true
+  }
+  registerRoutes()
+  if (typeof ctx?.on === "function") {
+    ctx.on("internal/service", (serviceName: string) => {
+      if (serviceName === "webServer" || serviceName === "httpServer") registerRoutes()
+    })
   }
 }
 

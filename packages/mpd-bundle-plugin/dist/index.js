@@ -297,25 +297,44 @@ function stateDirResolver(ctx) {
     return DEFAULT_TEAM_STATE_DIR;
   };
 }
-function apply(ctx) {
-  let webServer;
+function webServerOf(ctx) {
   try {
-    webServer = typeof ctx?.get === "function" ? ctx.get("webServer", false) : undefined;
+    if (typeof ctx?.get !== "function")
+      return;
+    return ctx.get("webServer", false) ?? ctx.get("httpServer", false);
   } catch {
-    webServer = undefined;
+    return;
   }
-  if (webServer === undefined || typeof webServer.register !== "function")
-    return;
-  if (typeof ctx?.effect !== "function")
-    return;
-  const workspace = workspaceResolver(ctx);
-  const result = registerWatchdogRoutes(webServer, {
-    roots: () => workspace.workspaceRootsAll(),
-    stateDir: stateDirResolver(ctx),
-    effect: (fn, label) => ctx.effect(fn, label)
-  });
-  if (!result.state) {
-    console.warn("[mpd] the web server refused the watchdog routes — the stuck-team banner has no data source");
+}
+function apply(ctx) {
+  let registered = false;
+  const registerRoutes = () => {
+    if (registered)
+      return true;
+    if (typeof ctx?.effect !== "function")
+      return false;
+    const webServer = webServerOf(ctx);
+    if (webServer === undefined || typeof webServer.register !== "function")
+      return false;
+    const workspace = workspaceResolver(ctx);
+    const result = registerWatchdogRoutes(webServer, {
+      roots: () => workspace.workspaceRootsAll(),
+      stateDir: stateDirResolver(ctx),
+      effect: (fn, label) => ctx.effect(fn, label)
+    });
+    if (!result.state) {
+      console.warn("[mpd] the web server refused the watchdog routes — the stuck-team banner has no data source");
+      return false;
+    }
+    registered = true;
+    return true;
+  };
+  registerRoutes();
+  if (typeof ctx?.on === "function") {
+    ctx.on("internal/service", (serviceName) => {
+      if (serviceName === "webServer" || serviceName === "httpServer")
+        registerRoutes();
+    });
   }
 }
 export {

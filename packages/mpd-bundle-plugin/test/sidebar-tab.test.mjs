@@ -150,6 +150,33 @@ describe("with DSH-better-sidebar installed", () => {
   });
 });
 
+describe("a sidebar provider REMOUNT keeps both tabs", () => {
+  // The user-visible intermittency: the right sidebar itself disappears and comes back, and the
+  // "+" menu's AgentTeams/Workmates rows go with it. `ctx.inject` re-fires the pages' callback
+  // when the provider rebinds, so the registration must be IDEMPOTENT for the same service (the
+  // real `registerTab` THROWS on a duplicate id) and COMPLETE for a fresh one (an EMPTY registry
+  // must get both tabs back) — otherwise a remount permanently loses the pages until a reload.
+  test("a re-fire against the SAME service never double-registers", () => {
+    const client = loadMpdClient({ sidebarAtApply: true });
+    client.exports.apply(client.ctx);
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    client.refireInjections();
+    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-workmate"]);
+    expect(client.sidebarService.getTab("mpd-agent-teams")).toBeDefined();
+    expect(client.sidebarService.getTab("mpd-workmate")).toBeDefined();
+    restore(client);
+  });
+  test("a FRESH service (the remount) receives both tabs again", () => {
+    const client = loadMpdClient({ sidebarAtApply: true });
+    client.exports.apply(client.ctx);
+    const fresh = client.createSidebarService();
+    client.provideService("betterSidebar", fresh);
+    expect(fresh.getTab("mpd-agent-teams")).toBeDefined();
+    expect(fresh.getTab("mpd-workmate")).toBeDefined();
+    restore(client);
+  });
+});
+
 describe("workmate page", () => {
   test("renders the library from the host routes", async () => {
     const client = loadMpdClient({ responses: { "/plugins/mpd-workmate/list": LISTED, "/plugins/mpd-workmate/roster": ROSTER } });
