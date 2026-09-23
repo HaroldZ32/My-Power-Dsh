@@ -1,0 +1,68 @@
+{
+  "case": "fix/sidebar-web-route-race — LIVE ACCEPTANCE on the user's real profile",
+  "kind": "post-restart real-machine acceptance of the fix committed in f290a99a (merge 6e09910b)",
+  "measured_at_utc": "2026-09-23T09:30:09Z",
+  "discharges": {
+    "bound_from": "evidence/fix/sidebar-web-route-race/20260923T084150Z/result.json -> bounds[0]",
+    "bound_text": "The fix is NOT yet observed on the user's live server: the running process holds the pre-fix module (AGENTS.md T-21, no plugin hot reload), so acceptance there needs a `dsh web` restart",
+    "status": "DISCHARGED — the user restarted `dsh web`; the acceptance below is from the restarted process"
+  },
+  "before_after": {
+    "server": "the user's own `dsh web`, profile web, win32, DSH 0.1.5-rc.2",
+    "before": {
+      "process_pid": 12496,
+      "measured_at_utc": "2026-09-23T08:41:51Z",
+      "module": "the pre-fix dist/index.js (cached in that process, T-21)",
+      "routes": {
+        "/plugins/mpd-team-watchdog/state?reader=web-panel": 404,
+        "/plugins/mpd-workmate/list": 200,
+        "/plugins/mpd-workmate/roster": 200
+      }
+    },
+    "after": {
+      "process_pid": 11712,
+      "measured_at_utc": "2026-09-23T09:30:09Z",
+      "module": "the rebuilt dist/index.js committed in f290a99a",
+      "routes": {
+        "/plugins/mpd-team-watchdog/state?reader=web-panel": 200,
+        "/plugins/mpd-workmate/list": 200
+      }
+    },
+    "pid_evidence": "the listening PID on 127.0.0.1:3080 changed 12496 -> 11712, so the 200 cannot come from the cached pre-fix module — this is the acceptance the unit test could not give"
+  },
+  "payload_is_healthy_not_merely_200": {
+    "raw": "state-payload.json in this directory (the response body verbatim)",
+    "fields": {
+      "ok": true,
+      "reader": "web-panel",
+      "stateDir": ".mpd\\team",
+      "workspaces": ["C:\\MyDoc\\DshProj\\my-power-dsh"],
+      "stuck": false,
+      "held": [],
+      "banner": null,
+      "activity": [],
+      "unread": [],
+      "watermarks": {},
+      "replay": false,
+      "errors": []
+    },
+    "why_this_matters": "a 200 alone would not prove the route WORKS. The body proves all three resolvers the route depends on ran: the ADAPTER workspace resolver returned the live session workspace, the config resolver returned the documented default team state dir, and `errors: []` shows the store read degraded into nothing rather than erroring. `".mpd\\team"` carries a win32 separator, which is what `node:path.join` must produce on this host (and `/` on linux) — the same code path on both."
+  },
+  "what_this_accepts_and_what_it_does_not": {
+    "accepted": [
+      "the bundle's OWN web routes register on a composition where the web server binds after the plugin row (the defect)",
+      "the AgentTeams sidebar page now has a live data source for its stuck-team banner / activity feed instead of a permanently empty one",
+      "the red 404 the user saw on every poll is gone"
+    ],
+    "not_claimed": [
+      "the sidebar HOST's own mount churn (the user separately reported the right sidebar disappearing and returning) — that is upstream of this bundle and is NOT addressed here",
+      "a browser render: this acceptance is an HTTP + payload measurement, not a visual one"
+    ]
+  },
+  "commands": [
+    "netstat -ano | findstr 127.0.0.1:3080   # PID before/after the restart",
+    "curl -s -o /dev/null -w '%{http_code}\\n' 'http://127.0.0.1:3080/plugins/mpd-team-watchdog/state?reader=web-panel'",
+    "curl -s 'http://127.0.0.1:3080/plugins/mpd-team-watchdog/state?reader=web-panel'   # the payload"
+  ],
+  "cross_platform_note": "`/plugins/*` is not auth-gated, so this exact acceptance is replayable on linux unchanged; the only platform-visible difference in the payload is the `stateDir` separator, produced by `node:path.join`."
+}
