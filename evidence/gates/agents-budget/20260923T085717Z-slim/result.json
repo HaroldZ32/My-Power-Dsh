@@ -1,0 +1,60 @@
+{
+  "schema": "agents-md-slim/1",
+  "at": "2026-09-23T08:57:17Z",
+  "goal": "Slim the auto-injected repository manual (AGENTS.md) while keeping the repository working exactly as it did: every binding rule, machine contract, §N citation and audited path preserved.",
+  "artifact": {
+    "file": "AGENTS.md",
+    "baseline_source": "git show HEAD:AGENTS.md (working tree was clean for AGENTS.md before the edit)",
+    "baseline_bytes": 64424,
+    "after_bytes": 54396,
+    "saved_bytes": 10028,
+    "saved_percent": 15.6,
+    "other_tracked_files_changed": []
+  },
+  "budget": {
+    "instrument": "evidence/gates/agents-budget/20260923T085717Z-slim/budget-check.mjs (the INSTALLED harness renderer, @deepseek-ai/dsh-agent-instructions, maxBytes=65536; the wave-1 instrument hard-coded a Linux nvm path, so this copy resolves the same module on win32)",
+    "before": { "label": "before", "source_bytes": 64424, "rendered_bytes": 64728, "headroom_bytes": 808, "verdict": "GREEN (full content injected)" },
+    "after": { "label": "post", "source_bytes": 54396, "rendered_bytes": 54700, "headroom_bytes": 10836, "verdict": "GREEN (full content injected)" },
+    "negative_control": { "label": "control", "source_bytes": 67704, "rendered_bytes": 65536, "headroom_bytes": 0, "verdict": "RED (truncated)", "note": "the archived T-22 fixture, reused so a green reading is a measurement and not an unconditional pass" },
+    "verdict": "PASS",
+    "why_it_matters": "at 808 B of headroom the baseline was 1.2% from the cap; one more paragraph would have made a live session receive a TRUNCATED manual"
+  },
+  "preservation": {
+    "instrument": "evidence/gates/agents-budget/20260923T085717Z-slim/preservation-audit.mjs",
+    "why_a_new_instrument": "T-22's move-audit.mjs demanded BYTE-IDENTITY per segment because that wave only MOVED text. This change COMPRESSES text, so byte-identity is the wrong instrument; this one asks the two questions a compression must still answer (contract survival, and a fully triaged token census).",
+    "numbered_sections": { "before": 13, "after": 13, "missing": [] },
+    "contracts_checked": 34,
+    "contracts_missing": [],
+    "contracts_present_only_after_reflow": ["delta-registry-derived"],
+    "token_census": { "pre_distinct": 528, "left_the_manual": 35, "moved_to_references": 6, "accepted_with_reason": 29, "untriaged": 0 },
+    "false_positive_classes_reported": [
+      "a code span MIS-PAIRED by line-wrapping in the old file (the closing backtick of a wrapped inline code starts a new span) - counted as a non-token in the ledger",
+      "a needle or token split across a line break - the instrument compares REFLOW-NORMALIZED text, and reports literal-only matches apart as contractsPresentOnlyAfterReflow"
+    ],
+    "defects_found_by_this_audit_and_repaired": [
+      "verify-manual-paths was absent from the §4 gate table although it is the binding gate for this file => the 'Manual paths' row was added",
+      "the --dump-config paragraph had lost its provenance anchors => the mounting-boot artifact paths and the WORKMATE_TOOLS reading were restored (T-90: a claim carries its artifact anchor)"
+    ],
+    "verdict": "PASS"
+  },
+  "consumers": {
+    "verify_manual_paths": { "command": "node scripts/verify-manual-paths.mjs", "audited": 106, "resolved": 106, "unresolved": 0, "anticipatory": 2, "exit": 0, "verdict": "PASS" },
+    "verify_docs_parity": { "command": "node scripts/verify-docs-parity.mjs", "pairs": 38, "violations": 0, "derived": 3, "dead_links": 0, "exit": 0, "verdict": "PASS", "note": "AGENTS.md still carries its A1–D42 derived-value claim, checked against the registry table" },
+    "qa_case_substring": { "consumer": "skills/dsh-qa/scripts/agent-teams-adopt.mjs", "assertion": "AGENTS.md includes \"Adopted plugins keep their plugin ids and tool names\"", "measured_directly": true, "verdict": "PASS" },
+    "verify_gates_aggregate": { "command": "node scripts/verify-gates.mjs", "verdict": "NOT RUNNABLE ON THIS HOST", "reading": "all 5 members FAIL with 'spawn error: EPERM' (the sandbox denies node->node piped stdio), so each member was run directly" }
+  },
+  "caveats": [
+    "agent-teams-adopt --self-test is RED on this host and the manual is NOT the cause: its AGENTS.md assertion passes when run directly, and it then fails inside install-profile.mjs --self-test, which is red directly ('sidebar guard drifted from the bundle patch') because of an in-flight uncommitted mpd-bundle-plugin sidebar change in this working tree. The case also spawns a child with piped stdio, which is EPERM under this sandbox independently of the tree state.",
+    "verify-manual-paths was RED in the baseline run (unresolved=1 - .mpd/plans) and is green now because the manual no longer spells that gitignored runtime directory in a code span. The gate's verdict therefore depended on transient workspace state; the recommended follow-up is to classify .mpd/** as runtime state in the GATE, not to re-add a claim that a transient directory exists.",
+    "This change is manual-only: no gate script, no plugin source and no reference file was modified."
+  ],
+  "acceptance": [
+    { "criterion": "the manual renders under the harness cap with headroom", "status": "PASS", "evidence": "rendered 64,728 B / 808 B headroom -> 54,700 B / 10,836 B headroom; control still RED" },
+    { "criterion": "every §1–§13 section and every machine contract survives", "status": "PASS", "evidence": "13/13 sections; 0 of 34 contract needles missing" },
+    { "criterion": "no rule is silently dropped: every token that left the manual is moved or triaged", "status": "PASS", "evidence": "35 left; 6 moved to agent-references, 29 accepted with a written reason, 0 untriaged" },
+    { "criterion": "the manual's own consumers still pass", "status": "PASS", "evidence": "verify-manual-paths PASS (106/106 resolved); verify-docs-parity PASS; the QA case's AGENTS.md substring assertion passes" },
+    { "criterion": "no file other than AGENTS.md is touched", "status": "PASS", "evidence": "the change is a sequence of edit-tool operations on AGENTS.md; the audit and its instruments are new files under evidence/" }
+  ],
+  "verdict": "PASS",
+  "failedChecks": []
+}

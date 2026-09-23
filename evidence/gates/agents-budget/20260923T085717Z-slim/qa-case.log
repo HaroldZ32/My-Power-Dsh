@@ -1,0 +1,10 @@
+=== the QA case's own AGENTS.md assertion, run directly (the case itself cannot run here) ===
+node -e "fs.readFileSync('AGENTS.md').includes('Adopted plugins keep their plugin ids and tool names')"
+phrase present = true
+
+=== why the CASE is red here: its LAST step spawns install-profile.mjs --self-test, which is red DIRECTLY ===
+[install-profile self-test] FAIL: sidebar guard drifted from the bundle patch
+note: install-profile.mjs never READS AGENTS.md (it only cites §8 in comments), so this red cannot be caused by the manual edit.
+
+=== and node->node piped stdio is EPERM under this sandbox, independently ===
+status=null error=EPERM stderr=undefined
