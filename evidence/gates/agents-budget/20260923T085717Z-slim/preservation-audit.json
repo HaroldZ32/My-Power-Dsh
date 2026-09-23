@@ -6,13 +6,13 @@
   },
   "post": {
     "path": "C:\\MyDoc\\DshProj\\my-power-dsh\\AGENTS.md",
-    "bytes": 54396,
-    "lines": 647
+    "bytes": 56653,
+    "lines": 666
   },
-  "savedBytes": 10028,
-  "savedPercent": 15.6,
+  "savedBytes": 7771,
+  "savedPercent": 12.1,
   "budget": 65536,
-  "postHeadroomBytes": 11140,
+  "postHeadroomBytes": 8883,
   "numberedSectionsPre": 13,
   "numberedSectionsPost": 13,
   "missingSections": [],
@@ -262,9 +262,9 @@
   ],
   "tokenCensus": {
     "preDistinct": 528,
-    "leftTheManual": 35,
+    "leftTheManual": 33,
     "movedToReferences": 6,
-    "acceptedWithReason": 29,
+    "acceptedWithReason": 27,
     "dropped": 0
   },
   "tokenLoss": [
@@ -341,12 +341,6 @@
       "reason": "adapter seam method; the manual keeps the `agentTurn*`/`subagent*` family names and names `packages/mpd-dsh-adapter-plugin` as the ONE surface that defines them"
     },
     {
-      "token": "ctx.tui*",
-      "status": "accepted",
-      "inReferences": [],
-      "reason": "§3 tree comment (same map rule)"
-    },
-    {
       "token": "docs/agent/**",
       "status": "accepted",
       "inReferences": [],
@@ -381,12 +375,6 @@
       "status": "accepted",
       "inReferences": [],
       "reason": "§3 tree comment; the naming-parity rule lives in the ext package README"
-    },
-    {
-      "token": "mpdExtensions",
-      "status": "accepted",
-      "inReferences": [],
-      "reason": "§3 tree comment (same map rule)"
     },
     {
       "token": "re-anchors the comparison for a reviewer mutating a COPY). The closure gate's own",

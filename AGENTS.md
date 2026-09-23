@@ -18,8 +18,9 @@ repository is English-only (see Language Policy).
   `packages/*/README.md` and the root README. A `./`- or `../`-spelled target resolves from the
   LINKING file's own directory, a ROOT-relative `/`-spelled one against the REPO ROOT (`/docs/index.md`
   means `docs/index.md` in this tree, never the filesystem root), a `#fragment` is stripped first, and
-  a directory counts; a zh-CN doc with no EN twin, a non-exempt package with no README and an
-  unresolved target are violations. Classification is DECLARED, not directory-sensitive: a `*.md`
+  a directory counts (external URLs, in-page anchors and code spans are ignored); a zh-CN doc with no
+  EN twin, a non-exempt package with no README and an unresolved target are violations. Classification
+  is DECLARED, not directory-sensitive: a `*.md`
   carrying `<!-- docs-parity: doc -->` is a doc wherever it lives, so a misplaced doc reddens instead
   of escaping. A file kept VERBATIM as provenance is exempt from the link check too (its dead targets
   are reported as EXEMPT, never as passes), and in a packed copy with no root `AGENTS.md` an
@@ -76,9 +77,10 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   API and are never renamed, and **Adopted plugins keep their plugin ids and tool names** (the
   `context7`/`grep_app` remote MCP rows follow the same rule). Upstream product names and repository
   paths stay upstream's (provenance only), and the two vendored binary-resolution env keys
-  (`MPD_AST_GREP_SG_PATH`, `MPD_CODEGRAPH_BIN`) are read by upstream code and are never renamed.
-- **Roster.** The 11 specialists are teammate instantiation templates addressed by NAME and described
-  by what they do, never by their internal stable `id`. One-shot consult goes through
+  (`MPD_AST_GREP_SG_PATH`, the sg resolver, and `MPD_CODEGRAPH_BIN`, codegraph serve) are read by
+  upstream vendored code and are never renamed.
+- **Roster.** The 11 specialists are teammate instantiation templates — NOT presets — addressed by NAME
+  and described by what they do, never by their internal stable `id`. One-shot consult goes through
   `mpd-roles-plugin` (`mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`, `mpdRoles` service
   consumed by `mpd_modelchain_resolve`); team work uses the adopted **dsh-agent-teams** plugin
   (first-class main code at `packages/mpd-agent-teams-plugin`, `agent_teams_*` tools + Web activity
@@ -158,16 +160,32 @@ mpd-dsh/
 │   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate)
 │   ├── mpd-ulw-plugin/           # C2 ultrawork v2 engine: mpd_ultrawork + /ulw, /ultrawork
 │   ├── mpd-mcp-astgrep / mpd-mcp-codegraph / mpd-mcp-gitbash / mpd-mcp-lsp / mpd-mcp-shared /
-│   ├── mpd-tools-plugin / mpd-hashline-plugin / mpd-boulder-plugin / mpd-config-plugin /
-│   ├── mpd-memory-plugin / mpd-comment-checker-plugin / mpd-modelchain-plugin /
-│   ├── mpd-codegraph-plugin / mpd-bootstrap-plugin / mpd-team-watchdog-plugin /
-│   ├── mpd-team-compact-plugin / mpd-ext-plugin / mpd-tui-plugin / mpd-bundle-plugin /
+│   │                             # the MCP servers: AST search, code graph, git-bash, LSP, shared libs
+│   ├── mpd-tools-plugin/         # B1: write guard, output truncation, edit-error recovery
+│   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendored hashline-core)
+│   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendored boulder-state)
+│   ├── mpd-config-plugin/        # C7: the mpd.jsonc runtime config layer (read by the plugins above)
+│   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + the reflection state machine
+│   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
+│   ├── mpd-modelchain-plugin/    # B4: mpd_modelchain_resolve + mpd_memory_save/recall
+│   ├── mpd-codegraph-plugin/     # binary resolve + project init + the mpd-codegraph command
+│   ├── mpd-bootstrap-plugin/     # serves <bundle>/skills by reference; cleans legacy (<=0.2.6) copies
+│   ├── mpd-team-watchdog-plugin/ # stall detection for team lanes: the member record-stream fold
+│   │                             #   (OUTSTANDING/IN-FLIGHT/ALIVE/PARKED), the heartbeat store, the
+│   │                             #   WARN->ESCALATE ladder and the preserving hold (NEW DISPATCH only)
+│   ├── mpd-team-compact-plugin/  # compacts FINISHED teams (never the captain); ledger in .mpd/team-compact
+│   ├── mpd-ext-plugin/           # the extension interface (row `mpd-ext`, service `mpdExtensions`)
+│   ├── mpd-tui-plugin/           # the DSH-TUI edition's surface package (`ctx.tui*` seams, warn-once)
+│   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client
 │   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster
 ├── extensions/                   # <bundle>/extensions/*/mpd-ext.json + the DISABLED mpd-ext-example
 ├── skills/                       # dsh-qa + 16 ported upstream skills + svn-master (SERVED by reference)
 ├── templates/                    # plugin/extension scaffolds shipped by the packer
 ├── tests/                        # overlays/ (keep empty when rows live in the bundle) + golden/
 ├── docs/                         # human-facing docs (BILINGUAL EN + zh-CN); hub is docs/index.md
+│                                 #   process records EXEMPT from the bilingual rule (this is the §3
+│                                 #   policy the docs and the gate cite): plan records (plan-*.md,
+│                                 #   decisions.md) and internal QA/golden reference docs
 ├── agent-references/             # ON-DEMAND agent-facing reference (never auto-injected)
 └── evidence/                     # QA evidence: <domain>/<slug>/<timestamp>/ (records, language as produced)
 ```
@@ -190,7 +208,7 @@ specification.
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` | runtime-behavior changes |
 | Installer | `node scripts/install-profile.mjs --dry-run` | any bundle-patch/installer change |
 | Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.mjs`; ships `--self-test` with a negative control; recursive under `docs/`, `extensions/**/README.md` and `templates/**/README.md`, and it fails on a zh-only doc or an undocumented package) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`, `templates/**/README*.md`); before release |
-| Manual paths | `node scripts/verify-manual-paths.mjs` (T-66: every path-shaped token this manual spells in a code span must exist at the repo root; its DECLARED anticipatory class and its rot guard are printed apart from the audited subjects, so an exemption for a file that does not exist cannot rot silently) | any edit to this manual |
+| Manual paths | `node scripts/verify-manual-paths.mjs` (T-66: a path-shaped token this manual spells in a code span is AUDITED only when its first segment is an entry at the repo root; a token that is not root-anchored (a GitHub slug, an API route, an `@scope/name`) or not written literally (a glob, a placeholder, an elision) is counted in its own bucket and NEVER fails the run — so it catches a wrong ROOT-relative path, not a wrong package-relative spelling; the DECLARED anticipatory class and its rot guard are printed apart from the audited subjects) | any edit to this manual |
 | Extension CLI | `bun scripts/mpd-ext.mjs --self-test` + `bun scripts/mpd-ext.mjs validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.mjs` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable), or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
 | Composition only | `node scripts/dump-config.mjs --profile <p>` (repo wrapper around the raw harness flag: prints the composition-only banner in its own output and propagates the child's exit code) | whenever a row/preset composition question is asked |
@@ -302,8 +320,8 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   `installModelSelection(childCtx, …)` hand-off into a VENDORED `_deps/dsh-agent` helper, and the legacy
   `hostChild ?? childCtx.agent` read — because on a legacy Alpha.2 host a `childCtx` is not guaranteed to
   be `child.ctx`, so re-resolving it through `agentScope(agent)` could change that path.
-  `test/adapter-bypass-inventory.test.mjs` asserts exactly those 5 lines (plus the two `whenIdle`
-  Class-B sites), so a NEW use reddens instead of hiding.
+  `packages/mpd-agent-teams-plugin/test/adapter-bypass-inventory.test.mjs` asserts exactly those 5
+  lines (plus the two `whenIdle` Class-B sites), so a NEW use reddens instead of hiding.
 - **Five further residuals stay NAMED**, so the closure is never read as unconditional: (R1)
   adapter-mediated registrations (`tools.register`, `commands.register`, `systemPrompt.section`,
   `ctx.on`) are owned by the ADAPTER row's fiber, not the plugin's — a plugin-only unload would not
@@ -376,10 +394,11 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   (a multi-entry package repeats it per entry, e.g. `packages/mpd-ext-plugin/src/sdk.ts` →
   `packages/mpd-ext-plugin/dist/sdk.js`). The canonical form matters: `bun build` writes every bundled
   module's path RELATIVE TO CWD into the artifact's path comments, and
-  `node scripts/verify-dist-fresh.mjs` reproduces THESE bytes — so a package-directory build (the form
-  `mpd-ext-plugin`, `mpd-team-watchdog-plugin` and `mpd-tui-plugin` still carry in their own `build`
-  scripts) is flagged STALE even though it looks sanctioned (T-67, wave 2). Zero runtime deps preferred
-  (type-only imports).
+  `node scripts/verify-dist-fresh.mjs` reproduces THESE bytes — so a build run from a PACKAGE directory
+  is flagged STALE even though it looks sanctioned. Three packages used to carry exactly that shape in
+  their own `build` scripts (`mpd-ext-plugin`, `mpd-team-watchdog-plugin`, `mpd-tui-plugin`); T-67 moved
+  them to the canonical form above, which now begins with `cd "$(git rev-parse --show-toplevel)"`. Zero
+  runtime deps preferred (type-only imports).
 - **Load/test**: the committed patch names rows as `@mpd-dsh/mpd/packages/...`, which resolve in BOTH
   install layouts (the repo root IS `@mpd-dsh/mpd`, so a checkout install resolves them through the
   link; the packed package through its own name). QA boots it straight from a checkout through the

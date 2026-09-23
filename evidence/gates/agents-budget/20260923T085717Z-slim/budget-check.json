@@ -6,6 +6,8 @@
       "label": "before",
       "path": "C:\\MyDoc\\DshProj\\my-power-dsh\\evidence\\gates\\agents-budget\\20260923T085717Z-slim\\AGENTS.md.before",
       "sourceBytes": 64424,
+      "rawSourceBytes": 64424,
+      "eolAsRead": "lf",
       "renderedBytes": 64728,
       "truncated": false,
       "omitted": [],
@@ -15,8 +17,10 @@
     {
       "label": "post",
       "path": "C:\\MyDoc\\DshProj\\my-power-dsh\\AGENTS.md",
-      "sourceBytes": 54396,
-      "renderedBytes": 54700,
+      "sourceBytes": 56653,
+      "rawSourceBytes": 56653,
+      "eolAsRead": "lf",
+      "renderedBytes": 56957,
       "truncated": false,
       "omitted": [],
       "truncatedRecords": [],
@@ -26,6 +30,8 @@
       "label": "control",
       "path": "C:\\MyDoc\\DshProj\\my-power-dsh\\evidence\\gates\\agents-budget\\20260917T011651Z\\oversized-control.md",
       "sourceBytes": 67704,
+      "rawSourceBytes": 67704,
+      "eolAsRead": "lf",
       "renderedBytes": 65536,
       "truncated": true,
       "omitted": [],
@@ -42,6 +48,7 @@
   "checks": {
     "post_renders_full_content": true,
     "post_under_budget": true,
+    "post_eol_is_lf": true,
     "negative_control_is_red": true
   },
   "verdict": "PASS",
