@@ -29,7 +29,7 @@
 // never the value) may reach stdout or an evidence file, and the value is written only into the
 // ephemeral sandbox store or a child environment.
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
-import { homedir } from "node:os"
+import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
 
 export const PROVIDER_KEY_NAME = {
@@ -325,7 +325,9 @@ function selfTest() {
   const check = (label, ok, detail) => {
     if (!ok) failures.push(label + (detail === undefined ? "" : ": " + detail))
   }
-  const tmp = join(process.env.TMPDIR ?? "/tmp", "mpd-cred-selftest-" + process.pid)
+  // `os.tmpdir()` is the portable answer (`$TMPDIR`/`/tmp` on POSIX, `%TEMP%` on win32): the
+  // hard-coded POSIX fallback resolved to `C:\tmp` on Windows, which need not exist.
+  const tmp = join(process.env.TMPDIR ?? tmpdir(), "mpd-cred-selftest-" + process.pid)
   mkdirSync(tmp, { recursive: true })
   const profile = join(tmp, "profile")
   const store = join(tmp, "store")

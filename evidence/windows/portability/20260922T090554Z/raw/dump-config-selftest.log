@@ -1,0 +1,8 @@
+ok   (a) success child -> banner first, recap last, exit 0 — exit=0 open@0 marker@975 recap@992 clauses=6/6
+ok   (b) failing child (exit 3) -> banner + recap still printed, wrapper exits 3 — exit=3 banner=true marker=true recap=true
+ok   (c) missing binary -> banner printed, exit 127 command-not-found — exit=127 banner=true error=true
+ok   (d) --json -> parseable JSON, exitCode == child's, banner on stderr only — exit=3 json.exitCode=3 stdoutBytes=19 bannerOnStderr=true
+ok   (e) --quiet -> exactly one warning line kept, no recap, exit code still propagated — exit=3 tagLines=1 recap=false marker=true
+ok   (f) bad flag -> usage on stderr, exit 1 — exit=1 usage=true
+
+[dump-config self-test] 6/6 arms passed — PASS

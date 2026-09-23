@@ -237,7 +237,7 @@ test("T-79 negative control: with both guards removed, the SAME calls rotate and
     const scratch = mkdtempSync(join(tmpdir(), "mpd-t79-prefix-"))
     try {
         cpSync(LIB_DIR, join(scratch, "lib"), { recursive: true })
-        symlinkSync(DEPS_DIR, join(scratch, "_deps"), "dir")
+        symlinkSync(DEPS_DIR, join(scratch, "_deps"), "junction")
 
         // (1) the rotation primitive: strip the guard calls from the copied state.js
         const stateCopy = join(scratch, "lib", "state.js")

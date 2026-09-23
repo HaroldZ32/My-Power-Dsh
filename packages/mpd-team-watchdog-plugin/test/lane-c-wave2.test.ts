@@ -57,7 +57,7 @@ function scratchTree(): { libDir: string; root: string; cleanup: () => void } {
   const root = mkdtempSync(join(tmpdir(), "lane-c-lib-"))
   mkdirSync(join(root, "lib"), { recursive: true })
   cpSync(ADOPTED_LIB, join(root, "lib"), { recursive: true })
-  symlinkSync(ADOPTED_DEPS, join(root, "_deps"), "dir")
+  symlinkSync(ADOPTED_DEPS, join(root, "_deps"), "junction")
   return { libDir: join(root, "lib"), root, cleanup: () => rmSync(root, { recursive: true, force: true }) }
 }
 

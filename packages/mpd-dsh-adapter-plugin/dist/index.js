@@ -342,11 +342,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config2, signal) {
+    llmResolveCallConfig(config, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config2, signal);
+      return llm.resolveCallConfig.call(llm, config, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -390,7 +390,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -501,12 +501,12 @@ function createDshAdapter(ctx, config = {}) {
     subagentRuntime() {
       return service("subagents");
     },
-    subagentProvider(name2) {
+    subagentProvider(name) {
       const subagents = service("subagents");
       const getProvider = subagents?.getProvider;
       if (typeof getProvider !== "function")
         return;
-      return getProvider.call(subagents, name2);
+      return getProvider.call(subagents, name);
     },
     subagentProviders() {
       const subagents = service("subagents");
@@ -673,8 +673,8 @@ function createDshAdapter(ctx, config = {}) {
         await settings.mutate(namespace, ops.map((op) => op.op === "unset" ? { op: "unset", path: [...op.path] } : { op: "set", path: [...op.path], value: op.value }), expectedRevision);
         return { ok: true };
       } catch (error) {
-        const name2 = String(error?.name ?? "");
-        const conflict = name2 === "SettingsConflictError" || /conflict/i.test(String(error?.message ?? ""));
+        const name = String(error?.name ?? "");
+        const conflict = name === "SettingsConflictError" || /conflict/i.test(String(error?.message ?? ""));
         return { ok: false, error: String(error?.message ?? error), ...conflict ? { conflict: true } : {} };
       }
     },
@@ -683,11 +683,11 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -695,24 +695,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
-      const inject2 = agent?.inject;
-      if (typeof inject2 !== "function")
+    injectAgentMessage(agent, message) {
+      const inject = agent?.inject;
+      if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject2.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -753,7 +753,7 @@ function createLazyDshAdapter(ctx, options) {
   let temporary;
   let warnedPending = false;
   let warnedMissing = false;
-  const resolve2 = () => {
+  const resolve = () => {
     if (mounted !== undefined)
       return mounted;
     const active = probeMpdDsh(ctx, true);
@@ -777,12 +777,12 @@ function createLazyDshAdapter(ctx, options) {
   };
   return new Proxy({}, {
     get(_target, property) {
-      const impl = resolve2();
+      const impl = resolve();
       const value = impl[property];
       return typeof value === "function" ? value.bind(impl) : value;
     },
     has(_target, property) {
-      return property in resolve2();
+      return property in resolve();
     }
   });
 }
@@ -794,19 +794,19 @@ function apply(ctx, config = {}) {
   }
 }
 export {
-  workspaceRootsOf,
-  workspaceRootOf,
-  userMessage,
-  textBlock,
-  name,
-  inject,
-  dshAdapterIdentity,
-  decision,
-  createLazyDshAdapter,
-  createDshAdapter,
-  apply,
-  SERVICE_NAME,
-  ADAPTER_IDENTITY_PENDING,
+  ADAPTER_IDENTITY_FALLBACK,
   ADAPTER_IDENTITY_MOUNTED,
-  ADAPTER_IDENTITY_FALLBACK
+  ADAPTER_IDENTITY_PENDING,
+  SERVICE_NAME,
+  apply,
+  createDshAdapter,
+  createLazyDshAdapter,
+  decision,
+  dshAdapterIdentity,
+  inject,
+  name,
+  textBlock,
+  userMessage,
+  workspaceRootOf,
+  workspaceRootsOf
 };

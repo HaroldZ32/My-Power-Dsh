@@ -160,6 +160,39 @@ function walkFiles(root, relDir, out = []) {
 }
 
 /**
+ * The build toolchain this run used, against the one `package.json` records (`buildToolchain`,
+ * never `packageManager`: pnpm REFUSES to run in a project that declares another package manager,
+ * and the harness's own profile installs go through pnpm - measured 2026-09-22, bundle-lifecycle's
+ * "pnpm is required for the official install flow" arm went red the moment the pin was added).
+ *
+ * WHY A PIN AT ALL (measured 2026-09-22): the committed corpus had been built by an older bun
+ * whose injected helper preamble differs from the current one, so 18 of 20 targets compared
+ * STALE by kilobytes (mpd-config-plugin: 122963 B committed vs 117361 B rebuilt) with no
+ * semantic difference - the gate and the F1 arms of mpd-ext-plugin/mpd-roles-plugin read that as
+ * a defect. The pin makes the byte comparison reproducible; this record makes a drift VISIBLE
+ * in the run instead of leaving it to a future bisect.
+ * @param {string} root @returns {{bin:string, current:string|null, pinned:string|null, drift:boolean, note:string}}
+ */
+function buildToolchain(root) {
+  const probe = spawnSync(BUILD_BIN, ["--version"], { encoding: "utf8", timeout: 60_000 })
+  const current = probe.status === 0 ? String(probe.stdout ?? "").trim().split(/\s+/).pop() : null
+  let pinned = null
+  try {
+    const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
+    const declared = typeof manifest.buildToolchain === "string" ? manifest.buildToolchain : ""
+    if (declared.startsWith("bun@")) pinned = declared.slice(4)
+  } catch { /* no root manifest: reported as an absent pin, never as a pass */ }
+  const drift = pinned !== null && current !== null && pinned !== current
+  const note =
+    pinned === null
+      ? `no buildToolchain record in ${root}/package.json: the committed dist bytes depend on whichever bun runs here`
+      : drift
+        ? `the recorded build toolchain (bun@${pinned}) differs from the bun rebuilding here (${current}): a different bun minor rewrites the injected helper preamble and minifier variable names, so the byte comparison below certifies these bytes under THIS bun only`
+        : ""
+  return { bin: BUILD_BIN, current, pinned, drift, note }
+}
+
+/**
  * Why a `dist` file maps to no target. Explanatory ONLY: a file reaches this function because it
  * is already in the uncovered complement, so no rule can hide one — an unknown shape falls
  * through to the generic "no local source" reason and is still listed.
@@ -495,6 +528,7 @@ export function verifyDistFresh(root, options = {}) {
     if (!keepTmp) rmSync(tmpRoot, { recursive: true, force: true })
   }
 
+  const toolchain = buildToolchain(root)
   const fresh = results.filter((r) => r.status === "FRESH").length
   const durationMs = Date.now() - started
   const ok = findings.length === 0 && results.length > 0
@@ -518,6 +552,7 @@ export function verifyDistFresh(root, options = {}) {
     durationMs,
     tmpRoot: keepTmp ? tmpRoot : null,
     counts: { targets: results.length, fresh, findings: findings.length, notCovered: discovery.notCovered.length },
+    toolchain,
     targets: results,
     findings,
     notCovered: discovery.notCovered,
@@ -653,6 +688,20 @@ function selfTest(scriptPath) {
     // tautological the day another rule starts firing in this sandbox.
     const knownBeta = (ghostCanonical.json?.findings ?? []).some((f) => f.kind === "MISSING" && f.pkg === "beta")
     record("(g2) canonical repo-root scripts.build -> no BUILD_FORM finding", formClear && knownBeta, `exit=${ghostCanonical.status} kinds=${ghostCanonical.json === null ? "unparsable" : ghostCanonical.json.findings.map((f) => f.kind).join(",")}`)
+    // (h) the build-toolchain record: a drifted pin, an exact pin and an absent pin must be
+    // DISTINGUISHABLE in the result - the pin is only worth having if a run reports it.
+    const rootManifest = (buildToolchain) => JSON.stringify(buildToolchain === null ? { name: "fixture" } : { name: "fixture", buildToolchain }, null, 2)
+    const toolchainOf = (buildToolchain) => {
+      writeFixtureFile(sandbox, "package.json", rootManifest(buildToolchain))
+      const run = runCli(["--root", sandbox, "--json", "--only", "alpha"], scriptPath)
+      return run.json?.toolchain ?? null
+    }
+    const drifted = toolchainOf("bun@0.0.1")
+    const exact = toolchainOf("bun@" + (drifted?.current ?? "0.0.1"))
+    record("(h) an exact buildToolchain record reports drift=false", exact !== null && exact.pinned === exact.current && exact.drift === false && exact.note === "", `pinned=${exact?.pinned} current=${exact?.current} drift=${exact?.drift}`)
+    record("(h2) a drifted record reports drift=true + a note", drifted !== null && drifted.pinned === "0.0.1" && drifted.drift === true && drifted.note.includes("bun@0.0.1"), `pinned=${drifted?.pinned} current=${drifted?.current} drift=${drifted?.drift}`)
+    const unpinned = toolchainOf(null)
+    record("(h3) an absent record is named, never treated as green", unpinned !== null && unpinned.pinned === null && unpinned.drift === false && unpinned.note.includes("no buildToolchain record"), `pinned=${unpinned?.pinned} note=${JSON.stringify(unpinned?.note ?? "")}`)
   } catch (error) {
     record("self-test harness", false, error.stack ?? String(error))
   } finally {
@@ -702,6 +751,10 @@ function parseArgs(argv) {
 function printReport(result, options) {
   const log = (line) => console.log(line)
   if (!options.quiet) log(`[verify-dist-fresh] root: ${result.root}  (build: ${BUILD_BIN} build <src> --target node --format esm --outfile <tmp>/<entry>.js)`)
+  if (!options.quiet) {
+    const toolchain = result.toolchain
+    log(`[verify-dist-fresh] build toolchain: ${BUILD_BIN} ${toolchain.current ?? "unavailable"} · recorded buildToolchain ${toolchain.pinned === null ? "(none)" : "bun@" + toolchain.pinned}${toolchain.note === "" ? "" : " — NOTE: " + toolchain.note}`)
+  }
   for (const finding of result.findings) log(`  ${finding.kind}: ${finding.pkg === "-" ? "" : `${finding.dist} — `}${finding.detail}`)
   log(result.notCovered.length === 0
     ? "[verify-dist-fresh] NOT COVERED (0): every committed packages/*/dist file maps to a covered target"

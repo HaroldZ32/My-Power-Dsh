@@ -157,10 +157,17 @@ test("R1 DORMANT: a failing sweep degrades to a warning and still returns the de
       on: (name, handler) => { ctx.handler = handler },
       logger: { info: () => {}, warn: (message) => warnings.push(String(message)), error: () => {}, debug: () => {} },
     }
-    // make the state root a path THROUGH a regular file, so readdir throws ENOTDIR —
-    // a real failure the sweep must degrade rather than propagate.
+    // make the state root a REGULAR FILE, so readdir throws ENOTDIR — a real failure
+    // the sweep must degrade rather than propagate.
+    //
+    // The file must be the state root ITSELF, not a component of its path: only
+    // "readdir(<file>)" answers ENOTDIR at both platforms. A path THROUGH a file
+    // answers ENOTDIR on POSIX but ENOENT on Windows (measured: Node maps
+    // ERROR_PATH_NOT_FOUND to ENOENT there), and ENOENT is the one code the sweep
+    // deliberately reads as "no state root yet" — so the transient-path shape would
+    // assert nothing on a Windows host.
     writeFileSync(join(workspace, "blocker"), "not a directory")
-    installInterjectionExpirySweep(ctx, { stateDir: "blocker/team" })
+    installInterjectionExpirySweep(ctx, { stateDir: "blocker" })
     const decision = await ctx.handler({ agent: { id: "t53-failing", session: { header: { cwd: workspace } } } }, async () => ({ kind: "accept" }))
     expect(decision).toEqual({ kind: "accept" })
     expect(warnings.length).toBe(1)

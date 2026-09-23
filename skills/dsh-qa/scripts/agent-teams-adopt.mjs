@@ -13,6 +13,7 @@ import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -99,7 +100,8 @@ async function runReal() {
   let failed = false
 
   function runSync(cmd, args, opts = {}) {
-    const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
+    const spec = cmd === "dsh" ? dshCommand(args, env) : { command: cmd, args }
+    const r = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
     const out = (r.stdout || "") + (r.stderr || "")
     LOG.push("$ " + cmd + " " + args.join(" ") + "\\n[[exit=" + r.status + "]]\\n" + out.slice(0, 20000))
     return { status: r.status, out, stdout: r.stdout || "" }
@@ -145,7 +147,9 @@ async function runReal() {
   const port = 3199
   const webLog = join(outDir, "web.log")
   const webFd = openSyncSafe(webLog)
-  const web = spawn("dsh", ["--profile", "mpd", "--port", String(port), "--no-open"], { env: webEnv, cwd: webWs, detached: false, stdio: ["ignore", webFd, webFd] })
+  const webSpec = dshCommand(["--profile", "mpd", "--port", String(port), "--no-open"], webEnv)
+  if (webSpec === null) throw new Error(DSH_MISSING)
+  const web = spawn(webSpec.command, webSpec.args, { env: webEnv, cwd: webWs, detached: false, stdio: ["ignore", webFd, webFd] })
   let routeOk = false
   let routeStatus = null
   let routeBody = ""

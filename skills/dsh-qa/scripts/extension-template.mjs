@@ -39,7 +39,7 @@
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, sep } from "node:path"
 import { pathToFileURL } from "node:url"
 import {
   REPO, binaryPresent, bootSession, callsOf, crashSignatures, createSandbox, cleanup, gatePrereqs, installProfile,
@@ -128,7 +128,9 @@ function treeOf(root) {
     for (const entry of readdirSync(dir).sort()) {
       const path = join(dir, entry)
       if (statSync(path).isDirectory()) walk(path)
-      else out.push(path.slice(root.length + 1))
+      // POSIX-spelled relpaths: the expected assets below are written with "/" (the manifest's own
+      // vocabulary), so a native separator would make every entry fail to match on Windows.
+      else out.push(path.slice(root.length + 1).split(sep).join("/"))
     }
   }
   if (existsSync(root)) walk(root)

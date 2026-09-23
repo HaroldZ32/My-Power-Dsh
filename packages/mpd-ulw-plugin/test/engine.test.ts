@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test"
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs"
-import { join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { tmpdir } from "node:os"
 import { apply } from "../src/index.ts"
 // The HARNESS'S OWN output validator, vendored in the adopted plugin's runtime closure and
@@ -62,7 +62,9 @@ test("engine policy: plan -> round -> verify -> quality gate with ledger", async
   expect(state.status).toBe("complete")
   expect(state.criteria.length).toBe(1)
   expect(state.criteria[0].state).toBe("clean")
-  const ledger = readFileSync(join(stateDir, res.stateFile.split("/").slice(-2, -1)[0], "ledger.jsonl"), "utf8")
+  // dirname/basename, never split("/"): a native win32 path has no "/" to split on, and the
+  // POSIX spelling fed `join()` an `undefined` segment (ERR_INVALID_ARG_TYPE).
+  const ledger = readFileSync(join(stateDir, basename(dirname(res.stateFile)), "ledger.jsonl"), "utf8")
   expect(ledger).toContain("verification")
   expect(ledger).toContain("quality-code quality")
   expect(ledger).toContain("quality-goal verification")
@@ -92,7 +94,7 @@ test("quality gate: a FAIL lane blocks completion and stamps the ledger row", as
   expect(res.ledger.find((lane: any) => lane.lane === "hands-on QA")?.verdict).toBe("FAIL")
   const state = JSON.parse(readFileSync(res.stateFile, "utf8"))
   expect(state.status).toBe("blocked")
-  const ledger = readFileSync(join(stateDir, res.stateFile.split("/").slice(-2, -1)[0], "ledger.jsonl"), "utf8")
+  const ledger = readFileSync(join(stateDir, basename(dirname(res.stateFile)), "ledger.jsonl"), "utf8")
   expect(ledger).toContain('"lane":"quality-hands-on QA","verdict":"FAIL"')
   expect(ledger).toContain('"lane":"quality-code quality","verdict":"PASS"')
   expect(ledger).toContain('"lane":"quality-goal verification","verdict":"PASS"')

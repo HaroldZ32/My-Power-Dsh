@@ -140,7 +140,7 @@ test("T-09: the artifact channel carries the full text, records it on the task, 
         // a SYMLINKED directory inside the workspace must not become a write-through escape
         const outside = mkdtempSync(join(tmpdir(), "mpd-t19-outside-"))
         mkdirSync(join(workspace, "evidence"), { recursive: true })
-        symlinkSync(outside, join(workspace, "evidence/link"), "dir")
+        symlinkSync(outside, join(workspace, "evidence/link"), "junction")
         await expect(attach("evidence/link/leak.md")).rejects.toThrow(/symlinked directory|outside the workspace/)
         expect(existsSync(join(outside, "leak.md"))).toBe(false)
         await expect(attach(join(STATE_DIR, TEAM_ID, "leak.md"))).rejects.toThrow(/team state dir/)

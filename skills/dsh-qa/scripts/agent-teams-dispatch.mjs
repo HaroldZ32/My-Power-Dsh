@@ -49,6 +49,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import zlib from "node:zlib"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const PLUGIN = join(repoRoot, "packages", "mpd-agent-teams-plugin")
@@ -57,17 +58,50 @@ const ASSIGNMENT_MARKER = "AgentTeams automatic task assignment"
 
 function fail(msg) { console.error("[agent-teams-dispatch] FAIL: " + msg); process.exit(1) }
 
-/** Locate the installed @deepseek-ai/dsh package root (its peers sit beside it). */
+/**
+ * The PATH-resolved `dsh` launcher, WITHOUT `sh` and WITHOUT `which`.
+ *
+ * `which dsh` is POSIX-only in two ways: there is no `which` program on Windows, and the MSYS
+ * `which` a Git-Bash host answers with prints a POSIX path (`/c/Users/...`) that `realpathSync`
+ * cannot resolve — measured `ENOENT: lstat 'C:\c'`, which took the whole case down. The PATH scan
+ * is the platform-native equivalent and needs no shell at all.
+ */
+function whichDsh() {
+  const dirs = (process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":")
+  const names = process.platform === "win32" ? ["dsh.cmd", "dsh.exe", "dsh.bat", "dsh"] : ["dsh"]
+  for (const dir of dirs) {
+    if (dir === "") continue
+    for (const name of names) {
+      const candidate = join(dir, name)
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return ""
+}
+
+/**
+ * Locate the installed @deepseek-ai/dsh package root.
+ *
+ * POSIX resolves the `bin/dsh` symlink INTO the package, so the peers sit at
+ * `<pkg>/node_modules/@deepseek-ai/*` and one upward walk finds them. npm's Windows launcher is
+ * not a symlink: `<prefix>\dsh.cmd` only marks the npm prefix, and the package plus its peers hang
+ * off `<prefix>\node_modules\@deepseek-ai\dsh` — so BOTH shapes are probed at every ancestor.
+ */
 function hostRoot() {
-  const which = spawnSync("which", ["dsh"], { encoding: "utf8" })
-  if (which.status !== 0) return null
-  let dir = dirname(realpathSync(which.stdout.trim()))
+  const bin = whichDsh()
+  if (bin === "") return null
+  let real = bin
+  try { real = realpathSync(bin) } catch { /* keep the literal path */ }
+  let dir = dirname(real)
   for (let i = 0; i < 8; i++) {
-    if (existsSync(join(dir, "node_modules", "@deepseek-ai", "dsh-subagent"))) return dir
-    if (existsSync(join(dir, "package.json"))) {
-      try {
-        if (JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).name === "@deepseek-ai/dsh") return dir
-      } catch { /* keep walking */ }
+    const candidates = [dir, join(dir, "node_modules", "@deepseek-ai", "dsh")]
+    for (const candidate of candidates) {
+      if (existsSync(join(candidate, "node_modules", "@deepseek-ai", "dsh-subagent"))) return candidate
+      if (existsSync(join(candidate, "package.json"))) {
+        try {
+          if (JSON.parse(readFileSync(join(candidate, "package.json"), "utf8")).name === "@deepseek-ai/dsh") return candidate
+        } catch { /* keep looking */ }
+      }
     }
     const parent = dirname(dir)
     if (parent === dir) break
@@ -260,7 +294,8 @@ async function runReal() {
   let failed = false
 
   function runSync(cmd, args, opts = {}) {
-    const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
+    const spec = cmd === "dsh" ? dshCommand(args, env) : { command: cmd, args }
+    const r = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
     const out = (r.stdout || "") + (r.stderr || "")
     LOG.push("$ " + cmd + " " + args.join(" ") + "\n[[exit=" + r.status + "]]\n" + out.slice(0, 20000))
     return { status: r.status, out }

@@ -2,7 +2,7 @@
 // Verify the vendor baseline: upstream commit/version are blockers; stats drift is a warning; asset counts are blockers.
 import { execFileSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { dirname, join, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -111,7 +111,13 @@ for (const [rel, meta] of assetEntries) {
     if (actual !== meta.sha256) { fail("asset " + rel + " sha256 mismatch"); assetOk = false }
   }
   if (typeof meta.treeSha === "string") {
-    const files2 = files.map((f) => f.slice(dir.length + 1)).sort()
+    // The fold input is the RELPATH, so it must be spelled the same on every platform: a native
+    // separator would make one corpus hash two different values (Windows `a\\b` vs POSIX `a/b`)
+    // and the lock could only ever satisfy one of them — measured: a clean Windows checkout
+    // recomputed 4b4f37… for a corpus the lock pins as 220ddd2c…, i.e. this gate was permanently
+    // RED here while the same bytes were GREEN on the POSIX machine that wrote the pin. Same
+    // discipline as readBytes()'s LF normalization above: the fingerprint is of the CONTENT.
+    const files2 = files.map((f) => f.slice(dir.length + 1).split(sep).join("/")).sort()
     const h = createHash("sha256")
     for (const f of files2) {
       const fh = createHash("sha256").update(readBytes(join(dir, f))).digest("hex")

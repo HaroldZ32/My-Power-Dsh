@@ -2,7 +2,6 @@ var __create = Object.create;
 var __getProtoOf = Object.getPrototypeOf;
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 function __accessProp(key) {
   return this[key];
@@ -18,96 +17,35 @@ var __toESM = (mod, isNodeMode, target) => {
       return cached;
   }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
-  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
-  for (let key of __getOwnPropNames(mod))
-    if (!__hasOwnProp.call(to, key))
-      __defProp(to, key, {
-        get: __accessProp.bind(mod, key),
-        enumerable: true
-      });
+  const to = isNodeMode || !mod || !mod.__esModule || !__hasOwnProp.call(mod, "default") ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
+  if (mod && typeof mod === "object" || typeof mod === "function") {
+    for (let key of __getOwnPropNames(mod))
+      if (!__hasOwnProp.call(to, key))
+        __defProp(to, key, {
+          get: __accessProp.bind(mod, key),
+          enumerable: true
+        });
+  }
   if (canCache)
     cache.set(mod, to);
   return to;
 };
-var __toCommonJS = (from) => {
-  var entry = (__moduleCache ??= new WeakMap).get(from), desc;
-  if (entry)
-    return entry;
-  entry = __defProp({}, "__esModule", { value: true });
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (var key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(entry, key))
-        __defProp(entry, key, {
-          get: __accessProp.bind(from, key),
-          enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
-        });
-  }
-  __moduleCache.set(from, entry);
-  return entry;
-};
-var __moduleCache;
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
-var __returnValue = (v) => v;
-function __exportSetter(name, newValue) {
-  this[name] = __returnValue.bind(null, newValue);
-}
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, {
-      get: all[name],
-      enumerable: true,
-      configurable: true,
-      set: __exportSetter.bind(all, name)
-    });
+var __esm = (fn, res, err) => () => {
+  if (fn)
+    try {
+      res = fn(fn = 0);
+    } catch (e) {
+      err = [e];
+    }
+  if (err)
+    throw err[0];
+  return res;
 };
-var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
 // packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
-var exports_lib = {};
-__export(exports_lib, {
-  valueMap: () => mapValues,
-  union: () => union,
-  uncapitalize: () => uncapitalize,
-  trimSlash: () => trimSlash,
-  snakeCase: () => snakeCase,
-  sanitize: () => sanitize,
-  remove: () => remove,
-  pick: () => pick,
-  paramCase: () => paramCase,
-  omit: () => omit,
-  noop: () => noop,
-  mapValues: () => mapValues,
-  makeArray: () => makeArray,
-  isPlainObject: () => isPlainObject,
-  isNullable: () => isNullable,
-  isNonNullable: () => isNonNullable,
-  is: () => is,
-  intersection: () => intersection,
-  hyphenate: () => hyphenate,
-  hexToArrayBuffer: () => hexToArrayBuffer,
-  formatProperty: () => formatProperty,
-  filterKeys: () => filterKeys,
-  difference: () => difference,
-  defineProperty: () => defineProperty,
-  deepEqual: () => deepEqual,
-  deduplicate: () => deduplicate,
-  contain: () => contain,
-  clone: () => clone,
-  capitalize: () => capitalize,
-  camelize: () => camelize,
-  camelCase: () => camelCase,
-  base64ToArrayBuffer: () => base64ToArrayBuffer,
-  arrayBufferToHex: () => arrayBufferToHex,
-  arrayBufferToBase64: () => arrayBufferToBase64,
-  Time: () => Time,
-  Binary: () => Binary
-});
-function noop() {}
 function isNullable(value) {
   return value === null || value === undefined;
-}
-function isNonNullable(value) {
-  return !isNullable(value);
 }
 function isPlainObject(data) {
   return data && typeof data === "object" && !Array.isArray(data);
@@ -127,50 +65,9 @@ function pick(source, keys, forced) {
       result[key] = source[key];
   return result;
 }
-function omit(source, keys) {
-  if (!keys)
-    return { ...source };
-  const result = { ...source };
-  for (const key of keys)
-    Reflect.deleteProperty(result, key);
-  return result;
-}
-function defineProperty(object, key, value) {
-  return Object.defineProperty(object, key, {
-    writable: true,
-    value,
-    enumerable: false
-  });
-}
-function contain(array1, array2) {
-  return array2.every((item) => array1.includes(item));
-}
-function intersection(array1, array2) {
-  return array1.filter((item) => array2.includes(item));
-}
-function difference(array1, array2) {
-  return array1.filter((item) => !array2.includes(item));
-}
-function union(array1, array2) {
-  return Array.from(new Set([...array1, ...array2]));
-}
-function deduplicate(array) {
-  return [...new Set(array)];
-}
-function remove(list, item) {
-  const index = list?.indexOf(item);
-  if (index >= 0) {
-    list.splice(index, 1);
-    return true;
-  } else
-    return false;
-}
-function makeArray(source) {
-  return Array.isArray(source) ? source : isNullable(source) ? [] : [source];
-}
 function is(type, value) {
   if (arguments.length === 1)
-    return (value2) => is(type, value2);
+    return (value) => is(type, value);
   return type in globalThis && value instanceof globalThis[type] || Object.prototype.toString.call(value).slice(8, -1) === type;
 }
 function isArrayBufferLike(value) {
@@ -194,12 +91,12 @@ function clone(source, refs = /* @__PURE__ */ new Map) {
   if (cached)
     return cached;
   if (Array.isArray(source)) {
-    const result2 = [];
-    refs.set(source, result2);
+    const result = [];
+    refs.set(source, result);
     source.forEach((value, index) => {
-      result2[index] = Reflect.apply(clone, null, [value, refs]);
+      result[index] = Reflect.apply(clone, null, [value, refs]);
     });
-    return result2;
+    return result;
   }
   const result = Object.create(Object.getPrototypeOf(source));
   refs.set(source, result);
@@ -225,11 +122,11 @@ function deepEqual(a, b, strict) {
   function check(test, then) {
     return test(a) ? test(b) ? then(a, b) : false : test(b) ? false : undefined;
   }
-  return check(Array.isArray, (a2, b2) => a2.length === b2.length && a2.every((item, index) => deepEqual(item, b2[index]))) ?? check(is("Date"), (a2, b2) => a2.valueOf() === b2.valueOf()) ?? check(is("RegExp"), (a2, b2) => a2.source === b2.source && a2.flags === b2.flags) ?? check(isArrayBufferLike, (a2, b2) => {
-    if (a2.byteLength !== b2.byteLength)
+  return check(Array.isArray, (a, b) => a.length === b.length && a.every((item, index) => deepEqual(item, b[index]))) ?? check(is("Date"), (a, b) => a.valueOf() === b.valueOf()) ?? check(is("RegExp"), (a, b) => a.source === b.source && a.flags === b.flags) ?? check(isArrayBufferLike, (a, b) => {
+    if (a.byteLength !== b.byteLength)
       return false;
-    const viewA = new Uint8Array(a2);
-    const viewB = new Uint8Array(b2);
+    const viewA = new Uint8Array(a);
+    const viewB = new Uint8Array(b);
     for (let i = 0;i < viewA.length; i++)
       if (viewA[i] !== viewB[i])
         return false;
@@ -239,75 +136,18 @@ function deepEqual(a, b, strict) {
     ...b
   }).every((key) => deepEqual(a[key], b[key], strict));
 }
-function capitalize(source) {
-  return source.charAt(0).toUpperCase() + source.slice(1);
-}
-function uncapitalize(source) {
-  return source.charAt(0).toLowerCase() + source.slice(1);
-}
-function camelCase(source) {
-  return source.replace(/[_-][a-z]/g, (str) => str.slice(1).toUpperCase());
-}
-function tokenize(source, delimiters, delimiter) {
-  const output = [];
-  let state = 0;
-  for (let i = 0;i < source.length; i++) {
-    const code = source.charCodeAt(i);
-    if (code >= 65 && code <= 90) {
-      if (state === 1) {
-        const next = source.charCodeAt(i + 1);
-        if (next >= 97 && next <= 122)
-          output.push(delimiter);
-        output.push(code + 32);
-      } else {
-        if (state !== 0)
-          output.push(delimiter);
-        output.push(code + 32);
-      }
-      state = 1;
-    } else if (code >= 97 && code <= 122) {
-      output.push(code);
-      state = 2;
-    } else if (delimiters.includes(code)) {
-      if (state !== 0)
-        output.push(delimiter);
-      state = 0;
-    } else
-      output.push(code);
-  }
-  return String.fromCharCode(...output);
-}
-function paramCase(source) {
-  return tokenize(source, [45, 95], 45);
-}
-function snakeCase(source) {
-  return tokenize(source, [45, 95], 95);
-}
-function formatProperty(key) {
-  if (typeof key !== "string")
-    return `[${key.toString()}]`;
-  return /^[a-z_$][\w$]*$/i.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
-}
-function trimSlash(source) {
-  return source.replace(/\/$/, "");
-}
-function sanitize(source) {
-  if (!source.startsWith("/"))
-    source = "/" + source;
-  return trimSlash(source);
-}
-var Binary, base64ToArrayBuffer, arrayBufferToBase64, hexToArrayBuffer, arrayBufferToHex, camelize, hyphenate, Time;
+var Binary, base64ToArrayBuffer, arrayBufferToBase64, hexToArrayBuffer, arrayBufferToHex, Time;
 var init_lib = __esm(() => {
-  (function(Binary2) {
-    Binary2.is = isArrayBufferLike;
-    Binary2.isSource = isArrayBufferSource;
+  (function(Binary) {
+    Binary.is = isArrayBufferLike;
+    Binary.isSource = isArrayBufferSource;
     function fromSource(source) {
       if (ArrayBuffer.isView(source))
         return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
       else
         return source;
     }
-    Binary2.fromSource = fromSource;
+    Binary.fromSource = fromSource;
     function toBase64(source) {
       source = fromSource(source);
       if (typeof Buffer !== "undefined")
@@ -318,20 +158,20 @@ var init_lib = __esm(() => {
         binary += String.fromCharCode(bytes[i]);
       return btoa(binary);
     }
-    Binary2.toBase64 = toBase64;
+    Binary.toBase64 = toBase64;
     function fromBase64(source) {
       if (typeof Buffer !== "undefined")
         return fromSource(Buffer.from(source, "base64"));
       return Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
     }
-    Binary2.fromBase64 = fromBase64;
+    Binary.fromBase64 = fromBase64;
     function toHex(source) {
       source = fromSource(source);
       if (typeof Buffer !== "undefined")
         return Buffer.from(source).toString("hex");
       return Array.from(new Uint8Array(source), (byte) => byte.toString(16).padStart(2, "0")).join("");
     }
-    Binary2.toHex = toHex;
+    Binary.toHex = toHex;
     function fromHex(source) {
       if (typeof Buffer !== "undefined")
         return fromSource(Buffer.from(source, "hex"));
@@ -341,45 +181,43 @@ var init_lib = __esm(() => {
         buffer.push(parseInt(`${hex[i]}${hex[i + 1]}`, 16));
       return Uint8Array.from(buffer).buffer;
     }
-    Binary2.fromHex = fromHex;
+    Binary.fromHex = fromHex;
   })(Binary || (Binary = {}));
   base64ToArrayBuffer = Binary.fromBase64;
   arrayBufferToBase64 = Binary.toBase64;
   hexToArrayBuffer = Binary.fromHex;
   arrayBufferToHex = Binary.toHex;
-  camelize = camelCase;
-  hyphenate = paramCase;
-  (function(Time2) {
-    Time2.millisecond = 1;
-    Time2.second = 1000;
-    Time2.minute = Time2.second * 60;
-    Time2.hour = Time2.minute * 60;
-    Time2.day = Time2.hour * 24;
-    Time2.week = Time2.day * 7;
+  (function(Time) {
+    Time.millisecond = 1;
+    Time.second = 1000;
+    Time.minute = Time.second * 60;
+    Time.hour = Time.minute * 60;
+    Time.day = Time.hour * 24;
+    Time.week = Time.day * 7;
     let timezoneOffset = (/* @__PURE__ */ new Date()).getTimezoneOffset();
     function setTimezoneOffset(offset) {
       timezoneOffset = offset;
     }
-    Time2.setTimezoneOffset = setTimezoneOffset;
+    Time.setTimezoneOffset = setTimezoneOffset;
     function getTimezoneOffset() {
       return timezoneOffset;
     }
-    Time2.getTimezoneOffset = getTimezoneOffset;
+    Time.getTimezoneOffset = getTimezoneOffset;
     function getDateNumber(date = /* @__PURE__ */ new Date, offset) {
       if (typeof date === "number")
         date = new Date(date);
       if (offset === undefined)
         offset = timezoneOffset;
-      return Math.floor((date.valueOf() / Time2.minute - offset) / 1440);
+      return Math.floor((date.valueOf() / Time.minute - offset) / 1440);
     }
-    Time2.getDateNumber = getDateNumber;
+    Time.getDateNumber = getDateNumber;
     function fromDateNumber(value, offset) {
-      const date = new Date(value * Time2.day);
+      const date = new Date(value * Time.day);
       if (offset === undefined)
         offset = timezoneOffset;
-      return new Date(+date + offset * Time2.minute);
+      return new Date(+date + offset * Time.minute);
     }
-    Time2.fromDateNumber = fromDateNumber;
+    Time.fromDateNumber = fromDateNumber;
     const numeric = /\d+(?:\.\d+)?/.source;
     const timeRegExp = new RegExp(`^${[
       "w(?:eek(?:s)?)?",
@@ -392,9 +230,9 @@ var init_lib = __esm(() => {
       const capture = timeRegExp.exec(source);
       if (!capture)
         return 0;
-      return (parseFloat(capture[1]) * Time2.week || 0) + (parseFloat(capture[2]) * Time2.day || 0) + (parseFloat(capture[3]) * Time2.hour || 0) + (parseFloat(capture[4]) * Time2.minute || 0) + (parseFloat(capture[5]) * Time2.second || 0);
+      return (parseFloat(capture[1]) * Time.week || 0) + (parseFloat(capture[2]) * Time.day || 0) + (parseFloat(capture[3]) * Time.hour || 0) + (parseFloat(capture[4]) * Time.minute || 0) + (parseFloat(capture[5]) * Time.second || 0);
     }
-    Time2.parseTime = parseTime;
+    Time.parseTime = parseTime;
     function parseDate(date) {
       const parsed = parseTime(date);
       if (parsed)
@@ -405,34 +243,34 @@ var init_lib = __esm(() => {
         date = `${(/* @__PURE__ */ new Date()).getFullYear()}-${date}`;
       return date ? new Date(date) : /* @__PURE__ */ new Date;
     }
-    Time2.parseDate = parseDate;
+    Time.parseDate = parseDate;
     function format(ms) {
       const abs = Math.abs(ms);
-      if (abs >= Time2.day - Time2.hour / 2)
-        return Math.round(ms / Time2.day) + "d";
-      else if (abs >= Time2.hour - Time2.minute / 2)
-        return Math.round(ms / Time2.hour) + "h";
-      else if (abs >= Time2.minute - Time2.second / 2)
-        return Math.round(ms / Time2.minute) + "m";
-      else if (abs >= Time2.second)
-        return Math.round(ms / Time2.second) + "s";
+      if (abs >= Time.day - Time.hour / 2)
+        return Math.round(ms / Time.day) + "d";
+      else if (abs >= Time.hour - Time.minute / 2)
+        return Math.round(ms / Time.hour) + "h";
+      else if (abs >= Time.minute - Time.second / 2)
+        return Math.round(ms / Time.minute) + "m";
+      else if (abs >= Time.second)
+        return Math.round(ms / Time.second) + "s";
       return ms + "ms";
     }
-    Time2.format = format;
+    Time.format = format;
     function toDigits(source, length = 2) {
       return source.toString().padStart(length, "0");
     }
-    Time2.toDigits = toDigits;
-    function template(template2, time = /* @__PURE__ */ new Date) {
-      return template2.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
+    Time.toDigits = toDigits;
+    function template(template, time = /* @__PURE__ */ new Date) {
+      return template.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
     }
-    Time2.template = template;
+    Time.template = template;
   })(Time || (Time = {}));
 });
 
 // packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
-var require_lib = __commonJS((exports, module) => {
-  var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
+var require_lib = __commonJS(function(exports, module) {
+  var _deepseek_ai_cosmokit = (init_lib(), {});
   var kSchema = Symbol.for("schemastery");
   var kValidationError = Symbol.for("ValidationError");
   globalThis.__schemastery_index__ ??= 0;
@@ -460,18 +298,18 @@ var require_lib = __commonJS((exports, module) => {
   };
   Object.defineProperty(ValidationError.prototype, kValidationError, { value: true });
   var Schema = function(options) {
-    const schema = function(data, options2 = {}) {
-      return Schema.resolve(data, schema, options2)[0];
+    const schema = function(data, options = {}) {
+      return Schema.resolve(data, schema, options)[0];
     };
     if (options.refs) {
-      const refs = (0, _deepseek_ai_cosmokit.valueMap)(options.refs, (options2) => new Schema(options2));
+      const refs = (0, mapValues)(options.refs, (options) => new Schema(options));
       const getRef = (uid) => refs[uid];
       for (const key in refs) {
-        const options2 = refs[key];
-        options2.sKey = getRef(options2.sKey);
-        options2.inner = getRef(options2.inner);
-        options2.list = options2.list && options2.list.map(getRef);
-        options2.dict = options2.dict && (0, _deepseek_ai_cosmokit.valueMap)(options2.dict, getRef);
+        const options = refs[key];
+        options.sKey = getRef(options.sKey);
+        options.inner = getRef(options.inner);
+        options.list = options.list && options.list.map(getRef);
+        options.dict = options.dict && (0, mapValues)(options.dict, getRef);
       }
       return refs[options.uid];
     }
@@ -544,7 +382,7 @@ var require_lib = __commonJS((exports, module) => {
     return value?.$value ?? value?.$inner;
   }
   function extractKeys(data) {
-    return (0, _deepseek_ai_cosmokit.filterKeys)(data ?? {}, (key) => !key.startsWith("$"));
+    return (0, filterKeys)(data ?? {}, (key) => !key.startsWith("$"));
   }
   Schema.prototype.i18n = function i18n(messages) {
     const schema = Schema(this);
@@ -552,12 +390,12 @@ var require_lib = __commonJS((exports, module) => {
     if (Object.keys(desc).length)
       schema.meta.description = desc;
     if (schema.dict)
-      schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(schema.dict, (inner, key) => {
-        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
+      schema.dict = (0, mapValues)(schema.dict, (inner, key) => {
+        return inner.i18n((0, mapValues)(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
       });
     if (schema.list)
       schema.list = schema.list.map((inner, index) => {
-        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data = {}) => {
+        return inner.i18n((0, mapValues)(messages, (data = {}) => {
           if (Array.isArray(getInner(data)))
             return getInner(data)[index];
           if (Array.isArray(data))
@@ -566,13 +404,13 @@ var require_lib = __commonJS((exports, module) => {
         }));
       });
     if (schema.inner)
-      schema.inner = schema.inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => {
+      schema.inner = schema.inner.i18n((0, mapValues)(messages, (data) => {
         if (getInner(data))
           return getInner(data);
         return extractKeys(data);
       }));
     if (schema.sKey)
-      schema.sKey = schema.sKey.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => data?.$key));
+      schema.sKey = schema.sKey.i18n((0, mapValues)(messages, (data) => data?.$key));
     return schema;
   };
   Schema.prototype.extra = function extra(key, value) {
@@ -618,33 +456,33 @@ var require_lib = __commonJS((exports, module) => {
   };
   Schema.prototype.pattern = function pattern(regexp) {
     const schema = Schema(this);
-    const pattern2 = (0, _deepseek_ai_cosmokit.pick)(regexp, ["source", "flags"]);
+    const pattern = (0, pick)(regexp, ["source", "flags"]);
     schema.meta = {
       ...schema.meta,
-      pattern: pattern2
+      pattern
     };
     return schema;
   };
   Schema.prototype.simplify = function simplify(value) {
-    if ((0, _deepseek_ai_cosmokit.deepEqual)(value, this.meta.default, this.type === "dict"))
+    if ((0, deepEqual)(value, this.meta.default, this.type === "dict"))
       return null;
-    if ((0, _deepseek_ai_cosmokit.isNullable)(value))
+    if ((0, isNullable)(value))
       return value;
     if (this.type === "object" || this.type === "dict") {
       const result = {};
       for (const key in value) {
         const item = (this.type === "object" ? this.dict[key] : this.inner)?.simplify(value[key]);
-        if (this.type === "dict" || !(0, _deepseek_ai_cosmokit.isNullable)(item))
+        if (this.type === "dict" || !(0, isNullable)(item))
           result[key] = item;
       }
-      if ((0, _deepseek_ai_cosmokit.deepEqual)(result, this.meta.default, this.type === "dict"))
+      if ((0, deepEqual)(result, this.meta.default, this.type === "dict"))
         return null;
       return result;
     } else if (this.type === "array" || this.type === "tuple") {
       const result = [];
-      value.forEach((value2, index) => {
+      value.forEach((value, index) => {
         const schema = this.type === "array" ? this.inner : this.list[index];
-        const item = schema ? schema.simplify(value2) : value2;
+        const item = schema ? schema.simplify(value) : value;
         result.push(item);
       });
       return result;
@@ -699,18 +537,18 @@ var require_lib = __commonJS((exports, module) => {
       return [data];
     if (options.ignore?.(data, schema))
       return [data];
-    if ((0, _deepseek_ai_cosmokit.isNullable)(data) && schema.type !== "lazy") {
+    if ((0, isNullable)(data) && schema.type !== "lazy") {
       if (schema.meta.required)
         throw new ValidationError(`missing required value`, options);
       let current = schema;
       let fallback = schema.meta.default;
-      while (current?.type === "intersect" && (0, _deepseek_ai_cosmokit.isNullable)(fallback)) {
+      while (current?.type === "intersect" && (0, isNullable)(fallback)) {
         current = current.list[0];
         fallback = current?.meta.default;
       }
-      if ((0, _deepseek_ai_cosmokit.isNullable)(fallback))
+      if ((0, isNullable)(fallback))
         return [data];
-      data = (0, _deepseek_ai_cosmokit.clone)(fallback);
+      data = (0, clone)(fallback);
     }
     const callback = resolvers[schema.type];
     if (!callback)
@@ -724,7 +562,7 @@ var require_lib = __commonJS((exports, module) => {
     }
   };
   Schema.from = function from(source) {
-    if ((0, _deepseek_ai_cosmokit.isNullable)(source))
+    if ((0, isNullable)(source))
       return Schema.any();
     else if ([
       "string",
@@ -776,10 +614,10 @@ var require_lib = __commonJS((exports, module) => {
   };
   Schema.date = function date() {
     return Schema.union([Schema.is(Date), Schema.transform(Schema.string().role("datetime"), (value, options) => {
-      const date2 = new Date(value);
-      if (isNaN(+date2))
+      const date = new Date(value);
+      if (isNaN(+date))
         throw new ValidationError(`invalid date "${value}"`, options);
-      return date2;
+      return date;
     }, true)]);
   };
   Schema.regExp = function regExp(flag = "") {
@@ -796,13 +634,13 @@ var require_lib = __commonJS((exports, module) => {
       Schema.is(ArrayBuffer),
       Schema.is(SharedArrayBuffer),
       Schema.transform(Schema.any(), (value, options) => {
-        if (_deepseek_ai_cosmokit.Binary.isSource(value))
-          return _deepseek_ai_cosmokit.Binary.fromSource(value);
+        if (Binary.isSource(value))
+          return Binary.fromSource(value);
         throw new ValidationError(`expected ArrayBufferSource but got ${value}`, options);
       }, true),
       ...encoding ? [Schema.transform(Schema.string(), (value, options) => {
         try {
-          return encoding === "base64" ? _deepseek_ai_cosmokit.Binary.fromBase64(value) : _deepseek_ai_cosmokit.Binary.fromHex(value);
+          return encoding === "base64" ? Binary.fromBase64(value) : Binary.fromHex(value);
         } catch (e) {
           throw new ValidationError(e.message, options);
         }
@@ -826,7 +664,7 @@ var require_lib = __commonJS((exports, module) => {
     throw new ValidationError(`expected nullable but got ${data}`, options);
   });
   Schema.extend("const", (data, { value }, options) => {
-    if ((0, _deepseek_ai_cosmokit.deepEqual)(data, value))
+    if ((0, deepEqual)(data, value))
       return [value];
     throw new ValidationError(`expected ${value} but got ${data}`, options);
   });
@@ -915,7 +753,7 @@ var require_lib = __commonJS((exports, module) => {
         return [data];
       throw new ValidationError(`expected ${constructor.name} but got ${data}`, options);
     } else {
-      if ((0, _deepseek_ai_cosmokit.isNullable)(data))
+      if ((0, isNullable)(data))
         throw new ValidationError(`expected ${constructor} but got ${data}`, options);
       let prototype = Object.getPrototypeOf(data);
       while (prototype) {
@@ -945,11 +783,11 @@ var require_lib = __commonJS((exports, module) => {
   Schema.extend("array", (data, { inner, meta }, options) => {
     if (!Array.isArray(data))
       throw new ValidationError(`expected array but got ${data}`, options);
-    checkWithinRange(data.length, meta, "array length", options, !(0, _deepseek_ai_cosmokit.isNullable)(inner.meta.default));
+    checkWithinRange(data.length, meta, "array length", options, !(0, isNullable)(inner.meta.default));
     return [data.map((_, index) => property(data, index, inner, options))];
   });
   Schema.extend("dict", (data, { inner, sKey }, options, strict) => {
-    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
+    if (!(0, isPlainObject)(data))
       throw new ValidationError(`expected object but got ${data}`, options);
     const result = {};
     for (const key in data) {
@@ -985,12 +823,12 @@ var require_lib = __commonJS((exports, module) => {
     }
   }
   Schema.extend("object", (data, { dict }, options, strict) => {
-    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
+    if (!(0, isPlainObject)(data))
       throw new ValidationError(`expected object but got ${data}`, options);
     const result = {};
     for (const key in dict) {
       const value = property(data, key, dict[key], options);
-      if (!(0, _deepseek_ai_cosmokit.isNullable)(value) || key in data)
+      if (!(0, isNullable)(value) || key in data)
         result[key] = value;
     }
     if (!strict)
@@ -1013,9 +851,9 @@ var require_lib = __commonJS((exports, module) => {
     let result;
     for (const inner of list) {
       const value = Schema.resolve(data, inner, options, true)[0];
-      if ((0, _deepseek_ai_cosmokit.isNullable)(value))
+      if ((0, isNullable)(value))
         continue;
-      if ((0, _deepseek_ai_cosmokit.isNullable)(result))
+      if ((0, isNullable)(result))
         result = value;
       else if (typeof result !== typeof value)
         throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
@@ -1024,7 +862,7 @@ var require_lib = __commonJS((exports, module) => {
       else if (result !== value)
         throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
     }
-    if (!strict && (0, _deepseek_ai_cosmokit.isPlainObject)(data))
+    if (!strict && (0, isPlainObject)(data))
       merge(result, data);
     return [result];
   });
@@ -1052,14 +890,14 @@ var require_lib = __commonJS((exports, module) => {
             schema.list = args[index].map(Schema.from);
             break;
           case "dict":
-            schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(args[index], Schema.from);
+            schema.dict = (0, mapValues)(args[index], Schema.from);
             break;
           case "bits":
             schema.bits = {};
-            for (const key2 in args[index]) {
-              if (typeof args[index][key2] !== "number")
+            for (const key in args[index]) {
+              if (typeof args[index][key] !== "number")
                 continue;
-              schema.bits[key2] = args[index][key2];
+              schema.bits[key] = args[index][key];
             }
             break;
           case "callback": {
@@ -1184,7 +1022,7 @@ function workspaceRootsOf(agents) {
     return [];
   }
 }
-function noop2() {}
+function noop() {}
 function scopeOfAgentContext(agent) {
   let context;
   try {
@@ -1466,18 +1304,18 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config2, signal) {
+    llmResolveCallConfig(config, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config2, signal);
+      return llm.resolveCallConfig.call(llm, config, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
       const registered = tools.register(definition);
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
@@ -1505,7 +1343,7 @@ function createDshAdapter(ctx, config = {}) {
     registerCommand(definition) {
       const commands = service("commands");
       if (commands === undefined || commands === null || typeof commands.register !== "function")
-        return noop2;
+        return noop;
       const registered = commands.register({
         name: definition?.name,
         description: definition?.description,
@@ -1514,18 +1352,18 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     registerPromptSection(section) {
       const systemPrompt = requireService("systemPrompt", 'cannot register prompt section "' + String(section?.name) + '"');
       if (typeof systemPrompt.section !== "function")
         throw new Error("mpd-dsh-adapter: the harness systemPrompt service exposes no section()");
       const registered = systemPrompt.section(section);
-      return typeof registered === "function" ? registered : noop2;
+      return typeof registered === "function" ? registered : noop;
     },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
@@ -1535,7 +1373,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     onPreToolExecute(listener) {
       if (typeof ctx?.on !== "function")
-        return noop2;
+        return noop;
       return ctx.on("tools/pre-execute", async (exec, next) => {
         const downstream = typeof next === "function" ? await next() : undefined;
         try {
@@ -1546,7 +1384,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")
-        return noop2;
+        return noop;
       return ctx.on("tools/post-execute", async (exec, result, next) => {
         const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
         const decided = await listener(exec ?? {}, result ?? {}, downstream);
@@ -1807,11 +1645,11 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -1819,24 +1657,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -2515,10 +2353,10 @@ function eventTimeOf(event) {
 }
 function callIdOf(event) {
   const data = dataOf(event);
-  const message3 = asRecord(data.message);
-  const content = Array.isArray(message3?.content) ? message3?.content : [];
+  const message = asRecord(data.message);
+  const content = Array.isArray(message?.content) ? message?.content : [];
   const first = asRecord(content[0]);
-  return asString(data.callId) ?? asString(data.toolCallId) ?? asString(first?.toolCallId) ?? asString(message3?.toolCallId) ?? asString(message3?.callId);
+  return asString(data.callId) ?? asString(data.toolCallId) ?? asString(first?.toolCallId) ?? asString(message?.toolCallId) ?? asString(message?.callId);
 }
 function toolNameOf(event) {
   const data = dataOf(event);
@@ -2869,14 +2707,14 @@ class HoldRegistry {
   }
   isHeld(teamId, workspace) {
     const id = String(teamId ?? "");
-    const notHeld = (from, where2 = null) => ({
+    const notHeld = (from, where = null) => ({
       held: false,
       holdId: null,
       at: null,
       reason: null,
       taskId: null,
       attemptId: null,
-      workspace: where2,
+      workspace: where,
       source: from
     });
     if (id === "")
@@ -4458,9 +4296,9 @@ function apply(ctx, config = {}) {
   return { applied: true, engine, knobs: engine.getKnobs(), intervalMs, disposers: disposers.length, holdService, hydratedHolds };
 }
 export {
-  resolveConfig,
-  name,
-  inject,
+  Config,
   apply,
-  Config
+  inject,
+  name,
+  resolveConfig
 };

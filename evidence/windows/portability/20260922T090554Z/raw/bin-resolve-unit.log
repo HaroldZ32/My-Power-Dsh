@@ -1,0 +1,25 @@
+bun test v1.4.2 (744846f84)
+
+packages\mpd-mcp-shared\bin-resolve.test.mjs:
+(pass) ast-grep: $MPD_AST_GREP_BIN_DIR tier wins and prefers ast-grep over sg [17.21ms]
+(pass) ast-grep: a candidate that fails the ast-grep probe is skipped, never accepted by name [13.75ms]
+(pass) ast-grep: createRequire tier resolves the packed optionalDependency [17.75ms]
+(pass) ast-grep: <bundle>/.toolchain tier resolves the link: checkout layout [11.45ms]
+(pass) ast-grep: precedence is bin-dir > require > toolchain [24.49ms]
+(pass) ast-grep: nothing resolvable returns null and never throws [9.50ms]
+(pass) codegraph: <bundle>/.toolchain tier resolves the link: checkout layout [13.76ms]
+(pass) codegraph: createRequire tier reads the package's own bin entry [22.68ms]
+(pass) ast-grep: win32 resolves the .exe spelling of a candidate [17.34ms]
+(pass) ast-grep: win32 honours the caller's own PATHEXT order [14.89ms]
+(pass) ast-grep: win32 never offers a .cmd/.bat candidate (a shell-less spawn cannot start one) [15.44ms]
+(pass) ast-grep: POSIX keeps the bare name as the only spelling [14.98ms]
+(pass) ast-grep: <bundle>/node_modules/.bin tier resolves a bundle-root install [14.56ms]
+(pass) ast-grep: .toolchain still wins over the bundle-root tier [16.65ms]
+(pass) bundleRootFrom: <bundle>/packages/<pkg>/launch.mjs -> <bundle> [0.48ms]
+[bin-resolve test] toolchain absent — real-probe assertions skipped
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [0.21ms]
+
+ 16 pass
+ 0 fail
+ 30 expect() calls
+Ran 16 tests across 1 file. [2.98s]

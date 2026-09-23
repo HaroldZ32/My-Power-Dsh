@@ -181,7 +181,7 @@ test("T-61 negative control: with the guard call removed, the SAME payload succe
     try {
         // A scratch copy of the module tree with the guard call stripped — the pre-fix call path.
         cpSync(LIB_DIR, join(scratch, "lib"), { recursive: true })
-        symlinkSync(DEPS_DIR, join(scratch, "_deps"), "dir")
+        symlinkSync(DEPS_DIR, join(scratch, "_deps"), "junction")
         const copyPath = join(scratch, "lib", "tools.js")
         const original = readFileSync(copyPath, "utf8")
         const guardCall = "            assertKnownToolArguments('agent_teams_update_task', UPDATE_TASK_ARGUMENT_NAMES, args);\n"

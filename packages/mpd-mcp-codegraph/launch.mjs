@@ -58,15 +58,63 @@ function stderrText(error) {
   return String(error)
 }
 
+/**
+ * The UNAVAILABLE MCP SERVER, for the case where `dist/serve.js` cannot even be LOADED.
+ *
+ * A delta inside `dist/serve.js` is forbidden (that file is a sha-pinned prebuilt behind the
+ * blocking vendor gate - see packages/mpd-mcp-codegraph/README.md), so a host-shaped load failure
+ * is handled HERE, in our own launcher. Measured 2026-09-22: the artifact evaluates
+ * `var ACCOUNT_HOME_DIR = userInfo().homedir` at MODULE LOAD, and on a host where libuv's
+ * `uv_os_get_passwd` fails that throws `SystemError: ... ENOMEM` - the child died before answering
+ * a single frame and took the whole bundle's boot down with it (the web app never served).
+ *
+ * The row has ONE documented degrade shape (README: "zero tools, the skip hint on stderr, exit 0")
+ * and a row that dies is not it: this keeps the process ALIVE as an MCP server that answers the
+ * handshake and lists no tools, so the session boots and the reason is readable on stderr.
+ * @param {string} reason - the load failure, already rendered
+ */
+async function serveUnavailable(reason) {
+  process.stderr.write(`[mpd-mcp-codegraph] unavailable fallback: ${reason}\n`)
+  process.stderr.write("[mpd-mcp-codegraph] codegraph is unavailable on this host: dist/serve.js failed to load (the reason is above). This row exposes no tools; fix the cause and restart the session.\n")
+  process.stdin.setEncoding("utf8")
+  let buffer = ""
+  const send = (message) => process.stdout.write(JSON.stringify(message) + "\n")
+  for await (const chunk of process.stdin) {
+    buffer += chunk
+    let index
+    while ((index = buffer.indexOf("\n")) !== -1) {
+      const line = buffer.slice(0, index)
+      buffer = buffer.slice(index + 1)
+      if (line.trim() === "") continue
+      let request
+      try { request = JSON.parse(line) } catch { continue }
+      if (request.method === "initialize") {
+        send({ jsonrpc: "2.0", id: request.id, result: { protocolVersion: request.params?.protocolVersion ?? "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "codegraph", version: "unavailable" } } })
+      } else if (request.method === "tools/list") {
+        send({ jsonrpc: "2.0", id: request.id, result: { tools: [] } })
+      } else if (request.id !== undefined) {
+        send({ jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "codegraph is unavailable on this host" } })
+      }
+    }
+  }
+}
+
 /** The MCP protocol owns stdout: a retry is safe only while it is still empty. */
 function stdoutIsUntouched() {
   return (process.stdout.bytesWritten ?? 0) === 0
 }
 
-const serve = await import("./dist/serve.js")
+let serve = null
+try {
+  serve = await import("./dist/serve.js")
+} catch (error) {
+  // The documented degrade (zero tools, alive, exit 0): see serveUnavailable above.
+  await serveUnavailable(stderrText(error))
+  process.exitCode = 0
+}
 
 try {
-  process.exitCode = await serve.runCodegraphServe()
+  if (serve !== null) process.exitCode = await serve.runCodegraphServe()
 } catch (error) {
   process.stderr.write(`[mpd-mcp-codegraph] unavailable fallback: ${stderrText(error)}\n`)
   if (!stdoutIsUntouched()) {

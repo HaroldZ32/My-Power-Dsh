@@ -79,7 +79,7 @@ test("T-81 negative control: with the pre-fix unconditional edge, the SAME fixtu
     const scratch = mkdtempSync(join(tmpdir(), "mpd-t81-prefix-"))
     try {
         cpSync(LIB_DIR, join(scratch, "lib"), { recursive: true })
-        symlinkSync(DEPS_DIR, join(scratch, "_deps"), "dir")
+        symlinkSync(DEPS_DIR, join(scratch, "_deps"), "junction")
         const copyPath = join(scratch, "lib", "quality-gates.js")
         const original = readFileSync(copyPath, "utf8")
         const condition = "\n        && (repairSource === undefined || !OPEN_STATUSES.includes(repairSource.status))"

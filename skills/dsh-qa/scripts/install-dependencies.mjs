@@ -58,6 +58,7 @@ import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed } from "./lib/workspace-isolation.mjs"
 import { seedSandboxCredentials } from "./lib/credentials.mjs"
 import { emitMarker, runTuiSession } from "./lib/tui-lane.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = dirname(dirname(dirname(HERE)))
@@ -173,14 +174,14 @@ function buildSandbox({ tag, profileName = "w", homeName = "dsh", bundles, bundl
     dsh: { profile: { bundles } },
   }, null, 2) + "\n")
   writeFileSync(join(profile, "pnpm-workspace.yaml"), "packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n")
-  symlinkSync(bundleLink, join(profile, "node_modules", "@mpd-dsh", "mpd"), "dir")
+  symlinkSync(bundleLink, join(profile, "node_modules", "@mpd-dsh", "mpd"), "junction")
   // Mirror-symlinked fixtures (the aggregate's scope, the TUI host): read-only links to packages
   // the REAL profiles already installed, never copies and never a substitute for the dependency
   // under test (which comes in through the bundle's own declaration + the harness fallback).
   for (const link of mirrorLinks) {
     const target = join(profile, "node_modules", link.to)
     mkdirSync(dirname(target), { recursive: true })
-    if (!existsSync(target)) symlinkSync(link.from, target, "dir")
+    if (!existsSync(target)) symlinkSync(link.from, target, "junction")
   }
   seedSandboxCredentials(dshHome)
   const settings = join(homedir(), ".dsh", "settings.yaml")
@@ -200,7 +201,7 @@ function stageBundleWithoutNodeModules(sandboxRoot) {
   mkdirSync(stage, { recursive: true })
   for (const entry of readdirSync(REPO)) {
     if (entry === "node_modules" || entry === ".git" || entry === ".qa-install-deps" || entry === "package.json") continue
-    symlinkSync(join(REPO, entry), join(stage, entry))
+    symlinkSync(join(REPO, entry), join(stage, entry), "junction")
   }
   cpSync(join(REPO, "package.json"), join(stage, "package.json"))
   return stage
@@ -229,7 +230,9 @@ function composeViaWrapper(sandbox) {
 async function bootWeb(sandbox, port) {
   const logPath = join(sandbox.root, "web-" + sandbox.tag + ".log")
   const fd = openSync(logPath, "w")
-  const child = spawn("dsh", ["--profile", sandbox.profileName, "--port", String(port), "--no-open"], {
+  const childSpec = dshCommand(["--profile", sandbox.profileName, "--port", String(port), "--no-open"], sandbox.env)
+  if (childSpec === null) throw new Error(DSH_MISSING)
+  const child = spawn(childSpec.command, childSpec.args, {
     env: sandbox.env, cwd: sandbox.ws, stdio: ["ignore", fd, fd],
   })
   const base = "http://127.0.0.1:" + port
@@ -525,7 +528,7 @@ function selfTest() {
 const LANE_PREREQS = [
   {
     code: "absent-dsh-binary", probe: "dsh --version", remedy: "npm i -g @deepseek-ai/dsh",
-    present: () => spawnSync("dsh", ["--version"], { encoding: "utf8" }).status === 0,
+    present: () => resolveDshLauncher() !== "",
   },
   {
     code: "absent-fixture", probe: "node_modules/" + SIDEBAR + "/package.json",
@@ -567,7 +570,7 @@ async function runReal() {
       const stage = stageBundleWithoutNodeModules(sandbox.root)
       const manifestPath = join(sandbox.profile, "node_modules", "@mpd-dsh", "mpd")
       rmSync(manifestPath, { recursive: true, force: true })
-      symlinkSync(stage, manifestPath, "dir")
+      symlinkSync(stage, manifestPath, "junction")
       const profileManifest = JSON.parse(readFileSync(join(sandbox.profile, "package.json"), "utf8"))
       profileManifest.dependencies[MPD_BUNDLE] = "link:" + stage
       writeFileSync(join(sandbox.profile, "package.json"), JSON.stringify(profileManifest, null, 2) + "\n")

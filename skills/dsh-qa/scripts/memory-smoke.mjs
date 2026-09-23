@@ -9,6 +9,7 @@ import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const TASK = "Use mpd_memory_write to save one note titled 'qa-note' with content 'alpha beta gamma' and kind 'note'. Then use mpd_memory_read with query 'alpha' and report how many entries match. Then report mpd_memory_status."
@@ -47,7 +48,8 @@ async function runReal() {
   const steps = {}
   const inst = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
   steps.installer = { ok: inst.status === 0, exit: inst.status }
-  const run = spawnSync("dsh", ["--profile", "mpd-headless", TASK], { env, cwd: ws, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000, stdio: ["ignore", "pipe", "pipe"] })
+  const runSpec = dshCommand(["--profile", "mpd-headless", TASK], env)
+  const run = runSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(runSpec.command, runSpec.args, { env, cwd: ws, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000, stdio: ["ignore", "pipe", "pipe"] })
   const out = (run.stdout || "") + (run.stderr || "")
   steps.live = { ok: run.status === 0, exit: run.status }
   const memRoot = join(ws, ".mpd", "memory", "agents")

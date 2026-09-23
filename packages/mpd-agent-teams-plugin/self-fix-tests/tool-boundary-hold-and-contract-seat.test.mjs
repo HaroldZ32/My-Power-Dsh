@@ -187,7 +187,7 @@ test("D2 NEGATIVE CONTROL: the deleted guard re-injected into a scratch copy mak
             if (entry.isFile())
                 cpSync(join(libDir, entry.name), join(scratch, "lib", entry.name))
         // the adopted modules import the vendored closure through `../_deps/...`
-        symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "dir")
+        symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "junction")
         const scratchTools = join(scratch, "lib", "tools.js")
         const source = readFileSync(scratchTools, "utf8")
         const registration = source.indexOf("name: 'agent_teams_claim_task'")
@@ -422,7 +422,7 @@ test("t41: the contract tool refuses a NON-PARTICIPANT and an UNKNOWN id NAMING 
         for (const entry of readdirSync(libDir, { withFileTypes: true }))
             if (entry.isFile())
                 cpSync(join(libDir, entry.name), join(scratch, "lib", entry.name))
-        symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "dir")
+        symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "junction")
         const scratchTools = join(scratch, "lib", "tools.js")
         const source = readFileSync(scratchTools, "utf8")
         const neutralised = source
@@ -490,7 +490,7 @@ test("T-19 SEEDED NEGATIVE CONTROL: the pin's matchers go RED on the restored wa
     try {
         // 1. the scratch copy: the adopted module OUTSIDE the workspace, with its runtime closure
         cpSync(libDir, join(scratch, "lib"), { recursive: true })
-        symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "dir")
+        symlinkSync(join(pluginRoot, "_deps"), join(scratch, "_deps"), "junction")
         const copyTools = join(scratch, "lib", "tools.js")
         const source = readFileSync(copyTools, "utf8")
         expect((source.match(SHIPPED_PAUSE_LINE) ?? []).length, "the shipped pause line must occur exactly once in the copy").toBe(1)

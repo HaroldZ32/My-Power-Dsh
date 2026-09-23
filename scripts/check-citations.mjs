@@ -458,7 +458,7 @@ function retentionArm(sandbox) {
   const root = join(sandbox, "t82-root")
   for (const dir of ["docs", "src", "copydir", join("evidence", "extensions", "docs-claims")]) mkdirSync(join(root, dir), { recursive: true })
   // the copy runs from `<root>/copydir/`, so its `../skills/...` import needs `<root>/skills`
-  symlinkSync(join(REPO, "skills"), join(root, "skills"))
+  symlinkSync(join(REPO, "skills"), join(root, "skills"), "junction")
   const guide = "# fixture guide\n\nSee `alphaSymbol`, `src/probe.ts`.\n"
   const report = "# fixture report\n\n## 12. Status\n\nSee `alphaSymbol`, `src/probe.ts`.\n"
   writeFileSync(join(root, "docs", "extension-authoring-guide.md"), guide)

@@ -23,6 +23,7 @@ import { homedir } from "node:os"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -145,7 +146,8 @@ async function runReal() {
   if (env.DSH_HOME !== home || env.HOME !== userHome) { console.error("[team-route-rewire] isolation assertion failed"); process.exit(1) }
   const steps = {}
   function runSync(cmd, args, opts = {}) {
-    const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
+    const spec = cmd === "dsh" ? dshCommand(args, env) : { command: cmd, args }
+    const r = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
     return { status: r.status, out: (r.stdout || "") + (r.stderr || ""), stdout: r.stdout || "" }
   }
 
@@ -215,7 +217,9 @@ async function runReal() {
     .map((id) => "- id: " + id + "\n  disabled: true").join("\n") + "\n")
   const webLog = join(outDir, "web.log")
   const webFd = openSync(webLog, "w")
-  const web = spawn("dsh", ["--profile", "w", "--patch", webOverlay, "--port", String(port), "--no-open"], { env, cwd: join(reloc, "ws-rewire"), detached: false, stdio: ["ignore", webFd, webFd] })
+  const webSpec = dshCommand(["--profile", "w", "--patch", webOverlay, "--port", String(port), "--no-open"], env)
+  if (webSpec === null) throw new Error(DSH_MISSING)
+  const web = spawn(webSpec.command, webSpec.args, { env, cwd: join(reloc, "ws-rewire"), detached: false, stdio: ["ignore", webFd, webFd] })
   let routeOk = false, routeStatus = null, cookie = null, authExchange = 0
   const t0 = Date.now()
   // Cold web boots in this sandbox (MCP servers + LSP daemon + client modules)

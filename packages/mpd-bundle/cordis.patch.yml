@@ -9,6 +9,16 @@
 # MCP servers, the mpd-* plugins, the adopted agent-teams plugin, and the
 # bundle-served preset root (the skill corpus is served by the mpd-bootstrap
 # row's ctx.skills provider — nothing is copied into $DSH_HOME any more).
+#
+# FILE-URL -> PATH (win32). `baseUrl` is a file URL and every path below is derived from it with
+# plain string ops (a `!!js` expression has no imports). The win32 spelling is `file://` + `/` +
+# `C:/...`, so stripping `file://` alone leaves `/C:/...` - which the OS reads as a path on the
+# CURRENT drive and then composes into a doubled drive prefix, so every MCP row of the bundle dies
+# with `Cannot find module` (measured 2026-09-22, bundle-lifecycle boot). The drive-letter
+# lookahead drops the third slash for a drive path ONLY, which leaves the POSIX `/home/...` form
+# byte-identical. `decodeURIComponent` is the other half: a URL percent-escapes what a path does
+# not, and a Windows short name carries a tilde (`.../ZHAO%7E1.YIN/...`), so the raw form named a
+# directory that does not exist (measured 2026-09-22, second boot).
 
 # ── preset roster: serve the bundle's own presets (no $DSH_HOME copy) ───────
 # The bundle ships its presets at <bundle>/presets and serves them from there by
@@ -30,7 +40,7 @@
   config:
     default: mpd
     roots:
-      - path: !!js '(typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"'
+      - path: !!js '(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"'
         trust: system
 
 # ── preset roster, dsh-tui plane: the same default, for the TUI composition ──
@@ -95,7 +105,7 @@
   config:
     default: mpd
     roots:
-      - path: !!js '(typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"'
+      - path: !!js '(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"'
         trust: system
 
 # ── runtime plugin dependency: the sidebar HOST the bundle's GUI needs ──────
@@ -192,7 +202,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs")'
+          - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/launch.mjs")'
         toolCallTimeoutMs: 60000
     # git_bash, by the upstream original design, is Windows-only (run is available only on native Windows); this bundle disables it by default;
     # Windows deployments can change this row to disabled: false to enable it.
@@ -204,7 +214,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/cli.js")'
+          - !!js 'process.env.MPD_DSH_GITBASH_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/cli.js")'
         toolCallTimeoutMs: 60000
     - id: mcp-lsp
       name: '@deepseek-ai/dsh-mcp-client'
@@ -213,7 +223,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")'
+          - !!js 'process.env.MPD_DSH_LSP_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/cli.js")'
           - mcp
         toolCallTimeoutMs: 60000
     # CodeGraph MCP (B8, wave 2): this row names NO binary path any more. It
@@ -232,7 +242,7 @@
         transport: stdio
         command: node
         args:
-          - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? baseUrl.replace(/^file:\/\//, "").replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.mjs")'
+          - !!js 'process.env.MPD_DSH_CODEGRAPH_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.mjs")'
         toolCallTimeoutMs: 60000
     # Waveform-read MCP rows (mcp-wave-mcp / mcp-traceweave) are NOT mounted by
     # default: they wrap EXTERNAL Python MCP servers (wave-mcp / TraceWeave)

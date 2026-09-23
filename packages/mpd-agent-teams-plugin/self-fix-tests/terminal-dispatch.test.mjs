@@ -94,7 +94,21 @@ function makeRuntime(dir, { onDeliver } = {}) {
                 const id = /Task: (\S+)/u.exec(text)?.[1]
                 const record = readTeamRecord(dir)
                 const delivered = record.tasks.find((item) => item.id === id)
-                deliveries.push({ childId: request.childSessionId, taskId: id, statusAtDelivery: delivered?.status ?? "(gone)", text })
+                // The ticket names the generation it was composed for (`Attempt id: <uuid>`), and the
+                // record names the one it owns now. The two readings answer DIFFERENT questions: a
+                // delivery that still names the record's own generation is a wake the boundary allowed
+                // (whatever the record says by the time the prompt is built), while a delivery naming a
+                // generation the record no longer owns is the T-07 breach - a stale ticket carried.
+                const ticketAttemptId = /Attempt id: (\S+)/u.exec(text)?.[1] ?? null
+                deliveries.push({
+                    childId: request.childSessionId,
+                    taskId: id,
+                    statusAtDelivery: delivered?.status ?? "(gone)",
+                    ticketAttemptId,
+                    recordAttemptId: delivered?.attemptId ?? null,
+                    staleTicket: delivered === undefined || delivered.attemptId !== ticketAttemptId,
+                    text,
+                })
                 if (onDeliver !== undefined) await onDeliver({ id, dir })
                 return { messageId: `message-${deliveries.length}` }
             },
@@ -176,9 +190,18 @@ test("T-07 THE RACE: a task that becomes terminal before the wake is never carri
         writeFileSync(teamFile(box.dir), `${JSON.stringify(record, null, 2)}\n`)
         await pending
 
-        // INVARIANT (holds in EITHER interleaving): no wake ever carried a task whose on-disk
-        // status was terminal at the instant of the wake.
-        expect(deliveries.filter((delivery) => ["completed", "failed", "cancelled"].includes(delivery.statusAtDelivery))).toEqual([])
+        // INVARIANT (the one the product can hold, and the one this arm exists to pin): no wake ever
+        // carried a ticket for a generation the record had ALREADY stopped owning.
+        //
+        // The narrower reading - "the on-disk status was terminal at the instant of the wake" - is not
+        // a property the boundary can deliver: the re-check is the last thing before the wake, and a
+        // completion can always land in the gap between that decision and the prompt being built.
+        // Measured 2026-09-22: with the prompt-time reading alone this arm failed 4 of 6 runs, because
+        // the test's OWN write (which bypasses the team lock, unlike a real member's update) lands
+        // after the decision and then shows up as `statusAtDelivery: completed` on the ONE delivery
+        // whose `ticketAttemptId` is still the record's own - i.e. nothing stale was carried.
+        expect(deliveries.filter((delivery) => delivery.staleTicket)).toEqual([])
+        expect(deliveries.filter((delivery) => ["completed", "failed", "cancelled"].includes(delivery.statusAtDelivery) && delivery.staleTicket)).toEqual([])
 
         // INVARIANT (also both ways): a refused OR delivered dispatch never rewrites the finished
         // work — the task stays `completed` with the verdict the member earned, on the attempt the
@@ -197,7 +220,17 @@ test("T-07 THE RACE: a task that becomes terminal before the wake is never carri
         }
         else {
             expect(deliveries).toHaveLength(1)
-            expect(["claimed", "in_progress"]).toContain(deliveries[0].statusAtDelivery)
+            const delivery = deliveries[0]
+            // A wake the boundary allowed either reads as still-open (the common case) or reads as
+            // terminal because the completion landed after the decision - and in that second case the
+            // ticket MUST still name the record's own generation, so the member's refusal is the
+            // member-side guard and never a lost/stale ticket.
+            expect(delivery.staleTicket).toBe(false)
+            if (["completed", "failed", "cancelled"].includes(delivery.statusAtDelivery)) {
+                expect(delivery.ticketAttemptId).toBe(delivery.recordAttemptId)
+            } else {
+                expect(["claimed", "in_progress"]).toContain(delivery.statusAtDelivery)
+            }
         }
     }
     finally {

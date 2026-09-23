@@ -121,7 +121,10 @@ test("T-73 negative control: with the new condition neutralised, the SAME fixtur
     const scratch = mkdtempSync(join(tmpdir(), "mpd-t73-prefix-"))
     try {
         cpSync(LIB_DIR, join(scratch, "lib"), { recursive: true })
-        symlinkSync(DEPS_DIR, join(scratch, "_deps"), "dir")
+        // "junction", never "dir": a Windows directory SYMLINK needs SeCreateSymbolicLinkPrivilege
+        // (admin or Developer Mode) and fails with EPERM, while a junction needs no privilege.
+        // The type is ignored on POSIX, so this spelling is portable.
+        symlinkSync(DEPS_DIR, join(scratch, "_deps"), "junction")
         const copyPath = join(scratch, "lib", "state.js")
         const original = readFileSync(copyPath, "utf8")
         const condition = "const sameGenerationRedispatch = (task.status === 'claimed' || task.status === 'in_progress')"

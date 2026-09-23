@@ -21,8 +21,9 @@ import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+import { delimiter, dirname, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { DSH_MISSING, dshCommand } from "./dsh-launcher.mjs"
 
 export const REPO = dirname(dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url))))))
 
@@ -164,13 +165,34 @@ export function sha256Text(text) {
   return "sha256:" + createHash("sha256").update(text).digest("hex")
 }
 
+/**
+ * Resolve a BARE command name on PATH, without a shell.
+ *
+ * `spawnSync("bash", ["-lc", "command -v X"])` is a POSIX-only shape: a stock win32 host may
+ * have no `bash` at all (and where the `sh` that answers is Git Bash it resolves a different
+ * PATH than the host), so the lane would call an installed tool ABSENT. Measured 2026-09-22.
+ * win32 resolves a bare name through %PATHEXT%: `tmux.exe` and a `dsh-tui.cmd` shim count, and
+ * `spawn` accepts both of those names as the child command.
+ * @param {string} command @returns {string|null}
+ */
+export function onPath(command) {
+  const suffixes = process.platform === "win32" ? [".exe", ".cmd", ".bat", ".com", ""] : [""]
+  for (const dir of String(process.env.PATH ?? "").split(delimiter)) {
+    if (dir.length === 0) continue
+    for (const suffix of suffixes) {
+      const candidate = join(dir, command + suffix)
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return null
+}
+
 /** The installed `@deepseek-harness-tui/dsh-tui` payload (the pinned host). */
 export function resolveHostRoot() {
   const viaEnv = process.env.DSH_TUI_ROOT
   if (typeof viaEnv === "string" && viaEnv.length > 0) return realpathSync(viaEnv)
-  const which = spawnSync("bash", ["-lc", "command -v dsh-tui"], { encoding: "utf8" })
-  const bin = (which.stdout ?? "").trim().split("\n")[0]
-  if (bin.length === 0) return undefined
+  const bin = onPath("dsh-tui")
+  if (bin === null) return undefined
   try {
     // <root>/bin/dsh-tui.js (or a symlinked bin) -> <root>
     const real = realpathSync(bin)
@@ -181,13 +203,42 @@ export function resolveHostRoot() {
 }
 
 export function tuiBinaryPresent() {
-  const which = spawnSync("bash", ["-lc", "command -v dsh-tui"], { encoding: "utf8" })
-  return (which.stdout ?? "").trim().length > 0
+  return onPath("dsh-tui") !== null
 }
 
 export function tmuxPresent() {
-  const which = spawnSync("bash", ["-lc", "command -v tmux"], { encoding: "utf8" })
-  return (which.stdout ?? "").trim().length > 0
+  return onPath("tmux") !== null
+}
+
+/**
+ * The path of the host's own `dsh-ecosystem-spec` CHECKOUT, when this host can have one.
+ *
+ * The recorded location is a POSIX absolute path (`/root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec`).
+ * That spelling cannot name a checkout on win32 — `join("/root/...")` answers `C:\root\...`, a
+ * place no checkout lives — so the literal is offered on POSIX only, and `MPD_TUI_SPEC_ROOT` (the
+ * variable the spec-conformance lane already reads) names the checkout on any host. `undefined`
+ * means "no recorded location on this host", i.e. an ABSENT EXTERNAL FIXTURE: the lanes report it
+ * as a declared skip (a FAIL under `--no-skip`), never as a red of their own logic.
+ */
+export function resolveSpecCheckout() {
+  const viaEnv = process.env.MPD_TUI_SPEC_ROOT
+  if (typeof viaEnv === "string" && viaEnv.length > 0) return viaEnv
+  if (process.platform === "win32") return undefined
+  return "/root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec"
+}
+
+/**
+ * The spec-data root CANDIDATES, in resolution order, with `undefined` entries dropped.
+ *
+ * Exported so a caller can tell "no candidate exists on this host" (an absent fixture — a declared
+ * skip) from "a candidate exists but does not carry the registry" (a real red) without re-deriving
+ * the list: that distinction is what the lanes' skip/FAIL arms are built on.
+ */
+export function specDataRootCandidates(hostRoot) {
+  return [
+    { kind: "installed-payload", dir: hostRoot === undefined ? undefined : join(hostRoot, "dsh-ecosystem-spec") },
+    { kind: "user-checkout", dir: resolveSpecCheckout() },
+  ].filter((candidate) => candidate.dir !== undefined)
 }
 
 /**
@@ -197,12 +248,7 @@ export function tmuxPresent() {
  * that clone's spec directory is empty (CAPTAIN-RECON §6, re-measured).
  */
 export function resolveSpecDataRoot(hostRoot) {
-  const candidates = [
-    { kind: "installed-payload", dir: hostRoot === undefined ? undefined : join(hostRoot, "dsh-ecosystem-spec") },
-    { kind: "user-checkout", dir: "/root/dshProj/tui/dsh-TUI/dsh-ecosystem-spec" },
-  ]
-  for (const candidate of candidates) {
-    if (candidate.dir === undefined) continue
+  for (const candidate of specDataRootCandidates(hostRoot)) {
     if (existsSync(join(candidate.dir, "registry", "registry-0.15.json"))) {
       return { ...candidate, registrySha256: sha256File(join(candidate.dir, "registry", "registry-0.15.json")) }
     }
@@ -269,7 +315,10 @@ export function profileState(root) {
 
 /** Run a command inside the sandbox and capture stdout/stderr/status. */
 export function runInSandbox(root, command, args, { cwd, timeoutMs = 900_000, extraEnv = {} } = {}) {
-  const run = spawnSync(command, args, {
+  // `command` may be the bare launcher name (`"dsh"`), which is not portable: see lib/dsh-launcher.mjs.
+  const spec = command === "dsh" ? dshCommand(args) : { command, args }
+  if (spec === null) return { status: null, stdout: "", stderr: DSH_MISSING, error: DSH_MISSING }
+  const run = spawnSync(spec.command, spec.args, {
     cwd: cwd ?? join(root, "ws"),
     env: sandboxEnv(root, extraEnv),
     encoding: "utf8",

@@ -38,6 +38,7 @@ import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 import { EXPLICIT_PROMPTS, SIMPLE_PROMPTS, SOFT_COMPLEX_PROMPTS, loadAndProbe, probeAll } from "./lib/gate-probe.mjs"
 import { decodeSessionLog, findToolCall, readSessionEvents } from "./lib/session-evidence.mjs"
 import { assertSessionsSandboxed, projectKey, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const safeJson = (text) => { try { return JSON.parse(text) } catch { return null } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -365,7 +366,8 @@ async function runReal() {
   if (env.DSH_HOME !== sandbox || env.HOME !== sandboxHome) fail("isolation assertion failed")
 
   function runSync(cmd, args, opts = {}) {
-    const r = spawnSync(cmd, args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
+    const spec = cmd === "dsh" ? dshCommand(args, env) : { command: cmd, args }
+    const r = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
     const out = (r.stdout || "") + (r.stderr || "")
     LOG.push("$ " + cmd + " " + args.join(" ") + "\n[[exit=" + r.status + "]]\n" + out.slice(0, 20000))
     return { status: r.status, out, stdout: r.stdout || "" }
@@ -400,7 +402,8 @@ async function runReal() {
       cpSync(join(sandbox, "profiles"), join(sideHome, "profiles"), { recursive: true })
       cpSync(join(sandbox, "cordis.patch.yml"), join(sideHome, "cordis.patch.yml"))
       const sideEnv = { ...process.env, DSH_HOME: sideHome, HOME: sideUserHome }
-      const live = spawnSync("dsh", ["--profile", "mpd-headless", prompts[i]], { env: sideEnv, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: sideWs, stdio: ["ignore", "pipe", "pipe"] })
+      const sideSpec = dshCommand(["--profile", "mpd-headless", prompts[i]], sideEnv)
+      const live = sideSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(sideSpec.command, sideSpec.args, { env: sideEnv, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: sideWs, stdio: ["ignore", "pipe", "pipe"] })
       LOG.push("[" + label + " " + i + "] $ dsh --profile mpd-headless " + JSON.stringify(prompts[i]) + "\n[[exit=" + live.status + "]]\n" + ((live.stdout || "") + (live.stderr || "")).slice(0, 20000))
       const records = teamRecords(sideWs)
       // Preserve the side's state before the sandbox tmpdir is understood only through
@@ -492,7 +495,8 @@ async function runReal() {
     const disarmed = patchText.replace(/autoRoute:\s*true/g, "autoRoute: false")
     writeFileSync(join(controlHome, "cordis.patch.yml"), disarmed)
     const env = credentialEnv({ ...process.env, DSH_HOME: controlHome, HOME: join(controlHome, "home") })
-    const live = spawnSync("dsh", ["--profile", "mpd-headless", SOFT_COMPLEX[0]], { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: controlWs, stdio: ["ignore", "pipe", "pipe"] })
+    const controlSpec = dshCommand(["--profile", "mpd-headless", SOFT_COMPLEX[0]], env)
+    const live = controlSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(controlSpec.command, controlSpec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: controlWs, stdio: ["ignore", "pipe", "pipe"] })
     LOG.push("[negative-control] autoRoute=false + soft-complex prompt\n[[exit=" + live.status + "]]\n" + ((live.stdout || "") + (live.stderr || "")).slice(0, 4000))
     const controlRecords = teamRecords(controlWs)
     const controlStaged = controlRecords.active.length + controlRecords.archived.length

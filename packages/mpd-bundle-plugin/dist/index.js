@@ -269,7 +269,7 @@ function workspaceResolver(ctx) {
       const adapter = typeof ctx?.get === "function" ? ctx.get("mpdDsh", false) : undefined;
       const roots = typeof adapter?.workspaceRootsAll === "function" ? adapter.workspaceRootsAll() : undefined;
       if (Array.isArray(roots) && roots.length > 0) {
-        return roots.filter((root2) => typeof root2 === "string" && root2 !== "");
+        return roots.filter((root) => typeof root === "string" && root !== "");
       }
     } catch {}
     const fromEnv = typeof process.env.DSH_WORKSPACE_ROOT === "string" ? process.env.DSH_WORKSPACE_ROOT : "";
@@ -319,8 +319,8 @@ function apply(ctx) {
   }
 }
 export {
-  name,
-  inject,
+  WATCHDOG_WEB_READER,
   apply,
-  WATCHDOG_WEB_READER
+  inject,
+  name
 };

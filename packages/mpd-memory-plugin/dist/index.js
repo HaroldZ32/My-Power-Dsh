@@ -1,7 +1,7 @@
 // packages/mpd-memory-plugin/src/index.ts
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { basename, dirname, join, resolve as resolve2 } from "node:path";
+import { basename, dirname, join, resolve as resolve2, sep } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -341,11 +341,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config2, signal) {
+    llmResolveCallConfig(config, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config2, signal);
+      return llm.resolveCallConfig.call(llm, config, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -389,7 +389,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -682,11 +682,11 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -694,24 +694,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -848,10 +848,11 @@ function parseFrontmatter(file) {
 function normalizeLogEntry(meta, file, body) {
   return { ...meta, description: meta.description ?? "", content: body.trim(), file: basename(file) };
 }
-function safeMemoryPath(memoryDir, name2) {
-  const target = resolve2(memoryDir, name2);
-  if (!target.startsWith(resolve2(memoryDir) + "/"))
-    throw new Error("mpd-memory: path escapes memory dir: " + name2);
+function safeMemoryPath(memoryDir, name) {
+  const base = resolve2(memoryDir);
+  const target = resolve2(base, name);
+  if (!target.startsWith(base + sep))
+    throw new Error("mpd-memory: path escapes memory dir: " + name);
   return target;
 }
 function apply(ctx, config = {}) {
@@ -889,9 +890,9 @@ function apply(ctx, config = {}) {
     execute: async (args, exec) => {
       const d = ensureDirs(cfg, dsh, exec);
       ensureVcs(cfg, d);
-      const name2 = String(args?.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) + "-" + Date.now().toString(36);
-      const file = safeMemoryPath(d.memoryDir, name2 + ".md");
-      const meta = { description: String(args?.description ?? args?.title ?? name2), kind: String(args?.kind ?? "note"), tags: Array.isArray(args?.tags) ? args.tags : [] };
+      const name = String(args?.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) + "-" + Date.now().toString(36);
+      const file = safeMemoryPath(d.memoryDir, name + ".md");
+      const meta = { description: String(args?.description ?? args?.title ?? name), kind: String(args?.kind ?? "note"), tags: Array.isArray(args?.tags) ? args.tags : [] };
       if (args?.readOnly === true)
         meta.read_only = true;
       const front = `---
@@ -901,7 +902,7 @@ function apply(ctx, config = {}) {
       writeFileSync(file, front + String(args?.content) + (String(args?.content).endsWith(`
 `) ? "" : `
 `));
-      const errs = commitAll(cfg, d, "memory: " + name2 + " (" + meta.kind + ")");
+      const errs = commitAll(cfg, d, "memory: " + name + " (" + meta.kind + ")");
       const ref = readReflection(d);
       ref.steps = (ref.steps ?? 0) + 1;
       ref.steps_since_last_successful_reflection = (ref.steps_since_last_successful_reflection ?? 0) + 1;
@@ -964,15 +965,15 @@ REFLECTION DUE` : "")) },
     execute: async (args, exec) => {
       const d = ensureDirs(cfg, dsh, exec);
       ensureVcs(cfg, d);
-      const name2 = "reflection-" + Date.now().toString(36);
-      const file = safeMemoryPath(d.memoryDir, name2 + ".md");
+      const name = "reflection-" + Date.now().toString(36);
+      const file = safeMemoryPath(d.memoryDir, name + ".md");
       const meta = { description: String(args?.title ?? "reflection"), kind: "reflection" };
       writeFileSync(file, `---
 ` + JSON.stringify(meta) + `
 ---
 ` + String(args?.content) + `
 `);
-      commitAll(cfg, d, "memory: reflection " + name2);
+      commitAll(cfg, d, "memory: reflection " + name);
       const s = readReflection(d);
       s.reflected_completed_steps = (s.reflected_completed_steps ?? 0) + 1;
       s.steps_since_last_successful_reflection = 0;
@@ -999,7 +1000,7 @@ reflection: ` + JSON.stringify(v.reflection)) },
   });
 }
 export {
-  name,
+  apply,
   inject,
-  apply
+  name
 };

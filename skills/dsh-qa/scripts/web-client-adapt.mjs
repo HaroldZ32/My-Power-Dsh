@@ -19,6 +19,7 @@ import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 import { credentialEnv } from "./lib/credentials.mjs"
+import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = dirname(dirname(dirname(__dirname)))
@@ -125,7 +126,9 @@ async function runReal() {
   const env = credentialEnv({ ...process.env, DSH_HOME: home, HOME: wmHome  })
   const log = join(outDir, "web.log")
   const fd = openSync(log, "w")
-  const web = spawn("dsh", ["--profile", "w", "--port", String(PORT), "--no-open"], { env, cwd: ws, detached: false, stdio: ["ignore", fd, fd] })
+  const webSpec = dshCommand(["--profile", "w", "--port", String(PORT), "--no-open"], env)
+  if (webSpec === null) throw new Error(DSH_MISSING)
+  const web = spawn(webSpec.command, webSpec.args, { env, cwd: ws, detached: false, stdio: ["ignore", fd, fd] })
   const steps = {}
   const t0 = Date.now()
   while (Date.now() - t0 < 90000) {

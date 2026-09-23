@@ -4,6 +4,7 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { spawnSync } from "node:child_process"
 import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 
 import { Context } from "../../mpd-agent-teams-plugin/_deps/cordis/lib/index.js"
 import { createUserMessage } from "../../mpd-agent-teams-plugin/_deps/dsh-llm/lib/index.js"
@@ -822,11 +823,13 @@ describe("workspaceRootsAll(): the design's stated-unverified facts (§A.1, meas
       ],
     }
     const roots = createDshAdapter({ get: (n: string) => (n === "agents" ? agents : undefined) }).workspaceRootsAll()
-    expect(roots).toEqual(["/ws/one", "/ws/two"])
+    // The adapter RESOLVES each cwd, so the expectation is the resolver's own answer on this
+    // platform (win32 turns "/ws/one" into "C:\ws\one"); a POSIX literal would pin the separator.
+    expect(roots).toEqual([resolve("/ws/one"), resolve("/ws/two")])
     // the adapter does NOT touch the filesystem: a deleted cwd still yields its path, which the
     // writer then reports per root (E11) — it is never silently dropped or guessed around
     const deleted = createDshAdapter({ get: (n: string) => (n === "agents" ? { list: () => [agent("/ws/gone")] } : undefined) }).workspaceRootsAll()
-    expect(deleted).toEqual(["/ws/gone"])
+    expect(deleted).toEqual([resolve("/ws/gone")])
     expect(createDshAdapter({ get: () => undefined }).workspaceRootsAll()).toEqual([])
     expect(createDshAdapter({ get: () => ({ list: () => "not-an-array" }) }).workspaceRootsAll()).toEqual([])
     expect(createDshAdapter({ get: () => ({ list: () => { throw new Error("registry exploded") } }) }).workspaceRootsAll()).toEqual([])

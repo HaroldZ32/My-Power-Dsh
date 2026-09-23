@@ -336,11 +336,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config2, signal) {
+    llmResolveCallConfig(config, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config2, signal);
+      return llm.resolveCallConfig.call(llm, config, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -384,7 +384,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
+            submit: (message) => adapter.submitUserTurn(host.agent, message)
           });
         }
       });
@@ -677,11 +677,11 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message2) {
+    startAgentTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message2);
+      followup.call(agent, message);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -689,24 +689,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message2) {
+    steerAgentTurn(agent, message) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message2);
+      steer.call(agent, message);
     },
-    injectAgentMessage(agent, message2) {
+    injectAgentMessage(agent, message) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message2);
+      inject.call(agent, message);
     },
-    submitUserTurn(agent, message2) {
+    submitUserTurn(agent, message) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message2);
+        followup.call(agent, message);
         return true;
       } catch {
         return false;
@@ -747,7 +747,7 @@ function createLazyDshAdapter(ctx, options) {
   let temporary;
   let warnedPending = false;
   let warnedMissing = false;
-  const resolve2 = () => {
+  const resolve = () => {
     if (mounted !== undefined)
       return mounted;
     const active = probeMpdDsh(ctx, true);
@@ -771,12 +771,12 @@ function createLazyDshAdapter(ctx, options) {
   };
   return new Proxy({}, {
     get(_target, property) {
-      const impl = resolve2();
+      const impl = resolve();
       const value = impl[property];
       return typeof value === "function" ? value.bind(impl) : value;
     },
     has(_target, property) {
-      return property in resolve2();
+      return property in resolve();
     }
   });
 }
@@ -2286,16 +2286,16 @@ function publicToolName(serverName, rawName) {
 }
 
 class McpProtocolError extends Error {
-  constructor(message6) {
-    super(message6);
+  constructor(message) {
+    super(message);
     this.name = "McpProtocolError";
   }
 }
 var EXIT_FLUSH_MS = 25;
 async function raceWithTimer(work, ms) {
   let timer;
-  const timeout = new Promise((resolve3) => {
-    timer = setTimeout(() => resolve3({ timedOut: true }), ms);
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve({ timedOut: true }), ms);
   });
   const done = await Promise.race([work.then(() => ({ timedOut: false })), timeout]);
   if (timer !== undefined)
@@ -2461,12 +2461,12 @@ class McpStdioClient {
       pending.reject(error);
     }
   }
-  write(message6) {
+  write(message) {
     const stdin = this.child?.stdin;
     if (stdin === undefined || stdin === null || stdin.destroyed) {
       throw new Error(`mcp-client(${this.serverName}): the server process is not writable`);
     }
-    stdin.write(JSON.stringify(message6) + `
+    stdin.write(JSON.stringify(message) + `
 `);
   }
   request(method, params, timeoutMs, signal) {
@@ -2474,7 +2474,7 @@ class McpStdioClient {
       return Promise.reject(new Error(`mcp-client(${this.serverName}): the server process is not running`));
     }
     const id = this.nextId++;
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`mcp-client(${this.serverName}): ${method} timed out after ${timeoutMs}ms`));
@@ -2499,7 +2499,7 @@ class McpStdioClient {
         resolve: (value) => {
           if (signal !== undefined)
             signal.removeEventListener("abort", onAbort);
-          resolve3(value);
+          resolve(value);
         },
         reject: (error) => {
           if (signal !== undefined)
@@ -2534,18 +2534,18 @@ class McpStdioClient {
     }
   }
   handleLine(line) {
-    let message6;
+    let message;
     try {
-      message6 = JSON.parse(line);
+      message = JSON.parse(line);
     } catch {
       this.protocolErrors.push(`non-JSON line on stdout: ${line.slice(0, 200)}`);
       return;
     }
-    if (typeof message6 !== "object" || message6 === null) {
+    if (typeof message !== "object" || message === null) {
       this.protocolErrors.push(`non-object JSON-RPC message: ${line.slice(0, 200)}`);
       return;
     }
-    const record = message6;
+    const record = message;
     const id = record.id;
     if (typeof id === "number" || typeof id === "string") {
       const pending = this.pending.get(id);
@@ -2784,11 +2784,11 @@ function schemaEqual(left, right) {
   return leftKeys.every((key) => Object.hasOwn(right, key) && schemaEqual(left[key], right[key]));
 }
 var MAX_PROJECTION_DEPTH = 32;
-function note(projector, path, message6) {
-  projector.notes.push(`${path}: ${message6}`);
+function note(projector, path, message) {
+  projector.notes.push(`${path}: ${message}`);
 }
-function fail(projector, path, message6) {
-  projector.unprojectable.push(`${path}: ${message6}`);
+function fail(projector, path, message) {
+  projector.unprojectable.push(`${path}: ${message}`);
   return;
 }
 function projectNode(projector, node, path) {
@@ -3475,11 +3475,11 @@ async function apply(ctx, config = {}) {
 }
 async function mount(ctx, config = {}) {
   const warn = (line) => {
-    const text2 = "[mpd-ext] " + line;
+    const text = "[mpd-ext] " + line;
     try {
-      console.log(text2);
+      console.log(text);
       if (ctx?.logger && typeof ctx.logger.warn === "function")
-        ctx.logger.warn(text2);
+        ctx.logger.warn(text);
     } catch {}
   };
   let dsh;
@@ -3557,19 +3557,19 @@ async function mount(ctx, config = {}) {
   let projectClaimDir;
   const projectSkillSkips = new Map;
   const PROJECT_SKIP_MAX = 128;
-  const recordProjectSkip = (dir, name2, reason) => {
+  const recordProjectSkip = (dir, name, reason) => {
     if (projectSkillSkips.size >= PROJECT_SKIP_MAX)
       projectSkillSkips.clear();
-    projectSkillSkips.set(`${dir}\x00${name2 ?? "*"}`, reason);
+    projectSkillSkips.set(`${dir}\x00${name ?? "*"}`, reason);
   };
   try {
     const projectProvider = createSkillProvider({
       name: projectProviderName,
       warn,
-      onSkip: (reason, name2) => {
+      onSkip: (reason, name) => {
         const dir = projectClaimDir;
         if (dir !== undefined)
-          recordProjectSkip(dir, name2, reason);
+          recordProjectSkip(dir, name, reason);
       },
       entries: (listOptions) => {
         const root = cwdOf(listOptions);
@@ -3711,10 +3711,10 @@ async function mount(ctx, config = {}) {
       const summaries = await dsh.listSkills({ cwd: root });
       const holders = new Map;
       for (const summary of summaries) {
-        const name2 = summary?.name;
-        if (typeof name2 !== "string" || holders.has(name2))
+        const name = summary?.name;
+        if (typeof name !== "string" || holders.has(name))
           continue;
-        holders.set(name2, {
+        holders.set(name, {
           provider: typeof summary.provider === "string" ? summary.provider : "",
           source: typeof summary.source === "string" ? summary.source : ""
         });
@@ -3729,21 +3729,21 @@ async function mount(ctx, config = {}) {
     const served = [];
     const notServed = [];
     const detail = [];
-    for (const name2 of claimed) {
-      const holder = catalog.holders.get(name2);
+    for (const name of claimed) {
+      const holder = catalog.holders.get(name);
       if (!catalog.checked) {
-        detail.push({ name: name2, served: false, provider: "", source: "", note: `not verified: the harness catalog could not be read (${catalog.reason})` });
+        detail.push({ name, served: false, provider: "", source: "", note: `not verified: the harness catalog could not be read (${catalog.reason})` });
         continue;
       }
       const mine = holder !== undefined && holder.provider === entry.providerName && holder.source === entry.source;
       if (mine) {
-        served.push(name2);
-        detail.push({ name: name2, served: true, provider: holder.provider, source: holder.source, note: "" });
+        served.push(name);
+        detail.push({ name, served: true, provider: holder.provider, source: holder.source, note: "" });
         continue;
       }
-      notServed.push(name2);
+      notServed.push(name);
       detail.push({
-        name: name2,
+        name,
         served: false,
         provider: holder?.provider ?? "",
         source: holder?.source ?? "",
@@ -4168,7 +4168,7 @@ async function mount(ctx, config = {}) {
   } catch (error) {
     warn("MCP bridge activation failed: " + message7(error));
   }
-  const missingTools = EXPECTED_TOOLS.filter((name2) => !registeredToolNames.includes(name2));
+  const missingTools = EXPECTED_TOOLS.filter((name) => !registeredToolNames.includes(name));
   if (missingTools.length > 0) {
     warn("FATAL: only " + registeredToolNames.length + "/" + EXPECTED_TOOLS.length + " tools registered (missing: " + missingTools.join(", ") + ") — the extension interface is NOT usable in this session;" + " the row declares inject: " + JSON.stringify([...REQUIRED_SEAMS]) + ", so check the harness seams above");
   } else if (config.quiet !== true) {
@@ -4176,11 +4176,11 @@ async function mount(ctx, config = {}) {
   }
 }
 export {
-  name,
-  inject,
-  apply,
-  REQUIRED_SEAMS,
-  ADAPTER_IDENTITY_PENDING,
+  ADAPTER_IDENTITY_FALLBACK,
   ADAPTER_IDENTITY_MOUNTED,
-  ADAPTER_IDENTITY_FALLBACK
+  ADAPTER_IDENTITY_PENDING,
+  REQUIRED_SEAMS,
+  apply,
+  inject,
+  name
 };

@@ -1,0 +1,7 @@
+[preset-conformance] ok=false -> C:\MyDoc\DshProj\my-power-dsh\evidence\dsh-qa\preset-conformance\2026-09-22T09-30-10.498Z
+  conformance: {"ok":true,"checked":31,"schemaFree":6,"parity":{"reference":31,"ours":31,"missing":[],"extra":[]},"problems":[]}
+  auth: {"ok":false,"tokenSeen":false,"cookieSession":false}
+  sessionCreate: {"ok":false,"status":401,"sessionId":null,"agentPreset":null,"raw":"unauthorized"}
+  sessionHeader: {"ok":false,"agentPreset":null,"log":null}
+  bootLog: {"ok":false,"signatures":["failed to apply loader entry"]}
+  negativeControl: {"ok":false,"code":null,"message":"the mutated preset mounted — the assertion is not falsifiable","mutations":["persona prefix: -> text:"]}

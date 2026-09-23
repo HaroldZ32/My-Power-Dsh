@@ -145,7 +145,11 @@ async function selfTest() {
   check(existsSync(registry), "the runtime validator source is missing")
   if (existsSync(registry)) {
     const result = spawnSync("bun", ["-e", [
-      'import { validateDescriptor } from "' + registry + '"',
+      // pathToFileURL, not the raw path: a bare absolute Windows path inside the `-e` SOURCE is
+      // mangled by JS string escapes before bun ever sees it (measured: `C:\MyDoc\...` became
+      // `C:MyDocDshProj...`, so the probe imported nothing and all four arms read as failures). A
+      // file:// URL carries no backslashes and is the same specifier on every platform.
+      'import { validateDescriptor } from "' + pathToFileURL(registry).href + '"',
       'const bad = validateDescriptor({ apiVersion: 1, id: "x", contributes: { skills: [{ root: "skills", rank: Number.NaN }], flows: [{ dir: "../escape" }] } })',
       'const version = validateDescriptor({ apiVersion: 9, id: "x" })',
       'const noId = validateDescriptor({ apiVersion: 1 })',
