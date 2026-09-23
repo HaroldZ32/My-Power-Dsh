@@ -307,15 +307,33 @@ export function createHarness(options = {}) {
    * modelled by default (the tests call `provideSidebar()` afterwards); `sidebarAtApply`
    * pre-registers it and `withoutSidebar` never provides it at all.
    */
-  const sidebarService = {
-    registerTab: (descriptor) => { calls.registerTab.push(descriptor); return () => {}; },
-    registerFileViewer: (descriptor) => { calls.registerFileViewer.push(descriptor); return () => {}; },
-    // Auto-open capture: the page must expand the panel with a CONTENT seed.
-    openTab: (seed, scope) => { calls.openTab.push({ seed, scope }); },
-    isTabEnabled: (id) => !disabledTabs.includes(id),
-    getTabs: () => [],
-    getSnapshot: () => ({ prefs: { pluginSettings: options.pluginSettings ?? {} } }),
+  /**
+   * Build ONE sidebar service. A remount hands the pages a FRESH service with an EMPTY tab
+   * registry — that is the shape a test must be able to produce, which is why this is a factory
+   * and not a single object.
+   */
+  const createSidebarService = () => {
+    const tabs = new Map();
+    return {
+      // Faithful to dsh-better-sidebar 0.19.1: `registerTab` THROWS on a duplicate id and
+      // `getTab(id)` answers the descriptor. Both matter here — the production registrar checks
+      // `getTab` before registering, so a re-fire must be provably harmless instead of throwing.
+      registerTab: (descriptor) => {
+        if (tabs.has(descriptor.id)) throw new Error('[dsh-better-sidebar] tab type "' + descriptor.id + '" already registered');
+        tabs.set(descriptor.id, descriptor);
+        calls.registerTab.push(descriptor);
+        return () => { if (tabs.get(descriptor.id) === descriptor) tabs.delete(descriptor.id); };
+      },
+      registerFileViewer: (descriptor) => { calls.registerFileViewer.push(descriptor); return () => {}; },
+      // Auto-open capture: the page must expand the panel with a CONTENT seed.
+      openTab: (seed, scope) => { calls.openTab.push({ seed, scope }); },
+      isTabEnabled: (id) => !disabledTabs.includes(id),
+      getTabs: () => [...tabs.values()],
+      getTab: (id) => tabs.get(id),
+      getSnapshot: () => ({ prefs: { pluginSettings: options.pluginSettings ?? {} } }),
+    };
   };
+  const sidebarService = createSidebarService();
   const sidebarProvided = options.withoutSidebar !== true;
   if (options.sidebarAtApply === true && sidebarProvided) registry.set("betterSidebar", sidebarService);
   /**
@@ -348,12 +366,32 @@ export function createHarness(options = {}) {
   });
   const runInjections = () => {
     for (const entry of [...pendingInjections]) {
-      if (entry.disposed || !entry.deps.every((dep) => registry.has(dep) || hidden.has(dep))) continue;
-      pendingInjections.splice(pendingInjections.indexOf(entry), 1);
+      if (entry.disposed) continue;
+      const values = entry.deps.map((dep) => (registry.has(dep) ? registry.get(dep) : hidden.get(dep)));
+      // An unsatisfied dependency parks the fiber; the entry is NOT dropped, because cordis
+      // re-evaluates every fiber that DECLARES a dependency when its provider rebinds.
+      if (values.some((value) => value === undefined)) continue;
+      // A REBIND is a remount: the same deps naming a NEW service value must re-run the
+      // callback (that is the documented `ctx.inject` behaviour the sidebar pages rely on).
+      if (entry.fired === true && values.every((value, at) => value === entry.values[at])) continue;
+      entry.fired = true;
+      entry.values = values;
       calls.injected = calls.injected ?? [];
       calls.injected.push(entry.deps);
       entry.cb(scopedCtx(entry.deps));
     }
+  };
+  /**
+   * Re-run every live injection against its CURRENT service values. A provider rebind re-fires
+   * the callback even when the same service object is bound again, so a case needs to be able to
+   * drive that re-fire explicitly instead of hoping a changed value causes one.
+   */
+  const refireInjections = () => {
+    for (const entry of pendingInjections) {
+      entry.fired = false;
+      entry.values = undefined;
+    }
+    runInjections();
   };
   const ctx = {
     get: (name) => (registry.has(name) ? registry.get(name) : undefined),
@@ -466,6 +504,8 @@ export function createHarness(options = {}) {
   };
   return {
     ctx, require, fetchImpl, calls, registry, hooks, adoptedStub, primitives, sidebarService, sidebarProvided,
+    createSidebarService,
+    refireInjections,
     /** Publish the sidebar service the way its own plugin fiber does — after apply(). */
     provideSidebar: () => {
       if (!sidebarProvided) return false;

@@ -1,0 +1,35 @@
+=== live route probes (the user's running server, PRE-restart: it still holds the pre-fix module, T-21) ===
+http://127.0.0.1:3080/plugins/mpd-team-watchdog/state?reader=web-panel -> 404
+http://127.0.0.1:3080/plugins/mpd-workmate/list -> 200
+http://127.0.0.1:3080/plugins/mpd-workmate/roster -> 200
+
+=== negative control: PRE-FIX shipped bytes (git HEAD dist/index.js, 11781 bytes) driven exactly like the new case ===
+{
+  "lateBindPaths": [],
+  "atApplyPaths": [
+    "/plugins/mpd-team-watchdog/ack",
+    "/plugins/mpd-team-watchdog/state"
+  ],
+  "expected": [
+    "/plugins/mpd-team-watchdog/ack",
+    "/plugins/mpd-team-watchdog/state"
+  ]
+}
+[negative-control] old bytes reproduce the live 404 on a late bind: true
+
+=== bun test packages/mpd-bundle-plugin/test/ (post-fix) ===
+119 pass
+0 fail
+1388 expect() calls
+Ran 119 tests across 6 files. [14.55s]
+
+=== node scripts/verify-dist-fresh.mjs ===
+RUN 1 under the workspace-write sandbox: FAIL - 20 of 20 targets not fresh (BUILD_FAILED: 20) — 115ms
+  ^ NOT a staleness finding: this gate rebuilds every target in a child with PIPED stdio, which the
+    sandbox denies (documented boundary). Note it fails identically for all 20 targets, including
+    packages untouched by this change.
+RUN 2 with danger-full-access (the sanctioned one-shot escalation for exactly this denial):
+  [verify-dist-fresh] ok: 20/20 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 6493ms
+  build toolchain: bun 1.4.2 · recorded buildToolchain bun@1.4.2
+=== bun run typecheck (root) ===
+exit 0 (tsgo --noEmit)

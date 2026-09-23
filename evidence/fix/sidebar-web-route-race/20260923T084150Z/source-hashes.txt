@@ -1,0 +1,7 @@
+timestamp_utc=2026-09-23T08:41:51Z
+92b1c70c3cc748ffd8326c0c7ac5abc60b75b4f223bea5f7e888fb3079f23252  packages/mpd-bundle-plugin/src/index.ts
+379793e63a4d856f8edc8f1d1f20f9f9c496943272169d95225b8d375bc9fb40  packages/mpd-bundle-plugin/src/web-client.js
+901cd507db54a51ddbc950ccae01a03f212ef745bd9def45f0b948c60160f3ec  packages/mpd-bundle-plugin/src/team-page.js
+dfb14c79f96f7bfb345c370876a3df9cb0a77aa68bcbc279be8c025e7ccf8ba4  packages/mpd-bundle-plugin/dist/index.js
+1d9a0ac70f1dfc72718878ea989741a8d3c25231296a045f81726e03f5ea8a02  packages/mpd-bundle-plugin/client.js
+2b1f99fd27750f9969175ba34ddcc54e1f8feb019cd9b87c0b015ff355494a32  packages/mpd-workmate-plugin/src/index.ts

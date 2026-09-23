@@ -4472,6 +4472,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd AgentTe
         return false;
       }
       autoOpenPolicyService = service;
+      // IDEMPOTENT by descriptor presence, for the same reason as the workmate tab: the
+      // sidebar's `registerTab` THROWS on a duplicate id, and `ctx.inject` re-fires on a
+      // provider remount. Skipping an ALREADY-registered tab keeps a re-fire harmless while a
+      // remount onto a FRESH service still gets the tab back.
+      try {
+        if (typeof service.getTab === "function" && service.getTab(TEAM_TAB_ID) !== undefined) return true;
+      } catch {
+        // a throwing getTab means "cannot tell": fall through and register as before
+      }
       const t = translatorFor(ctx);
       ctx.effect(() => ctx.locale.register(TEAM_LOCALE_NAMESPACE, { zh, en }), "mpd-agent-teams: dictionaries");
       ctx.effect(() => service.registerTab({
@@ -5850,6 +5859,20 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     }
   }
 
+  /**
+   * Whether a sidebar service already holds a descriptor for `id`.
+   *
+   * A service WITHOUT `getTab` answers `false` (register as before), so this guard can only
+   * ever remove a duplicate registration — never suppress the first one.
+   */
+  function sidebarAlreadyHasTab(service, id) {
+    try {
+      return typeof service.getTab === "function" && service.getTab(id) !== undefined;
+    } catch {
+      return false;
+    }
+  }
+
   const LIST_URL = "/plugins/mpd-workmate/list";
   const INIT_URL = "/plugins/mpd-workmate/init";
   const ROSTER_URL = "/plugins/mpd-workmate/roster";
@@ -6381,6 +6404,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   */
   function registerWorkmateSidebarTab(ctx, sidebar) {
     if (typeof sidebar.registerTab !== "function") return false;
+    // IDEMPOTENT by descriptor presence: `ctx.inject` re-fires when the provider remounts,
+    // and the sidebar's own `registerTab` THROWS on a duplicate id. Re-checking through the
+    // service's own registry both absorbs a re-fire and RESTORES the tab after a remount
+    // that lost it, instead of reporting a failure the user sees as "the tab is gone".
+    if (sidebarAlreadyHasTab(sidebar, SIDEBAR_TAB_ID)) return true;
     try {
       ctx.effect(() => sidebar.registerTab({
         id: SIDEBAR_TAB_ID,

@@ -120,6 +120,20 @@
     }
   }
 
+  /**
+   * Whether a sidebar service already holds a descriptor for `id`.
+   *
+   * A service WITHOUT `getTab` answers `false` (register as before), so this guard can only
+   * ever remove a duplicate registration — never suppress the first one.
+   */
+  function sidebarAlreadyHasTab(service, id) {
+    try {
+      return typeof service.getTab === "function" && service.getTab(id) !== undefined;
+    } catch {
+      return false;
+    }
+  }
+
   const LIST_URL = "/plugins/mpd-workmate/list";
   const INIT_URL = "/plugins/mpd-workmate/init";
   const ROSTER_URL = "/plugins/mpd-workmate/roster";
@@ -651,6 +665,11 @@
   */
   function registerWorkmateSidebarTab(ctx, sidebar) {
     if (typeof sidebar.registerTab !== "function") return false;
+    // IDEMPOTENT by descriptor presence: `ctx.inject` re-fires when the provider remounts,
+    // and the sidebar's own `registerTab` THROWS on a duplicate id. Re-checking through the
+    // service's own registry both absorbs a re-fire and RESTORES the tab after a remount
+    // that lost it, instead of reporting a failure the user sees as "the tab is gone".
+    if (sidebarAlreadyHasTab(sidebar, SIDEBAR_TAB_ID)) return true;
     try {
       ctx.effect(() => sidebar.registerTab({
         id: SIDEBAR_TAB_ID,

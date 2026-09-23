@@ -1,0 +1,86 @@
+{
+  "case": "fix/sidebar-web-route-race",
+  "kind": "defect fix — the bundle's OWN web routes never registered when the web server bound after its row",
+  "measured_at_utc": "2026-09-23T08:41:51Z",
+  "reported_symptom": {
+    "user_report": "the sidebar's AgentTeams / Workmates entries were intermittently absent, and the browser console showed a red 404 (no [mpd] warnings)",
+    "console_404_url": "http://127.0.0.1:3080/plugins/mpd-team-watchdog/state?reader=web-panel",
+    "note": "the user also reported the right sidebar itself disappearing and reappearing, i.e. the sidebar HOST's own mount churn; the tabs follow it"
+  },
+  "live_measurement": {
+    "host": "the user's running `dsh web` (profile web, win32, DSH 0.1.5-rc.2, dsh-better-sidebar 0.19.1)",
+    "method": "GET the two surfaces directly; /plugins/* routes are NOT auth-gated (the same thing skills/dsh-qa/scripts/web-client-adapt.mjs relies on)",
+    "results": {
+      "/plugins/mpd-team-watchdog/state?reader=web-panel": 404,
+      "/plugins/mpd-workmate/list": 200,
+      "/plugins/mpd-workmate/roster": 200
+    },
+    "reading": "SAME bundle, SAME boot, two mpd plugins: the one whose registrar retries answers 200, the one whose registrar probes once answers 404"
+  },
+  "root_cause": {
+    "class": "a ONE-SHOT ctx.get probe at apply() time races a service whose provider fiber activates independently",
+    "defective": "packages/mpd-bundle-plugin/src/index.ts — `webServer = ctx.get(\"webServer\", false)`; on undefined it `return`ed and registered NOTHING, with no retry",
+    "working_counterpart": "packages/mpd-workmate-plugin/src/index.ts — probes `webServer ?? httpServer` AND re-enters on `ctx.on(\"internal/service\", …)`, which is why its routes are live",
+    "search_proof": "these are the ONLY two web-route registrars in packages/** (`webServer.register`), so the asymmetry is exhaustive rather than anecdotal",
+    "why_the_existing_QA_case_missed_it": "skills/dsh-qa/scripts/web-client-adapt.mjs boots a BUNDLE-ONLY profile (`@deepseek-ai/dsh-base`, `@deepseek-ai/dsh-web-app`, `@mpd-dsh/mpd`), where the web server is already bound when this row applies — the measured `atApplyPaths` below shows the old bytes pass THERE. The user's profile also carries `@linxin666/dsh-web-all` + `dshmarket`, and in that composition the bind lands after this row."
+  },
+  "fix": {
+    "packages/mpd-bundle-plugin/src/index.ts": "resolve the web server through `webServerOf()` (webServer ?? httpServer, try/catch) and register from `registerRoutes()`, which is called at apply AND on every `internal/service` bind naming webServer/httpServer; a refused registration stays retryable",
+    "packages/mpd-bundle-plugin/src/web-client.js": "`sidebarAlreadyHasTab(service, id)` guard before the workmate tab registration — a re-fire after a provider remount can neither throw a duplicate-id error nor leave the tab missing",
+    "packages/mpd-bundle-plugin/src/team-page.js": "the same descriptor-presence guard for the AgentTeams tab",
+    "why_the_client_half_matters": "the SAME defect class was already fixed here once (the ctx.get probe that 'cost us the entire sidebar GUI'); the tabs are intermittently absent when the sidebar HOST remounts, and registration must be idempotent for the same service while still completing on a fresh one"
+  },
+  "falsifiability": {
+    "control": "negative-control.mjs loads the PRE-FIX shipped bytes (git HEAD's dist/index.js, 11781 bytes) and drives the identical late-bind scenario",
+    "result": {
+      "lateBindPaths": [],
+      "atApplyPaths": ["/plugins/mpd-team-watchdog/ack", "/plugins/mpd-team-watchdog/state"]
+    },
+    "reading": "the old bytes register ZERO routes on a late bind (the live 404) and both routes at apply-time (why the bundle-only case stayed green) — so the new test asserts the opposite of the defect and would have failed on HEAD"
+  },
+  "verification": {
+    "bun test packages/mpd-bundle-plugin/test/": "119 pass / 0 fail (was 110; +7 watchdog-routes-boot, +2 sidebar remount)",
+    "new_cases": [
+      "watchdog-routes-boot.test.mjs — a web server that binds AFTER apply() still gets BOTH routes (the live 404)",
+      "watchdog-routes-boot.test.mjs — bound AT apply() registers immediately (the path that already worked)",
+      "watchdog-routes-boot.test.mjs — an unrelated late binding registers nothing and never throws",
+      "watchdog-routes-boot.test.mjs — httpServer is accepted as the legacy name",
+      "watchdog-routes-boot.test.mjs — no effect seam keeps the plugin a headless marker",
+      "watchdog-routes-boot.test.mjs — a rebind of the SAME server never registers twice",
+      "watchdog-routes-boot.test.mjs — GET really answers 200 ok:true reader=web-panel against an empty sandbox store",
+      "sidebar-tab.test.mjs — a re-fire against the SAME service never double-registers",
+      "sidebar-tab.test.mjs — a FRESH service (the remount) receives both tabs again"
+    ],
+    "harness_fidelity": "packages/mpd-bundle-plugin/test/client-harness.mjs — the sidebar double now THROWS on a duplicate tab id and answers getTab(id) (dsh-better-sidebar 0.19.1), and a fired injection is NO LONGER dropped from the pending list: it re-fires when its dependency rebinds (the documented cordis rule). Both were needed to make the remount path testable at all.",
+    "node scripts/verify-dist-fresh.mjs": "ok: 20/20 targets fresh (each rebuilt twice, byte-identical)",
+    "bun run typecheck (root)": "exit 0 (tsgo --noEmit)",
+    "commands": {
+      "build_dist": "bun build packages/mpd-bundle-plugin/src/index.ts --target node --format esm --outfile packages/mpd-bundle-plugin/dist/index.js",
+      "build_client": "node scripts/build-mpd-client.mjs"
+    }
+  },
+  "cross_platform": {
+    "is_the_defect_platform_specific": false,
+    "why": "the failure is a SERVICE BINDING ORDER race (cordis fibers), not a path or filesystem question: no OS call participates. The route paths are POSIX URL strings matched by the web server, and the touched code uses no `node:path` on them. The same composition therefore races identically on linux and win32, and the fix (an `internal/service` listener) is OS-independent.",
+    "the_win32_that_IS_specific": "the sidebar HOST guard's profile-dir derivation (`fileURLToPath`, not `new URL('.', baseUrl).pathname`) — already fixed and committed separately in 6cc2c42c; this change does not touch it",
+    "portable_verification_to_run_on_linux": [
+      "bun test packages/mpd-bundle-plugin/test/",
+      "node scripts/verify-dist-fresh.mjs",
+      "curl -s -o /dev/null -w '%{http_code}\\n' http://127.0.0.1:<port>/plugins/mpd-team-watchdog/state?reader=web-panel"
+    ]
+  },
+  "source_hashes": {
+    "measured_at_utc": "2026-09-23T08:41:51Z",
+    "packages/mpd-bundle-plugin/src/index.ts": "92b1c70c3cc748ffd8326c0c7ac5abc60b75b4f223bea5f7e888fb3079f23252",
+    "packages/mpd-bundle-plugin/src/web-client.js": "379793e63a4d856f8edc8f1d1f20f9f9c496943272169d95225b8d375bc9fb40",
+    "packages/mpd-bundle-plugin/src/team-page.js": "901cd507db54a51ddbc950ccae01a03f212ef745bd9def45f0b948c60160f3ec",
+    "packages/mpd-bundle-plugin/dist/index.js": "dfb14c79f96f7bfb345c370876a3df9cb0a77aa68bcbc279be8c025e7ccf8ba4",
+    "packages/mpd-bundle-plugin/client.js": "1d9a0ac70f1dfc72718878ea989741a8d3c25231296a045f81726e03f5ea8a02",
+    "packages/mpd-workmate-plugin/src/index.ts": "2b1f99fd27750f9969175ba34ddcc54e1f8feb019cd9b87c0b015ff355494a32"
+  },
+  "bounds": [
+    "The fix is NOT yet observed on the user's live server: the running process holds the pre-fix module (AGENTS.md T-21, no plugin hot reload), so acceptance there needs a `dsh web` restart; the unit proof + the negative control on HEAD's own bytes are what this record certifies.",
+    "No real-browser render was performed. The sidebar-tab intermittency is attributed to the sidebar HOST's own mount churn (the user reported the whole right sidebar disappearing and returning), which is upstream of this bundle and is NOT claimed to be fixed here; what is fixed is that an mpd re-registration can no longer be the thing that loses a tab.",
+    "`evidence/fix/**` carries no bilingual requirement (process record, AGENTS.md §3)."
+  ]
+}
