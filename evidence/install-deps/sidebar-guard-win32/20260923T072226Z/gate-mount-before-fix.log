@@ -1,0 +1,8 @@
+{
+  "label": "before-fix",
+  "decision": "DISABLED",
+  "booted": true,
+  "guardLine": "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules",
+  "urlLine": "dsh web: http://127.0.0.1:3412/?token=xcQuRRxQI_1LKUkHp2mnm7ZynVekby88tRZOOBXk8Wk",
+  "outPath": "C:\\MyDoc\\DshProj\\my-power-dsh\\evidence\\install-deps\\sidebar-guard-win32\\20260923T072226Z\\raw\\mount-probe-before-fix.result.json"
+}

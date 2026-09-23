@@ -1,0 +1,13 @@
+bun test v1.4.2 (744846f84)
+
+packages\mpd-bundle-plugin\test\sidebar-guard-profile-dir.test.mjs:
+(pass) sidebar mount guard: profile-dir derivation > derives the profile dir through a file-URL conversion, never URL.pathname [0.05ms]
+(pass) sidebar mount guard: profile-dir derivation > ENABLED when the profile resolves the sidebar and no other layer mounts it [101.22ms]
+(pass) sidebar mount guard: profile-dir derivation > DISABLED when the profile cannot resolve the sidebar [8.71ms]
+(pass) sidebar mount guard: profile-dir derivation > DISABLED in favour of a foreign bundle layer that already mounts it [39.88ms]
+(pass) sidebar mount guard: profile-dir derivation > DISABLED when the composition has no enabled webserver entry [19.72ms]
+
+ 5 pass
+ 0 fail
+ 10 expect() calls
+Ran 5 tests across 1 file. [3.04s]
