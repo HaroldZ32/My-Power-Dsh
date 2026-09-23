@@ -1,0 +1,8 @@
+{
+  "label": "after-fix",
+  "decision": "ENABLED",
+  "booted": true,
+  "guardLine": "[mpd-better-sidebar] mount guard: ENABLED - web plane present and no other layer mounts dsh-better-sidebar",
+  "urlLine": "dsh web: http://127.0.0.1:3411/?token=eQoznoqz6IBSXIgq0jG4EIRXVxAdHwuP-1paDOtcOjU",
+  "outPath": "C:\\MyDoc\\DshProj\\my-power-dsh\\evidence\\install-deps\\sidebar-guard-win32\\20260923T072226Z\\raw\\mount-probe-after-fix.result.json"
+}

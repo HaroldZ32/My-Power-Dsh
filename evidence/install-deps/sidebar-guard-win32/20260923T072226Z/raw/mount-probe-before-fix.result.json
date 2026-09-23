@@ -1,0 +1,32 @@
+{
+  "label": "before-fix",
+  "host": "win32-x64",
+  "node": "v24.21.0",
+  "harnessBin": "C:\\Users\\zhao.yinan\\AppData\\Roaming\\npm\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js",
+  "sandbox": "C:\\MyDoc\\DshProj\\my-power-dsh\\.qa-reloc\\sidebar-guard-mount-before-fix-2026-09-23T07-29-09.154Z",
+  "profileLayerNotForeign": true,
+  "seeded": {
+    "credentials": true,
+    "settings": true
+  },
+  "guardLine": "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules",
+  "urlLine": "dsh web: http://127.0.0.1:3412/?token=xcQuRRxQI_1LKUkHp2mnm7ZynVekby88tRZOOBXk8Wk",
+  "booted": true,
+  "childExitCode": null,
+  "logBytes": 1907,
+  "decision": "DISABLED",
+  "logTail": [
+    "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules",
+    "[mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)",
+    "[mpd-codegraph] init status=fail binary=C:\\MyDoc\\DshProj\\my-power-dsh\\node_modules\\.bun\\@colbymchenry+codegraph@1.5.0\\node_modules\\@colbymchenry\\codegraph\\npm-shim.js cwd=C:\\MyDoc\\DshProj\\my-power-dsh\\.qa-reloc\\sidebar-guard-mount-before-fix-2026-09-23T07-29-09.154Z",
+    "[mpd-bootstrap] skill corpus served from C:\\MyDoc\\DshProj\\my-power-dsh\\skills (provider mpd-bundle, bundle 0.9.1)",
+    "[mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on",
+    "[mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)",
+    "[mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh",
+    "[agent-teams] adapter: mpdDsh mounted — harness seams routed through mpd-dsh-adapter",
+    "[mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged \"Shared daemon connection lost … serving this session in-process\"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)",
+    "[mpd-config] settings bridge: registered the \"mpd\" namespace with the file-derived base (applies:'restart', design §10.1)",
+    "dsh web: http://127.0.0.1:3412/?token=xcQuRRxQI_1LKUkHp2mnm7ZynVekby88tRZOOBXk8Wk",
+    ""
+  ]
+}

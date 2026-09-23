@@ -1,0 +1,236 @@
+[install-profile] dshHome=C:\Users\zhao.yinan\.dsh profile=mpd write=false
+[install-profile] profileDir=C:\Users\zhao.yinan\.dsh\profiles\mpd
+[install-profile] homePatch=C:\Users\zhao.yinan\.dsh\cordis.patch.yml
+[install-profile] presets -> C:\Users\zhao.yinan\.dsh\.agent-presets\mpd-*
+[install-profile] toolchain missing=true (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 26 (id-target=0, insert=26)
+- insert:
+  - id: mpd-web-compat
+    name: "@mpd-dsh/mpd"
+  - id: mpd-better-sidebar
+    name: "dsh-better-sidebar"
+    disabled: !!js "(() => { const say = (decision, reason) => { try { const seen = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen = {}); const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1; console.warn('[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason) } } catch (e) {} }; try { const fs = process.getBuiltinModule('node:fs'); const path = process.getBuiltinModule('node:path'); const profileDir = path.normalize(decodeURIComponent(new URL('.', baseUrl).pathname)); const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch (e) { return null } }; const readText = (p) => { try { return fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const SQ = String.fromCharCode(39); const DQ = String.fromCharCode(34); const HASH = String.fromCharCode(35); const LF = String.fromCharCode(10); const TAB = String.fromCharCode(9); const stripComments = (text) => { const out = []; for (const line of String(text).split(LF)) { let kept = ''; let quote = ''; for (const ch of line) { if (quote === '') { if (ch === HASH) { break } if (ch === SQ || ch === DQ) { quote = ch } } else if (ch === quote) { quote = '' } kept += ch } out.push(kept) } return out.join(LF) }; const unquote = (raw) => { const t = String(raw).trim(); if (t.length > 1 && (t.charAt(0) === SQ || t.charAt(0) === DQ) && t.charAt(t.length - 1) === t.charAt(0)) { return t.slice(1, -1) } return t }; const indentOf = (line) => { let i = 0; while (i < line.length && (line.charAt(i) === ' ' || line.charAt(i) === TAB)) { i++ } return i }; const keyOf = (line, key) => { let t = line; if (t.charAt(0) === '-' && t.charAt(1) === ' ') { t = t.slice(2) } const trimmed = t.trimStart(); if (!trimmed.startsWith(key + ':')) { return null } return trimmed.slice(key.length + 1).trim() }; const foreignRowMountsSidebar = (text) => { const stripped = stripComments(text); if (stripped.indexOf('dsh-better-sidebar') < 0) { return false } const rows = []; let current = null; for (const line of stripped.split(LF)) { if (line.trim() === '') { continue } const indent = indentOf(line); const body = line.slice(indent); const isItem = body.charAt(0) === '-' && (body.length === 1 || body.charAt(1) === ' '); if (isItem) { current = { indent, lines: [] }; rows.push(current) } if (current !== null && (isItem || indent > current.indent)) { current.lines.push({ indent, body }) } } let named = false; let mounting = false; for (const row of rows) { let nameValue = null; let nameIndent = -1; let disabledValue = null; let disabledIndent = -1; for (const entry of row.lines) { const nv = keyOf(entry.body, 'name'); if (nv !== null && (nameIndent < 0 || entry.indent < nameIndent)) { nameIndent = entry.indent; nameValue = nv } const dv = keyOf(entry.body, 'disabled'); if (dv !== null && (disabledIndent < 0 || entry.indent < disabledIndent)) { disabledIndent = entry.indent; disabledValue = dv } } if (nameValue === null || unquote(nameValue) !== 'dsh-better-sidebar') { continue } named = true; const literallyDisabled = disabledValue !== null && disabledIndent <= nameIndent && unquote(disabledValue).toLowerCase() === 'true'; if (!literallyDisabled) { mounting = true } } if (mounting) { return true } if (!named) { return true } return false }; const ownModules = path.join(profileDir, 'node_modules'); if (!fs.existsSync(path.join(ownModules, 'dsh-better-sidebar'))) { say('DISABLED', 'dsh-better-sidebar is not resolvable from the profile node_modules'); return true } const manifest = readJson(path.join(profileDir, 'package.json')); const bundles = manifest && manifest.dsh && manifest.dsh.profile && Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles : []; if (bundles.indexOf('dsh-better-sidebar') >= 0) { say('DISABLED', 'dsh-better-sidebar is itself a declared bundle layer'); return true } for (const bundle of bundles) { const name = String(bundle); for (const dir of [path.join(ownModules, name), path.join(profileDir, '..', 'node_modules', name)]) { const other = readJson(path.join(dir, 'package.json')); if (!other) continue; if (other.name === '@mpd-dsh/mpd') continue; const rel = other.dsh && other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !== 'string') continue; const text = readText(path.join(dir, rel)); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' + name + ' already mounts it in its own patch'); return true } } } const argv = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string' ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') { overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) { overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir, 'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')]; if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '') { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for (const overlay of overlays) { layers.push(path.resolve(overlay)) } for (const layer of layers) { const text = readText(layer); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + ' already mounts it'); return true } } const entries = [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options && e.options.name === '@deepseek-ai/dsh-host-webserver' && (e.options.disabled === undefined || e.options.disabled === false)); if (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver entry in this composition'); return true } say('ENABLED', 'web plane present and no other layer mounts dsh-better-sidebar'); return false } catch (e) { try { console.warn('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' + String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()"
+  - id: mcp-astgrep
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "ast_grep"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-mcp-astgrep\\dist\\cli.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-gitbash
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "git_bash"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-mcp-gitbash\\dist\\cli.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-lsp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "lsp"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-mcp-lsp\\dist\\cli.js"
+        - "mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-codegraph
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "codegraph"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-mcp-codegraph\\dist\\serve.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-context7
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "context7"
+      transport: "streamable-http"
+      url: "https://mcp.context7.com/mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-grepapp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "grep_app"
+      transport: "streamable-http"
+      url: "https://mcp.grep.app"
+      toolCallTimeoutMs: 60000
+  - id: mpd-codegraph
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-codegraph-plugin\\dist\\index.js"
+    config:
+      autoInit: true
+      initTimeoutMs: 60000
+      binary: "C:\\MyDoc\\DshProj\\my-power-dsh\\.toolchain\\node_modules\\.bin\\codegraph"
+  - id: mpd-tools
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-tools-plugin\\dist\\index.js"
+    config:
+      writeGuard: true
+      truncateMaxBytes: 8192
+  - id: mpd-modelchain
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-modelchain-plugin\\dist\\index.js"
+  - id: mpd-ulw
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-ulw-plugin\\dist\\index.js"
+    config:
+      maxRounds: 3
+  - id: mpd-hashline
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-hashline-plugin\\dist\\index.js"
+    config:
+      guardEditTools: true
+  - id: mpd-boulder
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-boulder-plugin\\dist\\index.js"
+  - id: mpd-dsh-adapter
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-dsh-adapter-plugin\\dist\\index.js"
+  - id: mpd-config
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-config-plugin\\dist\\index.js"
+  - id: mpd-comment-checker
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-comment-checker-plugin\\dist\\index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-memory-plugin\\dist\\index.js"
+    config:
+      vcs: "git"
+  - id: mpd-ext
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-ext-plugin\\dist\\index.js"
+    config:
+      quiet: false
+  - id: mpd-roles
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-roles-plugin\\dist\\index.js"
+  - id: mpd-workmate
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-workmate-plugin\\dist\\index.js"
+  - id: mpd-team-compact
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-team-compact-plugin\\dist\\index.js"
+  - id: mpd-team-watchdog
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-team-watchdog-plugin\\dist\\index.js"
+    config:
+      stateDir: ".mpd/team"
+      warnSilenceMs: 90000
+      tickIntervalMs: 15000
+      warnStreakToEscalate: 3
+      actionOnEscalate: "pause"
+  - id: mpd-bootstrap
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-bootstrap-plugin\\dist\\index.js"
+  - id: mpd-tui
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-tui-plugin\\dist\\index.js"
+  - id: agent-teams
+    name: "C:\\MyDoc\\DshProj\\my-power-dsh\\packages\\mpd-agent-teams-plugin\\lib\\index.js"
+    config:
+      stateDir: ".mpd/team"
+      memberProvider: "spawn"
+      memberMaxDepth: 1
+      maxMembers: 16
+      maxParallelMembers: 8
+      maxMessagesPerRun: 10000
+      maxWallClockMinutes: 120
+      maxMemberTurns: 500
+      messagePayloadMaxBytes: 32768
+      recipientUnreadMaxBytes: 262144
+      mailboxPollIntervalMs: 3000
+      enforcement: "enforce"
+      reclaimStaleAfterMs: 3600000
+      sessionTeamPolicy:
+        mode: "off"
+        autoRoute: true
+        profile: "mpd"
+        presets: ["mpd"]
+        name: "MPD Default"
+        approval: "required"
+      profiles:
+        mpd:
+          description: "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
+          protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match."
+          taskPlanning: captain
+          # fallback.provider is ALWAYS deepseek-official (never the bare
+          # "deepseek" compat-track provider): the original layered design
+          # intended dsh-llm-pi-ai ("deepseek") as the degradation tier, but
+          # that row is OFF by default (install-profile --with-compat-track is
+          # gone) and the harness only registers deepseek-official
+          # (dsh-llm-deepseek), so a "deepseek" fallback would fail with
+          # NO_ADAPTER exactly when the fallback is needed.
+          # MEMBER ROUTES COME FROM THE SETTINGS SLOTS, not from literals: `tier: N` starts the
+          # member on mpd.teamModels.slot<N> (provider + model + reasoning effort, editable in the
+          # TUI /settings section and in the Web settings card). The frozen class mapping is
+          # tier 1 = Architect/Planner/Reviewer/Lead/Senior Engineer, tier 2 = the analysts
+          # (Researcher/Explorer/Plan Reviewer), tier 3 = the executors (Deep Worker/Junior
+          # Engineer), tier 4 = the vision member (Vision Analyst). Slot 4's DEFAULT is Vision
+          # Analyst's own vision route (deepseek-v4-flash-vision-exp at `high`), so routing it
+          # through the slot is behaviour-preserving while making its model configurable. A slot
+          # edit applies at the next dsh boot, like every other mpd knob.
+          members:
+            - name: Architect
+              tier: 1
+              role: architecture review / deep debugging / self-review
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
+              # Read-only members are MECHANICALLY restricted, not just instructed: these
+              # names are the same seven the one-shot roster path denies
+              # (mpd-roles-plugin / mpd-workmate-plugin READONLY_DENY), carried as profile
+              # data because the adopted plugin cannot import across packages. Without
+              # them a "read-only" member in a team kept write/edit/bash (measured
+              # 2026-09-14: a member's own session ran `pwd` for real).
+
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Researcher
+              tier: 2
+              role: code / open-source evidence search
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Planner
+              tier: 1
+              role: planning / task decomposition
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Explorer
+              tier: 2
+              role: read-only codebase exploration
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Reviewer
+              tier: 1
+              role: correctness / risk review
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
+            - name: Plan Reviewer
+              tier: 2
+              role: work-plan QA review / UI-UX critique
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Vision Analyst
+              tier: 4
+              role: image / diagram analysis
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
+              toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
+            - name: Lead
+              tier: 1
+              role: orchestration / integration
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
+            - name: Deep Worker
+              tier: 3
+              role: autonomous goal-driven implementation
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
+            - name: Senior Engineer
+              tier: 1
+              role: primary implementation
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
+            - name: Junior Engineer
+              tier: 3
+              role: small mechanical changes
+              fallback: { provider: deepseek-official, model: deepseek-v4-flash }
+              executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+
+[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target

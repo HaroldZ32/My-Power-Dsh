@@ -1,0 +1,65 @@
+bun test v1.4.2 (744846f84)
+
+packages\mpd-bundle-plugin\test\sidebar-guard-profile-dir.test.mjs:
+114 | 
+115 | describe("sidebar mount guard: profile-dir derivation", () => {
+116 |   test("derives the profile dir through a file-URL conversion, never URL.pathname", () => {
+117 |     // Platform-independent pin for the defect: `pathname` is `/C:/...` on win32, which the
+118 |     // OS reads as a path on the current drive root once normalized.
+119 |     expect(GUARD).not.toContain(".pathname");
+                            ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: ".pathname"
+Received: "(() => { const say = (decision, reason) => { try { const seen = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen = {}); const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1; console.warn('[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason) } } catch (e) {} }; try { const fs = process.getBuiltinModule('node:fs'); const path = process.getBuiltinModule('node:path'); const profileDir = path.normalize(decodeURIComponent(new URL('.', baseUrl).pathname)); const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch (e) { return null } }; const readText = (p) => { try { return fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const SQ = String.fromCharCode(39); const DQ = String.fromCharCode(34); const HASH = String.fromCharCode(35); const LF = String.fromCharCode(10); const TAB = String.fromCharCode(9); const stripComments = (text) => { const out = []; for (const line of String(text).split(LF)) { let kept = ''; let quote = ''; for (const ch of line) { if (quote === '') { if (ch === HASH) { break } if (ch === SQ || ch === DQ) { quote = ch } } else if (ch === quote) { quote = '' } kept += ch } out.push(kept) } return out.join(LF) }; const unquote = (raw) => { const t = String(raw).trim(); if (t.length > 1 && (t.charAt(0) === SQ || t.charAt(0) === DQ) && t.charAt(t.length - 1) === t.charAt(0)) { return t.slice(1, -1) } return t }; const indentOf = (line) => { let i = 0; while (i < line.length && (line.charAt(i) === ' ' || line.charAt(i) === TAB)) { i++ } return i }; const keyOf = (line, key) => { let t = line; if (t.charAt(0) === '-' && t.charAt(1) === ' ') { t = t.slice(2) } const trimmed = t.trimStart(); if (!trimmed.startsWith(key + ':')) { return null } return trimmed.slice(key.length + 1).trim() }; const foreignRowMountsSidebar = (text) => { const stripped = stripComments(text); if (stripped.indexOf('dsh-better-sidebar') < 0) { return false } const rows = []; let current = null; for (const line of stripped.split(LF)) { if (line.trim() === '') { continue } const indent = indentOf(line); const body = line.slice(indent); const isItem = body.charAt(0) === '-' && (body.length === 1 || body.charAt(1) === ' '); if (isItem) { current = { indent, lines: [] }; rows.push(current) } if (current !== null && (isItem || indent > current.indent)) { current.lines.push({ indent, body }) } } let named = false; let mounting = false; for (const row of rows) { let nameValue = null; let nameIndent = -1; let disabledValue = null; let disabledIndent = -1; for (const entry of row.lines) { const nv = keyOf(entry.body, 'name'); if (nv !== null && (nameIndent < 0 || entry.indent < nameIndent)) { nameIndent = entry.indent; nameValue = nv } const dv = keyOf(entry.body, 'disabled'); if (dv !== null && (disabledIndent < 0 || entry.indent < disabledIndent)) { disabledIndent = entry.indent; disabledValue = dv } } if (nameValue === null || unquote(nameValue) !== 'dsh-better-sidebar') { continue } named = true; const literallyDisabled = disabledValue !== null && disabledIndent <= nameIndent && unquote(disabledValue).toLowerCase() === 'true'; if (!literallyDisabled) { mounting = true } } if (mounting) { return true } if (!named) { return true } return false }; const ownModules = path.join(profileDir, 'node_modules'); if (!fs.existsSync(path.join(ownModules, 'dsh-better-sidebar'))) { say('DISABLED', 'dsh-better-sidebar is not resolvable from the profile node_modules'); return true } const manifest = readJson(path.join(profileDir, 'package.json')); const bundles = manifest && manifest.dsh && manifest.dsh.profile && Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles : []; if (bundles.indexOf('dsh-better-sidebar') >= 0) { say('DISABLED', 'dsh-better-sidebar is itself a declared bundle layer'); return true } for (const bundle of bundles) { const name = String(bundle); for (const dir of [path.join(ownModules, name), path.join(profileDir, '..', 'node_modules', name)]) { const other = readJson(path.join(dir, 'package.json')); if (!other) continue; if (other.name === '@mpd-dsh/mpd') continue; const rel = other.dsh && other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !== 'string') continue; const text = readText(path.join(dir, rel)); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' + name + ' already mounts it in its own patch'); return true } } } const argv = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string' ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') { overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) { overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir, 'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')]; if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '') { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for (const overlay of overlays) { layers.push(path.resolve(overlay)) } for (const layer of layers) { const text = readText(layer); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + ' already mounts it'); return true } } const entries = [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options && e.options.name === '@deepseek-ai/dsh-host-webserver' && (e.options.disabled === undefined || e.options.disabled === false)); if (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver entry in this composition'); return true } say('ENABLED', 'web plane present and no other layer mounts dsh-better-sidebar'); return false } catch (e) { try { console.warn('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' + String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()"
+
+      at <anonymous> (C:\MyDoc\DshProj\my-power-dsh\packages\mpd-bundle-plugin\test\sidebar-guard-profile-dir.test.mjs:119:23)
+(fail) sidebar mount guard: profile-dir derivation > derives the profile dir through a file-URL conversion, never URL.pathname [287.53ms]
+120 |     expect(GUARD).toContain("fileURLToPath");
+121 |   });
+122 | 
+123 |   test("ENABLED when the profile resolves the sidebar and no other layer mounts it", () => {
+124 |     const { disabled, warnings } = decide(baseUrlOf(makeProfile({ withSidebar: true })));
+125 |     expect(warnings).toContain("ENABLED");
+                           ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "ENABLED"
+Received: "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules"
+
+      at <anonymous> (C:\MyDoc\DshProj\my-power-dsh\packages\mpd-bundle-plugin\test\sidebar-guard-profile-dir.test.mjs:125:22)
+(fail) sidebar mount guard: profile-dir derivation > ENABLED when the profile resolves the sidebar and no other layer mounts it [380.93ms]
+(pass) sidebar mount guard: profile-dir derivation > DISABLED when the profile cannot resolve the sidebar [9.23ms]
+141 |       bundles: ["@foreign/web-all"],
+142 |       foreign: [{ name: "@foreign/web-all", patch: FOREIGN_MOUNT }],
+143 |     });
+144 |     const { disabled, warnings } = decide(baseUrlOf(dir));
+145 |     expect(disabled).toBe(true);
+146 |     expect(warnings).toContain("already mounts it in its own patch");
+                           ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "already mounts it in its own patch"
+Received: "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules"
+
+      at <anonymous> (C:\MyDoc\DshProj\my-power-dsh\packages\mpd-bundle-plugin\test\sidebar-guard-profile-dir.test.mjs:146:22)
+(fail) sidebar mount guard: profile-dir derivation > DISABLED in favour of a foreign bundle layer that already mounts it [31.51ms]
+147 |   });
+148 | 
+149 |   test("DISABLED when the composition has no enabled webserver entry", () => {
+150 |     const { disabled, warnings } = decide(baseUrlOf(makeProfile({ withSidebar: true })), []);
+151 |     expect(disabled).toBe(true);
+152 |     expect(warnings).toContain("webserver");
+                           ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "webserver"
+Received: "[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is not resolvable from the profile node_modules"
+
+      at <anonymous> (C:\MyDoc\DshProj\my-power-dsh\packages\mpd-bundle-plugin\test\sidebar-guard-profile-dir.test.mjs:152:22)
+(fail) sidebar mount guard: profile-dir derivation > DISABLED when the composition has no enabled webserver entry [13.31ms]
+
+ 1 pass
+ 4 fail
+ 8 expect() calls
+Ran 5 tests across 1 file. [6.37s]
