@@ -39,7 +39,17 @@ for (const target of args) {
   const eq = target.indexOf("=");
   const label = target.slice(0, eq);
   const path = target.slice(eq + 1);
-  const content = readFileSync(path, "utf8");
+  const raw = readFileSync(path, "utf8");
+  // EOL HONESTY (measured, not assumed). The harness cap counts the bytes it is HANDED, so a CRLF file
+  // is one byte per line larger. This repository pins `*.md text eol=lf`, so the MANUAL is always LF in
+  // a working tree — but an evidence file that is NOT named `*.md` matches only `* text=auto` and IS
+  // checked out CRLF on Windows. Measured: `AGENTS.md.before` reads 65,163 B / 739 CRLF in a Windows
+  // working tree while its committed BLOB is the same content at 64,424 B LF (+1 B per line = 739 B of
+  // EOL alone), which turned this instrument's baseline reading into `headroom=69` instead of `808` for
+  // a re-runner. The render therefore uses LF-normalized text, and BOTH readings are reported, so the
+  // difference is visible instead of silently deciding the comparison.
+  const content = raw.replace(/\r\n/g, "\n");
+  const eolAsRead = raw.includes("\r\n") ? "crlf" : "lf";
   const rendered = renderWorkspaceContext(
     [{ absolutePath: resolve(path), displayPath: "AGENTS.md", content }],
     { maxBytes: MAX_BYTES, replacePreviousBaseline: false },
@@ -49,6 +59,8 @@ for (const target of args) {
     label,
     path: resolve(path),
     sourceBytes: Buffer.byteLength(content, "utf8"),
+    rawSourceBytes: Buffer.byteLength(raw, "utf8"),
+    eolAsRead,
     renderedBytes: Buffer.byteLength(rendered.text, "utf8"),
     truncated,
     omitted: rendered.omitted.map((file) => file.displayPath),
@@ -66,6 +78,8 @@ const checks = {
     byLabel.post !== undefined && byLabel.post.truncated === false,
   post_under_budget:
     byLabel.post !== undefined && byLabel.post.renderedBytes <= MAX_BYTES,
+  post_eol_is_lf:
+    byLabel.post !== undefined && byLabel.post.eolAsRead === "lf",
   negative_control_is_red:
     byLabel.control !== undefined && byLabel.control.truncated === true,
 };
