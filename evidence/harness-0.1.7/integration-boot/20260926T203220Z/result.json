@@ -1,0 +1,24 @@
+{
+  "what": "Integration MOUNT boot of the mpd web profile on harness 0.1.7-rc.2 from a symlinked sandbox profile. The rows really applied; NOT a --dump-config run.",
+  "measuredAt": "2026-09-26T20:32:20.847Z",
+  "revision": "e6f91e188dc05b6af0cb2352eb8bf696d62af10e",
+  "checks": {
+    "teamServiceMounted": true,
+    "rosterPlaneApplied": true,
+    "rosterSectionLive": true,
+    "gateListenerRegistered": true,
+    "noApplyCrash": true
+  },
+  "evidence": {
+    "teamServiceLine": "[captain-team-probe] agentTeams=MOUNTED serviceName=TeamService (probe inserted by an extra --patch overlay)",
+    "rosterPlaneLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory",
+    "rosterSectionLine": "[mpd-roles] roster section registered for agent \"…\" agentPreset=mpd — mpd:roster order=605",
+    "gateListenerLine": "[mpd-roles] session gate listener registered for agent \"…\" agentPreset=mpd",
+    "presetMountBody": "POST /api/session/create {agentPreset:\"mpd\"} -> 200 {\"result\":{\"ok\":true,\"value\":{\"agentPreset\":\"mpd\"}}}"
+  },
+  "notProven": [
+    "The gate FIRING is proven by the live skills/dsh-qa/scripts/session-start-team.mjs lane (threeWay ok=true: simple 0/0/0 notices, soft 1/1 with signal C and staged 0, explicit 1 with the marker consumed and staged 0), not by this boot — a session/create dispatches no pre-step.",
+    "The read-only guard DENY path needs a real tool call from a live teammate; asserted by mpd-roles-plugin/test/team-plane.test.ts.",
+    "The team tools in one exact agent scope are proven by the Docker E2E run (boot.agentTeamTools 9/9), not by this boot."
+  ]
+}

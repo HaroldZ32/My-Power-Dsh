@@ -115,3 +115,49 @@ of a configuration the bundle no longer ships — none of them tested live behav
 The rest of that package's suite (333 tests) stays green and keeps covering the retained code's own
 contracts. Deleting the three files is a *record of the retirement*, not a test-weakening: a reviewer
 who wants the old guarantees back has to restore a mounted configuration that offers them.
+
+## 7. Post-release findings (v0.10.0 → v0.10.1)
+
+v0.10.0 was tagged and pushed on 2026-09-27 after a green sweep. Two defects were then measured by
+lanes whose verification went deeper than the sweep did. Both are recorded here rather than folded
+silently into a fix, because each is a CLASS of evidence gap worth keeping.
+
+### 7.1 The session-start gate was MOUNTED but NEVER FIRED
+
+Lane C's rebased `skills/dsh-qa/scripts/session-start-team.mjs` — after lane C fixed two of its own
+instrumentation bugs (a shared `DSH_HOME` legitimately holds one session-store key per side, so the
+side's own workspace was the wrong isolation bound) — booted six headless sessions and measured ZERO
+notices on every triggered side:
+
+```
+threeWay: {"ok":false,"simpleNotices":[0,0,0],"softNotices":[0,0],"softSignals":[[],[]],
+           "softStaged":[0,0],"explicitNotices":[0],"explicitStaged":[0],"explicitMarkerConsumed":[false]}
+```
+
+Root cause, measured in the installed harness: `@deepseek-ai/dsh-agent-loop`'s `preStep()` emits
+`waterfall("agent/pre-step", { messages: claimed, ...position, signal }, …)` — **the payload carries no
+`agent`**. The gate opened with `const agent = payload?.agent; if (agent === undefined) return
+undefined`, so it returned early on every step. Mounted, silent, no throw, no warning.
+
+**Why the sweep missed it, named precisely.** The gate's evidence was (a) an apply-time log line
+`sessionGate=advisory`, which proves the plugin APPLIED, and (b) a unit test that handed the listener a
+payload *containing* an `agent` — a payload shape the harness never sends. The captain's integration
+boot explicitly recorded that bound ("it has no boot line and is asserted by the unit test only") and
+still shipped it. A unit test that constructs the payload it feeds the code under test cannot witness a
+payload-shape mismatch; only a real boot can, which is exactly AGENTS.md §7's "assert a REAL tool
+result" rule. The fix moves the agent resolution from the payload to the registration SCOPE (the same
+place `@deepseek-ai/dsh-experimental-tool-agent-team` gets it) and adds a test that drives the listener
+with the REAL payload shape.
+
+### 7.2 A live lane's green was partly vacuous
+
+The same case's isolation assertion passed the side's own workspace as the bound, so in a shared
+`DSH_HOME` it flagged sibling sides as escapees and — once fixed — revealed that its `gateInstalled`
+check did not exist at all. A live lane that reports ONE boolean cannot say which half failed. The
+structural remedy, applied here and already used by `bundle-lifecycle`: split a step into NAMED
+sub-assertions so "the gate was never mounted" and "the gate is mounted and did not fire" are different
+readings with different owners.
+
+**Both lessons are binding for the next harness adaptation:** a payload-shape assumption is verified by
+a BOOT, never by a unit test that builds the payload; and a live case's verdict is only as strong as
+its most granular assertion.

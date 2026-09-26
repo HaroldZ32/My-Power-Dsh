@@ -117,7 +117,11 @@ export interface DshCommandDef {
   handler: (invocation: DshCommandInvocation) => unknown
 }
 
-/** Producer tag of an injected message (`{kind:'user'}`, `{kind:'plugin',plugin:'…'}`). */
+// Producer tag of an injected message. The harness's format-v4 gate accepts a
+// PRODUCER-OWNED kind and REFUSES the retired shared `plugin` member (measured on
+// 0.1.7-rc.2: `dsh: format v4 message requires a producer-owned source kind`, which
+// takes the whole boot down), so a producer names itself — `{kind:'user'}`,
+// `{kind:'mpd-roles',reason:'session-start-advisory'}`, `{kind:'mpd-ulw',…}`.
 export interface DshUserMessageSource {
   kind: string
   [key: string]: unknown
@@ -528,6 +532,18 @@ export interface DshCapabilities {
    */
   agentPreStep: boolean
   /**
+   * A LIVE agent's own scope exposes `on`, i.e. {@link DshAdapter.registerAgentPreStep} can
+   * register an `agent/pre-step` listener THAT DELIVERY REACHES.
+   *
+   * This is the flag a caller must branch on for the waterfall: a scope-filtered dispatch
+   * reaches a listener only when the listener's scope is the dispatch scope or an ancestor of
+   * it, so the agent-scoped registration is the reliable one (see
+   * {@link DshAdapter.registerAgentPreStep}). A LIVE-REGISTRY probe like
+   * {@link DshCapabilities.agentScope}: no live session reports false although the surface
+   * exists, and the per-call throw stays authoritative.
+   */
+  agentPreStepScope: boolean
+  /**
    * The official Agent Teams service (`ctx.get("agentTeams")`) exposes the IDENTITY +
    * ROSTER read surface (`tryMembership` and `listMembers`), i.e.
    * {@link DshAdapter.teamMembership} and {@link DshAdapter.teamListMembers} can run.
@@ -878,11 +894,51 @@ export interface DshAdapter {
    * boot down). A harness build with no event bus makes this a no-op (`() => {}`),
    * never a boot failure; `capabilities().agentPreStep` reports it.
    *
-   * @param listener - `(payload, decision)`; the payload carries `agent`, the claimed
-   *   `messages`, `turn`, `step` and `signal` (see {@link DshAgentPreStep}).
+   * @param listener - `(payload, decision)`; the payload carries the claimed `messages`,
+   *   `turn`, `step` and `signal` (see {@link DshAgentPreStep}). It USUALLY carries `agent`
+   *   too (the loop's dispatcher fuses it), but a caller must not depend on that: bind the
+   *   agent with {@link DshAdapter.registerAgentPreStep} instead.
    * @returns a disposer (a no-op when the seam does not exist).
+   *
+   * NOTE: this host-plane registration is NOT guaranteed to be delivered — `agent/pre-step`
+   * is dispatched through the agent's SCOPE CARRIER, and a scope-filtered dispatch reaches a
+   * listener only when the listener's scope is the dispatch scope or an ancestor of it. Use
+   * {@link DshAdapter.registerAgentPreStep} for anything that must actually run.
    */
   onAgentPreStep(
+    listener: (payload: DshAgentPreStep, decision: DshPreStepDecision) => DshPreStepDecision | undefined | Promise<DshPreStepDecision | undefined>,
+  ): () => void
+  /**
+   * Register a pre-step listener in ONE agent's OWN scope — the registration site that
+   * DELIVERY actually reaches, and the agent-scoped sibling of
+   * {@link DshAdapter.onAgentPreStep}.
+   *
+   * MEASURED WHY THIS EXISTS (2026-09-27): the session-start gate was installed through a
+   * row's ctx, printed its install line, and injected NOTHING on six live headless boots —
+   * while the SAME row's `agent/created` listener (an unfiltered emit) ran on every one. The
+   * harness dispatches `agent/pre-step` through the agent's scope carrier
+   * (`dsh-agent` `agentEvents(…).waterfall` -> `ctx.waterfall(carrier, …)`), and `dsh-scope`'s
+   * `scopeTarget` filter admits a listener only when its scope IS the dispatch scope or an
+   * ancestor of it. Registering on `agent.ctx` makes the listener's scope the agent itself, so
+   * the filter admits it by construction — which is exactly how the harness's own pre-step
+   * subscribers (`dsh-agent`, `dsh-subagent-in-process-driver`) register.
+   *
+   * The listener contract is IDENTICAL to {@link DshAdapter.onAgentPreStep} (the adapter owns
+   * `next()`, a returned decision replaces the downstream one, `undefined` passes through, a
+   * throw is contained); only the registration site differs, and binding the agent at
+   * registration also removes any dependence on the payload carrying `agent`.
+   *
+   * Degrade: THROWS at the call when the agent (or its scoped context) exposes no `on` — a
+   * silently unregistered listener is precisely the defect this seam exists to prevent.
+   * Reported by `capabilities().agentPreStepScope` (a live-registry probe).
+   *
+   * @param agent - a live Agent whose `ctx` is the registration scope.
+   * @param listener - `(payload, decision)`; the payload may omit `agent` (the bound agent is
+   *   the caller identity).
+   * @returns the scope's disposer.
+   */
+  registerAgentPreStep(
+    agent: unknown,
     listener: (payload: DshAgentPreStep, decision: DshPreStepDecision) => DshPreStepDecision | undefined | Promise<DshPreStepDecision | undefined>,
   ): () => void
   hasTool(name: string): boolean
@@ -1439,22 +1495,54 @@ function teamRows<T>(teams: any, method: string, agent: unknown, project: (raw: 
 }
 
 /**
- * One agent's OWN scoped `systemPrompt` service, or `undefined` when that scope does
- * not expose it.
- *
- * The probe is contained for the same reason {@link scopeOfAgentContext} is: an
- * agent-scoped cordis context is a proxy that THROWS on a service it was not injected
- * with, so an unguarded property read would turn a feature-detectable absence into a
- * crash. Returning the SERVICE (not a boolean) keeps `capabilities()` and
- * `agentPromptSection` on one probe, so the flag can never disagree with the method.
+ * One agent's OWN scoped context (`agent.ctx`), or `undefined` when it is missing or its
+ * read throws. The contained probe behind {@link agentSystemPromptOf} and
+ * `registerAgentPreStep`: an agent-scoped cordis ctx is a proxy that THROWS on a service it
+ * was not injected with, so an unguarded property read would turn a feature-detectable
+ * absence into a crash.
  */
-function agentSystemPromptOf(agent: unknown): any {
-  let context: unknown
+function scopeContextOf(agent: unknown): any {
   try {
-    context = (agent as { ctx?: unknown } | undefined)?.ctx
+    return (agent as { ctx?: unknown } | undefined)?.ctx
   } catch {
     return undefined
   }
+}
+
+/**
+ * The ONE `agent/pre-step` wrapper both registration sites share.
+ *
+ * `agent/pre-step` is a WATERFALL whose returned decision the loop runs with
+ * (`dsh-agent-loop` `preStep()`: the default is `{kind:'enter', messages}`). The adapter owns
+ * `next()` — the same discipline as `onPostToolExecute` — and returns the listener's decision
+ * when it produces one, else the downstream object VERBATIM, so a listener that returns
+ * nothing (or throws) is bit-identical to a composition without the hook.
+ */
+function preStepWrapper(
+  listener: (payload: DshAgentPreStep, decision: DshPreStepDecision) => DshPreStepDecision | undefined | Promise<DshPreStepDecision | undefined>,
+): (payload: DshAgentPreStep, next: () => Promise<DshPreStepDecision>) => Promise<DshPreStepDecision> {
+  return async (payload: DshAgentPreStep, next: () => Promise<DshPreStepDecision>) => {
+    const fallback: DshPreStepDecision = { kind: "enter", messages: payload?.messages ?? [] }
+    const downstream: DshPreStepDecision = typeof next === "function" ? (await next()) ?? fallback : fallback
+    try {
+      const decided = await listener(payload ?? {}, downstream)
+      return decided ?? downstream
+    } catch {
+      // A broken observer must never break a step: the harness's own decision stands.
+      return downstream
+    }
+  }
+}
+
+/**
+ * One agent's OWN scoped `systemPrompt` service, or `undefined` when that scope does
+ * not expose it.
+ *
+ * Returning the SERVICE (not a boolean) keeps `capabilities()` and `agentPromptSection` on
+ * one probe, so the flag can never disagree with the method.
+ */
+function agentSystemPromptOf(agent: unknown): any {
+  const context = scopeContextOf(agent)
   if (context === undefined || context === null) return undefined
   try {
     const systemPrompt = (context as { systemPrompt?: unknown }).systemPrompt
@@ -1735,8 +1823,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // A live agent's own scope carries the prompt registry (the official team tool
         // plugin registers its `team:policy` section there). LIVE probe, like agentScope.
         agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
-        // The pre-step waterfall rides the same event bus as every other hook.
+        // The pre-step waterfall rides the same event bus as every other hook; the SCOPE flag
+        // is the one a caller must branch on for delivery (see registerAgentPreStep).
         agentPreStep: typeof ctx?.on === "function",
+        agentPreStepScope: liveAgents().some((candidate) => typeof scopeContextOf(candidate)?.on === "function"),
         // ── the official Agent Teams plane (D6: reachable ONLY through here) ─────
         // Each flag faces a method FAMILY, because the families degrade differently:
         // `team` is the service-level identity + roster read (`teamMembership`,
@@ -1902,23 +1992,27 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       listener: (payload: DshAgentPreStep, decision: DshPreStepDecision) => DshPreStepDecision | undefined | Promise<DshPreStepDecision | undefined>,
     ): () => void {
       if (typeof ctx?.on !== "function") return noop
-      // `agent/pre-step` is a WATERFALL whose returned decision the loop runs with
-      // (`dsh-agent-loop` `preStep()`: the default is `{kind:'enter', messages}`). The
-      // adapter owns `next()` — the same discipline as `onPostToolExecute` — and returns
-      // the listener's decision when it produces one, else the downstream object VERBATIM,
-      // so a listener that returns nothing (or throws) is bit-identical to a composition
-      // without this hook.
-      return ctx.on("agent/pre-step", async (payload: DshAgentPreStep, next: () => Promise<DshPreStepDecision>) => {
-        const fallback: DshPreStepDecision = { kind: "enter", messages: payload?.messages ?? [] }
-        const downstream: DshPreStepDecision = typeof next === "function" ? (await next()) ?? fallback : fallback
-        try {
-          const decided = await listener(payload ?? {}, downstream)
-          return decided ?? downstream
-        } catch {
-          // A broken observer must never break a step: the harness's own decision stands.
-          return downstream
-        }
-      })
+      return ctx.on("agent/pre-step", preStepWrapper(listener))
+    },
+
+    registerAgentPreStep(
+      agent: unknown,
+      listener: (payload: DshAgentPreStep, decision: DshPreStepDecision) => DshPreStepDecision | undefined | Promise<DshPreStepDecision | undefined>,
+    ): () => void {
+      // The AGENT-SCOPED registration site. `agent/pre-step` is dispatched through the agent's
+      // own scope carrier (`dsh-agent` `agentEvents(...).waterfall` -> `ctx.waterfall(carrier, …)`),
+      // and such a dispatch reaches a listener only when the listener's scope IS the dispatch
+      // scope or an ancestor of it (`dsh-scope` `scopeTarget`'s filter). A listener registered
+      // on a ROW's ctx is therefore not a reliable subscriber — MEASURED 2026-09-27: the
+      // session-start gate was installed and silent on six live boots while the SAME row's
+      // unfiltered `agent/created` listener ran on every one of them. The harness's own
+      // pre-step subscribers (`dsh-agent`, `dsh-subagent-in-process-driver`) register on the
+      // agent's scoped ctx for exactly this reason.
+      const context = scopeContextOf(agent)
+      if (typeof context?.on !== "function") {
+        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no on() — cannot register its agent/pre-step listener")
+      }
+      return context.on("agent/pre-step", preStepWrapper(listener))
     },
 
     hasTool(toolName: string): boolean {

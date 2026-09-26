@@ -149,13 +149,27 @@ function teamRows(teams, method, agent, project) {
     return [];
   }
 }
-function agentSystemPromptOf(agent) {
-  let context;
+function scopeContextOf(agent) {
   try {
-    context = agent?.ctx;
+    return agent?.ctx;
   } catch {
     return;
   }
+}
+function preStepWrapper(listener) {
+  return async (payload, next) => {
+    const fallback = { kind: "enter", messages: payload?.messages ?? [] };
+    const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
+    try {
+      const decided = await listener(payload ?? {}, downstream);
+      return decided ?? downstream;
+    } catch {
+      return downstream;
+    }
+  };
+}
+function agentSystemPromptOf(agent) {
+  const context = scopeContextOf(agent);
   if (context === undefined || context === null)
     return;
   try {
@@ -401,6 +415,7 @@ function createDshAdapter(ctx, config = {}) {
         agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function"),
         agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
         agentPreStep: typeof ctx?.on === "function",
+        agentPreStepScope: liveAgents().some((candidate) => typeof scopeContextOf(candidate)?.on === "function"),
         team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
         teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
@@ -510,16 +525,14 @@ function createDshAdapter(ctx, config = {}) {
     onAgentPreStep(listener) {
       if (typeof ctx?.on !== "function")
         return noop;
-      return ctx.on("agent/pre-step", async (payload, next) => {
-        const fallback = { kind: "enter", messages: payload?.messages ?? [] };
-        const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
-        try {
-          const decided = await listener(payload ?? {}, downstream);
-          return decided ?? downstream;
-        } catch {
-          return downstream;
-        }
-      });
+      return ctx.on("agent/pre-step", preStepWrapper(listener));
+    },
+    registerAgentPreStep(agent, listener) {
+      const context = scopeContextOf(agent);
+      if (typeof context?.on !== "function") {
+        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no on() — cannot register its agent/pre-step listener");
+      }
+      return context.on("agent/pre-step", preStepWrapper(listener));
     },
     hasTool(toolName) {
       const tools = service("tools");

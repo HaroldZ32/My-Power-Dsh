@@ -514,7 +514,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     warnOnce("team-section:threw", "the roster prompt section could not be registered (" + errText(error) + ")")
   }
   try {
-    installSessionGate(dsh, { presets: ["mpd"], warn: (line) => warn(line) })
+    installSessionGate(dsh, {
+      presets: ["mpd"],
+      warn: (line) => warn(line),
+      log: (line) => console.log("[mpd-roles] " + line),
+    })
     guardOutcome.push("sessionGate=advisory")
   } catch (error) {
     guardOutcome.push("sessionGate=absent")

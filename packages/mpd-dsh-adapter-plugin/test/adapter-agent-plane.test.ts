@@ -149,3 +149,50 @@ describe("onAgentPreStep: the adapter owns next()", () => {
     expect(createDshAdapter(full.ctx).capabilities().agentPreStep).toBe(true)
   })
 })
+
+describe("registerAgentPreStep: the registration site that DELIVERY reaches", () => {
+  test("registers on the AGENT scope, never on the row's event bus", async () => {
+    const full = agentPlaneHarness()
+    const scoped: Array<{ event: string; listener: (...args: unknown[]) => unknown }> = []
+    const agent = { id: "lead-1", ctx: { on: (event: string, listener: (...args: unknown[]) => unknown) => { scoped.push({ event, listener }); return () => { /* unregistered */ } } } }
+    const adapter = createDshAdapter(full.ctx)
+
+    const dispose = adapter.registerAgentPreStep(agent, (_payload, decision) => decision)
+
+    expect(scoped.map((entry) => entry.event)).toEqual(["agent/pre-step"])
+    expect(full.registered.map((entry) => entry.event)).not.toContain("agent/pre-step")
+    expect(typeof dispose).toBe("function")
+
+    const downstream = { kind: "enter", messages: [{ id: "u1" }] }
+    expect(await scoped[0].listener({ messages: downstream.messages }, async () => downstream)).toBe(downstream)
+  })
+
+  test("owns next() exactly like the host-plane sibling: amend, pass through, contain a throw", async () => {
+    const full = agentPlaneHarness()
+    const scoped: Array<(...args: unknown[]) => unknown> = []
+    const agent = { id: "lead-1", ctx: { on: (_event: string, listener: (...args: unknown[]) => unknown) => { scoped.push(listener); return () => { /* unregistered */ } } } }
+    const adapter = createDshAdapter(full.ctx)
+
+    adapter.registerAgentPreStep(agent, (_payload, decision) => ({ ...decision, messages: [...(decision.messages ?? []), { id: "notice" }] }))
+    const claimed = [{ id: "u1" }]
+    const amended: any = await scoped[0]({ messages: claimed }, async () => ({ kind: "enter", messages: claimed }))
+    expect(amended.messages).toHaveLength(2)
+
+    // A listener that throws leaves the harness's own decision standing.
+    const other: Array<(...args: unknown[]) => unknown> = []
+    const agent2 = { id: "lead-2", ctx: { on: (_event: string, listener: (...args: unknown[]) => unknown) => { other.push(listener); return () => { /* unregistered */ } } } }
+    adapter.registerAgentPreStep(agent2, () => { throw new Error("broken gate") })
+    const downstream = { kind: "enter", messages: claimed }
+    expect(await other[0]({ messages: claimed }, async () => downstream)).toBe(downstream)
+  })
+
+  test("THROWS when the agent scope exposes no on(), and the capability flag is a live probe", () => {
+    const adapter = createDshAdapter(agentPlaneHarness().ctx)
+    expect(() => adapter.registerAgentPreStep({ id: "bare" }, (_p, d) => d))
+      .toThrow(/the agent's own scope exposes no on\(\) — cannot register its agent\/pre-step listener/)
+    expect(createDshAdapter(agentPlaneHarness().ctx).capabilities().agentPreStepScope).toBe(true)
+    const bareAgent = { get: (name: string) => (name === "agents" ? { list: () => [{ id: "bare" }] } : undefined) }
+    expect(createDshAdapter(bareAgent).capabilities().agentPreStepScope).toBe(false)
+    expect(createDshAdapter({ get: () => undefined }).capabilities().agentPreStepScope).toBe(false)
+  })
+})
