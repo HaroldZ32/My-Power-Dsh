@@ -34,7 +34,7 @@ import {
   type WatchdogKnobs,
 } from "./machine.js"
 import { sceneDir } from "./paths.js"
-import { buildScene, mailboxUnread, writeScene, type SceneIncident } from "./scene.js"
+import { buildScene, mailboxUnreadObservable, writeScene, type SceneIncident } from "./scene.js"
 import { appendIncident, readHold, readIncidents, readWatermarks, type IncidentRecord } from "./sidecars.js"
 import { appendHeartbeat, listHeartbeatKeys, message, readHeartbeats, rotateHeartbeats, type HeartbeatKind, type HeartbeatStamp } from "./store.js"
 import { agentIds, CAPTAIN_KEY, currentTask, dependencyBlocked, readTeams, resolveIdentity, teamOf, type TeamRecord } from "./team.js"
@@ -47,7 +47,7 @@ export interface EngineConfig {
   tickIntervalMs: number
   warnStreakToEscalate: number
   actionOnEscalate: "pause" | "warn-only"
-  /** How long a parsed team record stays cached between reads (0 disables). */
+  /** How long the live team readout stays cached between reads (0 disables). */
   teamCacheMs: number
   /** How many heartbeat generations to keep per member file. */
   keepGenerations: number
@@ -517,11 +517,22 @@ export class WatchdogEngine {
     if (typeof workspace === "string" && workspace !== "") this.roots.add(workspace)
   }
 
+  /**
+   * The live team readout for one workspace, cached for `teamCacheMs`.
+   *
+   * SOURCE (0.1.7): `dsh.teamLiveTeams()` — the OFFICIAL Agent Teams readout, folded by the
+   * adapter over the live agent registry. There is no `<stateDir>/<teamId>/team.json` any more,
+   * and the folded readout is the only truth about a roster and a board. The cache now bounds
+   * two live service reads per tick (the fold is per live Lead), not a file parse.
+   *
+   * The workspace is still part of the cache key: the readout itself is process-wide, but a
+   * per-workspace entry keeps the tick's accounting (and `invalidate()`) exactly as they were.
+   */
   private teams(workspace: string, now = Date.now()): TeamRecord[] {
     const key = workspace + "\u0000" + this.config.stateDir
     const cached = this.teamCache.get(key)
     if (this.config.teamCacheMs > 0 && cached !== undefined && now - cached.at < this.config.teamCacheMs) return cached.teams
-    const teams = readTeams(workspace, this.config.stateDir)
+    const teams = readTeams(this.dsh)
     this.teamCache.set(key, { at: now, teams })
     return teams
   }
@@ -590,7 +601,7 @@ export class WatchdogEngine {
       // The bug this closes (measured 2026-09-16 on a real mpd session): the handler used
       // to be `(payload) => this.stamp("step", …)`, i.e. it returned a HeartbeatStamp.
       // That stamp — an object with no `messages` — BECAME the pre-step decision, so the
-      // harness's own turn loop (and the adopted agent-teams pre-step listeners) read
+      // harness's own turn loop (and the official team plugin's pre-step listeners) read
       // `decision.messages` as undefined and the turn died instantly, before any model
       // call, with `Cannot read properties of undefined (reading 'map')` (or `findLastIndex`
       // / `length`, depending on which consumer read the decision first). Every turn of
@@ -797,7 +808,8 @@ export class WatchdogEngine {
       for (const workspace of this.knownRoots()) {
         // T-17: a hold that outlived its TTL, or that a member's own stamps have disproved,
         // releases itself BEFORE the teams are observed — the pause stays PRESERVING (only the
-        // hold sidecar and the incident log are written; not one byte of team.json moves).
+        // hold sidecar and the incident log are written; no team state moves, and none can — the
+        // official board lives in the Lead Session log, which this plugin never writes).
         try {
           await this.autoReleaseHolds(workspace, now)
         } catch (error) {
@@ -848,25 +860,24 @@ export class WatchdogEngine {
   /**
    * Whether a tick should consider this team at all (r4 — the dead-team flood).
    *
-   * THE SIGNAL, strongest first:
-   *   1. LIVE AGENT. When the process's agent registry can answer (`capabilities().agents` and at
-   *      least one live agent), a team is tickable only if its captain session or one of its
-   *      member ids resolves to a LIVE agent. That is the strongest available signal, because it
-   *      answers the actual question — can anything dispatch into this team? — from the same
-   *      registry the stamp path already uses. A team whose sessions ended days ago has no live
-   *      agent, so ticking it can only manufacture reports about a corpse.
-   *   2. FRESHNESS FALLBACK. When the registry cannot answer (no `agents` seam, or no live agent at
-   *      all in this process), the team is ticked while its newest record activity is within
-   *      `deadTeamGraceMs`. Without this the harness/unit compositions (no live agents) would tick
-   *      nothing, and a host with no live sessions would still flood. `deadTeamGraceMs = 0`
-   *      disables the bound entirely (tick everything — the pre-r4 behaviour).
+   * 0.1.7 CHANGED THE INPUT, not the rule. The readout (`dsh.teamLiveTeams()`) folds only LIVE
+   * Lead agents, so a team cannot appear in it without a live session: the "days-old record" the
+   * r4 bound was written for is no longer READABLE at all, and `activityAt` is always `null`
+   * (the official view carries no timestamps). The rule is kept because it still answers the
+   * question that matters, in two ways:
+   *   1. LIVE AGENT, re-checked. The readout and this re-check are TWO separate reads of the same
+   *      registry, and a `teamCacheMs` window can outlive a session inside them, so a cached view
+   *      whose Lead and members have all exited is still skipped rather than reported on.
+   *   2. FRESHNESS FALLBACK. When the registry cannot answer (no `agents` seam, no live agent),
+   *      the team is ticked: `activityAt` is `null`, which the code below reads as "no usable
+   *      liveness signal" and therefore as TICKABLE — the fail-safe direction for a watchdog.
+   *      `deadTeamGraceMs = 0` likewise means "tick everything".
    *
-   * FAILURE MODE (stated, not hidden): a team that is genuinely wedged for longer than the grace
-   * window AND has no live agent is not reported. That is acceptable by construction — with no
-   * live session nothing can dispatch into it, so there is no dispatch problem to explain — and the
-   * skip is visible on the debug channel with its reason.
+   * FAILURE MODE (stated, not hidden): a team is skipped only while no agent of it is live — and
+   * with no live session nothing can dispatch into it, so there is no dispatch problem to explain.
+   * Every skip is visible on the debug channel with its reason.
    *
-   * @param team - the record under consideration.
+   * @param team - the projected record under consideration.
    * @param now - the tick's clock.
    * @returns whether to tick it, and why not.
    */
@@ -899,10 +910,12 @@ export class WatchdogEngine {
     // A missing/non-finite bound is treated as 0 (tick everything): the r4 grace exists to avoid
     // watching dead RECORDS, and "I have no bound" must never become "I watch nothing" — a
     // watchdog that stops observing is the one failure this whole package exists to prevent.
+    // `team.activityAt` is ALWAYS null under the official readout, so this branch is the normal
+    // path: a team whose registry answers nothing is ticked, which is the fail-safe reading.
     const configured = this.config.deadTeamGraceMs
     const grace = typeof configured === "number" && Number.isFinite(configured) ? configured : 0
     if (grace <= 0 || team.activityAt === null) {
-      return { tickable: true, reason: desc + " ticked: no usable liveness signal (registry " + (agentsKnown ? "empty" : "absent") + ", bound " + grace + "ms) — the pre-r4 behaviour" }
+      return { tickable: true, reason: desc + " ticked: the live readout is the only source and the agent registry answered nothing (registry " + (agentsKnown ? "empty" : "absent") + ", bound " + grace + "ms)" }
     }
     const age = now - team.activityAt
     if (age <= grace) return { tickable: true, reason: desc + " activity " + age + "ms ago is within the " + grace + "ms grace window" }
@@ -1178,7 +1191,9 @@ export class WatchdogEngine {
       incidents,
       streaks: this.machine.snapshot().streaks,
       heartbeat: (memberKey) => readHeartbeats(workspace, this.config.stateDir, memberKey),
-      unread: (memberKey) => mailboxUnread(workspace, this.config.stateDir, team.id, memberKey, now),
+      // The official peer mailbox is not observable through the adapter (see `scene.ts`), so the
+      // scene records `unread: null` — "unknown" — instead of a fabricated count.
+      unread: () => mailboxUnreadObservable(),
     })
 
     // §7 idempotence: a team already held gets NO second scene and NO second hold.

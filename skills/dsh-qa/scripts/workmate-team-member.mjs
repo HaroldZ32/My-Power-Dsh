@@ -19,6 +19,7 @@ import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
+import { readMpdPresetSource } from "./lib/preset-source.mjs"
 
 const safeJson = (text) => { try { return JSON.parse(text) } catch { return null } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -42,8 +43,15 @@ function selfTest() {
   checks.push(["agent_teams_create param name", tools.includes("agent_teams_create") && tools.includes("name: { type: 'string', required: true, description: 'Name for the new team")])
   checks.push(["agent_teams_add_member param name", tools.includes("agent_teams_add_member") && tools.includes("Unique member name inside the team")])
   checks.push(["agent_teams_create_task subject", tools.includes("agent_teams_create_task") && tools.includes("Required non-empty title for this task")])
-  const preset = readFileSync(join(repoRoot, "presets", "mpd", "agent.cordis.yml"), "utf8")
-  checks.push(["mpd preset TEAM WORK + WORKMATE guidance", preset.includes("agent_teams_create") && preset.includes("WORKMATE LIBRARY")])
+  // 0.1.7-rc.2 ROW MODEL: the mpd composition is an inline `config.plugins` list in
+  // the `preset-mpd` row of the manifest's second bundle patch — there is no
+  // `presets/mpd/` directory any more. Read the DECLARED source, never a path.
+  const preset = readMpdPresetSource(repoRoot)
+  // RETIREMENT (2026-09-27): team work runs on the OFFICIAL Agent Teams plugin now
+  // (`spawn_teammate` / `team_task_create` / `list_agents`), not the retired
+  // vendored `agent_teams_*` surface — so the preset must name the ADOPTED
+  // vocabulary, and the workmate guidance must still be there.
+  checks.push(["mpd preset TEAM WORK (official tools) + WORKMATE guidance", preset.includes("spawn_teammate") && preset.includes("team_task_create") && preset.includes("WORKMATE LIBRARY")])
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
   if (bad.length) fail("self-test: " + bad.join(" | "))
   console.log("[workmate-team-member self-test] ok: " + checks.length + " checks")

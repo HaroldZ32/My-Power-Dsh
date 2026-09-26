@@ -1,0 +1,27 @@
+{
+  "what": "Integration MOUNT boot of the mpd web profile on harness 0.1.7-rc.2 from a symlinked sandbox profile (DSH_HOME=<sandbox>, HOME=<sandbox>). NOT a --dump-config run: the rows really applied.",
+  "measuredAt": "2026-09-26T18:43:19.498Z",
+  "subjectHashes": {
+    "package.json": "3a22110bd7d06ddbb7b013bd5b6248b487cba68935058754e2e2eff445228ad2",
+    "packages/mpd-bundle/cordis.patch.yml": "see git rev-parse HEAD after the wave commit",
+    "presets/mpd.patch.yml": "see git rev-parse HEAD after the wave commit"
+  },
+  "checks": {
+    "teamServiceMounted": true,
+    "rosterPlaneApplied": true,
+    "rosterSectionLive": true,
+    "presetMountedFromBody": true,
+    "noApplyCrash": true
+  },
+  "evidence": {
+    "teamServiceLine": "[captain-team-probe] agentTeams=MOUNTED serviceName=TeamService  (probe row inserted by an extra --patch overlay, so the service really exists in the composition the bundle builds)",
+    "rosterPlaneLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=7 rosterSection=agent-scoped order=605 sessionGate=advisory",
+    "rosterSectionLine": "[mpd-roles] roster section registered for agent \"…\" agentPreset=mpd — mpd:roster order=605",
+    "presetMountBody": "POST /api/session/create {agentPreset:\"mpd\"} -> 200 {\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-7740f45d-…\",\"agentPreset\":\"mpd\"}}}"
+  },
+  "notProven": [
+    "The team TOOLS being registered in one exact agent scope is the OFFICIAL plugin's own contract (the probe could not enumerate a live session agent's scoped tool list from the host plane). The bundle's claim is that the three official rows APPLY, which this boot shows.",
+    "The read-only GUARD's deny path needs a real tool call from a live teammate; it is asserted by packages/mpd-roles-plugin/test/team-plane.test.ts and by the apply-over-real-adapter integration run, not by a boot."
+  ],
+  "note": "Cloned upstream + sandbox paths are NOT part of this evidence; the boot log carries no credential material."
+}

@@ -3,9 +3,9 @@
 // (its START and its completion) and per turn boundary.
 //
 // Ownership rules this module implements:
-//   * The file belongs to the WATCHDOG, not to `team.json`: the adopted
-//     `state.js` keeps sole ownership of the team record, and a per-step stamp
-//     cadence must never become a second writer on its byte surface.
+//   * The file belongs to the WATCHDOG alone: it holds no team state, the harness owns the
+//     team board, and a per-step stamp cadence must never become a second writer on any
+//     shared byte surface.
 //   * Every write is best-effort: an unwritable heartbeat location degrades to a
 //     recorded failure (`{ok:false, error}`) and never throws into a harness
 //     event listener (AC-15: the watchdog cannot wedge the host).

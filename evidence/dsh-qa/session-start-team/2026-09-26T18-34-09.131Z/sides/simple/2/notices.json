@@ -1,0 +1,19 @@
+{
+  "notice": {
+    "any": 0,
+    "advisory": 0,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "retiredVocabulary": 0,
+    "signals": []
+  },
+  "teams": {
+    "active": 0,
+    "archived": 0,
+    "ids": []
+  },
+  "goal": "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+  "problems": [
+    "workspace isolation violated: workspace isolation violated: --tmp-mpd-sst-EeYTqB-side-simple-0-ws--, --tmp-mpd-sst-EeYTqB-side-simple-1-ws--"
+  ]
+}

@@ -2,7 +2,7 @@
   "name": "@mpd-dsh/mpd",
   "private": true,
   "type": "module",
-  "buildToolchain": "bun@1.4.2",
+  "buildToolchain": "bun@1.4.0",
   "version": "0.9.1",
   "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream baseline: oh-my-openagent 8c57e46, pinned)",
   "main": "packages/mpd-bundle-plugin/dist/index.js",
@@ -17,7 +17,10 @@
   },
   "dsh": {
     "bundle": {
-      "patch": "./packages/mpd-bundle/cordis.patch.yml"
+      "patch": [
+        "./packages/mpd-bundle/cordis.patch.yml",
+        "./presets/mpd.patch.yml"
+      ]
     },
     "client": {
       "inject": [],
@@ -55,6 +58,9 @@
     "bun-types": "^1.4.0"
   },
   "dependencies": {
-    "dsh-better-sidebar": "0.19.0-alpha.1"
+    "dsh-better-sidebar": "0.19.0-alpha.1",
+    "@deepseek-ai/dsh-experimental-agent-team": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.1.7-rc.2"
   }
 }

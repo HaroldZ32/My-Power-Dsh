@@ -1,15 +1,16 @@
 // The hold registry — the STABLE SYNCHRONOUS READER the w7 dispatch gates consult.
 //
 // WHY THIS EXISTS (plan AMENDMENT 2, A2-1; adopted into the frozen contract):
-// a bare sidecar beside `team.json` CANNOT enforce the pause, because `state.js`
-// owns `team.json` and every reader path goes through `readTeam`, so a sidecar is
-// invisible to the three scheduler decline gates. w7 therefore needs one of:
-//   (a) the hold as a field on the team record written through the adopted LOCKED
-//       path, or
+// a bare sidecar CANNOT enforce the pause by itself, because the dispatch path reads the
+// TEAM BOARD, not the watchdog's files, so a sidecar is invisible to the scheduler's
+// decline gates unless something exposes it. w7 therefore needs one of:
+//   (a) the hold as a field on the team record written through the TEAM service, or
 //   (b) the sidecar stays the durable, authoritative record AND w3 exposes a stable
 //       synchronous reader the gates consult.
 //
-// THIS PACKAGE IMPLEMENTS OPTION (b) and exposes it as the `mpdWatchdog` service:
+// 0.1.7 UPDATE: option (a) is no longer available — the official Agent Teams service exposes no
+// halt on its board and no adapter seam may invent one — so (b) is the ONLY route, and this
+// package implements it, and exposes it as the `mpdWatchdog` service:
 //
 //     const watchdog = ctx.get("mpdWatchdog", false)
 //     const hold = watchdog?.isHeld(teamId, workspace)

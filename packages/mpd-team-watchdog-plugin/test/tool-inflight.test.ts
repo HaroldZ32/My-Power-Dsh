@@ -26,7 +26,7 @@ import { createDshAdapter, type DshAdapter } from "../../mpd-dsh-adapter-plugin/
 import { WatchdogEngine, type EngineContext } from "../src/engine"
 import { inFlightFor, WatchdogMachine } from "../src/machine"
 import { readHeartbeats, type HeartbeatStamp } from "../src/store"
-import { agent, openOutstandingChannel, sandbox, stubAdapter, testConfig, writeTeam, type Sandbox } from "./support"
+import { agent, openOutstandingChannel, provideTeamsOn, sandbox, stubAdapter, testConfig, writeTeam, type Sandbox } from "./support"
 
 /** The thresholds these cases run with — small enough to be real-time, big enough to be safe. */
 const FAST = { warnSilenceMs: 300, tickIntervalMs: 100, toolInFlightMaxMs: 5_000 }
@@ -64,6 +64,11 @@ interface RealEngine {
 function mountReal(box: Sandbox, overrides: Partial<typeof FAST> = {}): RealEngine {
   process.env.DSH_WORKSPACE_ROOT = box.workspace
   const ctx = new Context()
+  // The REAL adapter reaches the official plane through `ctx.get("agentTeams")` / `ctx.get("agents")`,
+  // so the fixture team is installed as those services (a faithful minimal fake of the installed
+  // host's — see `support.provideTeamsOn`). Without it the adapter's fold reports NO team, which is
+  // the honest answer for a composition with no team service but not the case under test here.
+  provideTeamsOn(ctx, box)
   const adapter = createDshAdapter(ctx as unknown as Record<string, unknown>)
   const warnings: string[] = []
   const engineCtx = {
@@ -234,7 +239,8 @@ describe("r6 — the real engine, a real long command, and the durable store", (
         expect(opened.map((stamp) => stamp.kind)).toEqual(["tool-start"])
         expect(opened[0].tool).toBe("bash")
         expect(opened[0].taskId).toBe("t1")
-        expect(opened[0].attemptId).toBe("att-1")
+        // The projected generation token is the official board revision.
+        expect(opened[0].attemptId).toBe("1")
 
         // 2) A REAL command, 1.6 s: the ticks below all land INSIDE it, past 4x the threshold.
         const running = realLongCommand(1_600)

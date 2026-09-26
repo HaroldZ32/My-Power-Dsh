@@ -74,7 +74,13 @@ The row also carries the upstream-aligned limits (measured against the upstream
 
 The same patch also composes the TUI edition: the `mpd-tui` row mounts
 `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js` (that package ships no patch of its own, so
-this row is the only mount and no composition can duplicate the loader entry id), and the
-`dsh-tui-agent-presets` row gives a `dsh-tui` profile the same default (`mpd`) on the plane that
-profile actually composes — the web-plane `agent-presets` id-target is skipped there. Nothing else
-changes for a web install.
+this row is the only mount and no composition can duplicate the loader entry id).
+
+The preset-selection id-target is `agent-preset-registry` (`@deepseek-ai/dsh-agent-preset-registry`,
+`config.default: mpd`). Harness 0.1.7-rc.2 removed the per-plane preset-root rows this file used to
+target (`agent-presets` / `dsh-tui-agent-presets`, both on the retired
+`@deepseek-ai/dsh-agent-presets` package), so there is now exactly ONE target and it is the registry.
+A composition that carries no such row — the headless profile, or a `dsh-tui` plane that mints a
+differently-named registry row — logs `patch: entry agent-preset-registry not found` and keeps its
+own default; the `mpd` preset itself is declared by the second patch file
+(`presets/mpd.patch.yml`, row `preset-mpd`), which no composition has to opt into separately.

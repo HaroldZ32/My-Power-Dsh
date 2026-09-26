@@ -100,7 +100,9 @@ test("a non-empty invocation submits the activation directive as the invoking ag
   const text = textOf(message)
   expect(text).toContain("ULTRAWORK ACTIVATION")
   expect(text).toContain("OBJECTIVE: ship the widget")
-  expect(text).toContain('approval="automatic"')
+  // 0.1.7: the directive names the OFFICIAL staging tools, never the retired approval flow.
+  expect(text).toContain("spawn_teammate({name, description, prompt})")
+  expect(text).not.toContain('approval="automatic"')
   // No live turn surface: the failure is reported, not swallowed.
   const failed = await commandsRegistered[0].handler({ rawInput: "another objective", agent: undefined })
   expect(failed.kind).toBe("error")
@@ -116,7 +118,11 @@ test("the activation directive carries the six autonomy behaviours in order", ()
     expect(at).toBeGreaterThan(previous)
     previous = at
   }
-  expect(directive).toContain('agent_teams_create(approval="automatic", profile="mpd")')
+  // 0.1.7: the retired `agent_teams_*` tools must NOT be named, and the OFFICIAL pair that
+  // replaces them must be — the team is staged through spawn_teammate + team_task_create.
+  expect(directive).not.toContain("agent_teams_create")
+  expect(directive).toContain("spawn_teammate({name, description, prompt})")
+  expect(directive).toContain("team_task_create({subject, description, blocked_by?, write_scopes?})")
   expect(directive).toContain("explicit `team:`/`!team` flag OR any matched signal A-D")
   expect(directive).toContain("no user confirmation")
   expect(directive).toContain("never stop early to ask the user")
@@ -143,7 +149,9 @@ test("the pre-step gesture boundary injects the same directive and delegates to 
   expect(message.id).toBe("m1") // the message identity survives the rewrite
   const text = textOf(message)
   expect(text).toBe(activationDirective("ship the widget")) // the SAME constant as the command path
-  expect(text).toContain('approval="automatic"')
+  // 0.1.7: the directive names the OFFICIAL staging tools, never the retired approval flow.
+  expect(text).toContain("spawn_teammate({name, description, prompt})")
+  expect(text).not.toContain('approval="automatic"')
   expect(submitted.length).toBe(0) // a pre-step decision, never a turn submission
 })
 

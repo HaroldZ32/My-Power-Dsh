@@ -10,28 +10,29 @@ import { existsSync, readFileSync } from "node:fs"
 import { apply } from "../src/index"
 import { applyHold, applyResume, HOLD_TOOL, RESUME_TOOL, STATUS_TOOL } from "../src/actions"
 import { ackIncidents, appendIncident, readHold, readIncidents, readWatermarks, unacknowledged, writeHold } from "../src/sidecars"
-import { pluginCtx, sandbox, writeTeam } from "./support"
+import { join } from "node:path"
+import { pluginCtx, sandbox, teamViews, writeTeam } from "./support"
 
 describe("the hold sidecar", () => {
-  test("lives beside team.json and never changes a byte of it", () => {
+  test("lives in the watchdog's own tree and never changes the live team readout", () => {
     const box = sandbox()
     try {
-      const teamPath = writeTeam(box, {
+      const teamView = writeTeam(box, {
         id: "team-a",
         members: [{ id: "a1", name: "Architect" }],
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
-      const before = readFileSync(teamPath)
-      const applied = applyHold(box.workspace, box.stateDir, { team_id: "team-a", task_id: "t1", attempt_id: "att-1", cause: "silence", scene_at: 7 })
+      const applied = applyHold(box.workspace, box.stateDir, { team_id: "team-a", task_id: "t1", attempt_id: "1", cause: "silence", scene_at: 7 })
       expect(applied.applied).toBe(true)
       expect(existsSync(applied.path)).toBe(true)
       expect(applied.path.startsWith(box.workspace)).toBe(true)
+      expect(applied.path.startsWith(join(box.workspace, box.stateDir, "watchdog"))).toBe(true)
       const hold = readHold(box.workspace, box.stateDir, "team-a")
       expect(hold?.taskId).toBe("t1")
-      expect(hold?.attemptId).toBe("att-1")
+      expect(hold?.attemptId).toBe("1")
       expect(hold?.sceneAt).toBe(7)
-      // The adopted record is byte-identical: this package owns no part of it.
-      expect(readFileSync(teamPath).equals(before)).toBe(true)
+      // The team readout is the harness's and this package owns no part of it: it is unchanged.
+      expect(teamViews(box)).toEqual([teamView])
     } finally {
       box.cleanup()
     }

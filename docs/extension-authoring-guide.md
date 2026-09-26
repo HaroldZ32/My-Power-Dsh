@@ -238,7 +238,8 @@ artifact until the next `npm run pack` — re-pack before judging a packed CLI.
 
 What does **not** exist in v1, so that you do not plan around it: `mpd_ext_reload`, YAML flows, MCP
 resources or prompts, a GUI panel, a marketplace or remote download, extension-contributed agent
-presets, and extension roles becoming agent-teams teammates.
+presets, and extension roles becoming teammates on their own (a teammate exists only when the Lead
+spawns it by name with the official `spawn_teammate` tool).
 
 ## 8. Troubleshooting
 

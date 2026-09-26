@@ -14,6 +14,48 @@ import { createLog } from "../src/log"
 
 const temporary: string[] = []
 
+/**
+ * 0.1.7: the TUI reads the OFFICIAL live readout, not the retired team.json under .mpd/team. This
+ * map holds the views a fixture registers, so the arms below drive the projection the production
+ * wiring drives (`liveTeamViews` returns exactly these on a host).
+ */
+const FIXTURE_VIEWS = new Map<string, unknown[]>()
+
+/** One official team view from the fixture's own vocabulary. */
+function viewOf(record: {
+  id: string
+  members?: Array<{ name?: string; status?: string }>
+  tasks?: Array<{ id?: string; status?: string }>
+  captainSessionId?: string
+}): Record<string, unknown> {
+  return {
+    teamId: record.id,
+    leadName: "lead",
+    leadSessionId: record.captainSessionId ?? record.id + "-lead",
+    members: [
+      { id: record.captainSessionId ?? record.id + "-lead", name: "lead", role: "lead", status: "running", diagnostics: [] },
+      ...(record.members ?? []).map((member, index) => ({
+        id: "m" + index,
+        name: String(member.name ?? "m" + index),
+        role: "teammate",
+        status: member.status ?? "inactive",
+        diagnostics: [],
+      })),
+    ],
+    tasks: (record.tasks ?? []).map((task, index) => ({
+      id: String(task.id ?? "t" + index),
+      revision: 1,
+      subject: String(task.id ?? "t" + index),
+      description: "",
+      status: String(task.status ?? "pending"),
+      blockedBy: [],
+      writeScopes: [],
+      ready: true,
+      writeScopeWarnings: [],
+    })),
+  }
+}
+
 function fixture(): { workspace: string; home: string } {
   const root = mkdtempSync(join(tmpdir(), "mpd-tui-state-"))
   temporary.push(root)
@@ -27,6 +69,8 @@ function fixture(): { workspace: string; home: string } {
   mkdirSync(join(home, ".mpd", "workmate", ".archive", "gone-1"), { recursive: true })
   mkdirSync(join(home, ".mpd", "workmate", "orphan"), { recursive: true })
 
+  // The retired record file is still written: it proves the readers IGNORE it (the views below are
+  // the only source). A host would have neither file.
   writeFileSync(
     join(workspace, ".mpd", "team", "alpha", "team.json"),
     JSON.stringify({ id: "alpha", name: "alpha", phase: "done", createdAt: "2026-01-01T00:00:00Z", members: [], tasks: [] }),
@@ -65,6 +109,21 @@ function fixture(): { workspace: string; home: string } {
   writeFileSync(join(workspace, ".mpd", "plans", "b.md"), "# b\n")
   writeFileSync(join(home, ".mpd", "workmate", "one", "meta.json"), JSON.stringify({ name: "one", baseId: "architect" }))
   writeFileSync(join(home, ".mpd", "workmate", "two", "meta.json"), JSON.stringify({ name: "two", baseId: "reviewer" }))
+  FIXTURE_VIEWS.set(workspace, [
+    viewOf({
+      id: "beta",
+      members: [{ name: "A" }, { name: "B" }],
+      tasks: [
+        { id: "t1", status: "completed" },
+        { id: "t2", status: "in_progress" },
+        { id: "t3", status: "pending" },
+        { id: "t4", status: "failed" },
+        { id: "t5", status: "claimed" },
+        { id: "t6", status: "cancelled" },
+        { id: "t7", status: "weird" },
+      ],
+    }),
+  ])
   return { workspace, home }
 }
 
@@ -75,7 +134,7 @@ afterEach(() => {
 describe("state projection", () => {
   test("reads the newest team record, the task ledger, boulder, plans and workmates", () => {
     const { workspace, home } = fixture()
-    const state = readBoardState(workspace, home)
+    const state = readBoardState(workspace, home, FIXTURE_VIEWS.get(workspace) ?? [])
     expect(state.team?.id).toBe("beta")
     expect(state.team?.members).toBe(2)
     expect(state.team?.tasks).toEqual({
@@ -107,19 +166,25 @@ describe("state projection", () => {
     expect(boardLines(state).join("\n")).toContain("(no work ledger)")
   })
 
-  test("a broken team record is reported as a note, not as a crash", () => {
+  test("a team READOUT that throws is reported as a note, not as a crash", () => {
     const { workspace, home } = fixture()
+    // The retired record file is not a source any more: a corrupt one changes nothing (the views
+    // are the truth). What CAN break is the adapter seam itself, so a throwing readout — which the
+    // caller resolves OUTSIDE this projection — is modelled as "no views at all".
     writeFileSync(join(workspace, ".mpd", "team", "alpha", "team.json"), "{ not json")
-    const state = readBoardState(workspace, home)
-    // beta is still readable, so the projection survives the broken sibling.
-    expect(state.team?.id).toBe("beta")
-    expect(state.problems.join(" ")).toContain("alpha")
+    const clean = readBoardState(workspace, home, FIXTURE_VIEWS.get(workspace) ?? [])
+    expect(clean.team?.id).toBe("beta")
+    const noSeam = readBoardState(workspace, home, [])
+    expect(noSeam.team).toBeUndefined()
+    expect(noSeam.problems).toEqual([])
   })
 
   test("the status line is one bounded line", () => {
     const { workspace, home } = fixture()
-    const line = statusLine(readBoardState(workspace, home))
-    expect(line.startsWith("mpd: team beta 2·1/7")).toBe(true)
+    const line = statusLine(readBoardState(workspace, home, FIXTURE_VIEWS.get(workspace) ?? []))
+    // 0.1.7: the team has no NAME on the official plane — the readout names the Lead pseudo-row
+    // `lead`, and the counts are the board's own (7 tasks, 1 completed).
+    expect(line.startsWith("mpd: team lead 2·1/7")).toBe(true)
     expect(line).toContain("boulder 1/2")
     expect(line).toContain("plans 2")
     expect(line).toContain("workmates 2")

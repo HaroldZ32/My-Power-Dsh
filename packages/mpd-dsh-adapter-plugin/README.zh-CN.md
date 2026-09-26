@@ -31,9 +31,20 @@
 | `agent.cancel` | `cancelAgentTurn(agent, cause, options?)` | **抛错**逐字节转发 |
 | `agent.steer` | `steerAgentTurn(agent, message)` | **抛错**逐字节转发 —— 最近步（nearest-step）转向，区别于 `followup` 的新回合 |
 | `agent.inject` | `injectAgentMessage(agent, message)` | **抛错**逐字节转发 —— 收件箱接缝 |
+| `ctx.subagents.registerProvider` | `registerSubagentProvider(provider)` | provider **逐字节**转发、disposer 透传（注册表返回非函数时降级为空操作）；接缝缺失时在调用点抛错 |
+| `ctx.agentTeams`（官方 TeamService） | `teamService()` | 原始服务；当前组合没有 team 行时为 `undefined` —— 与下列强类型方法并存的逃生通道 |
+| `ctx.agentTeams.tryMembership` | `teamMembership(agent)` | 投影为 `{teamId, role, name}`；**从不抛错** —— 非成员、过期身份、未知角色或接缝缺失一律为 `undefined` |
+| `ctx.agentTeams.listMembers` / `listTasks` | `teamListMembers(agent)` / `teamListTasks(agent)` | 行被投影为 `DshTeamMemberView` / `DshTeamTaskView`（`diagnostics`、`blockedBy`、`writeScopes`、`writeScopeWarnings` **始终**是数组）；接缝缺失时抛错 |
+| `ctx.agentTeams.createTask` / `getTask` / `updateTask` | `teamCreateTask(caller, req)` / `teamGetTask(caller, id)` / `teamUpdateTask(caller, req)` | 调用方与请求对象均**按同一性**转发，Promise 原样传递，只投影返回值；接缝缺失时抛错 |
+| `ctx.agentTeams.sendMessage` / `waitForChange` | `teamSendMessage(caller, req)` / `teamWaitForChange(caller, timeoutMs, signal?)` | 同样的转发纪律；持久化应答归一化为 `{messageId, status: 'accepted'\|'queued'}` / `{timedOut}` |
+| `ctx.agentTeams.spawnTeammate` / `interrupt` | `teamSpawnTeammate(caller, req)` / `teamInterrupt(caller, targetName)` | 同样的转发纪律；成员行被投影 / 返回**取消之前**采样的状态 |
+| 活跃团队折叠 | `teamLiveTeams()` | 每个活跃 **Lead** agent 一项（`{teamId, leadName, leadSessionId, members, tasks}`）；服务或 agent 注册表缺失时为 `[]`，单个 agent 读取失败只让该项为 `[]`，不会拖垮整个折叠 |
+| `ctx.on("agent/pre-step")` | `onAgentPreStep(listener)` | 由适配器调用 `next()`；listener 收到 `(payload, downstream)`，可返回**修改后的**决策（建议性通知正是这样注入的），或返回 `undefined` 表示放行；listener 抛错会被兜住；无事件总线时为空操作 |
+| 活跃 agent 自有的 scoped `ctx.systemPrompt.section` | `agentPromptSection(agent, section)` | 段落被**逐字节**转发到**该 agent 自己的** scope（绑定接收者、disposer 透传），因此该贡献只送达某一个 preset 的 session，而不是本进程服务的所有 session；agent scope 无此接缝时在调用点抛错 |
 | 能力探测 | `capabilities()` | 每个接缝一个布尔值，调用方据此降级而不是崩溃 |
 
-上表中这十四个面向 `agentTeams` 的接缝只有一个消费方：采纳的 `agent-teams` 插件。其桥接模块
+上表中从 `registerHostTool` 到 `injectAgentMessage` 这十四个接缝只有一个消费方：采纳的
+`agent-teams` 插件。其桥接模块
 `packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js`（mpd 自有，命名规则 `lib/mpd-*.js`）在
 `apply` 顶部只构建一次门面，把六个已桥接的采纳文件都接到这些方法上。每个方法都在一个
 `capabilities()` 标志之后（一个标志可覆盖两个方法；`subagentRuntime` 复用既有的 `subagents`
@@ -43,6 +54,53 @@
 `agentTurnStart`、`agentTurnCancel`、`agentTurnSteer`、`agentTurnInject`（后两个
 `agentTurn{Steer,Inject}` 是实时名册探针：只有当某个
 活跃 agent 暴露 `steer` / `inject` 时才为 `true`）。
+
+其下的团队平面诸行各自报告**四个新标志** —— `team`、`teamTasks`、`teamMessages` 与
+`subagentsProviderRegister` —— 且绝不更名既有标志。两个 **AGENT 作用域**的行
+（`onAgentPreStep`、`agentPromptSection`）报告 `agentPreStep`（事件总线）与
+`agentPromptSection`（实时探针：某个活跃 agent 自己的 scope 带有 `systemPrompt.section`）。
+
+## 官方 Agent Teams 平面
+
+Harness 以三个官方包提供 Agent Teams（`@deepseek-ai/dsh-experimental-agent-team`、
+`…-tool-agent-team`、`…-client-ui-agent-team`），其服务为 `ctx.agentTeams`。
+**`docs/plan-0.1.7-adaptation.md` 的 D6 规定：本适配器是 mpd 插件接触它的唯一入口** ——
+在 `packages/mpd-dsh-adapter-plugin` 之外直接读取 `ctx.agentTeams`，或直接调用
+`ctx.subagents.startContinuable`，都是缺陷。
+
+其纪律与 `registerHostTool` 相同：
+
+- **调用方 Agent**（授权该操作的精确活跃 Agent）与**请求对象**都**按同一性**转发 —— 不复制、
+  不改写键 —— 因此本适配器未建模的宿主字段依然能抵达服务，宿主的校验与拒绝也保持响亮；
+- 只投影**返回值**（`teamMemberView` / `teamTaskView`）：声明的 `diagnostics`、`blockedBy`、
+  `writeScopes`、`writeScopeWarnings` 始终是数组，未知状态降级为安全值，不泄漏任何未声明的键；
+- 每个方法都做能力探测，且**构建与探测阶段绝不抛错**：接缝缺失时给出的正是"哪件事做不到"
+  （`mpd-dsh-adapter: harness service "agentTeams" is unavailable — cannot create team task "…"`），
+  而 `teamMembership` 完全不抛错（它是调用方用来问"这个 agent 在团队里吗？"的过滤器）。
+
+`teamLiveTeams()` 是 Web 路由或 TUI 场景用来替代 `.mpd/team` 记录的只读视图（该记录已不存在：
+团队状态保存在 Lead 的 Session 日志中，并作为 `agentTeam` Session projection 发布）。它折叠
+活跃 agent 注册表，每个 Lead 保留一项，缺失时降级为 `[]`，绝不抛错。
+
+**teammate 路径上的模型路由（方案 §3）：** `teamSpawnTeammate` 就是 Harness 自己的
+`spawnTeammate`，其 `SubagentStartRequest` 不携带 `agentOptions`、`persona` 或 `toolFilter`；
+因此 teammate 继承 Lead 的路由，`teamModels.slot*` 契约以显式指引的形式写在 spawn prompt 里。
+按成员路由在一次性咨询路径（`mpd_role_spawn` / `mpd_workmate_spawn`）上仍可机械生效，因为它们
+自行传入 `agentOptions`。
+
+### D6 静态闸门（`test/no-direct-team-access.test.mjs`）
+
+该静态闸门扫描 `packages/mpd-*/src/**/*.ts`（本包除外）中的字面标识符 `agentTeams` 与
+`startContinuable`，失败时指出文件与行号；它先剥离注释（"绝不要碰 `ctx.agentTeams`" 这类说明
+不算违规），并把 `*.ts` 波段之外文件中的命中放在醒目的 `NOT COVERED` 段落里报告，而不是静默
+跳过：
+
+```bash
+node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs            # 扫描
+node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs --self-test # 反向对照
+```
+
+它同时是一个 `bun test` 用例，因此 `bun test packages/mpd-dsh-adapter-plugin` 也会运行它。
 
 ## 模型目录接缝（`llmCatalog`）
 

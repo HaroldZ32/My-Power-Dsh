@@ -76,7 +76,11 @@ async function runReal() {
   const qaSettings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(qaSettings)) cpSync(qaSettings, join(home, "settings.yaml"))
   mkdirSync(join(reloc, "ws"), { recursive: true })
-  writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-t", private: true, dependencies: { ["@mpd-dsh/mpd"]: "file:" + staged, "@nanmicoder/dsh-agent-teams": "^0.1.13" }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
+  // NO `@nanmicoder/dsh-agent-teams` dependency: that npm package belonged to the RETIRED
+  // vendored body (D5). The packed bundle declares its own runtime deps (the three official
+  // Agent Teams packages) and the profile installs the relocated pack by `file:`, so the
+  // retired name would only add an unresolvable dependency to the install.
+  writeFileSync(join(profile, "package.json"), JSON.stringify({ name: "dsh-profile-t", private: true, dependencies: { ["@mpd-dsh/mpd"]: "file:" + staged }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
   // AGENTS.md §7 — HOME is sandboxed too: the filesystem skill provider scans
   // `<agentsHome>/skills` with `agentsHome = $DSH_AGENTS_HOME ?? ~/.agents`, so DSH_HOME
   // alone still leaks the machine's own user skills into the boot (measured 2026-09-14:
@@ -86,7 +90,7 @@ async function runReal() {
   const env = credentialEnv({ ...process.env, DSH_HOME: home, HOME: userHome  })
   if (env.DSH_HOME !== home || env.HOME !== userHome) { console.error("[relocate-smoke] isolation assertion failed"); process.exit(1) }
   const steps = {}
-  console.log("[relocate-smoke] npm install (agent-teams + ast-grep + codegraph)...")
+  console.log("[relocate-smoke] npm install (relocated bundle + ast-grep + codegraph)...")
   const inst = spawnSync("npm", ["install", "--prefix", profile, "--no-audit", "--no-fund", "--cache", join(reloc, ".npm-cache")], { env, encoding: "utf8", timeout: 600000, maxBuffer: 32 * 1024 * 1024 })
   steps.install = { ok: inst.status === 0, exit: inst.status }
   const manifest = JSON.parse(readFileSync(join(profile, "package.json"), "utf8"))
@@ -102,10 +106,11 @@ async function runReal() {
   const dumpOutClean = dumpOut.split(home).join("<QAHOME>").split(reloc).join("<QARELOC>")
     .split(join(repoRoot, "packages", "mpd-qa-roles-probe")).join("<QAPROBE>")
   steps.dump = { ok: dump.status === 0 && dumpOut.includes("@mpd-dsh/mpd") && !dumpOutClean.includes(DEV), exit: dump.status, leaked: dumpOutClean.includes(DEV) }
-  // Repro: mount the RELOCATED bundle's own preset root as the default (the
-  // headless profile has no stock agent-presets row) — a broken/absent root
-  // would surface as agent-preset/not-found or a broken preset on agent switch.
-  writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd\n        roots:\n          - path: " + JSON.stringify(join(staged, "presets")) + "\n            trust: system\n"
+  // The RELOCATED pack's OWN patch array supplies the `agent-preset-registry` id-target and
+  // the `preset-mpd` row (0.1.7-rc.2), so the only overlay this lane needs is the QA probe.
+  // The retired `agent-presets` row + `roots:`/`trust: system` overlay is GONE: that package
+  // no longer exists, so inserting it would take the whole boot down.
+  writeFileSync(join(profile, "cordis.patch.yml"), "- insert:\n"
     + "    - id: roles-probe\n      name: " + JSON.stringify(join(repoRoot, "packages", "mpd-qa-roles-probe", "dist", "index.js")) + "\n")
   // Deterministic boot proof (no model call: the QA machine has no model key):
   // the probe reads the LIVE preset + skill catalog out of the relocated package.
@@ -114,11 +119,19 @@ async function runReal() {
   const out = (live.stdout || "") + (live.stderr || "")
   const presetPath = /PRESET_PATH=([^\s]+) trust=(\w+)/.exec(out)
   const fixture = /SKILL_FIXTURE=(\w+) name=(\S+) base=(\S+) bytes=(\d+)/.exec(out)
+  // 0.1.7-rc.2 ROW MODEL: the probe reports the preset's declaring PATCH FILE and
+  // `trust=bundle` (there is no `system`-trust directory root any more, and no directory to
+  // resolve). The lane's claim is "the RELOCATED pack serves its own preset" — so assert the
+  // relocated path AND the row model's own trust value EXPLICITLY. Deliberately NOT
+  // `trust !== undefined`: accepting any trust would stop distinguishing a relocated pack
+  // from a home copy, which is the one thing this lane exists to tell apart.
+  const relocatedPresetPatch = join(staged, "presets", "mpd.patch.yml").split("\\").join("/")
   steps.live = {
     ok: /roles-probe\] PASS/.test(out) && /PRESET_MPD=ok/.test(out)
-      && String(presetPath?.[1] ?? "").startsWith(staged) && presetPath?.[2] === "system"
+      && String(presetPath?.[1] ?? "").split("\\").join("/") === relocatedPresetPatch && presetPath?.[2] === "bundle"
       && fixture !== null && fixture[1] === "ok" && String(fixture[3]).startsWith(staged),
-    exit: live.status, preset: presetPath?.[1] ?? null, fixtureBase: fixture?.[3] ?? null,
+    exit: live.status, preset: presetPath?.[1] ?? null, trust: presetPath?.[2] ?? null,
+    expectedPreset: relocatedPresetPatch, fixtureBase: fixture?.[3] ?? null,
   }
   // bundle-served model: NOTHING is copied into the harness home …
   const presets = join(home, ".agent-presets")

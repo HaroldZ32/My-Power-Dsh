@@ -18,10 +18,11 @@ my-power-dsh 的详细设计：它设计什么、遵循哪些设计原则、如�
 会话/代理运行时、模型路由、Web 与 TUI 外壳以及基础行集合都由它提供。`@mpd-dsh/mpd` 设计的是
 **在这一 host 之上**新增的内容，以及新增的方式：
 
-- 一层 **patch**：把 bundle 的各行插入到安装该 bundle 的任意 profile 中；并用两个 id-target 让
+- 一层 **patch**：把 bundle 的各行插入到安装该 bundle 的任意 profile 中；并用一个 id-target
+  加上第二个 patch 文件让
   bundle 自带的 `mpd` 预设成为这些 composition 的默认预设，
-- **26 个插件行**（6 个 MCP client 行、17 个 `mpd-*` 插件行、`mpd-web-compat` 自引用行、
-  采纳的 `agent-teams` 行，以及挂载 bundle 已声明侧边栏依赖的 `mpd-better-sidebar` 宿主行），
+- **28 个插入行**（6 个 MCP client 行、18 个 `mpd-*` 插件行（含 `mpd-web-compat` 自引用行）、
+  3 个官方 Agent Teams 行，以及挂载 bundle 已声明侧边栏依赖的 `mpd-better-sidebar` 宿主行），
   以及每一行各自拥有的服务、工具、命令、路由与状态（§4），
 - 在 host 自有外壳中渲染 bundle 界面的 **web client** 与 **TUI 界面**（§7、§7b），
 - bundle 写入会话工作区与用户 home 的**状态布局**（§6），以及让 QA 与这两处保持隔离的规则（§8）。
@@ -38,8 +39,9 @@ my-power-dsh 的详细设计：它设计什么、遵循哪些设计原则、如�
    （§8b）而非留待被发现，都源于此。
 2. **唯一接缝接触面。** 只有一个包（`mpd-dsh-adapter`）接触 host 的工具/代理/skill/preset 接缝；
    其他所有行都经由 `mpdDsh` 服务调用。host 版本重塑接缝时，只需在该处吸收，而不必全树修改（§6b）。
-   采纳的上游主代码也不再是例外：采纳的 `agent-teams` 插件同样经由该适配器接触这些接缝，其背后是
-   mpd 自有的桥接模块 `lib/mpd-adapter-ctx.js`（§6b）。
+   被**保留但已从组合中退役**的上游 `agent-teams` 主体同样不是例外：它的 `lib/` 依旧经由该适配器
+   接触这些接缝，其背后是
+   mpd 自有的桥接模块 `lib/mpd-adapter-ctx.js`（§6b）—— 这正是这段代码被保留而不是删掉的原因。
 3. **插件形态、按引用配置。** 每个能力都是 Cordis 插件行或配置好的 host 插件实例；profile 与脚本里
    不放逻辑。资产（skill 语料、`mpd` 预设）由 bundle 直接供给而非复制进 `$DSH_HOME`，因此卸载不留
    残留（§2、§6c）。
@@ -58,26 +60,30 @@ my-power-dsh 的详细设计：它设计什么、遵循哪些设计原则、如�
 
 DSH 是 Cordis host：插件是 composition（`cordis.yml` + patch 层）里的行，服务按
 scope provide/consume，模型路由由会话的 request header 解析。my-power-dsh 以 **npm
-bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch`
-（`packages/mpd-bundle/cordis.patch.yml`）向它安装到的任意 profile 添加行。它贡献：
+bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch` 数组
+（先是 `packages/mpd-bundle/cordis.patch.yml`，再是 `presets/mpd.patch.yml`）向它安装到的任意
+profile 添加行。它贡献：
 
-- **26 个插入行**，全部位于同一层增量 patch 中：6 个 MCP client 行（本地 ast-grep、git-bash
-  [默认禁用]、LSP、codegraph；远端 context7、grep.app）、17 个 `mpd-*` 插件行、使 bundle 成为
-  loader entry 的 `mpd-web-compat` 自引用行、采纳的 `agent-teams` 插件行，以及挂载 bundle 唯一
-  外部运行时依赖（社区侧边栏宿主）的 `mpd-better-sidebar` 行——§4 逐一列出，
-- **2 个 id-target**（不是插入行）：让 bundle 自带预设成为各 composition 默认的 `agent-presets`
-  行（web/base 面）与 `dsh-tui-agent-presets`（dsh-tui 面）（§2、§6c），
+- **28 个插入行**，分布在**两层**增量 patch 中：6 个 MCP client 行（本地 ast-grep、git-bash
+  [默认禁用]、LSP、codegraph；远端 context7、grep.app）、18 个 `mpd-*` 插件行（含使 bundle 成为
+  loader entry 的 `mpd-web-compat` 自引用行）、3 个**官方** Agent Teams 行，以及挂载 bundle 已
+  声明侧边栏依赖（社区侧边栏宿主）的 `mpd-better-sidebar` 行——§4 逐一列出。第二个 patch 文件
+  贡献的是 `preset-mpd` 行，
+- **1 个 id-target**（不是插入行）：让 bundle 自带预设成为默认 ——
+  `agent-preset-registry` → `{ default: mpd }`（§2、§6c），
 - Harness 适配器（`mpd-dsh-adapter`）：所有其他行都经由它调用，
-- 一个 agent 预设（`mpd`）和一份 skill 语料，由 bundle 直接供给（不复制到 home），
-- 一个合并的 web client（AgentTeams 侧边栏页 + workmate 库）。
+- 一个以**行**形式声明的 agent 预设（`mpd`），以及一份按引用供给的 skill 语料（不复制到 home），
+- 一个合并的 web client（workmate 库页；团队界面是官方客户端插件自己的面板，§7）。
 
 专家名册中的 11 个专家**不是预设**：它们作为专家名册（`mpd-roles-plugin`）存在，
-也作为采纳的 `agent-teams` `mpd` profile 中的队友实例化模板存在。
+也作为队友实例化模板存在 —— Lead 用官方 `spawn_teammate` 按名字创建，人设文本取自
+`mpd_role_persona`。
 
 ## 2. Bundle 与包结构
 
 **仓库根目录就是 bundle 包。** `package.json` 名为 `@mpd-dsh/mpd`，声明了
-`dsh.bundle.patch`（`./packages/mpd-bundle/cordis.patch.yml`）、`dsh.client`、各行解析所依赖的
+`dsh.bundle.patch`（数组：先是 `./packages/mpd-bundle/cordis.patch.yml`，再是
+`./presets/mpd.patch.yml`）、`dsh.client`、各行解析所依赖的
 `exports` 映射以及工具链 `optionalDependencies`，因此在仓库根执行 `dsh plugin add .` 一条命令即可
 完成整体安装（无需打包步骤）。`scripts/pack-mpd.mjs` 是**发布**步骤：为发布/tarball 安装组装
 可迁移的 `dist/mpd-package/` —— 一个**没有任何 checkout 绝对路径**的自包含 npm 包：
@@ -85,10 +91,11 @@ bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch`
 | 部件 | 去向 | 原因 |
 |---|---|---|
 | 插件 dist | `packages/<pkg>/dist/index.js` | host 行通过 `@mpd-dsh/mpd/packages/...`（exports map）引用它们 |
-| 采纳的 agent-teams | `packages/mpd-agent-teams-plugin/`（lib + `_deps/` + assets） | 整体复制，使 bundle 在任何安装布局下自包含 |
+| 已退役的 agent-teams 主体 | `packages/mpd-agent-teams-plugin/`（lib + `_deps/` + assets） | 作为来源记录保留，并整体复制，使打包产物在任何安装布局下自包含；**没有任何行挂载它**（§4） |
 | 合并的 web client | `packages/mpd-bundle-plugin/client.js` | 作为 `@mpd-dsh/mpd` 的 `./client` export 提供 |
-| 预设 + skills | `presets/`、`skills/` | 由包内直接供给：patch 把 preset 名册根指向 `presets/`，`mpd-bootstrap` 把 `skills/` 注册为 skill provider——不向 `$DSH_HOME` 复制 |
-| `cordis.patch.yml` | 包根 | `dsh.bundle.patch` 层 |
+| skills | `skills/` | 由包内直接供给：`mpd-bootstrap` 把 `skills/` 注册为 skill provider —— 不向 `$DSH_HOME` 复制 |
+| 预设 | `presets/mpd.patch.yml` | `preset-mpd` **行**（`@deepseek-ai/dsh-agent-preset`、`config.id: mpd`，子 entry 列表内联），也是 manifest 的第二个 `dsh.bundle.patch` 条目 |
+| `cordis.patch.yml` | 包根 | 第一个 `dsh.bundle.patch` 层（插入行与那一个 id-target） |
 
 Manifest 不变式（为什么存在）：
 
@@ -97,13 +104,17 @@ Manifest 不变式（为什么存在）：
   （`ERR_PACKAGE_PATH_NOT_EXPORTED`）。
 - `exports["./client"]` → 合并 client；`dsh.client.platform: "web"` —— 把本 bundle
   标记为 web client 贡献者。
-- **`dependencies` 中不出现 `@nanmicoder/dsh-agent-teams`** —— pnpm（`dsh plugin add`
-  背后的引擎）从不把 bundle 的传递依赖链到 profile 根，所以普通的包名行会静默自禁用
-  （E4 缺陷，见 `docs/plan-e.md`）。采纳的插件是主代码 + 自带 vendored closure。
-- **`dependencies` 中恰好有一个外部条目：`dsh-better-sidebar`** —— 承载 mpd 两个标签页的社区
-  侧边栏 bundle。它被**声明**出来，普通安装即可生效；它可被解析，是因为
+- **被保留的 `agent-teams` 主体不是已声明依赖。** pnpm（`dsh plugin add`
+  背后的引擎）从不把 bundle 的传递依赖链到 profile 根，普通的包名行会在模块无法解析时自禁用
+  （E4 缺陷，见 `docs/plan-e.md`）。该主体是主代码 + 自带 vendored closure
+  （`packages/mpd-agent-teams-plugin/_deps/`），而从 0.1.7-rc.2 起**没有任何行挂载它**。
+- **`dependencies` 有四个条目：`dsh-better-sidebar` 与三个官方 Agent Teams 包**
+  （`@deepseek-ai/dsh-experimental-agent-team`、`-tool-agent-team`、`-client-ui-agent-team`）。
+  只声明依赖不会挂载任何东西，而只有行也会在模块无法解析时让启动致命，所以**两半都必需**：
+  它们可被解析，是因为
   `@deepseek-ai/dsh-app-boot#healProfileModuleFallback` 会在 loader 运行前把非安装型 bundle 层的
-  依赖闭包落到 `<profile>/node_modules`；检出目录安装则先把它落到仓库里（`bun install`）。挂载它
+  依赖闭包落到 `<profile>/node_modules`；本 bundle 则用自有的 `mpd-*-agent-team` 行挂载它们（§4）。
+  检出目录安装还会先把它们落到仓库里（`bun install`）。挂载侧边栏
   的行（`mpd-better-sidebar`）带守卫且与层序无关（§4），因此自己挂载该包的组合照常工作，无法解析
   的包只降级为"没有侧边栏"，绝不会让启动失败。
 
@@ -144,13 +155,14 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 ## 4. 插件清单
 
 **`packages/mpd-bundle/cordis.patch.yml` 的每一行，按 composition 列出。** patch 层是增量的，
-共携带 **26 个 `insert` 行**；`node scripts/verify-rows-parity.mjs` 断言这份列表与本仓库自身的行
-账目一致（退出码 0，并逐一列出全部 26 个 id）。另有两条 **id-target**（不是插入行）——它们**替换**
-某个 composition 已有的行——因此单独列在下面的表里。
+共携带 **28 个 `insert` 行**；本 bundle 的**第二个** patch 文件（`presets/mpd.patch.yml`）再携带一个
+插入行 —— `preset-mpd` —— 两个文件都列在 manifest 的 `dsh.bundle.patch` **数组**里。
+`node scripts/verify-rows-parity.mjs` 断言这份列表与本仓库自身的行
+账目一致。另有一条 **id-target**（不是插入行）——它**替换** host 自己拥有的行——因此单独列在下面的
+表里。
 
 `Composition` 列回答"该行进入哪个 composition"：`insert` 行进入安装该 bundle 的每一个 profile
-（`web + dsh-tui`）。两条 id-target 各自只进入一个 composition，因为它们所替换的名册行各自只由
-那一个 composition 铸造。**仅证明 composition 的证据**：
+（`web + dsh-tui`）。那条 id-target 进入铸造该 registry 行的 composition。**仅证明 composition 的证据**：
 `evidence/tui/composition/20260915T053445Z/raw/web-dump-config-final.txt` 与
 `…/raw/dsh-tui-dump-config.txt` 在两个 composition 中列出同一批 bundle 行；该快照早于
 `mpd-team-watchdog`，后者由 patch 以同区段的 `insert` 加入。转储只证明 **composition 本身**——
@@ -167,11 +179,11 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 | `mpd-web-compat` | mpd-bundle-plugin | web + dsh-tui | web-compat 自引用行：使 `@mpd-dsh/mpd` 成为 loader entry（只有存在该确切名字的 entry，web client 才会加载）；承载合并 web client | no-op apply；`./client` | — |
 | `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | web + dsh-tui | 与 Harness 接缝的**唯一**接触面：工具注册/guard/post-execute/execute、子代理 spawn、skill provider + 目录、preset 解析、能力探测 | 服务 `mpdDsh` | `defaultTimeoutMs`、`quiet` |
 | `mpd-config` | mpd-config-plugin | web + dsh-tui | 最小 `mpd.jsonc` 运行时配置层（工程 `.mpd/mpd.jsonc` 覆盖用户 `$DSH_HOME/mpd.jsonc`）；持有设置回写（§7b） | `mpd_config_get`、`mpd_config_reload`；服务 `mpdConfig` | `projectFile`、`userFile` |
-| `mpd-team-watchdog` | mpd-team-watchdog-plugin | web + dsh-tui | 面向成员**与** captain 的逐步/逐工具心跳存储、基于 `watchdog.*` 旋钮的 WARN→ESCALATE 状态机、可原子恢复的场景快照，以及写在采纳的 `team.json` **旁边**的持久 hold/incident 边车文件（`team.json` 仍只有一个写入者）；有意挂载在 HOST 面，使预设作用域的心跳不可能漏看被卡住的 captain | `session-watchdog-status`、`session-watchdog-hold`、`session-watchdog-resume` | `stateDir`、`warnSilenceMs`、`tickIntervalMs`、`warnStreakToEscalate`、`actionOnEscalate`、`toolInFlightMaxMs`、`holdTtlMs` |
+| `mpd-team-watchdog` | mpd-team-watchdog-plugin | web + dsh-tui | 面向成员**与** captain 的逐步/逐工具心跳存储、基于 `watchdog.*` 旋钮的 WARN→ESCALATE 状态机、可原子恢复的场景快照，以及写在 `<workspace>/.mpd/team/watchdog/` 下（它**自己的**命名空间：官方 Team 服务把团队状态保存在 Lead 会话日志，看门狗经由适配器读名册）的持久 hold/incident 边车文件；有意挂载在 HOST 面，使预设作用域的心跳不可能漏看被卡住的 captain | `session-watchdog-status`、`session-watchdog-hold`、`session-watchdog-resume` | `stateDir`、`warnSilenceMs`、`tickIntervalMs`、`warnStreakToEscalate`、`actionOnEscalate`、`toolInFlightMaxMs`、`holdTtlMs` |
 | `mpd-tools` | mpd-tools-plugin | web + dsh-tui | 写保护（禁止静默覆盖）、工具输出截断（token 预算）、编辑错误恢复提示 | 仅 waterfall | `writeGuard`、`truncateMaxBytes`、`recoveryHint` |
 | `mpd-modelchain` | mpd-modelchain-plugin | web + dsh-tui | roster 角色的 DeepSeek 路由解析 + 键值记忆注释 | `mpd_modelchain_resolve`、`mpd_memory_save`、`mpd_memory_recall` | — |
 | `mpd-ext` | mpd-ext-plugin | web + dsh-tui | 扩展接口：一份冻结的描述符契约、两个面（代码 `register()` + 数据面 `mpd-ext.json`）、按生命周期划分的发现、skills/flows provider、运行时 stdio MCP 桥、扩展 role | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show`；服务 `mpdExtensions` | `quiet` + 惰性 `mpd.jsonc` 层（`extensions.enable`、`extensions.disable`、`extensions.mcp.*`） |
-| `mpd-roles` | mpd-roles-plugin | web + dsh-tui | 专家名册中的 11 个专家（正常名字/persona/模型链/只读），并在每次调用时与扩展贡献的 role 合并 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona`；服务 `mpdRoles` | `personasDir` |
+| `mpd-roles` | mpd-roles-plugin | web + dsh-tui | 专家名册中的 11 个专家（正常名字/persona/模型链/只读），并在每次调用时与扩展贡献的 role 合并；为 Lead 注册名册提示词小节（persona 文本经 `mpd_role_persona` 取得，并写明实测的模型路由边界），并为名字规范化后落在只读名册成员上的在线 Team 队友注册**只读工具守卫** | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona`；服务 `mpdRoles` | `personasDir` |
 | `mpd-ulw` | mpd-ulw-plugin | web + dsh-tui | 固定 plan→execute→verify 循环纪律（C2 ultrawork v2） | `mpd_ultrawork`、`mpd_ulw`（轻量别名）；命令 `/ulw`、`/ultrawork` | `maxRounds`、`maxReReviews`、`provider/model/reviewerModel`、`planDir`、`stateDir` |
 | `mpd-hashline` | mpd-hashline-plugin | web + dsh-tui | 哈希锚定编辑纪律（`LINE#HASH` 锚点） | `mpd_hashline_read`、`mpd_hashline_edit`、`mpd_hashline_format`、`mpd_hashline_restore` | `guardEditTools`、`maxDiffChars`、`registryFile` |
 | `mpd-boulder` | mpd-boulder-plugin | web + dsh-tui | 绑定计划 markdown 文件的持久化工作台账 | `mpd_boulder_status`、`mpd_boulder_start`、`mpd_boulder_complete`、`mpd_boulder_task_timer`、`mpd_boulder_plan_progress`、`mpd_boulder_plans` | `boulderDir` |
@@ -182,16 +194,17 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 | `mpd-team-compact` | mpd-team-compact-plugin | web + dsh-tui | 对**已结束**的团队做成员压缩（所有任务终态且所有成员 idle），经由每个成员**自己的**作用域上下文执行；captain 交由人类 `/compact` 处理；审计落在 `<workspace>/.mpd/team-compact/`，该行从不写 `.mpd/team` | `mpd_team_compact_run`、`mpd_team_compact_status` | — |
 | `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | 按引用供给：经由适配器把 `<bundle>/skills` 注册为 skill provider（rank 600 `bundled`），并清理 bundle <= 0.2.6 写入 home 的带版本戳副本 | 仅 effect | `skillsDir`、`skipSkills`、`skipPresets`、`skipLegacyCleanup` |
 | `mpd-tui` | mpd-tui-plugin | web + dsh-tui（在 dsh-tui 中生效，其他 composition 降级） | dsh-tui 版本的原生界面：绑定 host 的激活门控 TUI 接缝，并用 `ctx.get(id, false)` + warn-once 降级逐个探测，因此 web/headless composition 失去的是 TUI 界面而不是启动（§7b） | 无面向模型的工具；TUI 状态行 / 设置区块 / 看板 / 命令树 / 快捷键 / 对话框 / 转录渲染器 | — |
-| `agent-teams` | mpd-agent-teams-plugin（采纳，MIT） | web + dsh-tui | 多代理团队协作（captain、成员、任务、调度器；其视图为 AgentTeams 侧边栏 Tab 提供内容） | `agent_teams_*` | `stateDir`、`memberProvider`、`memberMaxDepth`、`maxMembers`、`profiles` |
-| `mpd-better-sidebar` | dsh-better-sidebar（bundle 已声明的依赖；entry id 有意带 `mpd-` 前缀，绝不复用该包自己的 `better-sidebar`，也不复用聚合包的 id） | web（当不存在已启用的 `@deepseek-ai/dsh-host-webserver` 条目时，守卫会禁用它，`dsh-tui` 亦然） | 挂载**承载** AgentTeams 与 Workmates 两个标签页的社区侧边栏 bundle，因此无需第二次手动安装插件；守卫与层序无关：只要**任何被组合的 patch 层**已经点名该包 —— 每个已声明 bundle 层自身的 `dsh.bundle.patch`（例如 `@linxin666/dsh-web-all` 聚合包）、`<profileDir>/cordis.patch.yml`、`$DSH_HOME/cordis.patch.yml`，以及从 `process.argv` 读到的每个 `--patch` 覆盖层路径（两种写法、可重复）—— 或者当 `dsh-better-sidebar` 本身就是一个 bundle 层、当该包无法解析、当不存在**已启用**的 `@deepseek-ai/dsh-host-webserver` 条目（被表达式禁用的 webserver 行不算）时，本行就会禁用。外部层只有在其 patch 里含有**真正挂载该包的行**时才会抑制本行 —— 即某行的 `name` 为 `dsh-better-sidebar` 且其 `disabled` 不是字面量 `true`（匹配前先剥离 YAML 注释）；注释里的提及、或字面量 `disabled: true` 的行都不挂载任何东西，因此不会抑制我们的挂载；行扫描器无法解析的形式一律回退到保守行为（视作挂载）—— 误禁只损失侧边栏，误启用会让启动以 `duplicate prefix route` 直接失败。以上每条路径都只打印一行日志并降级为"没有侧边栏"，绝不让启动失败 | 侧边栏宿主 + 它的 tab 注册表（`ctx.betterSidebar`） | `disabled: !!js` 挂载守卫 |
+| `mpd-agent-team` | @deepseek-ai/dsh-experimental-agent-team | web + dsh-tui | **官方** Agent Teams 域服务（`ctx.agentTeams`）：隐式根名册、持久点对点邮箱与共享任务板；名册、邮箱与任务状态都持久化在 **Lead 的会话日志**里 | 服务 `agentTeams` | `maxMembers: 16`、`maxTasks: 256`、`maxPendingMessagesPerMember: 64`、`maxMessageBytes: 32768`、`disposalTimeoutMs: 5000` |
+| `mpd-tool-agent-team` | @deepseek-ai/dsh-experimental-tool-agent-team | web + dsh-tui | 每位成员都会收到的九个面向模型的工具 —— `spawn_teammate`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`、`team_task_create/list/get/update` —— 以及 `team:policy` 提示词小节 | 上述九个工具 | `freshProvider: spawn`、`forkProvider: fork` |
+| `mpd-ui-agent-team` | @deepseek-ai/dsh-experimental-client-ui-agent-team | web（其他 composition 中 host 导出惰性） | 会话头部里的官方 Web 名册、共享任务板与队友导航面板；只读（没有创建/改名/删除/中断控件，也没有任务修改控件） | `/client` 浏览器半边 | — |
+| `mpd-better-sidebar` | dsh-better-sidebar（bundle 已声明的依赖；entry id 有意带 `mpd-` 前缀，绝不复用该包自己的 `better-sidebar`，也不复用聚合包的 id） | web（当不存在已启用的 `@deepseek-ai/dsh-host-webserver` 条目时，守卫会禁用它，`dsh-tui` 亦然） | 挂载**承载** Workmates 标签页的社区侧边栏 bundle，因此无需第二次手动安装插件；守卫与层序无关：只要**任何被组合的 patch 层**已经点名该包 —— 每个已声明 bundle 层自身的 `dsh.bundle.patch`（例如 `@linxin666/dsh-web-all` 聚合包）、`<profileDir>/cordis.patch.yml`、`$DSH_HOME/cordis.patch.yml`，以及从 `process.argv` 读到的每个 `--patch` 覆盖层路径（两种写法、可重复）—— 或者当 `dsh-better-sidebar` 本身就是一个 bundle 层、当该包无法解析、当不存在**已启用**的 `@deepseek-ai/dsh-host-webserver` 条目（被表达式禁用的 webserver 行不算）时，本行就会禁用。外部层只有在其 patch 里含有**真正挂载该包的行**时才会抑制本行 —— 即某行的 `name` 为 `dsh-better-sidebar` 且其 `disabled` 不是字面量 `true`（匹配前先剥离 YAML 注释）；注释里的提及、或字面量 `disabled: true` 的行都不挂载任何东西，因此不会抑制我们的挂载；行扫描器无法解析的形式一律回退到保守行为（视作挂载）—— 误禁只损失侧边栏，误启用会让启动以 `duplicate prefix route` 直接失败。以上每条路径都只打印一行日志并降级为"没有侧边栏"，绝不让启动失败 | 侧边栏宿主 + 它的 tab 注册表（`ctx.betterSidebar`） | `disabled: !!js` 挂载守卫 |
 
-**两条 id-target**（各自替换某个 composition 自带的名册行；id-target 是按 key 的浅覆盖，因此 host
-行其余 key 会保留；没有该行的 composition 只记录 `patch: entry … not found` 并跳过）：
+**那一条 id-target**（它替换某个 composition 自带的预设选择行；id-target 是按 key 的浅覆盖，因此
+host 行其余 key 会保留；没有该行的 composition 只记录 `patch: entry … not found` 并跳过）：
 
 | entry id | 目标 | Composition | 本文档中它承载的内容 |
 |---|---|---|---|
-| `agent-presets` | `dsh-web-app` 插入的名册行 | web / base 面 | `default: mpd` + bundle 自带的 `presets/` 根（`trust: system`），因此一条 `dsh plugin add` 就让 `mpd` 预设可选；没有该行的 headless profile 跳过它（headless 从来没有名册） |
-| `dsh-tui-agent-presets` | dsh-tui 铸造的名册行 | dsh-tui 面 | 同样的两个 key，供 TUI composition 使用（其名册行是另一个 loader entry）；**有意不**复述 stock 行的旧式回退根分支（已固定的包本身就带 presets，那条分支是死代码） |
+| `agent-preset-registry` | `dsh-web-app` 插入的 registry 行 | web / base 面 | `default: mpd`，因此一条 `dsh plugin add` 就选中 bundle 的预设。该 registry 只声明**一个**配置键（`default`），所以复述它是完整的；不携带该行的组合会记录 `patch: entry … not found` 并保留自己的默认值（警告，绝不是错误） |
 
 有两行在不同的 composition 里**故意**表现不同，二者都不是缺陷：`mpd-tui` 绑定 TUI 接缝，在没有这些
 接缝处（web / headless）warn-once 降级；`mpd-web-compat` 负责把 bundle 的 web client 放进启动图
@@ -229,14 +242,20 @@ key**。
   `confirm === name`。失败的删除会恢复索引键，因此绝不会留下被部分移除的实例。
 - **使用中闸门（单一同步块）**：`assertNotBusy` 同时检查进程内的 `Map<key, count>`
   （在 `mpd_workmate_spawn` 中围绕 `dsh.spawnAgent` 增减、在 `finally` 中释放）与对
-  `<cwd>/.mpd/team/<teamId>/team.json` **直接子目录**的只读扫描（归档团队位于
+  `<cwd>/.mpd/team/<teamId>/team.json` **直接子目录**的只读扫描 —— 只针对**旧版**记录，因为官方
+  Team 服务不会留下这种文件（归档团队位于
   `.mpd/team/archive/**`，按构造被排除）；重命名还会检查目标键。闸门、冲突守卫与变更之间
   没有 `await`，因此任何 spawn 或 reflect 都无法插队 —— 无需锁文件。这里**从不**写
-  `.mpd/team` 状态（那是 agent-teams 插件的状态），且读取失败时**放行**。
-- 团队模式：`agent_teams_create(profile="mpd")` 把正常命名的 roster 暂存为队友模板。
-  采纳插件中被修补的 `memberPersona()` 检查 `~/.mpd/workmate/<member-name>`：若实例
-  存在，成员的系统提示会带上该 workmate 的 persona + memory + note，以及
-  `mpd_workmate_reflect` 指令（"captain 查 note 后委派给以 workmate 命名的成员"）。
+  `.mpd/team` 状态（那曾是已退役插件的状态；官方服务把名册、邮箱与任务板保存在 Lead 的会话
+  日志里），且读取失败时**放行**。
+- 团队模式：会话智能体就是 Lead。它按成员逐个调用 `spawn_teammate`（名字、描述，以及由
+  `mpd_role_persona` 文本加任务拼成的提示词），用 `team_task_create` 给每人开一条通道，再用
+  `team_task_list` / `team_task_get` / `team_task_update`（对任务 `revision` 做 compare-and-set）
+  与邮箱工具驱动任务板。两条实测边界是设计的一部分，不是遗漏：队友**继承 Lead 的模型路由**
+  （`TeamService` 只把提示词与父会话转发给 subagent 注册表），因此 `teamModels` 槽位只作用于
+  一次性咨询通道；只读名册成员的写入工具由 `mpd-roles` 上以团队身份为键的守卫拒绝，因为
+  `spawn_teammate` 无法接受按队友的工具过滤器。persona 与 workmate 记忆**不会**被自动注入 ——
+  它们随提示词文本一起传递。
 
 ### 扩展 → skills、flows、MCP 工具与 roles
 
@@ -261,7 +280,8 @@ key**。
   被包容的 —— 该服务器被记录为 `unavailable`/`failed`，并带上它的 stderr 尾部。
 - **roles** 由 `mpd-roles` 在每次调用时解析（在查询时把基础名册与扩展贡献的 role 惰性合并，绝不
   在 apply 时合并），因此扩展 role 可以通过 `mpd_role_spawn` / `mpd_role_persona` 使用，也可以
-  作为 workmate 的基础模板。它永远不会进入 agent-teams 的成员列表 —— 那是静态的 patch 配置。
+  作为 workmate 的基础模板。它永远不会自己变成队友：只有 Lead 用 `spawn_teammate`
+  按名字创建出来，才存在队友。
 - 四个工具可以检查这一切 —— `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` ——
   而 `scripts/mpd-ext.mjs`（`validate` / `scaffold` / `list`）共享同一个运行时校验器。
 
@@ -274,7 +294,8 @@ key**。
 
 | 路径 | 拥有者 | 说明 |
 |---|---|---|
-| `<workspace>/.mpd/team/` | agent-teams | 团队 stateDir 覆盖（团队 + 邮箱） |
+| `<workspace>/.mpd/team/` | 旧版团队记录 + 看门狗**自己的**命名空间 | 官方 Team 服务把名册、邮箱与任务板保存在 Lead 的会话日志里，因此没有任何随包行会在这里写团队记录；看门狗在它下面维护 `<stateDir>/watchdog/{heartbeat,scene,hold,incidents.jsonl}`，而 workmate 在用检查仍会读取存在的旧版 `team.json` |
+| `<workspace>/.mpd/team-compact/` | mpd-team-compact | 已结束团队成员上下文的压缩审计 |
 | `<workspace>/.mpd/plans/` | mpd-boulder / mpd-ulw | 计划 markdown 文件 |
 | `<workspace>/.mpd/memory.json` | mpd-modelchain | 键值注释 |
 | `<workspace>/.mpd/`（VCS 记忆目录） | mpd-memory | git/svn 支撑的记忆 + 反思 |
@@ -283,7 +304,7 @@ key**。
 | **`~/.mpd/extensions/*/mpd-ext.json`**（用户 HOME） | mpd-ext | 主机级的用户扩展面，在 apply 时发现（skills、flows、mcp、roles）—— 与 workmate 库一样，是一处经用户批准的 HOME 作用域例外 |
 | **`<bundle>/extensions/*/mpd-ext.json`** | mpd-ext | bundle 自带的主机级扩展面（skills、flows、mcp、roles）；它随包提供默认禁用的参考扩展，并在卸载时一并消失 |
 | **`~/.mpd/workmate/`**（用户 HOME） | mpd-workmate | 跨工程 workmate 库（`<key>/` 实例 + `.archive/` —— 已删除实例被移出库、手动 `mv` 搬回即可恢复）—— 用户批准的对 workspace-scoped 状态规则的刻意例外（AGENTS.md §6）；QA 以 `HOME=<sandbox>` 启动 |
-| `$DSH_HOME/.agent-presets/mpd*`、`$DSH_HOME/skills/*` | mpd-bootstrap | 仅历史遗留（bundle <= 0.2.6 的带版本戳副本），首次 0.3.0 启动时删除——新版本不再写 home |
+| `$DSH_HOME/.agent-presets/mpd*`、`$DSH_HOME/skills/*` | mpd-bootstrap | 仅历史遗留（bundle <= 0.2.6 的带版本戳副本），首次 0.3.0 启动时删除——新版本不再写 home，且预设是以**行**形式从 bundle 提供的（§6c） |
 
 ## 6b. Harness 适配器（唯一的接缝接触面）
 
@@ -304,8 +325,10 @@ key**。
   `{ok, isError, value, error}` 工具调用结果、`{output, structured, stopReason}` spawn 结果。
 - QA 证明：`bundle-lifecycle` 断言组合后的行、启动日志行、探针的 `ADAPTER_SEAMS=…`
   快照与 `ADAPTER_TOOL_CALL=ok`（通过归一化路径真实调用一次 `mpd_config_get`）。
-- **采纳插件的接缝路由（原“边界”，已于 2026-09-19 关闭）：** 采纳的 `agent-teams` 插件
-  （`packages/mpd-agent-teams-plugin`，MIT）现在每个 Harness 接缝都经由本适配器 —— 但
+- **保留代码的接缝路由（原“边界”，已于 2026-09-19 关闭；这段代码随后于 2026-09-27 从组合中
+  退役）：** `packages/mpd-agent-teams-plugin` 处的 `agent-teams` 主体（MIT）作为来源记录被保留，
+  且没有任何 loader 行挂载它，但它仍然
+  每个 Harness 接缝都经由本适配器 —— 但
   `setup(childCtx, child)` 这一条**已计数**的例外除外（见 `AGENTS.md` §6：`lib/members.js`
   中五行、逐行断言；该 scoped ctx 由宿主传入，会转交给 vendored 的 `_deps/dsh-agent` 助手，
   且在旧版 Alpha.2 宿主上 `childCtx` 不保证等于 `child.ctx`）。新增的
@@ -313,7 +336,9 @@ key**。
   恢复）在 `apply` 顶部**只构建一次**门面，因此**六个**已桥接的采纳文件
   （`lib/index.js`、`lib/capabilities.js`、`lib/harness-compat.js`、`lib/members.js`、
   `lib/command.js`、`lib/tools.js`）使用该门面，其余采纳的服务端文件原样接收它。
-  门面惰性解析已挂载的 `mpdDsh` 服务，并在缺失时 warn-once 回退（每个插件实例**恰好一行**
+  让这段代码继续经由适配器，正是它被保留而不是删除的原因：后续波次可以在不必重新推导 D6 分析的
+  前提下删除它。门面惰性解析已挂载的 `mpdDsh` 服务，并在缺失时 warn-once 回退（每个插件实例
+  **恰好一行**
   缺失日志），因此适配器缺席时插件仍能应用。**十四个**适配器方法承载这些调用，每个都在一个
   `capabilities()` 标志之后（一个标志可覆盖两个方法；`subagentRuntime` 复用既有的 `subagents`
   标志）：`registerHostTool`（逐字节透传，`Object.is`）、`subagentRuntime` /
@@ -324,10 +349,22 @@ key**。
   `installContinuableMemberSetup` 启动安全守卫、workmate persona 注入，以及抗重新 vendor 的
   `mpd-delta` 区域。该关闭状态连同其**残留清单**写在 AGENTS.md §6（R1–R5 以及 `members.js`
   中已计数的旁路），已桥接的区域 id 记录在 `agent-references/agent-teams-deltas.md`。
+- 随包消费方使用的是**适配器自己的**团队面：`teamMembership`、`teamListMembers`、
+  `teamListTasks`、`teamCreateTask`、`teamGetTask`、`teamUpdateTask`、`teamSendMessage`、
+  `teamSpawnTeammate`、`teamInterrupt`、`teamWaitForChange` 与 `teamLiveTeams` —— 每一个都是对
+  已挂载 `agentTeams` 服务的薄投影且从不抛错，因此没有任何 mpd 插件（看门狗、名册守卫、ULW 引擎、
+  TUI 或 web 路由）直接引用 `ctx.agentTeams`。
 
 ## 6c. Agent 预设层（`mpd` 预设）
 
-`presets/mpd/agent.cordis.yml` 是每个 `mpd` 会话加入的 agent 层组合。它是**当前实际安装的
+`presets/mpd.patch.yml` 把 `mpd` 预设声明为一个普通的**行**：插入一行 `preset-mpd`
+（`name: '@deepseek-ai/dsh-agent-preset'`、`config.id: mpd`，子 entry 列表内联在
+`config.plugins` 下）。那份子列表**就是**每个 `mpd` 会话加入的 agent 层组合，而该文件是 manifest 的
+第二个 `dsh.bundle.patch` 条目；`packages/mpd-bundle/cordis.patch.yml` 把
+`agent-preset-registry` id 定向为 `{ default: mpd }`。Harness **0.1.7-rc.2 替换了目录形式**：
+`@deepseek-ai/dsh-agent-presets`（那个从 preset 根目录提供 `preset.yml` + `agent.cordis.yml` 的包）
+已不存在，因此不再有 `<bundle>/presets` preset 根目录，也不再有 `$DSH_HOME/.agent-presets` 副本。
+它是**当前实际安装的
 Harness 所附 `standard` 预设的逐行镜像**，而这种镜像关系是承载性的：
 
 - Harness 会在版本之间把面向模型的行在 host 层与预设层之间搬移。Web overlay 会禁用 HOST 侧的
@@ -335,7 +372,7 @@ Harness 所附 `standard` 预设的逐行镜像**，而这种镜像关系是承�
   因此只挂 `tool-goal` 的预设会让会话失去 `/goal`；`present` 自 0.1.5-alpha.2 才出现，
   是 Web 端"交付物"行背后的工具。缺一行就是缺一项能力 —— 而且不会产生任何报错。
 - 行的 `config` 在该行 apply 时会用所装插件自己的 schemastery schema 校验。两种失效模式的可见性不同：
-  **缺少必填键**会让该行失败，随后 `dsh-agent-presets.mountPreset` 拒绝挂载**整个预设**
+  **缺少必填键**会让该行失败，随后预设 registry 拒绝挂载**整个预设**
   （`agent-preset/invalid: … row(s) did not activate`），于是该预设上的每个会话都无法启动；
   **未知键**会被 schemastery 静默保留，行照常生效，但它本该携带的设置永远不会起作用。
 - 实测事故（2026-09-11，Harness 0.1.5-rc.1 CLI + rc.2 包）：preset 的 persona 行仍在用
@@ -356,32 +393,20 @@ Harness 所附 `standard` 预设的逐行镜像**，而这种镜像关系是承�
 `packages/mpd-bundle-plugin/client.js`（由 `scripts/build-mpd-client.mjs` 生成）是一个
 脚本：
 
-1. 采纳的 agent-teams `lib/client.js` **逐字**内嵌 —— 它自注册
-   `@nanmicoder/dsh-agent-teams`。它现在严格作为**视图库**使用：
+1. 被保留的 agent-teams `lib/client.js` **逐字**内嵌 —— 它自注册
+   `@nanmicoder/dsh-agent-teams`。它严格作为**视图库**使用：
    `scripts/patch-agent-teams-client.mjs` 通过一个固定的导出桥接（export bridge）把它的视图
    （`TeamSection`、历史卡片）、监控 store、zh/en 词典与 CSS 增量导出，
    `scripts/vendor-agent-teams.mjs` 在每次刷新后重新施加该桥接；采纳的 `apply(ctx)`
    **永不被调用** —— 正是它注册了已删除的那些界面；
-2. 一个 `__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory })` —— mpd 自有的
-   AgentTeams 页面（`src/team-page.js`）：它把上述采纳视图组合为一个 DSH-better-sidebar Tab
-   （id `mpd-agent-teams`，order 85，`single: true`），列出本对话的进行中与已归档团队，并带上
-   暂存计划审批编辑器、进行中团队数角标与 `autoOpenOnTeamActivity` 开关。其自动打开是**无 seed** 的（`openTab({ type })`）：
-   从 dsh-better-sidebar 0.19 起，带 `path`/`url` 的 seed 会被路由到 DSH 原生右栏
-   （`surface.openResource(fileAddress(sessionId, cwd, path))`），而不会打开本 tab 类型；因此旧实现携带的
-   占位路径会让宿主去解析 `<cwd>/team-activity`，`realpath` 失败并在 GUI 抛
-   `cannot resolve target …`，同时 tab 根本不会打开 —— 仅带 type 的 open 才会落到本 tab 自己的表面并展开，
-   这正是"自动打开"应有的语义（`agent-teams-sidebar` 的 `seedlessAutoOpen` 锁定已发布与已服务字节；
-   `team-page.test.mjs` 驱动真实 client）。**视觉一致是硬性要求**：
-   页面渲染的是浮窗自己的内部结构 —— 同一个带采纳 `panel` 类的 `aside` 根（该类正是那份样式表
-   声明 `--dsw-alias-*` 自定义属性的地方，而每条采纳规则都读这些变量，去掉它整个团队区就会失去
-   样式）、同一个 `panelHead`（标题 + 忙碌圆点 + 收起控件，用平台自带的
-   `IconChevronDownOutline14`）、同一个 `teams` 滚动体、同样的
-   `emptyHint`/`archivedWrap`/`archiveLabel` 标记。只有窗口管理器那一半被内联覆盖
-   （定位/尺寸交给侧栏面板、无拖拽与改宽把手、无边框/圆角/阴影/背板模糊），且收起控件驱动的是
-   侧栏自己的 `store.reduce` 面板开关；
+2. 一个从同一份 vendored 主体保留下来（`src/team-page.js`）的
+   `__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory })` 条目。它的**宿主半边**是已退役
+   `agent-teams` 插件的路由
+   （`/plugins/dsh-agent-teams/{state,halt,plan,assets}`），而现在已经没有任何已挂载的行提供它们 ——
+   因此**随包的团队界面是官方插件自己的面板**（`mpd-ui-agent-team`，见下一小节），本条目**不**被
+   文档描述为提供团队界面；
 3. 第三个 `__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory })`，其 factory 贡献
-   **workmate 库**（作为它自己的侧边栏 Tab）以及那个隐藏 `/agent-teams` 命令结果的
-   `conversation.chat.commandview` 空行。
+   **workmate 库**（作为它自己的侧边栏 Tab）。
 
 **Seam 策略（这个文件存在的意义就是防止这类故障）**：web boot 会为每个条目断言其声明的
 每个 `inject` 服务都已注册；声明了但缺失的服务会让该条目停留在 `pending` 并抛出
@@ -403,14 +428,18 @@ Harness 所附 `standard` 预设的逐行镜像**，而这种镜像关系是承�
 `packages/mpd-bundle-plugin/test/client-harness.mjs` 现在**默认**建模这个竞态（侧边栏服务在
 `apply()` 之后才发布），因此一旦有人改回探测，测试会立刻失败。
 
-**两个 GUI 都只在侧边栏，任何地方都没有回退**：`WorkmateLibraryView` 由
+**两个 mpd 界面都由侧边栏承载；团队面板则来自官方插件**：`WorkmateLibraryView` 由
 `registerSidebarTab` 注册为一个 **DSH-better-sidebar** Tab
-（`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`，`single: true`，order 90），
-AgentTeams 页面由 `registerTeamSidebarTab` 注册。没有 DSH-better-sidebar 时两者各自只输出一条
+（`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`，`single: true`，order 90）。
+没有 DSH-better-sidebar 时它只输出一条
 警告（`… has no host (no floating fallback by design)`）并且什么都不注册，因此侧边栏之外不存在
 任何界面。宿主本身并不是可选第三方附加项：`dsh-better-sidebar` 是已声明的运行时依赖，由带守卫的
 `mpd-better-sidebar` 行挂载（§4），因此那条警告路径对应的是依赖缺失或损坏，而不是普通安装会遇到
-的情形。`scripts/build-mpd-client.mjs` 在构建期就强制这一点：只要有 mpd client 源注册了
+的情形。**Agent Teams 面板**是另一回事，完全不依赖该侧边栏：它是官方
+`@deepseek-ai/dsh-experimental-client-ui-agent-team` 客户端插件，由本 bundle 自己的
+`mpd-ui-agent-team` 行挂载，注册一个会话头部动作，渲染 Lead 会话的 `agentTeam` 投影
+（名册 + 任务板，只读）。`scripts/build-mpd-client.mjs` 在构建期就强制侧边栏这条规则：只要有
+mpd client 源注册了
 `agent-teams-activity`、`conversation.chat.node`、`shell.overlay` 或 `sidebar.footer.action`
 其中之一，构建即失败 —— 那正是被移除的对话内卡片、活动浮窗与 workmate 浮窗/页脚切换按钮。
 
@@ -420,9 +449,8 @@ base 选择器；`GET /plugins/mpd-workmate/get?name=` —— persona/memory/not
 /plugins/mpd-workmate/init`；以及两条变更路由 `POST /plugins/mpd-workmate/rename` +
 `POST /plugins/mpd-workmate/delete`，它们返回与工具相同的 reason 编码拒绝 ——
 `400 invalid-name` / `400 confirm-required` / `404 unknown` / `409 collision` /
-`409 in-use`（带 `blocking` 团队列表），动词错误则为 `405` + `allow: POST`）；
-AgentTeams 页面驱动采纳的监控 store，后者轮询
-`/plugins/dsh-agent-teams/{state,halt,plan,assets}`。全部通过
+`409 in-use`（带 `blocking` 团队列表），动词错误则为 `405` + `allow: POST`）。
+全部通过
 `webServer.register` 注册并在 `internal/service` 绑定时重试（无 web 的 profile 保持
 纯工具模式）。
 
@@ -478,7 +506,7 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —�
   代码，因此永远无法见证插件加载、schema 中止或接缝缺失。本文档的每项行为性主张都改用关卡或真实
   工具调用来支撑（§4）。
 - **预设层只能靠真实挂载启动来验证。** 某行的 `config` 缺少**必填** key 时该行失败，
-  `dsh-agent-presets` 随即拒绝**整个**预设（`agent-preset/invalid: … row(s) did not activate`）；
+  预设 registry 随即拒绝**整个**预设（`agent-preset/invalid: … row(s) did not activate`）；
   而**未知** key 会被 schemastery 静默保留，行照常生效、那个设置却悄悄失效。`agentPresets.list` /
   `resolve` 两类都看不见；只有 `skills/dsh-qa/scripts/preset-conformance.mjs`（含其反向对照）能看见
   （§6c）。
@@ -488,15 +516,18 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —�
   在插件挂载时读取一次，因此 `.mpd/mpd.jsonc` 的改动在下次启动时生效；设置文档路径（TUI
   `/settings` 界面、回写与 `settings/document-updated` 重读）才是实时路径（§6c、§7b）。
 - **watchdog hold 目前是契约，还不是互锁。** 该行拥有 `session-watchdog-hold` / `-resume` 与持久
-  hold 记录；让采纳的派发门控真正遵守 hold 是后续任务。在此之前 hold 只被记录与上报，真正停止派发的
-  是平台暂停（`agent_teams_halt`）（§4）。
-- **采纳的团队插件是唯一不经过适配器的行。** 它的 `lib/` 是上游主代码，vendor 刷新会覆盖它，只有
-  一处本地启动安全适配（§6b）；其 client 部分严格作为视图库使用，它自己的 `apply` 从不被调用（§7）。
-- **web client 只做侧边栏。** 没有会话内回退：mpd 的两个页面都是侧边栏 Tab；可选接缝必须用
+  hold 记录；让**官方**派发门控真正遵守 hold 是后续任务。在此之前 hold 只被记录与上报，而停下队友当前
+  轮次的是官方 `interrupt_agent`（仅 Lead）（§4）。
+- **被保留的团队主体**不**被挂载。** `packages/mpd-agent-teams-plugin` 作为来源记录保留：没有任何
+  loader 行挂载它，所以它的任何工具、它的 `.mpd/team` 记录与它的侧边栏面板都不属于随包
+  会话。它的 `lib/` 依旧经由适配器（§6b），client 半边作为视图库保留（§7）；删除它是已声明的后续
+  任务，而不是疏忽。
+- **web client 的 mpd 页面只做侧边栏。** 没有会话内回退：该 mpd 页面是一个侧边栏 Tab；可选接缝必须用
   `ctx.inject([...])` 挂载，而不是用一次性 `ctx.get` 探测——探测既看不见别的插件拥有的服务，也无法
   在该提供方晚挂载时恢复（§7）。侧边栏宿主随 bundle 一起安装（已声明的 `dsh-better-sidebar`
   依赖 + 带守卫的 `mpd-better-sidebar` 行，§4），因此这条限制描述的是代码路径，而不是用户需要
-  自己补做的一步安装。
+  自己补做的一步安装。Agent Teams 面板是按构造的例外：官方客户端插件把它渲染在**会话头部**，
+  而不是侧边栏里。
 - **有两行按设计是惰性或降级的。** `mcp-gitbash` 默认禁用（上游为 Windows 专属），`mpd-tui` 在没有
   TUI 接缝的 composition 中 warn-once 降级，因此"该行已被组合"与"该能力已存在"是两个不同的陈述
   （§4）。

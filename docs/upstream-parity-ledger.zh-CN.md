@@ -9,6 +9,16 @@
 > 历史记录类文档豁免双语要求（AGENTS.md `L18–L23`）。此前的 `docs/omo-parity-gap.md`
 > 即属此类：**单语且本波次不改动**。它没有被取代 —— 它是本台账的输入之一。
 
+> **基线状态 —— 0.1.7-rc.2。** 本台账冻结的是 `omo-parity-align` 波次，其对象是内置的
+> `agent-teams` 插件，而它现已**从组合中退役**（没有任何 loader 行挂载它）。它的配置键
+> （`sessionTeamPolicy.mode`、`sessionTeamPolicy.autoRoute`）、它的团队
+> 工具与它的 staged 团队流程都不再存在于随包会话中。迁移中**存活下来**、也是读者应当带走的东西，是**门禁
+> 语义**：同一个冻结谓词 `trigger = explicit flag OR (matchedSignals >= 1)` 仍在会话第一个
+> pre-step 求值，其通知仍带标记 `[AgentTeams] Session-start team rule`，而且它依然**只咨询 ——
+> 不预建任何团队**；变的只是实现位置（迁入 `mpd-roles-plugin`，架在官方插件的接缝上），captain
+> 现在用 `spawn_teammate` + `team_task_create` 建队。见 `docs/plan-0.1.7-adaptation.md` 与
+> AGENTS.md §1。下文其余内容是该波次的冻结记录，按历史来读。
+
 冻结取值的唯一真源：`evidence/omo-align/requirements/frozen-contract.json`（由队长维护）。
 研究输入：`evidence/omo-align/research/team-vs-mass-ulw/gap.json`（t2）与
 `evidence/omo-align/research/session-policy/output.log`（t3）。需求门：
@@ -34,7 +44,7 @@
 |---|---|---|
 | `D_FIRST` | 每个符合条件的会话启动时**不建队、不注入通知**，除非复杂度信号命中。 | 对齐上游默认而非本地口味：上游 `team_mode.enabled` 默认为 `false`（t3 `[U2][U3]`）。 |
 | `D_AUTOROUTE_SPLIT` | 机械门与旧的注入模式**解耦**：`sessionTeamPolicy.mode` 默认 `off`（枚举值全部保留）；新机械门是独立键 `sessionTeamPolicy.autoRoute`（默认启用）。 | 上游**没有**复杂度启发式（t3 全文 0 处 heuristic/threshold），其激活靠显式关键词。解耦可在新增门的同时不悄悄改变 `off`/`instruct` 的既有语义。 |
-| `D_AUTOROUTE_ADVISORY` | 自动路由命中后**不建任何团队**：`routeDecision` 返回 `advise`，`installSessionTeamPolicy` 只注入**一条**咨询通知（标记仍为 `[AgentTeams] Session-start team rule`），点名命中的信号、明确说明**没有团队被 staged**，并要求 captain 只在工作确实需要团队时才用 `agent_teams_create(approval="required", profile="mpd")` 建队，否则继续单独执行并说明。`mode:"auto"`、`mode:"instruct"`、显式 `team:`/`!team` 标记与 `/agent-teams` 命令的既有路径全部不变。 | 用户第 4 条（2026-09-17）：仅仅在判断复杂度，不应让用户先付出「已 staged 团队 + 一次审批」的代价。咨询措辞刻意不排斥自动批准，因为 ULW 运行会以 `approval="automatic"` 建队（冻结契约 §4.3）。 |
+| `D_AUTOROUTE_ADVISORY` | 自动路由命中后**不建任何团队**：门只注入**一条**咨询通知（标记仍为 `[AgentTeams] Session-start team rule`），点名命中的信号、明确说明**没有团队被 staged**，并要求 captain 只在工作确实需要团队时才用官方 `spawn_teammate` + `team_task_create` 建队（本波次当时是该插件自己的建队工具，带 `approval="required", profile="mpd"`，现已不存在），否则继续单独执行并说明。显式 `team:`/`!team` 标记同样只是**咨询**，不会为它预建任何东西。 | 用户第 4 条（2026-09-17）：仅仅在判断复杂度，不应让用户先付出「已 staged 团队 + 一次审批」的代价。咨询措辞刻意不排斥自动批准，因为 ULW 运行会自行建队（冻结契约 §4.3）。 |
 | `D_SKILLS_WRITER` | 本波次 `skills/**` 的**唯一**写者是 `t5`，且仅限 `skills/dsh-qa/SKILL.md` 与 `skills/dsh-qa/scripts/session-start-team.mjs`。`t9` 本波次不写入。 | AGENTS.md `§9`：每波单写者；`skills/**` 变更会使语料 `treeSha` 失效，re-pin 必须与之同提交。基线：`afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`，328 个文件。 |
 | `D_LEDGER` | 台账 = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`，同提交，标题下直接放语言切换链接。`docs/omo-parity-gap.md` 与既往报告不动。 | 用户裁决 6；AGENTS.md `§3` 双语规则及历史记录豁免。 |
 | `D_UPSTREAM_REF` | 上游参考为 beta.62（`d1557a4b4`）；仓库基线仍为 beta.20。 | 用户裁决 1；AGENTS.md `§9`（不追上游）。 |
@@ -69,11 +79,12 @@ verify`；中文 12 个 —— `设计, 实现, 验证, 改造, 补充, 对齐, 
 
 命中后门现在只**咨询**（`D_AUTOROUTE_ADVISORY`）：不建任何团队，只注入一条咨询通知
 （标记 `[AgentTeams] Session-start team rule`），点名命中的信号并明确说明**没有团队被
-staged**；captain 只在工作确实需要团队时自行调用
-`agent_teams_create(approval="required", profile="mpd")` 建队，否则继续单独执行并说明。
-显式 `team:` / `!team` 请求 —— 以及 `/agent-teams` 命令 —— 仍然会供应 staged 团队
-（`profile: mpd`、`approval: required`、名称 `MPD Default`、描述“auto-routed by the complexity
-gate”）—— **仅 staged**，用户批准 Web 计划前不 spawn 成员。
+staged**；captain 只在工作确实需要团队时自行用官方
+`spawn_teammate` + `team_task_create` 建队，否则继续单独执行并说明。
+显式 `team:` / `!team` 请求同样只是**咨询** —— 智能体被告知去建队，不会为它预建任何东西。
+（本波次当时的调用是该插件自己的建队工具，带 `profile: mpd, approval: required`、名称
+`MPD Default`、并由用户在 Web 计划上批准；那个工具与那套 staged 计划流程属于已退役的插件，
+在随包会话中都不存在。）
 
 **三向测试（冻结契约中的 `testPrompts` + 本波次 QA 用例）。** 每个 `simple` 提示必须使
 `.mpd/team` 为空且日志中无启动通知；每个命中**软信号**的 `complex` 提示必须使 `.mpd/team`
@@ -109,22 +120,29 @@ gate”）—— **仅 staged**，用户批准 Web 计划前不 spawn 成员。
 > 有一项限制如实记录而非略过（`S2.evidenceProvenance`）：冻结所引用的上游协议文档在本仓库中**并不
 > 存在**，因此本地读者只能核对上面这段无矛盾的措辞，无法核实那条上游引文。
 
-## 5. 手动入口名（冻结）
+## 5. 手动入口名（该波次冻结 —— 见基线横幅）
 
-禁止重命名下列名称；**允许新增**。
+当时禁止重命名下列名称；**允许新增**。下面的团队条目描述的是已退役的插件，作为该波次的记录保留。
 
 - 斜杠指令：`/agent-teams`、`/agent-teams-mpd`（来自 `AGENT_TEAMS_COMMAND = 'agent-teams'`
-  与 `profileCommandName('mpd')`，`lib/command.js:3,24-34,95-111`）
-- 工具：`agent_teams_*` 全套
-- 键：`profiles.mpd`；preset id `mpd`
+  与 `profileCommandName('mpd')`，`lib/command.js:3,24-34,95-111`）—— **随插件退役；随包会话中
+  不存在 `/agent-teams` 命令**
+- 工具：团队工具全套 —— **随插件退役；团队工作跑在官方的 `spawn_teammate` / `team_*`
+  工具上**
+- 键：`profiles.mpd`（随插件退役）；preset id `mpd`（**仍然随包提供**，现在由
+  `presets/mpd.patch.yml` 的 `preset-mpd` 行声明）
 
 ## 6. 文本落点（会话启动团队规则的落点）
 
+**这些落点属于已退役的实现**（它们点名的是那个插件的文件与它的 `sessionTeamPolicy` 块）。门禁
+本身在迁移中存活并迁入 `mpd-roles-plugin`；当前落点在 `docs/plan-0.1.7-adaptation.md` 与
+AGENTS.md §1 中列出。
+
 | Id | 文件 | 区域 |
 |---|---|---|
-| `L1` | `packages/mpd-bundle/cordis.patch.yml` | agent-teams row `sessionTeamPolicy` 块及其注释 |
-| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` 谓词 + `advisoryNotice` / `provisionedNotice` / `instructNotice` 文本 |
-| `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` 段与 sizing doctrine 的位置 |
+| `L1` | `packages/mpd-bundle/cordis.patch.yml` | agent-teams row `sessionTeamPolicy` 块及其注释（已退役 —— 不存在该行） |
+| `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.js` | `policyQualifies` 谓词 + `advisoryNotice` / `provisionedNotice` / `instructNotice` 文本（保留代码，未挂载） |
+| `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` 段与 sizing doctrine 的位置（已退役路径；预设现在位于 `presets/mpd.patch.yml`） |
 | `L4` | `packages/mpd-bundle/README.md` | 整个 `Session-start team gate (binding)` 节 |
 | `L5` | `packages/mpd-bundle/README.zh-CN.md` | 整个 `会话启动团队门（强制）` 节（与 `L4` 同提交） |
 | `L6` | `scripts/install-profile.mjs` | row 配置与其 `--self-test` 断言（现同时钉住 `mode === "off"` 与 `autoRoute === true`） |

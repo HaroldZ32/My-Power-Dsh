@@ -6,7 +6,25 @@
 - Third-party components keep their original licenses/notices in their source trees.
 - DSH packages (@deepseek-ai/*) are MIT licensed and referenced as dependencies only.
 
-## dsh-agent-teams (MIT) — adopted plugin, first-class main code
+## Agent Teams (MIT) — official plugin set, mounted by this bundle
+
+From 2026-09-27 the bundle's team capability is the DeepSeek Harness OFFICIAL plugin set, mounted by
+this bundle's own rows (`mpd-agent-team`, `mpd-tool-agent-team`, `mpd-ui-agent-team`) and reached only
+through `mpd-dsh-adapter`:
+
+- `@deepseek-ai/dsh-experimental-agent-team` (MIT) — the `ctx.agentTeams` `TeamService`: implicit-root
+  roster, durable peer mailbox, shared task DAG.
+- `@deepseek-ai/dsh-experimental-tool-agent-team` (MIT) — the scoped model-facing tools
+  `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`,
+  `team_task_create` / `team_task_list` / `team_task_get` / `team_task_update`.
+- `@deepseek-ai/dsh-experimental-client-ui-agent-team` (MIT) — the Web roster, shared task board and
+  teammate navigation client.
+
+All three are declared in this package's `dependencies` at the harness version they were validated
+against and are distributed under the MIT License; none of their source is vendored into this
+repository. See `docs/plan-0.1.7-adaptation.md` for the adoption record.
+
+## dsh-agent-teams (MIT) — adopted plugin, RETIRED from the composition
 
 The `agent-teams` plugin (tools `agent_teams_*`, team scheduler; its Web views back the
 AgentTeams sidebar tab contributed by `mpd-bundle-plugin`)
@@ -16,6 +34,11 @@ capabilities, tool names, authenticated web routes, member turn-failure handling
 durability fixes; https://github.com/NanmiCoder/dsh-agent-teams) and distributed under the
 MIT License. The adopted package version is recorded as `0.1.16-rc.3-mpd`; the browser
 bundle (`lib/client.js`) is still the 0.1.14 build.
+**It is RETIRED from the composition** (2026-09-27): no loader row mounts it any more, because the
+harness shipped its own official Agent Teams plugin and this bundle adopted that instead (see the
+section above). The code is retained — not deleted — so the adapter-bypass inventory, the delta
+registry and this notice keep describing a tree that still exists; deleting it is a declared
+follow-up recorded in `docs/plan-0.1.7-adaptation.md`.
 It ships as **first-class main code** at `packages/mpd-agent-teams-plugin/` (lib +
 assets + package manifest; loaded via the bundle exports map; plugin row id
 `agent-teams`, tools `agent_teams_*` kept stable). Its server-side runtime closure is

@@ -2,6 +2,7 @@ var __create = Object.create;
 var __getProtoOf = Object.getPrototypeOf;
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 function __accessProp(key) {
   return this[key];
@@ -17,7 +18,7 @@ var __toESM = (mod, isNodeMode, target) => {
       return cached;
   }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
-  const to = isNodeMode || !mod || !mod.__esModule || !__hasOwnProp.call(mod, "default") ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
+  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
   if (mod && typeof mod === "object" || typeof mod === "function") {
     for (let key of __getOwnPropNames(mod))
       if (!__hasOwnProp.call(to, key))
@@ -30,22 +31,85 @@ var __toESM = (mod, isNodeMode, target) => {
     cache.set(mod, to);
   return to;
 };
-var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
-var __esm = (fn, res, err) => () => {
-  if (fn)
-    try {
-      res = fn(fn = 0);
-    } catch (e) {
-      err = [e];
-    }
-  if (err)
-    throw err[0];
-  return res;
+var __toCommonJS = (from) => {
+  var entry = (__moduleCache ??= new WeakMap).get(from), desc;
+  if (entry)
+    return entry;
+  entry = __defProp({}, "__esModule", { value: true });
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (var key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(entry, key))
+        __defProp(entry, key, {
+          get: __accessProp.bind(from, key),
+          enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+        });
+  }
+  __moduleCache.set(from, entry);
+  return entry;
 };
+var __moduleCache;
+var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
+var __returnValue = (v) => v;
+function __exportSetter(name, newValue) {
+  this[name] = __returnValue.bind(null, newValue);
+}
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, {
+      get: all[name],
+      enumerable: true,
+      configurable: true,
+      set: __exportSetter.bind(all, name)
+    });
+};
+var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
 // packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
+var exports_lib = {};
+__export(exports_lib, {
+  Binary: () => Binary,
+  Time: () => Time,
+  arrayBufferToBase64: () => arrayBufferToBase64,
+  arrayBufferToHex: () => arrayBufferToHex,
+  base64ToArrayBuffer: () => base64ToArrayBuffer,
+  camelCase: () => camelCase,
+  camelize: () => camelize,
+  capitalize: () => capitalize,
+  clone: () => clone,
+  contain: () => contain,
+  deduplicate: () => deduplicate,
+  deepEqual: () => deepEqual,
+  defineProperty: () => defineProperty,
+  difference: () => difference,
+  filterKeys: () => filterKeys,
+  formatProperty: () => formatProperty,
+  hexToArrayBuffer: () => hexToArrayBuffer,
+  hyphenate: () => hyphenate,
+  intersection: () => intersection,
+  is: () => is,
+  isNonNullable: () => isNonNullable,
+  isNullable: () => isNullable,
+  isPlainObject: () => isPlainObject,
+  makeArray: () => makeArray,
+  mapValues: () => mapValues,
+  noop: () => noop,
+  omit: () => omit,
+  paramCase: () => paramCase,
+  pick: () => pick,
+  remove: () => remove,
+  sanitize: () => sanitize,
+  snakeCase: () => snakeCase,
+  trimSlash: () => trimSlash,
+  uncapitalize: () => uncapitalize,
+  union: () => union,
+  valueMap: () => mapValues
+});
+function noop() {}
 function isNullable(value) {
   return value === null || value === undefined;
+}
+function isNonNullable(value) {
+  return !isNullable(value);
 }
 function isPlainObject(data) {
   return data && typeof data === "object" && !Array.isArray(data);
@@ -65,9 +129,50 @@ function pick(source, keys, forced) {
       result[key] = source[key];
   return result;
 }
+function omit(source, keys) {
+  if (!keys)
+    return { ...source };
+  const result = { ...source };
+  for (const key of keys)
+    Reflect.deleteProperty(result, key);
+  return result;
+}
+function defineProperty(object, key, value) {
+  return Object.defineProperty(object, key, {
+    writable: true,
+    value,
+    enumerable: false
+  });
+}
+function contain(array1, array2) {
+  return array2.every((item) => array1.includes(item));
+}
+function intersection(array1, array2) {
+  return array1.filter((item) => array2.includes(item));
+}
+function difference(array1, array2) {
+  return array1.filter((item) => !array2.includes(item));
+}
+function union(array1, array2) {
+  return Array.from(new Set([...array1, ...array2]));
+}
+function deduplicate(array) {
+  return [...new Set(array)];
+}
+function remove(list, item) {
+  const index = list?.indexOf(item);
+  if (index >= 0) {
+    list.splice(index, 1);
+    return true;
+  } else
+    return false;
+}
+function makeArray(source) {
+  return Array.isArray(source) ? source : isNullable(source) ? [] : [source];
+}
 function is(type, value) {
   if (arguments.length === 1)
-    return (value) => is(type, value);
+    return (value2) => is(type, value2);
   return type in globalThis && value instanceof globalThis[type] || Object.prototype.toString.call(value).slice(8, -1) === type;
 }
 function isArrayBufferLike(value) {
@@ -91,12 +196,12 @@ function clone(source, refs = /* @__PURE__ */ new Map) {
   if (cached)
     return cached;
   if (Array.isArray(source)) {
-    const result = [];
-    refs.set(source, result);
+    const result2 = [];
+    refs.set(source, result2);
     source.forEach((value, index) => {
-      result[index] = Reflect.apply(clone, null, [value, refs]);
+      result2[index] = Reflect.apply(clone, null, [value, refs]);
     });
-    return result;
+    return result2;
   }
   const result = Object.create(Object.getPrototypeOf(source));
   refs.set(source, result);
@@ -122,11 +227,11 @@ function deepEqual(a, b, strict) {
   function check(test, then) {
     return test(a) ? test(b) ? then(a, b) : false : test(b) ? false : undefined;
   }
-  return check(Array.isArray, (a, b) => a.length === b.length && a.every((item, index) => deepEqual(item, b[index]))) ?? check(is("Date"), (a, b) => a.valueOf() === b.valueOf()) ?? check(is("RegExp"), (a, b) => a.source === b.source && a.flags === b.flags) ?? check(isArrayBufferLike, (a, b) => {
-    if (a.byteLength !== b.byteLength)
+  return check(Array.isArray, (a2, b2) => a2.length === b2.length && a2.every((item, index) => deepEqual(item, b2[index]))) ?? check(is("Date"), (a2, b2) => a2.valueOf() === b2.valueOf()) ?? check(is("RegExp"), (a2, b2) => a2.source === b2.source && a2.flags === b2.flags) ?? check(isArrayBufferLike, (a2, b2) => {
+    if (a2.byteLength !== b2.byteLength)
       return false;
-    const viewA = new Uint8Array(a);
-    const viewB = new Uint8Array(b);
+    const viewA = new Uint8Array(a2);
+    const viewB = new Uint8Array(b2);
     for (let i = 0;i < viewA.length; i++)
       if (viewA[i] !== viewB[i])
         return false;
@@ -136,18 +241,75 @@ function deepEqual(a, b, strict) {
     ...b
   }).every((key) => deepEqual(a[key], b[key], strict));
 }
-var Binary, base64ToArrayBuffer, arrayBufferToBase64, hexToArrayBuffer, arrayBufferToHex, Time;
+function capitalize(source) {
+  return source.charAt(0).toUpperCase() + source.slice(1);
+}
+function uncapitalize(source) {
+  return source.charAt(0).toLowerCase() + source.slice(1);
+}
+function camelCase(source) {
+  return source.replace(/[_-][a-z]/g, (str) => str.slice(1).toUpperCase());
+}
+function tokenize(source, delimiters, delimiter) {
+  const output = [];
+  let state = 0;
+  for (let i = 0;i < source.length; i++) {
+    const code = source.charCodeAt(i);
+    if (code >= 65 && code <= 90) {
+      if (state === 1) {
+        const next = source.charCodeAt(i + 1);
+        if (next >= 97 && next <= 122)
+          output.push(delimiter);
+        output.push(code + 32);
+      } else {
+        if (state !== 0)
+          output.push(delimiter);
+        output.push(code + 32);
+      }
+      state = 1;
+    } else if (code >= 97 && code <= 122) {
+      output.push(code);
+      state = 2;
+    } else if (delimiters.includes(code)) {
+      if (state !== 0)
+        output.push(delimiter);
+      state = 0;
+    } else
+      output.push(code);
+  }
+  return String.fromCharCode(...output);
+}
+function paramCase(source) {
+  return tokenize(source, [45, 95], 45);
+}
+function snakeCase(source) {
+  return tokenize(source, [45, 95], 95);
+}
+function formatProperty(key) {
+  if (typeof key !== "string")
+    return `[${key.toString()}]`;
+  return /^[a-z_$][\w$]*$/i.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
+}
+function trimSlash(source) {
+  return source.replace(/\/$/, "");
+}
+function sanitize(source) {
+  if (!source.startsWith("/"))
+    source = "/" + source;
+  return trimSlash(source);
+}
+var Binary, base64ToArrayBuffer, arrayBufferToBase64, hexToArrayBuffer, arrayBufferToHex, camelize, hyphenate, Time;
 var init_lib = __esm(() => {
-  (function(Binary) {
-    Binary.is = isArrayBufferLike;
-    Binary.isSource = isArrayBufferSource;
+  (function(Binary2) {
+    Binary2.is = isArrayBufferLike;
+    Binary2.isSource = isArrayBufferSource;
     function fromSource(source) {
       if (ArrayBuffer.isView(source))
         return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
       else
         return source;
     }
-    Binary.fromSource = fromSource;
+    Binary2.fromSource = fromSource;
     function toBase64(source) {
       source = fromSource(source);
       if (typeof Buffer !== "undefined")
@@ -158,20 +320,20 @@ var init_lib = __esm(() => {
         binary += String.fromCharCode(bytes[i]);
       return btoa(binary);
     }
-    Binary.toBase64 = toBase64;
+    Binary2.toBase64 = toBase64;
     function fromBase64(source) {
       if (typeof Buffer !== "undefined")
         return fromSource(Buffer.from(source, "base64"));
       return Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
     }
-    Binary.fromBase64 = fromBase64;
+    Binary2.fromBase64 = fromBase64;
     function toHex(source) {
       source = fromSource(source);
       if (typeof Buffer !== "undefined")
         return Buffer.from(source).toString("hex");
       return Array.from(new Uint8Array(source), (byte) => byte.toString(16).padStart(2, "0")).join("");
     }
-    Binary.toHex = toHex;
+    Binary2.toHex = toHex;
     function fromHex(source) {
       if (typeof Buffer !== "undefined")
         return fromSource(Buffer.from(source, "hex"));
@@ -181,43 +343,45 @@ var init_lib = __esm(() => {
         buffer.push(parseInt(`${hex[i]}${hex[i + 1]}`, 16));
       return Uint8Array.from(buffer).buffer;
     }
-    Binary.fromHex = fromHex;
+    Binary2.fromHex = fromHex;
   })(Binary || (Binary = {}));
   base64ToArrayBuffer = Binary.fromBase64;
   arrayBufferToBase64 = Binary.toBase64;
   hexToArrayBuffer = Binary.fromHex;
   arrayBufferToHex = Binary.toHex;
-  (function(Time) {
-    Time.millisecond = 1;
-    Time.second = 1000;
-    Time.minute = Time.second * 60;
-    Time.hour = Time.minute * 60;
-    Time.day = Time.hour * 24;
-    Time.week = Time.day * 7;
+  camelize = camelCase;
+  hyphenate = paramCase;
+  (function(Time2) {
+    Time2.millisecond = 1;
+    Time2.second = 1000;
+    Time2.minute = Time2.second * 60;
+    Time2.hour = Time2.minute * 60;
+    Time2.day = Time2.hour * 24;
+    Time2.week = Time2.day * 7;
     let timezoneOffset = (/* @__PURE__ */ new Date()).getTimezoneOffset();
     function setTimezoneOffset(offset) {
       timezoneOffset = offset;
     }
-    Time.setTimezoneOffset = setTimezoneOffset;
+    Time2.setTimezoneOffset = setTimezoneOffset;
     function getTimezoneOffset() {
       return timezoneOffset;
     }
-    Time.getTimezoneOffset = getTimezoneOffset;
+    Time2.getTimezoneOffset = getTimezoneOffset;
     function getDateNumber(date = /* @__PURE__ */ new Date, offset) {
       if (typeof date === "number")
         date = new Date(date);
       if (offset === undefined)
         offset = timezoneOffset;
-      return Math.floor((date.valueOf() / Time.minute - offset) / 1440);
+      return Math.floor((date.valueOf() / Time2.minute - offset) / 1440);
     }
-    Time.getDateNumber = getDateNumber;
+    Time2.getDateNumber = getDateNumber;
     function fromDateNumber(value, offset) {
-      const date = new Date(value * Time.day);
+      const date = new Date(value * Time2.day);
       if (offset === undefined)
         offset = timezoneOffset;
-      return new Date(+date + offset * Time.minute);
+      return new Date(+date + offset * Time2.minute);
     }
-    Time.fromDateNumber = fromDateNumber;
+    Time2.fromDateNumber = fromDateNumber;
     const numeric = /\d+(?:\.\d+)?/.source;
     const timeRegExp = new RegExp(`^${[
       "w(?:eek(?:s)?)?",
@@ -230,9 +394,9 @@ var init_lib = __esm(() => {
       const capture = timeRegExp.exec(source);
       if (!capture)
         return 0;
-      return (parseFloat(capture[1]) * Time.week || 0) + (parseFloat(capture[2]) * Time.day || 0) + (parseFloat(capture[3]) * Time.hour || 0) + (parseFloat(capture[4]) * Time.minute || 0) + (parseFloat(capture[5]) * Time.second || 0);
+      return (parseFloat(capture[1]) * Time2.week || 0) + (parseFloat(capture[2]) * Time2.day || 0) + (parseFloat(capture[3]) * Time2.hour || 0) + (parseFloat(capture[4]) * Time2.minute || 0) + (parseFloat(capture[5]) * Time2.second || 0);
     }
-    Time.parseTime = parseTime;
+    Time2.parseTime = parseTime;
     function parseDate(date) {
       const parsed = parseTime(date);
       if (parsed)
@@ -243,34 +407,34 @@ var init_lib = __esm(() => {
         date = `${(/* @__PURE__ */ new Date()).getFullYear()}-${date}`;
       return date ? new Date(date) : /* @__PURE__ */ new Date;
     }
-    Time.parseDate = parseDate;
+    Time2.parseDate = parseDate;
     function format(ms) {
       const abs = Math.abs(ms);
-      if (abs >= Time.day - Time.hour / 2)
-        return Math.round(ms / Time.day) + "d";
-      else if (abs >= Time.hour - Time.minute / 2)
-        return Math.round(ms / Time.hour) + "h";
-      else if (abs >= Time.minute - Time.second / 2)
-        return Math.round(ms / Time.minute) + "m";
-      else if (abs >= Time.second)
-        return Math.round(ms / Time.second) + "s";
+      if (abs >= Time2.day - Time2.hour / 2)
+        return Math.round(ms / Time2.day) + "d";
+      else if (abs >= Time2.hour - Time2.minute / 2)
+        return Math.round(ms / Time2.hour) + "h";
+      else if (abs >= Time2.minute - Time2.second / 2)
+        return Math.round(ms / Time2.minute) + "m";
+      else if (abs >= Time2.second)
+        return Math.round(ms / Time2.second) + "s";
       return ms + "ms";
     }
-    Time.format = format;
+    Time2.format = format;
     function toDigits(source, length = 2) {
       return source.toString().padStart(length, "0");
     }
-    Time.toDigits = toDigits;
-    function template(template, time = /* @__PURE__ */ new Date) {
-      return template.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
+    Time2.toDigits = toDigits;
+    function template(template2, time = /* @__PURE__ */ new Date) {
+      return template2.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
     }
-    Time.template = template;
+    Time2.template = template;
   })(Time || (Time = {}));
 });
 
 // packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
 var require_lib = __commonJS(function(exports, module) {
-  var _deepseek_ai_cosmokit = (init_lib(), {});
+  var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
   var kSchema = Symbol.for("schemastery");
   var kValidationError = Symbol.for("ValidationError");
   globalThis.__schemastery_index__ ??= 0;
@@ -298,18 +462,18 @@ var require_lib = __commonJS(function(exports, module) {
   };
   Object.defineProperty(ValidationError.prototype, kValidationError, { value: true });
   var Schema = function(options) {
-    const schema = function(data, options = {}) {
-      return Schema.resolve(data, schema, options)[0];
+    const schema = function(data, options2 = {}) {
+      return Schema.resolve(data, schema, options2)[0];
     };
     if (options.refs) {
-      const refs = (0, mapValues)(options.refs, (options) => new Schema(options));
+      const refs = (0, _deepseek_ai_cosmokit.valueMap)(options.refs, (options2) => new Schema(options2));
       const getRef = (uid) => refs[uid];
       for (const key in refs) {
-        const options = refs[key];
-        options.sKey = getRef(options.sKey);
-        options.inner = getRef(options.inner);
-        options.list = options.list && options.list.map(getRef);
-        options.dict = options.dict && (0, mapValues)(options.dict, getRef);
+        const options2 = refs[key];
+        options2.sKey = getRef(options2.sKey);
+        options2.inner = getRef(options2.inner);
+        options2.list = options2.list && options2.list.map(getRef);
+        options2.dict = options2.dict && (0, _deepseek_ai_cosmokit.valueMap)(options2.dict, getRef);
       }
       return refs[options.uid];
     }
@@ -382,7 +546,7 @@ var require_lib = __commonJS(function(exports, module) {
     return value?.$value ?? value?.$inner;
   }
   function extractKeys(data) {
-    return (0, filterKeys)(data ?? {}, (key) => !key.startsWith("$"));
+    return (0, _deepseek_ai_cosmokit.filterKeys)(data ?? {}, (key) => !key.startsWith("$"));
   }
   Schema.prototype.i18n = function i18n(messages) {
     const schema = Schema(this);
@@ -390,12 +554,12 @@ var require_lib = __commonJS(function(exports, module) {
     if (Object.keys(desc).length)
       schema.meta.description = desc;
     if (schema.dict)
-      schema.dict = (0, mapValues)(schema.dict, (inner, key) => {
-        return inner.i18n((0, mapValues)(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
+      schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(schema.dict, (inner, key) => {
+        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
       });
     if (schema.list)
       schema.list = schema.list.map((inner, index) => {
-        return inner.i18n((0, mapValues)(messages, (data = {}) => {
+        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data = {}) => {
           if (Array.isArray(getInner(data)))
             return getInner(data)[index];
           if (Array.isArray(data))
@@ -404,13 +568,13 @@ var require_lib = __commonJS(function(exports, module) {
         }));
       });
     if (schema.inner)
-      schema.inner = schema.inner.i18n((0, mapValues)(messages, (data) => {
+      schema.inner = schema.inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => {
         if (getInner(data))
           return getInner(data);
         return extractKeys(data);
       }));
     if (schema.sKey)
-      schema.sKey = schema.sKey.i18n((0, mapValues)(messages, (data) => data?.$key));
+      schema.sKey = schema.sKey.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => data?.$key));
     return schema;
   };
   Schema.prototype.extra = function extra(key, value) {
@@ -456,33 +620,33 @@ var require_lib = __commonJS(function(exports, module) {
   };
   Schema.prototype.pattern = function pattern(regexp) {
     const schema = Schema(this);
-    const pattern = (0, pick)(regexp, ["source", "flags"]);
+    const pattern2 = (0, _deepseek_ai_cosmokit.pick)(regexp, ["source", "flags"]);
     schema.meta = {
       ...schema.meta,
-      pattern
+      pattern: pattern2
     };
     return schema;
   };
   Schema.prototype.simplify = function simplify(value) {
-    if ((0, deepEqual)(value, this.meta.default, this.type === "dict"))
+    if ((0, _deepseek_ai_cosmokit.deepEqual)(value, this.meta.default, this.type === "dict"))
       return null;
-    if ((0, isNullable)(value))
+    if ((0, _deepseek_ai_cosmokit.isNullable)(value))
       return value;
     if (this.type === "object" || this.type === "dict") {
       const result = {};
       for (const key in value) {
         const item = (this.type === "object" ? this.dict[key] : this.inner)?.simplify(value[key]);
-        if (this.type === "dict" || !(0, isNullable)(item))
+        if (this.type === "dict" || !(0, _deepseek_ai_cosmokit.isNullable)(item))
           result[key] = item;
       }
-      if ((0, deepEqual)(result, this.meta.default, this.type === "dict"))
+      if ((0, _deepseek_ai_cosmokit.deepEqual)(result, this.meta.default, this.type === "dict"))
         return null;
       return result;
     } else if (this.type === "array" || this.type === "tuple") {
       const result = [];
-      value.forEach((value, index) => {
+      value.forEach((value2, index) => {
         const schema = this.type === "array" ? this.inner : this.list[index];
-        const item = schema ? schema.simplify(value) : value;
+        const item = schema ? schema.simplify(value2) : value2;
         result.push(item);
       });
       return result;
@@ -537,18 +701,18 @@ var require_lib = __commonJS(function(exports, module) {
       return [data];
     if (options.ignore?.(data, schema))
       return [data];
-    if ((0, isNullable)(data) && schema.type !== "lazy") {
+    if ((0, _deepseek_ai_cosmokit.isNullable)(data) && schema.type !== "lazy") {
       if (schema.meta.required)
         throw new ValidationError(`missing required value`, options);
       let current = schema;
       let fallback = schema.meta.default;
-      while (current?.type === "intersect" && (0, isNullable)(fallback)) {
+      while (current?.type === "intersect" && (0, _deepseek_ai_cosmokit.isNullable)(fallback)) {
         current = current.list[0];
         fallback = current?.meta.default;
       }
-      if ((0, isNullable)(fallback))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(fallback))
         return [data];
-      data = (0, clone)(fallback);
+      data = (0, _deepseek_ai_cosmokit.clone)(fallback);
     }
     const callback = resolvers[schema.type];
     if (!callback)
@@ -562,7 +726,7 @@ var require_lib = __commonJS(function(exports, module) {
     }
   };
   Schema.from = function from(source) {
-    if ((0, isNullable)(source))
+    if ((0, _deepseek_ai_cosmokit.isNullable)(source))
       return Schema.any();
     else if ([
       "string",
@@ -614,10 +778,10 @@ var require_lib = __commonJS(function(exports, module) {
   };
   Schema.date = function date() {
     return Schema.union([Schema.is(Date), Schema.transform(Schema.string().role("datetime"), (value, options) => {
-      const date = new Date(value);
-      if (isNaN(+date))
+      const date2 = new Date(value);
+      if (isNaN(+date2))
         throw new ValidationError(`invalid date "${value}"`, options);
-      return date;
+      return date2;
     }, true)]);
   };
   Schema.regExp = function regExp(flag = "") {
@@ -634,13 +798,13 @@ var require_lib = __commonJS(function(exports, module) {
       Schema.is(ArrayBuffer),
       Schema.is(SharedArrayBuffer),
       Schema.transform(Schema.any(), (value, options) => {
-        if (Binary.isSource(value))
-          return Binary.fromSource(value);
+        if (_deepseek_ai_cosmokit.Binary.isSource(value))
+          return _deepseek_ai_cosmokit.Binary.fromSource(value);
         throw new ValidationError(`expected ArrayBufferSource but got ${value}`, options);
       }, true),
       ...encoding ? [Schema.transform(Schema.string(), (value, options) => {
         try {
-          return encoding === "base64" ? Binary.fromBase64(value) : Binary.fromHex(value);
+          return encoding === "base64" ? _deepseek_ai_cosmokit.Binary.fromBase64(value) : _deepseek_ai_cosmokit.Binary.fromHex(value);
         } catch (e) {
           throw new ValidationError(e.message, options);
         }
@@ -664,7 +828,7 @@ var require_lib = __commonJS(function(exports, module) {
     throw new ValidationError(`expected nullable but got ${data}`, options);
   });
   Schema.extend("const", (data, { value }, options) => {
-    if ((0, deepEqual)(data, value))
+    if ((0, _deepseek_ai_cosmokit.deepEqual)(data, value))
       return [value];
     throw new ValidationError(`expected ${value} but got ${data}`, options);
   });
@@ -753,7 +917,7 @@ var require_lib = __commonJS(function(exports, module) {
         return [data];
       throw new ValidationError(`expected ${constructor.name} but got ${data}`, options);
     } else {
-      if ((0, isNullable)(data))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(data))
         throw new ValidationError(`expected ${constructor} but got ${data}`, options);
       let prototype = Object.getPrototypeOf(data);
       while (prototype) {
@@ -783,11 +947,11 @@ var require_lib = __commonJS(function(exports, module) {
   Schema.extend("array", (data, { inner, meta }, options) => {
     if (!Array.isArray(data))
       throw new ValidationError(`expected array but got ${data}`, options);
-    checkWithinRange(data.length, meta, "array length", options, !(0, isNullable)(inner.meta.default));
+    checkWithinRange(data.length, meta, "array length", options, !(0, _deepseek_ai_cosmokit.isNullable)(inner.meta.default));
     return [data.map((_, index) => property(data, index, inner, options))];
   });
   Schema.extend("dict", (data, { inner, sKey }, options, strict) => {
-    if (!(0, isPlainObject)(data))
+    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
       throw new ValidationError(`expected object but got ${data}`, options);
     const result = {};
     for (const key in data) {
@@ -823,12 +987,12 @@ var require_lib = __commonJS(function(exports, module) {
     }
   }
   Schema.extend("object", (data, { dict }, options, strict) => {
-    if (!(0, isPlainObject)(data))
+    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
       throw new ValidationError(`expected object but got ${data}`, options);
     const result = {};
     for (const key in dict) {
       const value = property(data, key, dict[key], options);
-      if (!(0, isNullable)(value) || key in data)
+      if (!(0, _deepseek_ai_cosmokit.isNullable)(value) || key in data)
         result[key] = value;
     }
     if (!strict)
@@ -851,9 +1015,9 @@ var require_lib = __commonJS(function(exports, module) {
     let result;
     for (const inner of list) {
       const value = Schema.resolve(data, inner, options, true)[0];
-      if ((0, isNullable)(value))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(value))
         continue;
-      if ((0, isNullable)(result))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(result))
         result = value;
       else if (typeof result !== typeof value)
         throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
@@ -862,7 +1026,7 @@ var require_lib = __commonJS(function(exports, module) {
       else if (result !== value)
         throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
     }
-    if (!strict && (0, isPlainObject)(data))
+    if (!strict && (0, _deepseek_ai_cosmokit.isPlainObject)(data))
       merge(result, data);
     return [result];
   });
@@ -890,14 +1054,14 @@ var require_lib = __commonJS(function(exports, module) {
             schema.list = args[index].map(Schema.from);
             break;
           case "dict":
-            schema.dict = (0, mapValues)(args[index], Schema.from);
+            schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(args[index], Schema.from);
             break;
           case "bits":
             schema.bits = {};
-            for (const key in args[index]) {
-              if (typeof args[index][key] !== "number")
+            for (const key2 in args[index]) {
+              if (typeof args[index][key2] !== "number")
                 continue;
-              schema.bits[key] = args[index][key];
+              schema.bits[key2] = args[index][key2];
             }
             break;
           case "callback": {
@@ -971,6 +1135,7 @@ import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
+var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -1022,7 +1187,7 @@ function workspaceRootsOf(agents) {
     return [];
   }
 }
-function noop() {}
+function noop2() {}
 function scopeOfAgentContext(agent) {
   let context;
   try {
@@ -1055,6 +1220,75 @@ function scopeOfAgentContext(agent) {
     on: (event, handler) => on.call(context, event, handler),
     effect: (fn, label) => effect.call(context, fn, label)
   };
+}
+function teamContextOf(raw) {
+  return raw === "fresh" || raw === "fork" ? raw : undefined;
+}
+function teamStatusOf(raw) {
+  return raw === "running" || raw === "provisioning" || raw === "failed" ? raw : "inactive";
+}
+function teamTaskStatusOf(raw) {
+  return raw === "in_progress" || raw === "completed" || raw === "deleted" ? raw : "pending";
+}
+function teamStrings(raw) {
+  return Array.isArray(raw) ? raw.filter((entry) => typeof entry === "string") : [];
+}
+function teamMemberView(raw) {
+  const row = raw ?? {};
+  const context = teamContextOf(row.context);
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    role: row.role === "lead" ? "lead" : "teammate",
+    status: teamStatusOf(row.status),
+    ...typeof row.description === "string" ? { description: row.description } : {},
+    ...typeof row.provider === "string" ? { provider: row.provider } : {},
+    ...context === undefined ? {} : { context },
+    ...typeof row.model === "string" ? { model: row.model } : {},
+    diagnostics: teamStrings(row.diagnostics)
+  };
+}
+function teamTaskView(raw) {
+  const row = raw ?? {};
+  return {
+    id: String(row.id ?? ""),
+    revision: typeof row.revision === "number" ? row.revision : 0,
+    subject: String(row.subject ?? ""),
+    description: String(row.description ?? ""),
+    status: teamTaskStatusOf(row.status),
+    blockedBy: teamStrings(row.blockedBy),
+    writeScopes: teamStrings(row.writeScopes),
+    ...typeof row.ownerName === "string" ? { ownerName: row.ownerName } : {},
+    ready: row.ready === true,
+    writeScopeWarnings: teamStrings(row.writeScopeWarnings)
+  };
+}
+function teamRows(teams, method, agent, project) {
+  const reader = teams?.[method];
+  if (typeof reader !== "function")
+    return [];
+  try {
+    const rows = reader.call(teams, agent);
+    return Array.isArray(rows) ? rows.map(project) : [];
+  } catch {
+    return [];
+  }
+}
+function agentSystemPromptOf(agent) {
+  let context;
+  try {
+    context = agent?.ctx;
+  } catch {
+    return;
+  }
+  if (context === undefined || context === null)
+    return;
+  try {
+    const systemPrompt = context.systemPrompt;
+    return typeof systemPrompt?.section === "function" ? systemPrompt : undefined;
+  } catch {
+    return;
+  }
 }
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
@@ -1248,6 +1482,7 @@ function createDshAdapter(ctx, config = {}) {
       const compaction = service("compaction");
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
+      const agentTeams = service("agentTeams");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -1288,7 +1523,13 @@ function createDshAdapter(ctx, config = {}) {
         agentTurnStart: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
         agentTurnCancel: liveAgents().some((candidate) => typeof candidate?.cancel === "function"),
         agentTurnSteer: liveAgents().some((candidate) => typeof candidate?.steer === "function"),
-        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function")
+        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function"),
+        agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
+        agentPreStep: typeof ctx?.on === "function",
+        team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
+        teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
+        teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
       };
     },
     workspaceRoot,
@@ -1304,18 +1545,18 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config, signal) {
+    llmResolveCallConfig(config2, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config, signal);
+      return llm.resolveCallConfig.call(llm, config2, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
       const registered = tools.register(definition);
-      return typeof registered === "function" ? registered : noop;
+      return typeof registered === "function" ? registered : noop2;
     },
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
@@ -1343,7 +1584,7 @@ function createDshAdapter(ctx, config = {}) {
     registerCommand(definition) {
       const commands = service("commands");
       if (commands === undefined || commands === null || typeof commands.register !== "function")
-        return noop;
+        return noop2;
       const registered = commands.register({
         name: definition?.name,
         description: definition?.description,
@@ -1352,18 +1593,18 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message) => adapter.submitUserTurn(host.agent, message)
+            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
           });
         }
       });
-      return typeof registered === "function" ? registered : noop;
+      return typeof registered === "function" ? registered : noop2;
     },
     registerPromptSection(section) {
       const systemPrompt = requireService("systemPrompt", 'cannot register prompt section "' + String(section?.name) + '"');
       if (typeof systemPrompt.section !== "function")
         throw new Error("mpd-dsh-adapter: the harness systemPrompt service exposes no section()");
       const registered = systemPrompt.section(section);
-      return typeof registered === "function" ? registered : noop;
+      return typeof registered === "function" ? registered : noop2;
     },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
@@ -1373,7 +1614,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     onPreToolExecute(listener) {
       if (typeof ctx?.on !== "function")
-        return noop;
+        return noop2;
       return ctx.on("tools/pre-execute", async (exec, next) => {
         const downstream = typeof next === "function" ? await next() : undefined;
         try {
@@ -1384,11 +1625,25 @@ function createDshAdapter(ctx, config = {}) {
     },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")
-        return noop;
+        return noop2;
       return ctx.on("tools/post-execute", async (exec, result, next) => {
         const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
         const decided = await listener(exec ?? {}, result ?? {}, downstream);
         return decided ?? downstream;
+      });
+    },
+    onAgentPreStep(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop2;
+      return ctx.on("agent/pre-step", async (payload, next) => {
+        const fallback = { kind: "enter", messages: payload?.messages ?? [] };
+        const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
+        try {
+          const decided = await listener(payload ?? {}, downstream);
+          return decided ?? downstream;
+        } catch {
+          return downstream;
+        }
       });
     },
     hasTool(toolName) {
@@ -1484,11 +1739,129 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()");
       return subagents.startContinuable.call(subagents, spec);
     },
+    registerSubagentProvider(provider) {
+      const subagents = requireService("subagents", "cannot register a subagent provider");
+      if (typeof subagents.registerProvider !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no registerProvider()");
+      const registered = subagents.registerProvider(provider);
+      return typeof registered === "function" ? registered : noop2;
+    },
     interruptAgent(targetSessionId, authority) {
       const subagents = requireService("subagents", 'cannot interrupt subagent session "' + String(targetSessionId) + '"');
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamService() {
+      const teams = service("agentTeams");
+      return teams === undefined || teams === null ? undefined : teams;
+    },
+    teamMembership(agent) {
+      const teams = service("agentTeams");
+      const tryMembership = teams?.tryMembership;
+      if (typeof tryMembership !== "function")
+        return;
+      let membership;
+      try {
+        membership = tryMembership.call(teams, agent);
+      } catch {
+        return;
+      }
+      if (membership === undefined || membership === null)
+        return;
+      const role = membership.role;
+      if (role !== "lead" && role !== "teammate")
+        return;
+      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+    },
+    teamListMembers(agent) {
+      const teams = requireService("agentTeams", "cannot list the team roster of an agent");
+      if (typeof teams.listMembers !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listMembers()");
+      const rows = teams.listMembers.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamMemberView) : [];
+    },
+    teamListTasks(agent) {
+      const teams = requireService("agentTeams", "cannot list the shared task board of an agent");
+      if (typeof teams.listTasks !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()");
+      const rows = teams.listTasks.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamTaskView) : [];
+    },
+    async teamCreateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot create team task "' + String(request?.subject) + '"');
+      if (typeof teams.createTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()");
+      return teamTaskView(await teams.createTask.call(teams, caller, request));
+    },
+    teamGetTask(caller, id) {
+      const teams = requireService("agentTeams", 'cannot read team task "' + String(id) + '"');
+      if (typeof teams.getTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()");
+      return teamTaskView(teams.getTask.call(teams, caller, id));
+    },
+    async teamUpdateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot update team task "' + String(request?.taskId) + '"');
+      if (typeof teams.updateTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()");
+      return teamTaskView(await teams.updateTask.call(teams, caller, request));
+    },
+    async teamSendMessage(caller, request) {
+      const teams = requireService("agentTeams", 'cannot send a team message to "' + String(request?.target) + '"');
+      if (typeof teams.sendMessage !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no sendMessage()");
+      const result = await teams.sendMessage.call(teams, caller, request);
+      return {
+        messageId: String(result?.messageId ?? ""),
+        status: result?.status === "queued" ? "queued" : "accepted"
+      };
+    },
+    async teamSpawnTeammate(caller, request) {
+      const teams = requireService("agentTeams", 'cannot spawn team member "' + String(request?.name) + '"');
+      if (typeof teams.spawnTeammate !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no spawnTeammate()");
+      const result = await teams.spawnTeammate.call(teams, caller, request);
+      return { member: teamMemberView(result?.member) };
+    },
+    teamInterrupt(caller, targetName) {
+      const teams = requireService("agentTeams", 'cannot interrupt team member "' + String(targetName) + '"');
+      if (typeof teams.interrupt !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no interrupt()");
+      const result = teams.interrupt.call(teams, caller, targetName);
+      return { previousStatus: result?.previousStatus === "running" ? "running" : "inactive" };
+    },
+    async teamWaitForChange(caller, timeoutMs, signal) {
+      const teams = requireService("agentTeams", "cannot wait for team activity");
+      if (typeof teams.waitForChange !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no waitForChange()");
+      const result = await teams.waitForChange.call(teams, caller, timeoutMs, signal);
+      return { timedOut: result?.timedOut === true };
+    },
+    teamLiveTeams() {
+      const teams = service("agentTeams");
+      if (teams === undefined || teams === null || typeof teams.tryMembership !== "function")
+        return [];
+      if (typeof service("agents")?.list !== "function")
+        return [];
+      const views = [];
+      for (const agent of liveAgents()) {
+        let membership;
+        try {
+          membership = teams.tryMembership.call(teams, agent);
+        } catch {
+          continue;
+        }
+        if (membership?.role !== "lead")
+          continue;
+        views.push({
+          teamId: String(membership.id ?? ""),
+          leadName: String(membership.name ?? ""),
+          leadSessionId: String(agent?.id ?? ""),
+          members: teamRows(teams, "listMembers", agent, teamMemberView),
+          tasks: teamRows(teams, "listTasks", agent, teamTaskView)
+        });
+      }
+      return views;
     },
     registerSkillProvider(provider) {
       const skills = requireService("skills", "cannot register a skill provider");
@@ -1511,7 +1884,7 @@ function createDshAdapter(ctx, config = {}) {
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
+        throw new Error("mpd-dsh-adapter: the harness agentPresets service exposes no resolve()");
       const preset = await presets.resolve(presetId);
       return {
         id: String(preset?.id ?? presetId),
@@ -1645,11 +2018,19 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message) {
+    agentPromptSection(agent, section) {
+      const systemPrompt = agentSystemPromptOf(agent);
+      if (systemPrompt === undefined) {
+        throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
+      }
+      const registered = systemPrompt.section(section);
+      return typeof registered === "function" ? registered : noop2;
+    },
+    startAgentTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message);
+      followup.call(agent, message2);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -1657,24 +2038,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message) {
+    steerAgentTurn(agent, message2) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message);
+      steer.call(agent, message2);
     },
-    injectAgentMessage(agent, message) {
+    injectAgentMessage(agent, message2) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message);
+      inject.call(agent, message2);
     },
-    submitUserTurn(agent, message) {
+    submitUserTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message);
+        followup.call(agent, message2);
         return true;
       } catch {
         return false;
@@ -1686,7 +2067,7 @@ function createDshAdapter(ctx, config = {}) {
 
 // packages/mpd-team-watchdog-plugin/src/actions.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { join as join4 } from "node:path";
+import { join as join3 } from "node:path";
 
 // packages/mpd-team-watchdog-plugin/src/paths.ts
 import { createHash } from "node:crypto";
@@ -1712,12 +2093,6 @@ function stateRoot(workspace, stateDir = DEFAULT_STATE_DIR) {
 }
 function watchdogRoot(workspace, stateDir = DEFAULT_STATE_DIR) {
   return join(stateRoot(workspace, stateDir), WATCHDOG_DIR);
-}
-function teamPath(workspace, stateDir, teamId) {
-  return join(stateRoot(workspace, stateDir), String(teamId), "team.json");
-}
-function teamDir(workspace, stateDir, teamId) {
-  return join(stateRoot(workspace, stateDir), String(teamId));
 }
 function heartbeatDir(workspace, stateDir = DEFAULT_STATE_DIR) {
   return join(watchdogRoot(workspace, stateDir), "heartbeat");
@@ -1981,10 +2356,9 @@ function ackIncidents(workspace, stateDir, reader, upTo) {
 }
 
 // packages/mpd-team-watchdog-plugin/src/team.ts
-import { readFileSync as readFileSync3, readdirSync as readdirSync2, statSync } from "node:fs";
-import { join as join3 } from "node:path";
-var TERMINAL_STATUSES = ["completed", "failed", "cancelled"];
+var TERMINAL_STATUSES = ["completed", "deleted", "failed", "cancelled"];
 var CAPTAIN_KEY = "captain";
+var OFFICIAL_LEAD_NAME = "lead";
 function agentIds(agent) {
   const candidate = agent ?? {};
   const id = typeof candidate.id === "string" ? candidate.id : "";
@@ -1992,101 +2366,70 @@ function agentIds(agent) {
   const cwd = typeof candidate.session?.header?.cwd === "string" ? candidate.session.header.cwd : undefined;
   return { agentId: id, sessionId, cwd };
 }
-function recordActivityAt(raw) {
-  const candidates = [];
-  if (Array.isArray(raw.tasks)) {
-    for (const task of raw.tasks) {
-      if (task !== null && typeof task === "object" && typeof task.updatedAt === "number")
-        candidates.push(task.updatedAt);
-    }
-  }
-  for (const field of ["updatedAt", "approvedAt", "createdAt"]) {
-    const value = raw[field];
-    if (typeof value === "number")
-      candidates.push(value);
-  }
-  if (candidates.length === 0)
-    return null;
-  return Math.max(...candidates);
+function isWatchedTeam(view) {
+  const members = Array.isArray(view.members) ? view.members : [];
+  if (members.some((member) => member.role === "teammate"))
+    return true;
+  return Array.isArray(view.tasks) && view.tasks.length > 0;
 }
-function readTeam(workspace, stateDir, teamId) {
-  let text;
-  try {
-    text = readFileSync3(teamPath(workspace, stateDir, teamId), "utf8");
-  } catch {
-    return;
-  }
-  try {
-    const raw = JSON.parse(text);
-    if (raw === null || typeof raw !== "object")
-      return;
-    const members = Array.isArray(raw.members) ? raw.members : [];
-    const tasks = Array.isArray(raw.tasks) ? raw.tasks : [];
+function generationToken(task) {
+  return typeof task.revision === "number" && Number.isFinite(task.revision) ? String(task.revision) : undefined;
+}
+function leadRow(members) {
+  return members.find((member) => member.role === "lead");
+}
+function projectTeamView(view) {
+  const rawMembers = (Array.isArray(view.members) ? view.members : []).filter((member) => member !== null && typeof member === "object");
+  const lead = leadRow(rawMembers);
+  const teammates = rawMembers.filter((member) => member.role !== "lead");
+  const rawTasks = (Array.isArray(view.tasks) ? view.tasks : []).filter((task) => task !== null && typeof task === "object");
+  const tasks = rawTasks.map((task) => {
+    const owner = typeof task.ownerName === "string" && task.ownerName !== "" ? task.ownerName : undefined;
+    const assignee = owner === OFFICIAL_LEAD_NAME ? CAPTAIN_KEY : owner;
+    const token = generationToken(task);
     return {
-      id: String(raw.id ?? teamId),
-      name: String(raw.name ?? raw.id ?? teamId),
-      ...typeof raw.phase === "string" ? { phase: raw.phase } : {},
-      ...typeof raw.halted === "boolean" ? { halted: raw.halted } : {},
-      ...typeof raw.haltedAt === "number" ? { haltedAt: raw.haltedAt } : {},
-      ...typeof raw.captainSessionId === "string" ? { captainSessionId: raw.captainSessionId } : {},
-      members: members.filter((member) => member !== null && typeof member === "object").map((member) => ({
-        id: String(member.id ?? ""),
-        name: String(member.name ?? ""),
-        ...typeof member.status === "string" ? { status: member.status } : {}
-      })),
-      tasks: tasks.filter((task) => task !== null && typeof task === "object").map((task) => ({
-        id: String(task.id ?? ""),
-        status: String(task.status ?? ""),
-        ...typeof task.assignee === "string" ? { assignee: task.assignee } : {},
-        ...typeof task.attempt === "number" ? { attempt: task.attempt } : {},
-        ...typeof task.attemptId === "string" ? { attemptId: task.attemptId } : {},
-        ...typeof task.updatedAt === "number" ? { updatedAt: task.updatedAt } : {},
-        ...Array.isArray(task.dependencies) ? { dependencies: task.dependencies.filter((id) => typeof id === "string") } : {}
-      })),
-      activityAt: recordActivityAt(raw),
-      createdAt: typeof raw.createdAt === "number" && Number.isFinite(raw.createdAt) ? raw.createdAt : null,
-      approvedAt: typeof raw.approvedAt === "number" && Number.isFinite(raw.approvedAt) ? raw.approvedAt : null,
-      raw
+      id: String(task.id ?? ""),
+      status: String(task.status ?? ""),
+      ...assignee === undefined ? {} : { assignee },
+      ...typeof task.revision === "number" && Number.isFinite(task.revision) ? { attempt: task.revision } : {},
+      ...token === undefined ? {} : { attemptId: token },
+      ...owner === undefined ? {} : { dispatched: true },
+      ...Array.isArray(task.blockedBy) ? { dependencies: task.blockedBy.filter((id) => typeof id === "string") } : {}
     };
-  } catch {
-    return;
-  }
+  });
+  const running = teammates.some((member) => member.status === "running" || member.status === "provisioning");
+  return {
+    id: String(view.teamId ?? ""),
+    name: String(lead?.name ?? view.leadName ?? ""),
+    phase: running ? "active" : "idle",
+    ...typeof view.leadSessionId === "string" && view.leadSessionId !== "" ? { captainSessionId: view.leadSessionId } : {},
+    members: teammates.map((member) => ({
+      id: String(member.id ?? ""),
+      name: String(member.name ?? ""),
+      ...typeof member.status === "string" ? { status: member.status } : {}
+    })),
+    tasks,
+    activityAt: null,
+    createdAt: null,
+    approvedAt: null,
+    raw: view
+  };
 }
-function listTeamIds(workspace, stateDir) {
-  let entries;
+function readTeams(dsh) {
+  let views;
   try {
-    entries = readdirSync2(join3(workspace, stateDir));
+    views = dsh.teamLiveTeams() ?? [];
   } catch {
     return [];
   }
-  const ids = [];
-  for (const entry of entries) {
-    if (entry === "watchdog" || entry === "archive" || entry.startsWith("."))
-      continue;
-    const dir = join3(workspace, stateDir, entry);
-    try {
-      if (!statSync(dir).isDirectory())
-        continue;
-    } catch {
-      continue;
-    }
-    try {
-      statSync(join3(dir, "team.json"));
-    } catch {
-      continue;
-    }
-    ids.push(entry);
-  }
-  return ids.sort();
+  return views.filter(isWatchedTeam).map(projectTeamView);
 }
-function readTeams(workspace, stateDir) {
-  const teams = [];
-  for (const id of listTeamIds(workspace, stateDir)) {
-    const team = readTeam(workspace, stateDir, id);
-    if (team !== undefined)
-      teams.push(team);
-  }
-  return teams;
+function readTeam(dsh, teamId) {
+  const wanted = String(teamId);
+  return readTeams(dsh).find((team) => team.id === wanted);
+}
+function listTeamIds(dsh) {
+  return readTeams(dsh).map((team) => team.id).sort();
 }
 function liveTasks(team) {
   return team.tasks.filter((task) => !TERMINAL_STATUSES.includes(task.status));
@@ -2183,7 +2526,7 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
   const predicateSource = surfaces.predicate;
   dsh.registerTool({
     name: HOLD_TOOL,
-    description: "Persist the team watchdog's PRESERVING hold for one team. This is the INTERNAL implementation of a team pause, not a second pause mechanism: the external pause a user operates is `agent_teams_halt` (the web Stop-team route), cleared by `agent_teams_resume`. The hold stops NEW dispatch into that team without cancelling anything: every non-terminal task keeps its status, assignee and attemptId. Returns applied:false (never a throw) when the hold could not be written, so a caller must not report a pause that did not land.",
+    description: "Persist the team watchdog's PRESERVING hold for one team. It is the ONLY pause this bundle implements (the official Agent Teams service exposes no halt), and it stops NEW dispatch into that team without cancelling anything: every non-terminal task keeps its status, owner and revision. Returns applied:false (never a throw) when the hold could not be written, so a caller must not report a pause that did not land.",
     parameters: {
       type: "object",
       properties: {
@@ -2220,7 +2563,7 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
   });
   dsh.registerTool({
     name: RESUME_TOOL,
-    description: "Clear the team watchdog's internal hold for one team (the implementation record only — the team pause itself is operated through `agent_teams_halt` / `agent_teams_resume`). A team that is not held is a no-op (resumed:false, reason:'not-held'), never an error; a second resume is likewise a no-op. Clearing the hold is the watchdog-side release only — the adopted dispatch gates that honour it are wired by w7.",
+    description: "Clear the team watchdog's preserving hold for one team. A team that is not held is a no-op (resumed:false, reason:'not-held'), never an error; a second resume is likewise a no-op. Clearing the hold is the watchdog-side release only — the dispatch gates that honour it are wired by w7.",
     parameters: {
       type: "object",
       properties: { team_id: { type: "string", description: "The team whose internal watchdog hold to clear." } },
@@ -2241,7 +2584,7 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
   });
   dsh.registerTool({
     name: STATUS_TOOL,
-    description: "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and (T-19) the ONE pause state per team: the external mechanism is `agent_teams_halt` and the watchdog's preserving hold is reported only as its INTERNAL implementation. Use it to inspect what a lane or a restarting process would read from disk.",
+    description: "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and the ONE pause state per team: the watchdog's preserving hold, which is the only pause mechanism this bundle has (the official Agent Teams service exposes no halt). Team rows come from the live OFFICIAL readout (`dsh.teamLiveTeams()`), so a team appears here exactly while one of its sessions is live. Use it to inspect what a lane or a restarting process would read from disk.",
     parameters: {
       type: "object",
       properties: { team_id: { type: "string", description: "Limit to one team." } },
@@ -2270,11 +2613,9 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
         for (const team of value.teams) {
           const pause = team.pause;
           if (pause?.paused === true) {
-            lines.push(team.teamId + ": PAUSED — mechanism: " + pause.mechanism + " (external) · watchdog preserving hold: internal implementation " + (pause.implementation === "watchdog-hold" ? "active" : "none"));
+            lines.push(team.teamId + ": PAUSED — the watchdog's preserving hold (the only pause mechanism; the official team service exposes no halt)");
           } else
             lines.push(team.teamId + ": not paused");
-          if (team.halt?.halted === true)
-            lines.push("  halted since " + String(team.halt.haltedAt ?? "(unknown)"));
         }
         return [{ type: "text", text: lines.join(`
 `) }];
@@ -2282,27 +2623,26 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
     },
     execute: (args, exec) => {
       const workspace = dsh.workspaceRoot(exec);
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(workspace, stateDir) : [args.team_id];
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id];
       return {
         workspace,
         predicate: predicateSource?.() ?? { source: "unknown", reason: "the engine did not publish a predicate source", enrichment: false, events: 0, sessions: 0, states: {}, announced: false },
         knobs: surfaces.knobs?.() ?? { readings: [], divergent: [], restartRequired: false, file: null, fileFound: false, fileApplied: false, liveLayer: "namespace" },
         paths: {
           heartbeat: heartbeatDir(workspace, stateDir),
-          hold: join4(workspace, stateDir, "watchdog", "hold"),
+          hold: join3(workspace, stateDir, "watchdog", "hold"),
           incidents: incidentsPath(workspace, stateDir),
           watermark: watermarkPath(workspace, stateDir)
         },
         teams: ids.map((teamId) => {
           const hold = readHold(workspace, stateDir, teamId);
-          const team = readTeam(workspace, stateDir, teamId);
-          const halted = team?.halted === true;
+          const team = readTeam(dsh, teamId);
           const held = hold !== undefined;
           const pause = {
-            paused: halted || held,
-            mechanism: "agent_teams_halt",
+            paused: held,
+            mechanism: "watchdog-hold",
             implementation: held ? "watchdog-hold" : "none",
-            halted,
+            halted: false,
             held
           };
           return {
@@ -2310,8 +2650,8 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
             held: hold !== undefined,
             hold: hold ?? null,
             phase: team?.phase ?? null,
-            halted: team?.halted ?? null,
-            halt: { halted, haltedAt: team?.haltedAt ?? null },
+            halted: false,
+            halt: { halted: false, haltedAt: null },
             pause,
             heartbeatKeys: listHeartbeatKeys(workspace, stateDir),
             heartbeatTails: Object.fromEntries(listHeartbeatKeys(workspace, stateDir).map((key) => {
@@ -2353,10 +2693,10 @@ function eventTimeOf(event) {
 }
 function callIdOf(event) {
   const data = dataOf(event);
-  const message = asRecord(data.message);
-  const content = Array.isArray(message?.content) ? message?.content : [];
+  const message3 = asRecord(data.message);
+  const content = Array.isArray(message3?.content) ? message3?.content : [];
   const first = asRecord(content[0]);
-  return asString(data.callId) ?? asString(data.toolCallId) ?? asString(first?.toolCallId) ?? asString(message?.toolCallId) ?? asString(message?.callId);
+  return asString(data.callId) ?? asString(data.toolCallId) ?? asString(first?.toolCallId) ?? asString(message3?.toolCallId) ?? asString(message3?.callId);
 }
 function toolNameOf(event) {
   const data = dataOf(event);
@@ -2566,9 +2906,9 @@ class ChannelFold {
 }
 
 // packages/mpd-team-watchdog-plugin/src/config-file.ts
-import { readFileSync as readFileSync4 } from "node:fs";
-import { join as join5 } from "node:path";
-var PROJECT_CONFIG_FILE = join5(".mpd", "mpd.jsonc");
+import { readFileSync as readFileSync3 } from "node:fs";
+import { join as join4 } from "node:path";
+var PROJECT_CONFIG_FILE = join4(".mpd", "mpd.jsonc");
 function stripJsonComments(text) {
   let out = "";
   let inString = false;
@@ -2614,10 +2954,10 @@ function stripTrailingCommas(text) {
   return text.replace(/,(\s*[}\]])/g, "$1");
 }
 function readWatchdogSection(workspace) {
-  const path = join5(workspace, PROJECT_CONFIG_FILE);
+  const path = join4(workspace, PROJECT_CONFIG_FILE);
   let text;
   try {
-    text = readFileSync4(path, "utf8");
+    text = readFileSync3(path, "utf8");
   } catch {
     return { found: false, path, section: undefined };
   }
@@ -2636,13 +2976,13 @@ function readWatchdogSection(workspace) {
 }
 
 // packages/mpd-team-watchdog-plugin/src/holds.ts
-import { existsSync as existsSync3, readFileSync as readFileSync5, readdirSync as readdirSync3, statSync as statSync2 } from "node:fs";
-import { join as join6, resolve as resolve2 } from "node:path";
+import { existsSync as existsSync3, readFileSync as readFileSync4, readdirSync as readdirSync2, statSync } from "node:fs";
+import { join as join5, resolve as resolve2 } from "node:path";
 var HOLD_SERVICE = "mpdWatchdog";
 function readHoldFile(workspace, stateDir, teamId) {
   let text;
   try {
-    text = readFileSync5(holdPath(workspace, stateDir, teamId), "utf8");
+    text = readFileSync4(holdPath(workspace, stateDir, teamId), "utf8");
   } catch {
     return;
   }
@@ -2681,7 +3021,7 @@ class HoldRegistry {
       this.hydrated.add(workspace);
       let files;
       try {
-        files = readdirSync3(holdDir(workspace, this.stateDir));
+        files = readdirSync2(holdDir(workspace, this.stateDir));
       } catch {
         continue;
       }
@@ -2707,14 +3047,14 @@ class HoldRegistry {
   }
   isHeld(teamId, workspace) {
     const id = String(teamId ?? "");
-    const notHeld = (from, where = null) => ({
+    const notHeld = (from, where2 = null) => ({
       held: false,
       holdId: null,
       at: null,
       reason: null,
       taskId: null,
       attemptId: null,
-      workspace: where,
+      workspace: where2,
       source: from
     });
     if (id === "")
@@ -2762,7 +3102,7 @@ class HoldRegistry {
       return [];
     let files;
     try {
-      files = readdirSync3(holdDir(where, this.stateDir));
+      files = readdirSync2(holdDir(where, this.stateDir));
     } catch {
       return [];
     }
@@ -2827,7 +3167,7 @@ var HOLD_GATE_CALL = 'ctx.get("mpdWatchdog", false)?.isHeld(teamId, workspace)?.
 function heldTeamIds(workspace, stateDir) {
   let files;
   try {
-    files = readdirSync3(holdDir(workspace, stateDir));
+    files = readdirSync2(holdDir(workspace, stateDir));
   } catch {
     return [];
   }
@@ -3138,7 +3478,7 @@ function candidateFor(team, stampSource, memberKeyOf) {
         return true;
       return stampAttempt === taskAttempt;
     });
-    const dispatched = taskAttempt !== "";
+    const dispatched = task.dispatched === true || taskAttempt !== "";
     const workedOn = stamps.some((stamp) => stamp.taskId === task.id && (stamp.teamId === undefined || stamp.teamId === null || stamp.teamId === "" || stamp.teamId === team.id));
     if (!dispatched && !workedOn)
       continue;
@@ -3161,9 +3501,8 @@ function candidateFor(team, stampSource, memberKeyOf) {
 }
 
 // packages/mpd-team-watchdog-plugin/src/scene.ts
-import { existsSync as existsSync4, readFileSync as readFileSync6 } from "node:fs";
-import { join as join7 } from "node:path";
-var MAILBOX_DELIVERY_LEASE_MS = 60000;
+import { existsSync as existsSync4, readFileSync as readFileSync5 } from "node:fs";
+import { join as join6 } from "node:path";
 var SCENE_SCHEMA_VERSION = 1;
 function newestForTask(stamps, taskId, attemptId, teamId) {
   let newest = null;
@@ -3251,12 +3590,12 @@ function isoBasic(at) {
 function writeScene(workspace, stateDir, teamId, scene, at) {
   const dir = sceneDir(workspace, stateDir, teamId);
   const base = isoBasic(at) + "-" + scene.reason;
-  let path = join7(dir, base + ".json");
+  let path = join6(dir, base + ".json");
   let suffix = 1;
   try {
     while (existsSync4(path)) {
       suffix += 1;
-      path = join7(dir, base + "-" + suffix + ".json");
+      path = join6(dir, base + "-" + suffix + ".json");
       if (suffix > 1000)
         break;
     }
@@ -3267,41 +3606,14 @@ function writeScene(workspace, stateDir, teamId, scene, at) {
   if (written.error !== undefined) {
     return { ok: false, path: null, latestPath: null, bytes: 0, error: written.error };
   }
-  const latest = writeFileAtomic(join7(dir, "latest.json"), text);
+  const latest = writeFileAtomic(join6(dir, "latest.json"), text);
   if (latest.error !== undefined) {
     return { ok: false, path, latestPath: null, bytes: Buffer.byteLength(text), error: latest.error };
   }
   return { ok: true, path, latestPath: latest.path, bytes: Buffer.byteLength(text) };
 }
-function mailboxUnread(workspace, stateDir, teamId, agentKey, now, leaseMs = MAILBOX_DELIVERY_LEASE_MS) {
-  const file = join7(teamDir(workspace, stateDir, teamId), "inbox", safeSegment(agentKey) + ".jsonl");
-  let text;
-  try {
-    text = readFileSync6(file, "utf8");
-  } catch {
-    return 0;
-  }
-  let count = 0;
-  for (const raw of text.split(`
-`)) {
-    const line = raw.replace(/^\uFEFF/, "").trim();
-    if (line === "")
-      continue;
-    try {
-      const value = JSON.parse(line);
-      if (value === null || typeof value !== "object")
-        continue;
-      if (value.tombstone === true)
-        continue;
-      if (value.readAt !== undefined)
-        continue;
-      const claimed = value.deliveryClaimedAt;
-      if (typeof claimed === "number" && now - claimed < leaseMs)
-        continue;
-      count += 1;
-    } catch {}
-  }
-  return count;
+function mailboxUnreadObservable() {
+  return null;
 }
 
 // packages/mpd-team-watchdog-plugin/src/engine.ts
@@ -3557,7 +3869,7 @@ class WatchdogEngine {
     const cached = this.teamCache.get(key);
     if (this.config.teamCacheMs > 0 && cached !== undefined && now - cached.at < this.config.teamCacheMs)
       return cached.teams;
-    const teams = readTeams(workspace, this.config.stateDir);
+    const teams = readTeams(this.dsh);
     this.teamCache.set(key, { at: now, teams });
     return teams;
   }
@@ -3808,7 +4120,7 @@ class WatchdogEngine {
     const configured = this.config.deadTeamGraceMs;
     const grace = typeof configured === "number" && Number.isFinite(configured) ? configured : 0;
     if (grace <= 0 || team.activityAt === null) {
-      return { tickable: true, reason: desc + " ticked: no usable liveness signal (registry " + (agentsKnown ? "empty" : "absent") + ", bound " + grace + "ms) — the pre-r4 behaviour" };
+      return { tickable: true, reason: desc + " ticked: the live readout is the only source and the agent registry answered nothing (registry " + (agentsKnown ? "empty" : "absent") + ", bound " + grace + "ms)" };
     }
     const age = now - team.activityAt;
     if (age <= grace)
@@ -3997,7 +4309,7 @@ class WatchdogEngine {
       incidents,
       streaks: this.machine.snapshot().streaks,
       heartbeat: (memberKey) => readHeartbeats(workspace, this.config.stateDir, memberKey),
-      unread: (memberKey) => mailboxUnread(workspace, this.config.stateDir, team.id, memberKey, now)
+      unread: () => mailboxUnreadObservable()
     });
     let scenePath = null;
     if (alreadyHeld === undefined) {

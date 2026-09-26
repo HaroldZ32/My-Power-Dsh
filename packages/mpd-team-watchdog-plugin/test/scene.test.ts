@@ -4,11 +4,11 @@ import { describe, expect, test } from "bun:test"
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { WatchdogEngine } from "../src/engine"
-import { buildScene, isoBasic, mailboxUnread, readScene, writeScene } from "../src/scene"
+import { buildScene, isoBasic, mailboxUnreadObservable, readScene, writeScene } from "../src/scene"
 import { readHold, readIncidents } from "../src/sidecars"
 import { readHeartbeats } from "../src/store"
-import { readTeam } from "../src/team"
-import { agent, sandbox, stubAdapter, testConfig, writeTeam, openOutstandingChannel } from "./support"
+
+import { agent, sandbox, stubAdapter, teamRecordOf, testConfig, writeTeam, openOutstandingChannel } from "./support"
 
 function stubCtx(): { on: (event: string, handler: (...args: any[]) => unknown) => () => void } {
   return { on: () => () => {} }
@@ -26,7 +26,7 @@ describe("the scene document", () => {
         members: [{ id: "a1", name: "Architect", status: "working" }],
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attempt: 2, attemptId: "att-1" }],
       })
-      const team = readTeam(box.workspace, box.stateDir, "team-a")
+      const team = teamRecordOf(box, "team-a")
       expect(team).toBeDefined()
       const scene = buildScene({
         team: team!,
@@ -37,8 +37,9 @@ describe("the scene document", () => {
         mailbox: { web: 12 },
         incidents: [],
         // The streak map is keyed by `streakKey(teamId, taskId, attemptId)` — the team id is
-        // part of the key because task ids are per-team (w11/W11-1).
-        streaks: { "team-a\u0000t1\u0000att-1": 3 },
+        // part of the key because task ids are per-team (w11/W11-1). 0.1.7: the generation token
+        // is the projected official board REVISION, so the key says `2` for a task at revision 2.
+        streaks: { "team-a\u0000t1\u00002": 3 },
         heartbeat: () => [],
         unread: () => 2,
       })
@@ -49,18 +50,22 @@ describe("the scene document", () => {
       expect(scene.cause).toEqual({ kind: "silence", ms: 120_000 })
       expect(Object.keys(scene.team).sort()).toEqual(["halted", "haltedAt", "hold", "id", "name", "phase"].sort())
       expect(scene.team.hold?.id).toBe("h1")
-      expect(scene.tasks[0]).toEqual({ id: "t1", status: "in_progress", assignee: "Architect", attempt: 2, attemptId: "att-1", lastSeen: null, streak: 3 })
+      expect(scene.tasks[0]).toEqual({ id: "t1", status: "in_progress", assignee: "Architect", attempt: 2, attemptId: "2", lastSeen: null, streak: 3 })
       expect(scene.members[0]).toEqual({ id: "a1", name: "Architect", status: "working", unread: 2, currentTask: "t1", lastSeen: null })
       expect(scene.mailbox).toEqual({ web: 12 })
-      expect(scene.parkedAttempts).toEqual({ a1: "att-1" })
+      expect(scene.parkedAttempts).toEqual({ a1: "2" })
     } finally {
       box.cleanup()
     }
   })
 
-  test("a halted team's adopted flags are carried verbatim beside the watchdog's own hold", () => {
+  test("the halt flags have NO official source, so the scene carries null (never a fabricated pause)", () => {
     const box = sandbox()
     try {
+      // A fixture that CLAIMS a halt cannot make the projection carry one: the official readout
+      // (`dsh.teamLiveTeams()`) has no `halted`/`haltedAt` field at all, so the projection leaves
+      // both absent and the scene reports `null` — the honest answer, and the one that keeps the
+      // status surface from naming a pause mechanism the official plane does not have.
       writeTeam(box, {
         id: "team-a",
         halted: true,
@@ -68,7 +73,7 @@ describe("the scene document", () => {
         members: [],
         tasks: [],
       })
-      const team = readTeam(box.workspace, box.stateDir, "team-a")!
+      const team = teamRecordOf(box, "team-a")!
       const scene = buildScene({
         team,
         reason: "warn",
@@ -81,8 +86,8 @@ describe("the scene document", () => {
         heartbeat: () => [],
         unread: () => null,
       })
-      expect(scene.team.halted).toBe(true)
-      expect(scene.team.haltedAt).toBe(42)
+      expect(scene.team.halted).toBe(null)
+      expect(scene.team.haltedAt).toBe(null)
       expect(scene.team.hold).toBe(null)
     } finally {
       box.cleanup()
@@ -150,9 +155,12 @@ describe("the scene document", () => {
     expect(isoBasic(Date.UTC(2026, 8, 15, 15, 41, 32))).toBe("20260915T154132Z")
   })
 
-  test("mailboxUnread mirrors the adopted predicate (tombstones and read records are not unread)", () => {
+  test("the member unread count is UNOBSERVABLE on the official plane (null, never a fabricated 0)", () => {
     const box = sandbox()
     try {
+      // The reader that used to mirror the retired plugin's `<teamDir>/inbox/*.jsonl` is gone with
+      // the plugin that wrote that file, and no adapter seam reports a per-member unread count.
+      // A file left behind by an old install must NOT resurrect the old answer.
       const dir = join(box.workspace, box.stateDir, "team-a", "inbox")
       mkdirSync(dir, { recursive: true })
       writeFileSync(
@@ -164,9 +172,7 @@ describe("the scene document", () => {
           JSON.stringify({ id: "m4", deliveryClaimedAt: 1_000 }),
         ].join("\n") + "\n",
       )
-      expect(mailboxUnread(box.workspace, box.stateDir, "team-a", "Architect", 1_010)).toBe(1)
-      // The claim lease expires: m4 becomes unread again (the adopted rule).
-      expect(mailboxUnread(box.workspace, box.stateDir, "team-a", "Architect", 200_000)).toBe(2)
+      expect(mailboxUnreadObservable()).toBeNull()
     } finally {
       box.cleanup()
     }

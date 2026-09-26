@@ -672,7 +672,7 @@ export function generationFloorOf(team: { createdAt?: number | null; approvedAt?
 export function candidateFor(
   team: {
     id: string
-    tasks: readonly { id: string; status: string; assignee?: string; attemptId?: string }[]
+    tasks: readonly { id: string; status: string; assignee?: string; attemptId?: string; dispatched?: boolean }[]
     /** T-16's generation bound; absent/null leaves the slice PERMISSIVE (§0/A3). */
     createdAt?: number | null
     approvedAt?: number | null
@@ -725,23 +725,23 @@ export function candidateFor(
     // THE DISPATCH PRECONDITION (r7 — the staged-plan flood). A task is observed only once
     // somebody was actually HANDED it, and the record of that is a DISJUNCTION:
     //
-    //   * a non-empty `attemptId` — the adopted scheduler writes it at dispatch
-    //     (`beginTaskAttempt(task, member)` in lib/scheduler.js, before the ticket is delivered)
-    //     and the member's own `claim_task` reuses it; or
+    //   * a non-empty `attemptId` — the official board's monotonic `revision`, which the
+    //     projection renders as the generation token; or
     //   * ANY stamp for this task in this team, of ANY generation — a stamped task WAS worked on,
     //     even when its attempt has since been revoked/amended and the id cleared, which is why
     //     this test is deliberately NOT the W11-2-filtered slice: that slice answers "is the
     //     CURRENT generation silent", not "was this task ever handed out".
     //
-    // A task with neither has never been given to anybody — the normal state of a plan that is
-    // still `staged` (awaiting the user's approval in the Web panel), of a task correctly blocked
-    // on unfinished dependencies, or of one the scheduler has simply not reached yet. Reported,
-    // the first two are pure noise, and a 12-task staged plan emitted 12 `never-started` records
-    // plus 12 console lines on EVERY host start (measured 2026-09-16) — for a plan nothing had
-    // been dispatched into and nothing should have been. `never-started` is DEFINED as a CLAIMED
-    // task whose owner never stamped; an unclaimed task is not one, and silence/escalation must
-    // not be spent on it either (a task nobody owns cannot be a wedge).
-    const dispatched = taskAttempt !== ""
+    // A task with neither has never been given to anybody — the normal state of a task correctly
+    // blocked on unfinished dependencies, or of one the Lead has simply not assigned yet.
+    // Reported, those are pure noise, and a 12-task plan emitted 12 `never-started` records plus
+    // 12 console lines on EVERY host start (measured 2026-09-16) — for a plan nothing had been
+    // dispatched into and nothing should have been. `never-started` is DEFINED as a CLAIMED task
+    // whose owner never stamped; an unclaimed task is not one, and silence/escalation must not be
+    // spent on it either (a task nobody owns cannot be a wedge). On the OFFICIAL board an owner is
+    // set exactly at claim/reassign time, so the `dispatched` flag the projection carries is the
+    // faithful spelling of "somebody was handed this".
+    const dispatched = task.dispatched === true || taskAttempt !== ""
     const workedOn = stamps.some(
       (stamp) =>
         stamp.taskId === task.id &&

@@ -33,7 +33,7 @@ Maintainer material — the current working spec rather than history:
 
 Each package under `packages/<name>/` carries a bilingual `README.md` + `README.zh-CN.md`, with two
 stated exceptions: **`mpd-mcp-shared`** (the helper module shared by the MCP servers) ships source and
-tests only — its README pair is a recorded follow-up — and the adopted
+tests only — its README pair is a recorded follow-up — and the RETIRED
 **`mpd-agent-teams-plugin`** keeps upstream's `README.md` verbatim as provenance, which the bilingual
 rule exempts.
 
@@ -42,7 +42,8 @@ rule exempts.
   `mpd-roles-plugin`, `mpd-ext-plugin` (the extension interface), `mpd-ulw-plugin`,
   `mpd-hashline-plugin`, `mpd-boulder-plugin`, `mpd-comment-checker-plugin`,
   `mpd-memory-plugin`, `mpd-codegraph-plugin`, `mpd-workmate-plugin`,
-  `mpd-bootstrap-plugin`, `mpd-team-compact-plugin`, `mpd-agent-teams-plugin` (adopted),
+  `mpd-bootstrap-plugin`, `mpd-team-compact-plugin`, `mpd-agent-teams-plugin` (retained
+  provenance — NO row mounts it),
   `mpd-bundle-plugin` (bundle web-compat + combined web client),
   `mpd-qa-roles-probe` (QA-only).
 - **MCP servers** — `mpd-mcp-astgrep`, `mpd-mcp-gitbash`, `mpd-mcp-lsp`, `mpd-mcp-codegraph`.

@@ -24,9 +24,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createLog } from "../src/log"
 import {
-  APPROVE_TOOL,
   BOARD_SCENE_ID,
-  DISCARD_TOOL,
+  PLAN_MUTATION_UNAVAILABLE,
   PLAN_SCENE_ID,
   SCENE_ROW_MAX_CELLS,
   TEAM_SCENE_ID,
@@ -37,6 +36,7 @@ import {
   type PlanActions,
 } from "../src/scenes"
 import { approvalPhrase, mailboxKey, planProjectionLines, readTeamWorkflow, taskDepths, teamWorkflowLines } from "../src/team-state"
+import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index"
 import { boardLines, readBoardState } from "../src/state"
 
 const temporary: string[] = []
@@ -51,7 +51,22 @@ afterEach(() => {
 
 const REPO = join(import.meta.dir, "..", "..", "..")
 
-/** A workspace holding ONE team record, written to disk and read back by the reader. */
+/**
+ * The OFFICIAL live views a fixture registers, keyed by workspace.
+ *
+ * 0.1.7: the TUI reads the harness's own readout (through the adapter), NOT the retired
+ * `.mpd/team/<id>/team.json`. The file is still written below, so every arm keeps proving that
+ * NOTHING reads it; these views are what a host would actually serve.
+ */
+const FIXTURE_VIEWS = new Map<string, DshTeamView[]>()
+
+/** The views of one fixture workspace (what the production wiring would resolve through the adapter). */
+const viewsOf = (workspace: string): DshTeamView[] => FIXTURE_VIEWS.get(workspace) ?? []
+
+/**
+ * A workspace holding ONE team, registered as an OFFICIAL live view (and, for the negative control,
+ * also written to the retired record path the readers must ignore).
+ */
 function teamFixture(record: Record<string, unknown>, opts: { captainInbox?: string[]; memberInbox?: Record<string, string[]> } = {}): string {
   const root = mkdtempSync(join(tmpdir(), "mpd-tui-team-"))
   temporary.push(root)
@@ -65,7 +80,50 @@ function teamFixture(record: Record<string, unknown>, opts: { captainInbox?: str
   for (const [name, lines] of Object.entries(opts.memberInbox ?? {})) {
     writeFileSync(join(inbox, `${mailboxKey(name)}.jsonl`), lines.join("\n") + "\n")
   }
+  FIXTURE_VIEWS.set(workspace, [viewOf(record)])
   return workspace
+}
+
+/** One official team view, projected from the fixture's record vocabulary. */
+function viewOf(record: Record<string, unknown>): DshTeamView {
+  const id = String(record.id ?? "team-1")
+  const leadSessionId = String(record.captainSessionId ?? id + "-lead")
+  const members = Array.isArray(record.members) ? (record.members as Record<string, unknown>[]) : []
+  const tasks = Array.isArray(record.tasks) ? (record.tasks as Record<string, unknown>[]) : []
+  return {
+    teamId: id,
+    leadName: "lead",
+    leadSessionId,
+    members: [
+      { id: leadSessionId, name: "lead", role: "lead", status: "running", diagnostics: [] },
+      ...members.map((member, index) => ({
+        id: String(member.id ?? "m" + index),
+        name: String(member.name ?? "m" + index),
+        role: "teammate" as const,
+        status: (member.status === undefined ? "inactive" : String(member.status)) as DshTeamView["members"][number]["status"],
+        ...(typeof member.provider === "string" ? { provider: member.provider } : {}),
+        ...(typeof member.model === "string" ? { model: member.model } : {}),
+        ...(typeof member.description === "string"
+          ? { description: member.description }
+          : typeof member.role === "string"
+            ? { description: member.role }
+            : {}),
+        diagnostics: [],
+      })),
+    ],
+    tasks: tasks.map((task, index) => ({
+      id: String(task.id ?? "t" + index),
+      revision: typeof task.attempt === "number" ? task.attempt : 1,
+      subject: String(task.subject ?? ""),
+      description: "",
+      status: String(task.status ?? "pending") as DshTeamView["tasks"][number]["status"],
+      blockedBy: (Array.isArray(task.dependencies) ? task.dependencies : []).map((entry) => String(entry)),
+      writeScopes: [],
+      ...(typeof task.assignee === "string" && task.assignee !== "" ? { ownerName: task.assignee } : {}),
+      ready: true,
+      writeScopeWarnings: [],
+    })),
+  }
 }
 
 /** A staged plan with dependencies, a failed dependency, a cycle-free DAG and mail. */
@@ -94,8 +152,8 @@ function stagedRecord(): Record<string, unknown> {
 
 // ── the projection ──────────────────────────────────────────────────────────
 
-describe("team-workflow projection (read-only, from a real record on disk)", () => {
-  test("renders the staged roster, the task DAG, counts and mail from the file", () => {
+describe("team-workflow projection (read-only, from the OFFICIAL live readout)", () => {
+  test("renders the roster, the task DAG, the counts and the honest blanks", () => {
     const workspace = teamFixture(stagedRecord(), {
       captainInbox: [
         JSON.stringify({ id: "a", from: "Architect", to: "captain", content: "contract frozen", ts: 1 }),
@@ -105,12 +163,14 @@ describe("team-workflow projection (read-only, from a real record on disk)", () 
         Architect: [JSON.stringify({ id: "c", from: "captain", to: "Architect", content: "go", ts: 4 })],
       },
     })
-    const workflow = readTeamWorkflow(workspace)
+    const workflow = readTeamWorkflow(workspace, [], viewsOf(workspace))
     expect(workflow.team?.id).toBe("mpd-fixture-1")
-    expect(workflow.team?.name).toBe("Fixture Team")
-    expect(workflow.team?.phase).toBe("staged")
-    expect(workflow.team?.staged).toBe(true)
-    expect(workflow.team?.planReviewState).toBe("awaiting_review")
+    // 0.1.7: a team has NO name and NO phase of its own on the official plane — the readout names
+    // the Lead pseudo-row `lead`, and `phase` is DERIVED (a teammate running/provisioning ⇒ active).
+    expect(workflow.team?.name).toBe("lead")
+    expect(workflow.team?.phase).toBe("idle")
+    expect(workflow.team?.staged).toBe(false)
+    expect(workflow.team?.planReviewState).toBeUndefined()
     expect(workflow.team?.runnable).toBe(true)
     // A removed member is not part of the roster (the Web's own filter).
     expect(workflow.members.map((member) => member.name)).toEqual(["Architect", "Reviewer"])
@@ -127,25 +187,30 @@ describe("team-workflow projection (read-only, from a real record on disk)", () 
     expect(byId.get("t2")?.depth).toBe(1)
     expect(byId.get("t2")?.visual).toBe("open")
     expect(workflow.counts).toMatchObject({ total: 3, completed: 1, pending: 1, failed: 1 })
-    // Only the UNREAD captain row counts (id b is read).
-    expect(workflow.mail.unread).toBe(2)
-    expect(workflow.mail.captainInbox.map((row) => row.from)).toEqual(["Architect", "Reviewer"])
+    // The peer mailbox is NOT observable through the adapter: the projection reports `null`
+    // rather than a fabricated `0`, and the inbox files left in the fixture are ignored.
+    expect(workflow.mail.unread).toBe(null)
+    expect(workflow.mail.captainInbox).toEqual([])
+    expect(workflow.members.map((member) => member.unread)).toEqual([null, null])
 
     const rows = teamWorkflowLines(workflow).join("\n")
-    expect(rows).toContain("team       Fixture Team (mpd-fixture-1)")
-    expect(rows).toContain("phase      staged")
-    expect(rows).toContain("plan       awaiting_review")
+    expect(rows).toContain("team       lead (mpd-fixture-1)")
+    expect(rows).toContain("phase      idle")
+    expect(rows).not.toContain("plan       ")
+    // `description` is the official roster's field for a member's one-line note; `provider`/`model`
+    // still compose the route.
     expect(rows).toContain("Architect · architecture review · deepseek-official/deepseek-v4-flash · idle")
-    expect(rows).toContain("t1 [requirements] freeze the contract · completed @Architect attempt 1 r1 verdict pass")
-    expect(rows).toContain("t2 [implementation] build it · pending @Architect attempt 0 r1 deps=t1")
-    // The optional `kind` is rendered as `-` when the record omits it.
-    expect(rows).toContain("t3 [-] no kind here · failed attempt 2")
+    // `kind`, `attempt`, `round` and `verdict` have NO official source, so the row prints only what
+    // the board carries (the optionals render as the honest blank).
+    expect(rows).toContain("t1 [-] freeze the contract · completed @Architect")
+    expect(rows).toContain("t2 [-] build it · pending @Architect deps=t1")
+    expect(rows).toContain("t3 [-] no kind here · failed")
     expect(rows).toContain("3 total · 1 completed · 0 in progress · 1 pending · 0 claimed · 1 failed")
-    expect(rows).toContain("mail       2 unread")
+    expect(rows).toContain("mail       (not observable on the official team plane)")
     // The hold row is omitted unless the watchdog reports THIS team as held.
     expect(rows).not.toContain("watchdog")
-    expect(teamWorkflowLines(readTeamWorkflow(workspace, ["mpd-fixture-1"])).join("\n")).toContain("watchdog   HELD (mpd-fixture-1)")
-    expect(teamWorkflowLines(readTeamWorkflow(workspace, ["other-team"])).join("\n")).not.toContain("watchdog")
+    expect(teamWorkflowLines(readTeamWorkflow(workspace, ["mpd-fixture-1"], viewsOf(workspace))).join("\n")).toContain("watchdog   HELD (mpd-fixture-1)")
+    expect(teamWorkflowLines(readTeamWorkflow(workspace, ["other-team"], viewsOf(workspace))).join("\n")).not.toContain("watchdog")
   })
 
   test("the depth walk and the failed-dependency marking match the panel's own semantics", () => {
@@ -172,7 +237,7 @@ describe("team-workflow projection (read-only, from a real record on disk)", () 
         { id: "t4", subject: "unblocked", status: "pending", dependencies: ["t1"] },
       ],
     })
-    const workflow = readTeamWorkflow(workspace)
+    const workflow = readTeamWorkflow(workspace, [], viewsOf(workspace))
     const byId = new Map(workflow.tasks.map((task) => [task.id, task]))
     // A FAILED dependency does not block (OPT-1), it is reported separately.
     expect(byId.get("t3")?.failedDependencies).toEqual(["t2"])
@@ -195,7 +260,7 @@ describe("team-workflow projection (read-only, from a real record on disk)", () 
         { id: "t2", subject: "second", status: "pending", dependencies: ["t1"] },
       ],
     })
-    const text = teamWorkflowLines(readTeamWorkflow(workspace)).join("\n")
+    const text = teamWorkflowLines(readTeamWorkflow(workspace, [], viewsOf(workspace))).join("\n")
     expect(text).toContain("t2 [-] second · pending deps=t1 BLOCKED")
   })
 
@@ -205,9 +270,12 @@ describe("team-workflow projection (read-only, from a real record on disk)", () 
     const workspace = join(root, "workspace")
     mkdirSync(join(workspace, ".mpd", "team", "broken"), { recursive: true })
     writeFileSync(join(workspace, ".mpd", "team", "broken", "team.json"), "{ not json")
-    const broken = readTeamWorkflow(workspace)
+    // 0.1.7: a broken RECORD FILE is not a source any more — it produces no note, because nothing
+    // reads it. What the projection must survive is a workspace with NO views (the seam's own
+    // degradation), and it does so silently: an empty workflow, no problems.
+    const broken = readTeamWorkflow(workspace, [], viewsOf(workspace))
     expect(broken.team).toBeUndefined()
-    expect(broken.problems.join(" ")).toContain("invalid JSON")
+    expect(broken.problems).toEqual([])
     expect(teamWorkflowLines(broken)).toEqual(["team       (none in this workspace)"])
 
     const absent = readTeamWorkflow(join(root, "does-not-exist"))
@@ -226,7 +294,7 @@ describe("team-workflow projection (read-only, from a real record on disk)", () 
         { id: "b", subject: "b", status: "pending", dependencies: ["a"] },
       ],
     })
-    const workflow = readTeamWorkflow(cyclic)
+    const workflow = readTeamWorkflow(cyclic, [], viewsOf(cyclic))
     expect(workflow.problems.some((problem) => problem.startsWith("cycle "))).toBe(true)
     expect(workflow.tasks.every((task) => Number.isInteger(task.depth))).toBe(true)
   })
@@ -235,7 +303,7 @@ describe("team-workflow projection (read-only, from a real record on disk)", () 
     const path = join(REPO, ".mpd", "team", "mpd-default-8d65a2b2", "team.json")
     if (!existsSync(path)) return // absent in a fresh clone: the fixture tests above carry the load
     const workspace = join(REPO)
-    const workflow = readTeamWorkflow(workspace)
+    const workflow = readTeamWorkflow(workspace, [], viewsOf(workspace))
     const raw = JSON.parse(readFileSync(path, "utf8")) as { id: string; name: string; phase: string; members: unknown[]; tasks: unknown[] }
     expect(workflow.team?.id).toBe(raw.id)
     expect(workflow.team?.name).toBe(raw.name)
@@ -251,16 +319,15 @@ describe("team-workflow projection (read-only, from a real record on disk)", () 
     expect(text).toContain("deps=t1")
   })
 
-  test("the board gains exactly the two T3 rows", () => {
+  test("the board carries the derived team row and never a staged claim", () => {
     const workspace = teamFixture(stagedRecord())
-    const state = readBoardState(workspace, process.env.HOME ?? workspace)
+    const state = readBoardState(workspace, process.env.HOME ?? workspace, viewsOf(workspace))
     const rows = boardLines(state)
-    expect(rows).toContain("team-plan  awaiting_review")
-    expect(rows).not.toContain("team-hold  held (mpd-fixture-1)")
-    expect(boardLines(state, ["mpd-fixture-1"])).toContain("team-hold  held (mpd-fixture-1)")
-    // A running team shows no team-plan row.
-    const running = teamFixture({ id: "run-1", name: "Run", phase: "running", members: [], tasks: [] })
-    expect(boardLines(readBoardState(running, running)).some((row) => row.startsWith("team-plan"))).toBe(false)
+    // 0.1.7: a team has no name and no review state on the official plane, so the board shows the
+    // Lead name and the DERIVED phase — and it never claims a staged plan.
+    expect(rows.join("\n")).toContain("team       lead (mpd-fixture-1) · phase idle")
+    expect(rows.join("\n")).not.toContain("awaiting_review")
+    expect(rows.join("\n")).not.toContain("team-plan")
   })
 })
 
@@ -415,6 +482,9 @@ function mountScenes(
       approve: async () => ({ ok: true, value: { status: "running" } }),
       discard: async () => ({ ok: true }),
     },
+    // The composition root resolves the OFFICIAL readout per call (0.1.7) and hands it to the
+    // scene; the fixture's views are what a host would return here.
+    () => viewsOf(workspace),
   )
   expect(seam.outcome().state).toBe("requested")
   const kit = makeKit(options.terminal)
@@ -486,11 +556,13 @@ describe("surface T1 — the team workflow", () => {
     const workspace = teamFixture(stagedRecord())
     const { kit, components } = mountScenes(workspace)
     const text = render(kit, components[TEAM_SCENE_ID])
-    expect(text).toContain("MPD team — Fixture Team")
+    expect(text).toContain("MPD team — lead")
     expect(text).toContain("mpd-fixture-1")
-    expect(text).toContain("phase      staged")
+    // The official plane has no team phase of its own: it is DERIVED from the roster.
+    expect(text).toContain("phase      idle")
     expect(text).toContain("Architect · architecture review")
-    expect(text).toContain("t2 [implementation] build it · pending @Architect attempt 0 r1 deps=t1")
+    // `kind`/`attempt`/`round` have no official source, so the row carries what the board has.
+    expect(text).toContain("t2 [-] build it · pending @Architect deps=t1")
     expect(text).toContain("esc/q close")
   })
 
@@ -503,46 +575,15 @@ describe("surface T1 — the team workflow", () => {
     expect(opened).toEqual([])
   })
 
-  test("a staged team opens the plan surface and `p` reaches the board", () => {
-    const workspace = teamFixture(stagedRecord())
-    const { kit, components, opened } = mountScenes(workspace)
-    render(kit, components[TEAM_SCENE_ID])
-    pressAndRender(kit, components[TEAM_SCENE_ID], "a")
-    pressAndRender(kit, components[TEAM_SCENE_ID], "p")
-    expect(opened).toContain(PLAN_SCENE_ID)
-    expect(opened).toContain(BOARD_SCENE_ID)
-  })
 
   test("a bare `r` refresh re-reads the record without throwing", () => {
     const workspace = teamFixture(stagedRecord())
     const { kit, components } = mountScenes(workspace)
     render(kit, components[TEAM_SCENE_ID])
     const text = pressAndRender(kit, components[TEAM_SCENE_ID], "r")
-    expect(text).toContain("MPD team — Fixture Team")
+    expect(text).toContain("MPD team — lead")
   })
 
-  test("N3 — Ctrl+X in the WORKFLOW scene does nothing (the key does not exist there)", async () => {
-    const workspace = teamFixture(stagedRecord())
-    const calls: unknown[] = []
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async (input) => {
-        calls.push(input)
-        return { ok: true }
-      },
-      discard: async () => {
-        calls.push("discard")
-        return { ok: true }
-      },
-    }
-    const { kit, components, opened } = mountScenes(workspace, { actions })
-    render(kit, components[TEAM_SCENE_ID])
-    const text = pressAndRender(kit, components[TEAM_SCENE_ID], "x", { ctrl: true })
-    await Bun.sleep(0)
-    expect(calls).toEqual([])
-    expect(opened).toEqual([])
-    expect(text).toContain("MPD team — Fixture Team")
-  })
 
   test("the watchdog HOLD is rendered only when the watchdog reports it", () => {
     const workspace = teamFixture(stagedRecord())
@@ -555,249 +596,19 @@ describe("surface T1 — the team workflow", () => {
 })
 
 describe("surface T2 — the plan approval", () => {
-  test("shows the staged plan, the action block and an EMPTY confirmation echo", () => {
-    const workspace = teamFixture(stagedRecord())
-    const { kit, components } = mountScenes(workspace)
-    const text = render(kit, components[PLAN_SCENE_ID])
-    expect(text).toContain("MPD plan approval — Fixture Team")
-    expect(text).toContain("phase staged · review awaiting_review")
-    expect(text).toContain("members    2 · tasks 3 · links 1")
-    expect(text).toContain("runnable   yes")
-    expect(text).toContain("edits      none")
-    expect(text).toContain("approval needs the exact team id typed below, then Ctrl+X")
-    expect(text).toContain("confirm    \n")
-    expect(text).toContain("required   approve mpd-fixture-1")
-    expect(text).toContain("to change this plan: press Esc and tell the captain what to change in the chat")
-  })
 
-  test("the precondition failure states the phase and offers only Esc", () => {
-    const workspace = teamFixture({ id: "run-1", name: "Running", phase: "running", members: [], tasks: [] })
-    const { kit, components } = mountScenes(workspace)
-    const text = render(kit, components[PLAN_SCENE_ID])
-    expect(text).toContain("no staged plan for team run-1 (phase running)")
-    expect(text).not.toContain("confirm")
-    expect(text).not.toContain("approve ")
-  })
 
-  test("the precondition failure is READ-ONLY: no chord can mutate a non-staged team", async () => {
-    // A team that is merely RUNNING must never be archivable from the approval surface:
-    // the frozen §3.2 precondition accepts only Esc.
-    const workspace = teamFixture({ id: "run-1", name: "Running", phase: "running", members: [], tasks: [] })
-    const calls: unknown[] = []
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async (input) => {
-        calls.push(input)
-        return { ok: true }
-      },
-      discard: async () => {
-        calls.push("discard")
-        return { ok: true }
-      },
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    pressAndRender(kit, components[PLAN_SCENE_ID], "d", { ctrl: true })
-    pressAndRender(kit, components[PLAN_SCENE_ID], "d", { ctrl: true })
-    pressAndRender(kit, components[PLAN_SCENE_ID], "a")
-    await Bun.sleep(0)
-    expect(calls).toEqual([])
-    const text = render(kit, components[PLAN_SCENE_ID])
-    expect(text).not.toContain("DISCARD ARMED")
-    expect(text).not.toContain("approved:")
-  })
 
-  test("N2 — Ctrl+X with an EMPTY echo performs no tool call", async () => {
-    const workspace = teamFixture(stagedRecord())
-    const calls: unknown[] = []
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async (input) => {
-        calls.push(input)
-        return { ok: true, value: { status: "running" } }
-      },
-      discard: async () => ({ ok: true }),
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    const text = pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    expect(calls).toHaveLength(0)
-    expect(text).toContain("confirmation does not match this team")
-  })
 
-  test("N1 — the phrase for a DIFFERENT team id is inert", () => {
-    const workspace = teamFixture(stagedRecord())
-    const calls: unknown[] = []
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async (input) => {
-        calls.push(input)
-        return { ok: true }
-      },
-      discard: async () => ({ ok: true }),
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    for (const character of "approve some-other-team") {
-      pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    }
-    const text = pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    expect(calls).toHaveLength(0)
-    expect(text).toContain("confirmation does not match this team")
-  })
 
-  test("the exact phrase approves through the injected executor and reports the tool's own result", async () => {
-    const workspace = teamFixture(stagedRecord())
-    const calls: { teamId: string; confirmation: string; captainSessionId?: string }[] = []
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async (input) => {
-        calls.push(input)
-        return { ok: true, value: { status: "running", team_id: "mpd-fixture-1", members: 2, tasks: 3 } }
-      },
-      discard: async () => ({ ok: true }),
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    // The executor is awaited; the settlement is visible on the next render.
-    await Bun.sleep(0)
-    const text = render(kit, components[PLAN_SCENE_ID])
-    expect(calls).toEqual([{ teamId: "mpd-fixture-1", confirmation: "approve mpd-fixture-1", captainSessionId: "sess-1" }])
-    expect(text).toContain("approved: mpd-fixture-1 running · members 2 · tasks 3")
-  })
 
-  test("a REFUSED tool result is rendered as a refusal, never as a success", async () => {
-    const workspace = teamFixture(stagedRecord())
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async () => ({ ok: false, error: "team is already running" }),
-      discard: async () => ({ ok: false, error: "no team" }),
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    await Bun.sleep(0)
-    const text = render(kit, components[PLAN_SCENE_ID])
-    expect(text).toContain("approve failed: team is already running")
-    expect(text).not.toContain("approved:")
-  })
 
-  test("an unavailable executor reports the tool as not registered", async () => {
-    const workspace = teamFixture(stagedRecord())
-    const actions: PlanActions = { available: () => false, approve: async () => ({ ok: true }), discard: async () => ({ ok: true }) }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    await Bun.sleep(0)
-    const text = render(kit, components[PLAN_SCENE_ID])
-    expect(text).toContain(`approve failed: ${APPROVE_TOOL} is not registered in this composition`)
-    expect(text).not.toContain("approved:")
-  })
 
-  test("B5 — while a call is in flight EVERY key is ignored (single-flight)", async () => {
-    const workspace = teamFixture(stagedRecord())
-    const calls: unknown[] = []
-    let settle: ((outcome: PlanActionOutcome) => void) | undefined
-    const actions: PlanActions = {
-      available: () => true,
-      approve: (input) => {
-        calls.push(input)
-        // A call that stays in flight until the test settles it.
-        return new Promise<PlanActionOutcome>((resolve) => {
-          settle = resolve
-        })
-      },
-      discard: async () => {
-        calls.push("discard")
-        return { ok: true }
-      },
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    const working = pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    expect(working).toContain("working…")
-    // Every one of these would mutate (or start a second call) if the guard were gone.
-    pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    pressAndRender(kit, components[PLAN_SCENE_ID], "d", { ctrl: true })
-    pressAndRender(kit, components[PLAN_SCENE_ID], "z")
-    await Bun.sleep(0)
-    expect(calls).toHaveLength(1)
-    settle?.({ ok: true, value: { status: "running", team_id: "mpd-fixture-1", members: 2, tasks: 3 } })
-    await Bun.sleep(0)
-    expect(render(kit, components[PLAN_SCENE_ID])).toContain("approved: mpd-fixture-1 running")
-  })
 
-  test("the echo is empty again after an `r` refresh (no prefill, no carry-over)", () => {
-    const workspace = teamFixture(stagedRecord())
-    const { kit, components } = mountScenes(workspace)
-    render(kit, components[PLAN_SCENE_ID])
-    for (const character of "approve mpd-fixture-1") pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    expect(render(kit, components[PLAN_SCENE_ID])).toContain("approve mpd-fixture-1")
-    // `r` is consent input once typing started (the phrase itself contains `r`), so the
-    // unconditional refresh is the Ctrl+R chord.
-    const text = pressAndRender(kit, components[PLAN_SCENE_ID], "r", { ctrl: true })
-    expect(text).toContain("confirm    \n")
-  })
 
-  test("contract reconciliation: `r` refreshes while the echo is EMPTY, and never eats the phrase", () => {
-    const workspace = teamFixture(stagedRecord())
-    const { kit, components } = mountScenes(workspace)
-    render(kit, components[PLAN_SCENE_ID])
-    // An empty echo: `r` is the refresh key, and the echo stays empty.
-    expect(pressAndRender(kit, components[PLAN_SCENE_ID], "r")).toContain("confirm    \n")
-    // Once consent input starts, every printable key — `r` included — is appended,
-    // otherwise `approve <teamId>` (which contains `r`) could never be typed.
-    for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    expect(render(kit, components[PLAN_SCENE_ID])).toContain("confirm    approve mpd-fixture-1")
-  })
 
-  test("BSpace is the only editing key", () => {
-    const workspace = teamFixture(stagedRecord())
-    const { kit, components } = mountScenes(workspace)
-    render(kit, components[PLAN_SCENE_ID])
-    pressAndRender(kit, components[PLAN_SCENE_ID], "a")
-    pressAndRender(kit, components[PLAN_SCENE_ID], "b")
-    let text = pressAndRender(kit, components[PLAN_SCENE_ID], "", { backspace: true })
-    expect(text).toContain("confirm    a\n")
-    text = pressAndRender(kit, components[PLAN_SCENE_ID], "", { backspace: true })
-    expect(text).toContain("confirm    \n")
-  })
 
-  test("discard is two-step: one Ctrl+D arms, a second inside the window calls the tool", async () => {
-    const workspace = teamFixture(stagedRecord())
-    let discards = 0
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async () => ({ ok: true }),
-      discard: async () => {
-        discards += 1
-        return { ok: true }
-      },
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    const armed = pressAndRender(kit, components[PLAN_SCENE_ID], "d", { ctrl: true })
-    expect(armed).toContain("DISCARD ARMED")
-    expect(discards).toBe(0)
-    pressAndRender(kit, components[PLAN_SCENE_ID], "d", { ctrl: true })
-    await Bun.sleep(0)
-    expect(discards).toBe(1)
-    expect(render(kit, components[PLAN_SCENE_ID])).toContain("discarded: team archived")
-  })
 
-  test("any other key clears the discard arm", () => {
-    const workspace = teamFixture(stagedRecord())
-    const { kit, components } = mountScenes(workspace)
-    render(kit, components[PLAN_SCENE_ID])
-    expect(pressAndRender(kit, components[PLAN_SCENE_ID], "d", { ctrl: true })).toContain("DISCARD ARMED")
-    expect(pressAndRender(kit, components[PLAN_SCENE_ID], "z")).not.toContain("DISCARD ARMED")
-  })
 
   test("Esc mutates nothing and returns to the workflow when it was the entry point", () => {
     const workspace = teamFixture(stagedRecord())
@@ -824,7 +635,7 @@ describe("surface T2 — the plan approval", () => {
     // The plain `planActionLines` projection is the falsifiable form of barrier 4:
     // only the two chords can mutate, and every printable key only edits the echo.
     const workspace = teamFixture(stagedRecord())
-    const workflow = readTeamWorkflow(workspace)
+    const workflow = readTeamWorkflow(workspace, [], viewsOf(workspace))
     const rows = planActionLines(workflow, "approve x", true, "some message")
     expect(rows.join("\n")).toContain("DISCARD ARMED — press Ctrl+D again within 10s to archive this staged plan")
     expect(rows.join("\n")).toContain("some message")
@@ -855,45 +666,23 @@ describe("§9.4 — the ONE render boundary strips control characters (finding F
     expect(safeLine({} as unknown)).toBe("[object Object]")
   })
 
-  test("a tool error carrying ESC/OSC does NOT survive into the rendered row", async () => {
-    const workspace = teamFixture(stagedRecord())
-    const hostile = "\u001b[31mRED\u001b[0m\u001b]0;pwned\u0007 plain"
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async () => ({ ok: false, error: hostile }),
-      discard: async () => ({ ok: false, error: hostile }),
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    await Bun.sleep(0)
-    const text = render(kit, components[PLAN_SCENE_ID])
-    expect(text).toContain("approve failed:")
-    // The visible remainder is kept (the message is still readable)...
-    expect(text).toContain("pwned")
-    expect(text).toContain("plain")
-    // ...but no escape sequence reached the host's Text element.
-    for (const control of ["\u001b", "\u0007", "\u009b", "\u001b]"]) expect(text).not.toContain(control)
-  })
 
   // skipped on win32: a directory whose name carries C0 control characters cannot exist there
   // (mkdir answers ENOENT, not a policy refusal), so the hostile-name direction has no fixture.
   // The ESC-in-a-tool-error arm above exercises the same render boundary (safeLine) everywhere.
-  test.skipIf(process.platform === "win32")("a control character in a team DIRECTORY name cannot reach a rendered row", () => {
-    // The second untrusted direction: the record/directory name feeds the problem notes.
-    const root = mkdtempSync(join(tmpdir(), "mpd-tui-hostile-dir-"))
+  test.skipIf(process.platform === "win32")("a control character in a team ID cannot reach a rendered row", () => {
+    // 0.1.7: there is no team DIRECTORY to be hostile in any more — the id comes from the OFFICIAL
+    // readout, so the hostile value is carried on the VIEW and the render boundary must strip it
+    // there. (The retired `.mpd/team/<hostile>/team.json` direction has no source left.)
+    const root = mkdtempSync(join(tmpdir(), "mpd-tui-hostile-view-"))
     temporary.push(root)
-    const workspace = join(root, "workspace")
-    mkdirSync(join(workspace, ".mpd", "team", "bad\u001bname\u0007"), { recursive: true })
-    mkdirSync(join(workspace, ".mpd", "team", "ok"), { recursive: true })
-    writeFileSync(
-      join(workspace, ".mpd", "team", "ok", "team.json"),
-      JSON.stringify({ id: "ok", name: "ok", phase: "running", members: [], tasks: [] }),
-    )
-    // The board (which renders the problem notes) goes through the same boundary.
+    const workspace = join(root, "hostile")
+    mkdirSync(workspace, { recursive: true })
+    FIXTURE_VIEWS.set(workspace, [
+      viewOf({ id: "bad\u001bname\u0007", members: [{ name: "na\u0007me" }], tasks: [{ id: "t1", status: "pending" }] }),
+    ])
     const { kit, components } = mountScenes(workspace)
-    const text = render(kit, components[BOARD_SCENE_ID])
+    const text = render(kit, components[TEAM_SCENE_ID])
     expect(text).toContain("bad")
     for (const control of ["\u001b", "\u0007", "\u009b"]) expect(text).not.toContain(control)
   })
@@ -914,7 +703,7 @@ describe("§3.1 item 4 — the DAG order (finding F2)", () => {
         { id: "grandchild", subject: "grandchild", status: "pending", dependencies: ["child"] },
       ],
     })
-    const workflow = readTeamWorkflow(workspace)
+    const workflow = readTeamWorkflow(workspace, [], viewsOf(workspace))
     // depth: parent 0, peer 0, child 1, grandchild 2. Creation index: child 0, parent 1, peer 2, grandchild 3.
     expect(workflow.tasks.map((task) => task.id)).toEqual(["parent", "peer", "child", "grandchild"])
 
@@ -933,40 +722,7 @@ describe("§3.1 item 4 — the DAG order (finding F2)", () => {
 })
 
 describe("§4.5 — the consent echo is consumed only by a SUCCESSFUL approve (finding F3)", () => {
-  test("a refused approve KEEPS the echo", async () => {
-    const workspace = teamFixture(stagedRecord())
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async () => ({ ok: false, error: "team is already running" }),
-      discard: async () => ({ ok: true }),
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    await Bun.sleep(0)
-    const text = render(kit, components[PLAN_SCENE_ID])
-    expect(text).toContain("approve failed: team is already running")
-    // §4.5: "the echo stays, the scene stays open, nothing was written".
-    expect(text).toContain("confirm    approve mpd-fixture-1")
-  })
 
-  test("a successful approve CONSUMES the echo", async () => {
-    const workspace = teamFixture(stagedRecord())
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async () => ({ ok: true, value: { status: "running", team_id: "mpd-fixture-1", members: 2, tasks: 3 } }),
-      discard: async () => ({ ok: true }),
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    await Bun.sleep(0)
-    const text = render(kit, components[PLAN_SCENE_ID])
-    expect(text).toContain("approved: mpd-fixture-1 running")
-    expect(text).toContain("confirm    \n")
-  })
 })
 
 // ── t8: a COMMITTED approval must be visible (t3's F1) ──────────────────────
@@ -981,91 +737,9 @@ describe("t8 — a COMMITTED approval is confirmed on screen (t3's F1)", () => {
     writeFileSync(recordPath, JSON.stringify(record, null, 2))
   }
 
-  test("the verdict renders even though the record has LEFT the staged phase", async () => {
-    const workspace = teamFixture(stagedRecord())
-    const recordPath = join(workspace, ".mpd", "team", "mpd-fixture-1", "team.json")
-    // The record flip is what makes this test bite: without it the OLD (broken) code
-    // would still render the message through the action block and pass.
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async () => {
-        flipper(recordPath)()
-        return { ok: true, value: { status: "running", team_id: "mpd-fixture-1", members: 2, tasks: 3 } }
-      },
-      discard: async () => ({ ok: true }),
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    await Bun.sleep(0)
-    const text = render(kit, components[PLAN_SCENE_ID])
-    const rows = text.split("\n").map((row) => row.trim())
 
-    // The record really left the staged phase, so this IS the non-usable branch.
-    expect(readTeamWorkflow(workspace).team?.staged).toBe(false)
-    expect(readTeamWorkflow(workspace).team?.phase).toBe("running")
 
-    // 1. the frozen §4.5 verdict line: team id + resulting phase + the runtime's counts.
-    expect(rows).toContain("approved: mpd-fixture-1 running · members 2 · tasks 3")
-    // 2. it is the FIRST body row — the surface cannot read as "nothing to approve".
-    expect(rows.findIndex((row) => row.startsWith("approved:"))).toBe(1)
-    // 3. the empty state is NOT what the user gets after a committed approval.
-    expect(text).not.toContain("no staged plan for team mpd-fixture-1")
-    // 4. the re-read phase is still stated, and the exit hint is present.
-    expect(text).toContain("team mpd-fixture-1 · phase running")
-    expect(text).toContain("esc back")
-    // 5. the verdict survives a re-render (the 2 s refresh must not eat it).
-    expect(render(kit, components[PLAN_SCENE_ID])).toContain("approved: mpd-fixture-1 running")
-  })
 
-  test("a COMMITTED discard reports its own verdict", async () => {
-    const workspace = teamFixture(stagedRecord())
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async () => ({ ok: true }),
-      discard: async () => ({ ok: true }),
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    pressAndRender(kit, components[PLAN_SCENE_ID], "d", { ctrl: true })
-    pressAndRender(kit, components[PLAN_SCENE_ID], "d", { ctrl: true })
-    await Bun.sleep(0)
-    expect(render(kit, components[PLAN_SCENE_ID])).toContain("discarded: team archived")
-  })
-
-  test("with NO settled outcome the precondition failure is UNCHANGED (no verdict row)", () => {
-    const workspace = teamFixture({ id: "run-1", name: "Running", phase: "running", members: [], tasks: [] })
-    const { kit, components } = mountScenes(workspace)
-    const text = render(kit, components[PLAN_SCENE_ID])
-    expect(text).toContain("no staged plan for team run-1 (phase running)")
-    expect(text).toContain("esc back")
-    expect(text).not.toContain("approved:")
-    expect(text).not.toContain("discarded:")
-  })
-
-  test("a REFUSED call in the non-usable branch reports the refusal, never a success", async () => {
-    // The other settled outcome that can meet a non-usable record: the plan was approved
-    // elsewhere between the read and the call.
-    const workspace = teamFixture(stagedRecord())
-    const recordPath = join(workspace, ".mpd", "team", "mpd-fixture-1", "team.json")
-    const actions: PlanActions = {
-      available: () => true,
-      approve: async () => {
-        flipper(recordPath)()
-        return { ok: false, error: "team is already running" }
-      },
-      discard: async () => ({ ok: true }),
-    }
-    const { kit, components } = mountScenes(workspace, { actions })
-    render(kit, components[PLAN_SCENE_ID])
-    for (const character of approvalPhrase("mpd-fixture-1")) pressAndRender(kit, components[PLAN_SCENE_ID], character)
-    pressAndRender(kit, components[PLAN_SCENE_ID], "x", { ctrl: true })
-    await Bun.sleep(0)
-    const text = render(kit, components[PLAN_SCENE_ID])
-    expect(text).toContain("approve failed: team is already running")
-    expect(text).not.toContain("approved: mpd-fixture-1")
-  })
 })
 
 // ── the invariants ──────────────────────────────────────────────────────────
@@ -1090,9 +764,18 @@ describe("package invariants", () => {
     }
   })
 
-  test("the frozen tool names are the adopted ones", () => {
-    expect(APPROVE_TOOL).toBe("agent_teams_approve")
-    expect(DISCARD_TOOL).toBe("agent_teams_delete")
+  test("the retired approval tools are GONE and the surface says why", () => {
+    // 0.1.7: neither `agent_teams_approve` nor `agent_teams_delete` is registered by any row, so
+    // the module no longer exports a name to look up — it exports the REASON the plan surface
+    // cannot mutate, which is what every refusal renders.
+    const source = readFileSync(join(import.meta.dir, "..", "src", "scenes.ts"), "utf8")
+    // No TOOL NAME is looked up any more (the docstring above the constant still names the two
+    // retired tools as the reason, which is the point).
+    expect(source).not.toContain("APPROVE_TOOL")
+    expect(source).not.toContain("DISCARD_TOOL")
+    expect(source).not.toContain('"agent_teams_approve"')
+    expect(source).not.toContain('"agent_teams_delete"')
+    expect(PLAN_MUTATION_UNAVAILABLE).toContain("no plan approval exists on the official Agent Teams plane")
     expect(approvalPhrase("mpd-default-8d65a2b2")).toBe("approve mpd-default-8d65a2b2")
   })
 

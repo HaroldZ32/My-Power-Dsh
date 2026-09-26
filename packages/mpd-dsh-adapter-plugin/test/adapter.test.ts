@@ -44,13 +44,38 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
     list: () => ["spawn-in-process"],
     startContinuable: async (spec: any) => ({ spec }),
     interrupt: (targetSessionId: string, authority: any) => { void targetSessionId; void authority },
+    // additive (0.1.7/adaptation D6): the provider REGISTRATION seam. A full harness
+    // exposes it, so the shared fixture carries it too (behaviour is covered by
+    // test/adapter-team-surface.test.ts and test/no-direct-team-access.test.mjs).
+    registerProvider: (provider: any) => { provided.subagentProvider = provider; return () => { delete provided.subagentProvider } },
+  }
+  // additive (0.1.7/adaptation D6): the OFFICIAL Agent Teams service
+  // (`@deepseek-ai/dsh-experimental-agent-team`). A full harness mounts it, so
+  // `capabilities()` reports every team flag true on this fixture; the frozen behaviour
+  // of the adapter's team surface is owned by test/adapter-team-surface.test.ts.
+  const agentTeams = {
+    tryMembership: (agent: any) => ({ root: agent, id: "team-fixture", role: "lead", name: "lead" }),
+    listMembers: (agent: any) => [{ id: "sample-agent", name: "lead", role: "lead", status: "running", diagnostics: [] }],
+    listTasks: () => [],
+    createTask: async (_caller: any, request: any) => ({ id: "task-1", revision: 1, subject: request?.subject ?? "", description: request?.description ?? "", status: "pending", blockedBy: [], writeScopes: [], ready: true, writeScopeWarnings: [] }),
+    getTask: () => ({ id: "task-1", revision: 1, subject: "s", description: "d", status: "pending", blockedBy: [], writeScopes: [], ready: true, writeScopeWarnings: [] }),
+    updateTask: async () => ({ id: "task-1", revision: 2, subject: "s", description: "d", status: "in_progress", blockedBy: [], writeScopes: [], ready: false, writeScopeWarnings: [] }),
+    sendMessage: async () => ({ messageId: "message-1", status: "accepted" }),
+    spawnTeammate: async (_caller: any, request: any) => ({ member: { id: "member-1", name: request?.name ?? "member", role: "teammate", status: "running", diagnostics: [] } }),
+    interrupt: () => ({ previousStatus: "running" }),
+    waitForChange: async () => ({ timedOut: false }),
   }
   const skills = {
     registerProvider: (provider: any) => { provided.skills = provider; return () => { delete provided.skills } },
     list: async () => [{ name: "svn-master", source: "bundled" }],
     get: async (name: string) => ({ name, content: "body" }),
   }
-  const agentPresets = { resolve: async (id: string) => ({ id, path: "/bundle/presets/" + id + "/agent.cordis.yml", trust: "system" }) }
+  // The 0.1.7-rc.2 preset model: the deployment default lives on
+  // `agent-preset-registry` and a preset is an `@deepseek-ai/dsh-agent-preset` ROW, so
+  // `resolve(id)` answers `{id, broken?}` — there is no directory to report. The OPTIONAL
+  // `path`/`trust` fields stay declared for a host build that still sends them, which the
+  // second arm below covers.
+  const agentPresets = { resolve: async (id: string) => ({ id }) }
   const compaction = { compactNow: async (agent: any) => ({ agent }) }
   // MEASURED host contract (dsh-commands/lib/index.js `register()`): the registry
   // returns the exact effect disposer that unregisters the definition, which the
@@ -97,6 +122,11 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
       on: (_event: string, _handler: any) => () => {},
       effect: (_fn: any, _label?: string) => () => {},
       tools: { restrict: (_filter: any) => () => {} },
+      // additive (0.1.7/adaptation D7): the AGENT-SCOPED prompt registry. The official
+      // Agent Teams tool plugin registers its `team:policy` section through exactly this
+      // member (`agent.ctx.systemPrompt.section`), so a full harness carries it and
+      // `capabilities().agentPromptSection` reads true on this fixture.
+      systemPrompt: { section: (_section: any) => () => { /* unregistered */ } },
     },
     // The host turn seam (dsh-agent-loop: `followup(input) => send(input, "next-turn", true)`).
     followup: (message: any) => { submitted.push(message) },
@@ -109,7 +139,7 @@ function fakeHarness(overrides: Record<string, unknown> = {}) {
   }
   const agents = { list: () => [sampleAgent], get: (id: string) => (id === sampleAgent.id ? sampleAgent : undefined) }
   const ctx = {
-    get: (serviceName: string) => ({ tools, subagents, skills, agentPresets, agents, compaction, commands, llm, systemPrompt } as Record<string, unknown>)[serviceName],
+    get: (serviceName: string) => ({ tools, subagents, agentTeams, skills, agentPresets, agents, compaction, commands, llm, systemPrompt } as Record<string, unknown>)[serviceName],
     on: (event: string, listener: any) => {
       if (event === "tools/post-execute") listeners.push(listener)
       if (event === "tools/pre-execute") preListeners.push(listener)
@@ -541,11 +571,21 @@ describe("skill + preset plane", () => {
 
   test("resolvePreset returns a normalized preset record", async () => {
     const { ctx } = fakeHarness()
-    expect(await createDshAdapter(ctx).resolvePreset("mpd")).toEqual({
-      id: "mpd",
-      path: "/bundle/presets/mpd/agent.cordis.yml",
-      trust: "system",
-    })
+    // The row model: the definition is keyed by `config.id` and there is no path.
+    expect(await createDshAdapter(ctx).resolvePreset("mpd")).toEqual({ id: "mpd" })
+    expect(await createDshAdapter(ctx).resolvePreset("mpd")).toEqual(await createDshAdapter(ctx).resolvePreset("mpd"))
+  })
+
+  test("resolvePreset still normalizes the OPTIONAL path/trust a host build may send", async () => {
+    const legacy = {
+      get: (serviceName: string) => (serviceName === "agentPresets"
+        ? { resolve: async (id: string) => ({ id, path: "/bundle/presets/" + id, trust: "system" }) }
+        : undefined),
+    }
+    expect(await createDshAdapter(legacy).resolvePreset("mpd")).toEqual({ id: "mpd", path: "/bundle/presets/mpd", trust: "system" })
+    // A broken row is reported, never thrown away.
+    const broken = { get: (serviceName: string) => (serviceName === "agentPresets" ? { resolve: async (id: string) => ({ id, broken: "row(s) did not activate" }) } : undefined) }
+    expect(await createDshAdapter(broken).resolvePreset("mpd")).toEqual({ id: "mpd", broken: "row(s) did not activate" })
   })
 })
 

@@ -16,7 +16,7 @@
 │   ├── pack-mpd.mjs       组装 dist/mpd-package/（Plan D bundle）
 │   ├── build-mpd-client.mjs  组合合并 web client（client.js）
 │   ├── build-mcp.mjs      ast-grep/git-bash/lsp MCP 服务器离线构建
-│   ├── vendor-agent-teams.mjs  物化采纳的 agent-teams server closure（_deps/）
+│   ├── vendor-agent-teams.mjs  物化**保留（未挂载）**的 agent-teams server closure（_deps/）
 │   ├── install-profile.mjs    旧式安装器（默认 dry-run；--dsh-home 供 QA）
 │   ├── mpd-ext.mjs        扩展开发者 CLI：validate / scaffold / list / --self-test
 │   ├── bootstrap.mjs      preflight + vendor 检查（P0 时代保留为检查项）
@@ -98,13 +98,12 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 | Case | 证明什么 | 运行方式（在已批准的权限上下文里） |
 |---|---|---|
 | `mount-assert` | bundle 行在 `--dump-config` 中出现/缺失 | `bun run test:qa`（全部 self-test） |
-| `preset-register` | mpd 预设从 bundle 供给的根解析（无 `$DSH_HOME/.agent-presets` 副本）+ roster 提供 11 角色 | `node skills/dsh-qa/scripts/preset-register.mjs` |
+| `preset-register` | mpd 预设从 bundle 自己的 `presets/mpd.patch.yml` **PRESET 行**解析（无 `$DSH_HOME/.agent-presets` 副本）+ roster 提供 11 角色 | `node skills/dsh-qa/scripts/preset-register.mjs` |
 | `bundle-lifecycle` | 从检出目录一条命令（`dsh plugin add <仓库根>`，无打包步骤）整体安装 → 真实启动从已安装 bundle 供给 preset + skills，并验证 Harness 适配器（`ADAPTER_SEAMS`、`ADAPTER_TOOL_CALL=ok`）→ `dsh plugin remove` 无残留 | `node skills/dsh-qa/scripts/bundle-lifecycle.mjs` |
 | `skill-catalog-probe` | 已安装 bundle 供给技能目录（18 个 bundled 技能，fixture 可加载），且无 `$DSH_HOME/skills` 副本 | `node skills/dsh-qa/scripts/skill-catalog-probe.mjs` |
 | `relocate-smoke` | 迁移后的 bundle 供给 preset + 语料库，无 dev 路径泄漏、无 home 副本 | `node skills/dsh-qa/scripts/relocate-smoke.mjs` |
-| `team-route-rewire` | 暂存 bundle 安装 → agent-teams 行组合 → probe 启动 → web `/plugins/dsh-agent-teams/state` 200 | `node skills/dsh-qa/scripts/team-route-rewire.mjs` |
 | `workmate-library` | 针对沙箱 HOME 的 init→list→spawn→reflect→match；self-test 同时钉住重命名/删除 host 路由、服务面与 §D reason 矩阵 | `node skills/dsh-qa/scripts/workmate-library.mjs` |
-| `workmate-team-member` | workmate 支撑成员注入 + 真实团队中的自我反思 | `node skills/dsh-qa/scripts/workmate-team-member.mjs` |
+| `workmate-team-member` | workmate 实例参与一次真实 headless 团队运行，并在之后自己执行 `mpd_workmate_reflect`。注意：workmate 的 persona/记忆只能通过 `spawn_teammate` 的**提示词**进入队友 —— 本 case 当初针对的自动 `memberPersona` 注入属于已退役的内置插件 | `node skills/dsh-qa/scripts/workmate-team-member.mjs` |
 | `web-client-adapt` | `@mpd-dsh/mpd` 的 boot-graph client entry + client.js id + workmate host 路由（含 client 的重命名/删除 URL） | `node skills/dsh-qa/scripts/web-client-adapt.mjs` |
 | `preset-conformance` | 每一个 Harness 自有行配置（preset + bundle patch + QA overlay）都与**已安装**的 Harness schema 相符，`mpd` preset 的行集合与已安装 `standard` preset 完全一致，并且以 `agentPreset: "mpd"` 真实创建的会话确实**挂载成功** —— 并带一个必须失败的负向对照 | `node skills/dsh-qa/scripts/preset-conformance.mjs` |
 | `tui-mount` | **真实** dsh-TUI 启动：bundle 作为第三层 patch 层（`dsh.profile.bundles` = [dsh-base, dsh-tui, @mpd-dsh/mpd]）、`mpd-tui` 行已被组合、原始日志中**零**条 apply-crash 特征、状态行已渲染，且该次启动自己产生的会话记录携带 `agentPreset: "mpd"` | `bun skills/dsh-qa/scripts/tui-mount.mjs` |
@@ -114,7 +113,7 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 | `tui-spec-conformance` | 用**宿主自己**的固定版一致性套件检验我们的 manifest 与捕获到的 host descriptor，记录套件 revision 与每一份输入摘要，并重新测量载荷的三方 sha256 一致性 | `bun skills/dsh-qa/scripts/tui-spec-conformance.mjs` |
 | `tui-settings-bridge` | settings 桥接的 TUI 分支，判定对象是**构建后的字节**：每条 `/settings` 提示都带桥接后的真实披露（`a save writes <workspace>/.mpd/mpd.jsonc … after a restart`）、桥接前那句 "not bridged" 已**删除**、`no-live-session` 运行时提示既存在又已接入状态行组合，且 TUI dist **零**文件系统写入 | `bun skills/dsh-qa/scripts/tui-settings-bridge.mjs` |
 
-| `agent-teams-adopt`（历史 C1） | MIT 声明 + 采纳接线 | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
+| `agent-teams-adopt`（历史 C1 —— 已**退役**的内置主体；团队路径现在跑在官方插件上） | MIT 声明 + 采纳接线 | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
 | `extension-lifecycle`（**新增**） | 在**真实挂载启动**上验证扩展接口（沙箱 `DSH_HOME` + `HOME` + 会话 cwd；各行均从**本检出**组合，且模型步骤由本地 OpenAI 形状的 stub 应答，因此不需要 provider 凭据）：放进 `<sandbox-ws>/.mpd/extensions/` 的数据面扩展出现在 `mpd_ext_list` 中、它的 flow 可加载、它的 role 可 spawn；每一种坏扩展都不会影响正常扩展，且同一主机上两个 cwd 不同的会话只看到各自工作区的工程扩展 | `bun skills/dsh-qa/scripts/extension-lifecycle.mjs` |
 | `extension-mcp-bridge`（**新增**） | 在同一套**真实挂载启动** + stub 配方上验证运行时 stdio MCP 桥：声明的服务器在两次工具列表读取中都出现 `mcp__<server>__<tool>`，且真实工具调用成功；dead/hang/schema/dup 四个分支证明单台服务器失败不会影响其他服务器 | `bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs` |
 
@@ -194,7 +193,7 @@ shell 子进程没有 —— 在 case 命令里显式导出）。
 
 ## 8. Vendor 与基线
 
-- `scripts/vendor-agent-teams.mjs` 从 host 安装（`DSH_HOST_NM`）重新物化采纳的
+- `scripts/vendor-agent-teams.mjs` 从 host 安装（`DSH_HOST_NM`）重新物化**保留（未挂载）**的
   agent-teams server 运行时闭包（`packages/mpd-agent-teams-plugin/_deps/`），把裸
   `@deepseek-ai/*` + `zod` 导入重写为相对路径 —— client bundle 保留裸导入（web app
   的 bundler 提供它们）。

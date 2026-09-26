@@ -13,7 +13,12 @@
   var exports = module.exports;
   Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
   let react = require("react");
-  const agentTeams = require("@nanmicoder/dsh-agent-teams");
+  // 0.1.7 REBASE: `require("@nanmicoder/dsh-agent-teams")` used to sit here. The retired
+  // vendored client is NO LONGER required by any mpd client source: the official
+  // `@deepseek-ai/dsh-experimental-client-ui-agent-team` client owns the roster/task-board UI,
+  // and this bundle's own team surface is the WATCHDOG view (src/team-page.js), which reads
+  // only this bundle's own routes through `fetch`. Nothing in this factory touches the
+  // harness's client modules.
 
   // ── Version-tolerant client seams ──────────────────────────────────────────
   // The web boot hard-fails the WHOLE page when one entry stays `pending`:

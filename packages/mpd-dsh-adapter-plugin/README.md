@@ -34,18 +34,84 @@ instead of across every plugin.
 | `agent.cancel` | `cancelAgentTurn(agent, cause, options?)` | THROWING verbatim forwarder |
 | `agent.steer` | `steerAgentTurn(agent, message)` | THROWING verbatim forwarder — nearest-step steering, distinct from `followup`'s new turn |
 | `agent.inject` | `injectAgentMessage(agent, message)` | THROWING verbatim forwarder — the inbox seam |
+| `ctx.subagents.registerProvider` | `registerSubagentProvider(provider)` | VERBATIM provider, disposer pass-through (a non-callable registry answer degrades to a no-op); THROW at the call when the seam is absent |
+| `ctx.agentTeams` (the official TeamService) | `teamService()` | the raw service, or `undefined` when this composition has no team row — the escape hatch beside the typed methods below |
+| `ctx.agentTeams.tryMembership` | `teamMembership(agent)` | projected `{teamId, role, name}`; **never throws** — `undefined` for a non-member, a stale identity, an unknown role or a missing service |
+| `ctx.agentTeams.listMembers` / `listTasks` | `teamListMembers(agent)` / `teamListTasks(agent)` | rows projected onto `DshTeamMemberView` / `DshTeamTaskView` (`diagnostics`, `blockedBy`, `writeScopes`, `writeScopeWarnings` are ALWAYS arrays); THROW when the seam is absent |
+| `ctx.agentTeams.createTask` / `getTask` / `updateTask` | `teamCreateTask(caller, req)` / `teamGetTask(caller, id)` / `teamUpdateTask(caller, req)` | caller AND request forwarded **by identity**, the promise untouched, only the reply projected; THROW when the seam is absent |
+| `ctx.agentTeams.sendMessage` / `waitForChange` | `teamSendMessage(caller, req)` / `teamWaitForChange(caller, timeoutMs, signal?)` | same forwarding discipline; the durable answer normalized to `{messageId, status: 'accepted'\|'queued'}` / `{timedOut}` |
+| `ctx.agentTeams.spawnTeammate` / `interrupt` | `teamSpawnTeammate(caller, req)` / `teamInterrupt(caller, targetName)` | same forwarding discipline; the member row is projected / the status sampled BEFORE cancellation is answered |
+| the live-team fold | `teamLiveTeams()` | one entry per live **Lead** agent (`{teamId, leadName, leadSessionId, members, tasks}`); `[]` when the service or the agent registry is absent, and a failing per-agent read yields `[]` for that entry instead of taking the fold down |
+| `ctx.on("agent/pre-step")` | `onAgentPreStep(listener)` | the adapter owns `next()`; the listener receives `(payload, downstream)` and may return an AMENDED decision (that is how an advisory notice is injected) or `undefined` to pass through; a throwing listener is contained; no event bus → no-op |
+| a live agent's own scoped `ctx.systemPrompt.section` | `agentPromptSection(agent, section)` | the section is forwarded VERBATIM to THAT agent's scope (receiver-bound, disposer passed back), so a contribution reaches one preset's sessions instead of every session this process serves; THROW at the call when the agent scope exposes no section |
 | capability probing | `capabilities()` | one boolean per seam, so a caller can degrade instead of crashing |
 
-The fourteen `agentTeams`-facing rows above exist for ONE consumer: the adopted `agent-teams`
-plugin, whose bridge module `packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js` (mpd-owned,
-name rule `lib/mpd-*.js`) builds the facade once at the top of `apply` and routes six bridged
-adopted files through them. Each method sits behind a `capabilities()` flag (one flag may cover
-two methods; `subagentRuntime` reuses the existing `subagents` flag), so the bridge degrades per
-seam instead of aborting the plugin tree: `toolsRegisterHost`, `subagents`, `subagentsProvider`,
+The fourteen rows from `registerHostTool` down to `injectAgentMessage` exist for ONE consumer:
+the adopted `agent-teams` plugin, whose bridge module
+`packages/mpd-agent-teams-plugin/lib/mpd-adapter-ctx.js` (mpd-owned, name rule `lib/mpd-*.js`)
+builds the facade once at the top of `apply` and routes six bridged adopted files through them.
+Each method sits behind a `capabilities()` flag (one flag may cover two methods;
+`subagentRuntime` reuses the existing `subagents` flag), so the bridge degrades per seam instead
+of aborting the plugin tree: `toolsRegisterHost`, `subagents`, `subagentsProvider`,
 `subagentsContinuable`, `subagentsInterrupt`, `llmListModels`, `llmResolveCallConfig`,
 `systemPromptSection`, `agentScope`, `commandsRegister`, `agentTurnStart`, `agentTurnCancel`,
 `agentTurnSteer` and `agentTurnInject` (the two `agentTurn{Steer,Inject}` flags are live-registry
 probes: they report `true` only when a live agent exposes `steer` / `inject`).
+
+The team-plane rows below them report their OWN four flags —
+`team`, `teamTasks`, `teamMessages` and `subagentsProviderRegister` — and never rename an
+existing one. The two AGENT-scoped rows (`onAgentPreStep`, `agentPromptSection`) report
+`agentPreStep` (the event bus) and `agentPromptSection` (a LIVE probe: a live agent whose own
+scope carries `systemPrompt.section`).
+
+## The official Agent Teams plane
+
+The harness ships Agent Teams as three official packages
+(`@deepseek-ai/dsh-experimental-agent-team`, `…-tool-agent-team`, `…-client-ui-agent-team`) whose
+service is `ctx.agentTeams`. **D6 of `docs/plan-0.1.7-adaptation.md` makes this adapter the ONLY
+place an mpd plugin may reach it** — a direct `ctx.agentTeams` read, or a direct
+`ctx.subagents.startContinuable` call, outside `packages/mpd-dsh-adapter-plugin` is a defect.
+
+The discipline is the same one `registerHostTool` follows:
+
+- the **caller Agent** (the exact live Agent that authorizes the operation) and the **request
+  object** are forwarded **by identity** — no copy, no key rewrite — so a host field this adapter
+  does not model still reaches the service, and the host's own validation and rejections stay
+  loud;
+- only the **reply** is projected (`teamMemberView` / `teamTaskView`): a declared `diagnostics`,
+  `blockedBy`, `writeScopes` or `writeScopeWarnings` is always an array, an unknown status degrades
+  to the safe value, and no undeclared key leaks;
+- every method is feature-detected and **nothing throws at construct or probe time**: a missing
+  seam surfaces as the exact action that could not happen
+  (`mpd-dsh-adapter: harness service "agentTeams" is unavailable — cannot create team task "…"`),
+  and `teamMembership` never throws at all (it is the filter a caller asks "is this agent on a
+  team?" with).
+
+`teamLiveTeams()` is the readout a Web route or a TUI scene uses instead of a `.mpd/team` record
+(there is none any more: team state lives in the Lead Session log and is published as the
+`agentTeam` Session projection). It folds the live agent registry, keeps one entry per Lead, and
+degrades to `[]` — never to a throw.
+
+**Model routing on the teammate path (plan §3):** `teamSpawnTeammate` is the harness's own
+`spawnTeammate`, whose `SubagentStartRequest` carries no `agentOptions`, `persona` or
+`toolFilter`; a teammate therefore inherits the Lead's route, and the `teamModels.slot*` contract
+is carried as explicit guidance inside the spawn prompt. Per-member routing still applies
+mechanically on the one-shot consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass
+`agentOptions` themselves.
+
+### The D6 gate (`test/no-direct-team-access.test.mjs`)
+
+A static gate scans `packages/mpd-*/src/**/*.ts`, except this package, for the literal
+identifiers `agentTeams` and `startContinuable`, fails naming file + line, strips comments first
+(an explanatory "never touch `ctx.agentTeams`" is not a violation) and reports hits in files
+OUTSIDE the `*.ts` band in a loud `NOT COVERED` section instead of silently skipping them:
+
+```bash
+node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs            # scan
+node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.mjs --self-test # negative control
+```
+
+It is also a `bun test` case, so `bun test packages/mpd-dsh-adapter-plugin` runs it too.
 
 ## The model-catalog seam (`llmCatalog`)
 

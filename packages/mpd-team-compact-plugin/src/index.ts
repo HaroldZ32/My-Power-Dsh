@@ -3,6 +3,12 @@
 // The user's request: "after every task is done and the team is about to be archived,
 // compact the context of all members of the current (not yet archived) team."
 //
+// 0.1.7 REBASE: the vendor team plugin and its `<workspace>/.mpd/team/<teamId>/team.json` are
+// retired. The roster and the board now come from the OFFICIAL Agent Teams service through the
+// adapter (`dsh.teamLiveTeams()`), and the service exposes NO "finished team" predicate, so the
+// trigger is DERIVED from both halves of that readout: every task terminal (the BOARD) AND every
+// member inactive (the ROSTER).
+//
 // Frozen semantics (evidence/omo-align/requirements/team-compaction-contract.json):
 //   trigger   a team whose EVERY task is terminal AND whose members are ALL idle
 //   who       members only — the captain is NEVER compacted (the user runs /compact)
@@ -27,9 +33,8 @@
 //   * A team whose captain is gone has no in-process members; it is recorded
 //     `not-live` rather than silently ignored.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
-import { createDshAdapter, type DshAdapter, type DshLiveAgent } from "../../mpd-dsh-adapter-plugin/src/index"
+import { join } from "node:path"
+import { createDshAdapter, type DshAdapter, type DshLiveAgent, type DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-team-compact"
 // INJECT: the TOOLS seam — and deliberately NOT `compaction`.
@@ -58,34 +63,49 @@ export const inject: string[] = ["tools"]
 
 type Ctx = { on?: (e: string, h: (...a: any[]) => any) => any; get?: (k: string) => any; logger?: any; [k: string]: any }
 
-/** The team state namespace owned by the agent-teams plugin. Read-only here. */
-const TEAM_STATE_DIR = join(".mpd", "team")
 /** This plugin's OWN audit namespace. Never `.mpd/team`. */
 const COMPACT_STATE_DIR = join(".mpd", "team-compact")
 const CAPTAIN_KEY = "captain"
 
 /**
- * Terminal task statuses, taken from the dependency that OWNS the vocabulary.
+ * The OFFICIAL terminal task statuses.
  *
- * Deliberately NOT re-declared locally: this set decides whether the destructive pass is
- * allowed to fire, and a copied constant drifts silently. A plain static import is not
- * usable here — `lib/types.js` (the runtime file) and `lib/types/` (a declarations
- * directory) both exist, so TypeScript resolves the DIRECTORY's `index.d.ts`, which does
- * not declare `TERMINAL_TASK_STATUSES`. The path is therefore computed at call time: the
- * runtime resolves the real `.js` file, and the ownership chain stays visible and honest
- * rather than being replaced by a literal.
+ * The OWNER of this vocabulary is the harness's own
+ * `@deepseek-ai/dsh-experimental-agent-team` (`TeamTaskStatus = "pending" | "in_progress" |
+ * "completed" | "deleted"`), and its terminal half is `completed` + `deleted`. It is mirrored
+ * HERE, and the mirror is deliberate rather than sloppy: the official package is not resolvable
+ * by a bare specifier from this repository (MEASURED: `MODULE_NOT_FOUND`), the adapter re-declares
+ * its public types for exactly that reason (`DshTeamTaskStatus`), and a `.d.ts` cannot be imported
+ * at runtime anyway. `deleted` is included because `listTasks` hides deleted rows, so a board the
+ * service reports as all-`completed` is terminal with or without it — the honest set is both.
+ *
+ * `failed`/`cancelled` are NOT in the official union; they are tolerated so a harness release that
+ * adds a terminal status cannot make this module's destructive pass fire on unfinished work.
  */
-export async function terminalTaskStatuses(): Promise<readonly string[]> {
-  const here = dirname(fileURLToPath(import.meta.url))
-  // src/index.ts -> ../../mpd-agent-teams-plugin/lib/types.js
-  // dist/index.js -> ../../mpd-agent-teams-plugin/lib/types.js
-  const specifier = join(here, "..", "..", "mpd-agent-teams-plugin", "lib", "types.js")
-  const mod = await import(specifier) as { TERMINAL_TASK_STATUSES?: unknown }
-  const statuses = mod.TERMINAL_TASK_STATUSES
-  if (!Array.isArray(statuses) || statuses.length === 0 || !statuses.every((s) => typeof s === "string")) {
-    throw new Error("mpd-team-compact: the agent-teams types module no longer exports a TERMINAL_TASK_STATUSES string array")
-  }
-  return statuses as string[]
+export const TERMINAL_TASK_STATUSES: readonly string[] = ["completed", "deleted", "failed", "cancelled"]
+
+/**
+ * The terminal vocabulary, as a call (the shape the pass and the row already use).
+ *
+ * It is SYNCHRONOUS now: there is no module to load — the mirror above is the authority — and a
+ * failure mode that can no longer happen must not be dressed up as one. `await` on the result
+ * still works, so every existing call site keeps its meaning.
+ */
+export function terminalTaskStatuses(): readonly string[] {
+  return TERMINAL_TASK_STATUSES
+}
+
+/**
+ * Whether ONE roster status means "this member is still doing something".
+ *
+ * The official `TeamMemberView.status` union is `running | inactive | provisioning | failed`;
+ * everything that is not running/provisioning is inactive (finished, failed, or a status this
+ * module does not know). That reading is deliberately conservative in the SAFE direction: an
+ * unknown status does not block a compaction of a genuinely finished team, and the BARRIER below
+ * still waits for every resolvable member to be idle before anything is driven.
+ */
+export function memberIsActive(status: string | undefined): boolean {
+  return status === "running" || status === "provisioning"
 }
 
 /** The six `ManualCompactionError` codes, plus our own lifecycle classification. */
@@ -154,7 +174,7 @@ export function sameAuditOutcome(previous: CompactAudit | undefined, next: Compa
   })
 }
 
-// ── team state (read-only) ───────────────────────────────────────────────────
+// ── team state (read-only, projected from the official live readout) ─────────
 
 export interface TeamMemberRecord {
   id: string
@@ -167,49 +187,92 @@ export interface TeamTaskRecord {
   assignee?: string
 }
 export interface TeamRecord {
+  /** The official team identity: the Lead Session id (`TeamId(root.id)`). */
   id: string
   name: string
   captainSessionId: string
   phase?: string
+  /** The TEAMMATES: the official roster's Lead pseudo-row is the captain, never a member. */
   members: TeamMemberRecord[]
   tasks: TeamTaskRecord[]
 }
 
-/** Read one team record. Returns undefined for a missing/invalid file (never throws). */
-export function readTeamRecord(workspace: string, teamId: string): TeamRecord | undefined {
-  const file = join(workspace, TEAM_STATE_DIR, teamId, "team.json")
-  if (!existsSync(file)) return undefined
-  try {
-    const parsed = JSON.parse(readFileSync(file, "utf8"))
-    if (parsed === null || typeof parsed !== "object") return undefined
-    if (typeof parsed.id !== "string" || !Array.isArray(parsed.members) || !Array.isArray(parsed.tasks)) return undefined
-    return parsed as TeamRecord
-  } catch {
-    return undefined
+/** One view of the official readout, projected. `undefined` for a view with no team identity. */
+function projectTeam(view: DshTeamView): TeamRecord | undefined {
+  const id = String(view?.teamId ?? "")
+  if (id === "") return undefined
+  const rows = Array.isArray(view.members) ? view.members : []
+  const lead = rows.find((member) => member.role === "lead")
+  const active = rows.some((member) => member.role === "teammate" && memberIsActive(member.status))
+  return {
+    id,
+    name: String(lead?.name ?? view.leadName ?? ""),
+    captainSessionId: String(view.leadSessionId ?? lead?.id ?? ""),
+    phase: active ? "active" : "idle",
+    members: rows
+      .filter((member) => member.role !== "lead")
+      .map((member) => ({
+        id: String(member.id ?? ""),
+        name: String(member.name ?? ""),
+        ...(typeof member.status === "string" ? { status: member.status } : {}),
+      })),
+    tasks: (Array.isArray(view.tasks) ? view.tasks : []).map((task) => ({
+      id: String(task.id ?? ""),
+      status: String(task.status ?? ""),
+      ...(typeof task.ownerName === "string" && task.ownerName !== "" ? { assignee: task.ownerName } : {}),
+    })),
   }
 }
 
-/** Every team id under one workspace's team state namespace (archived teams excluded). */
-export function listTeamIds(workspace: string): string[] {
-  const root = join(workspace, TEAM_STATE_DIR)
-  if (!existsSync(root)) return []
+/** Every LIVE team the adapter reports, projected. `[]` when the seam is absent (never throws). */
+export function readTeams(dsh: DshAdapter): TeamRecord[] {
+  let views: DshTeamView[]
   try {
-    return readdirSync(root, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "archive")
-      .map((entry) => entry.name)
+    views = dsh.teamLiveTeams() ?? []
   } catch {
     return []
   }
+  const teams: TeamRecord[] = []
+  for (const view of views) {
+    const team = projectTeam(view)
+    // A SOLO session is the Lead of its own implicit team on the official plane, with no
+    // teammate and no task: there is nothing to compact, and reporting it as a team would make
+    // the automatic triggers run a pointless pass for every live session in the process.
+    if (team === undefined) continue
+    if (team.members.length === 0 && team.tasks.length === 0) continue
+    teams.push(team)
+  }
+  return teams
+}
+
+/** Read one LIVE team by id. Returns undefined when the readout does not carry it. */
+export function readTeamRecord(dsh: DshAdapter, teamId: string): TeamRecord | undefined {
+  const wanted = String(teamId)
+  return readTeams(dsh).find((team) => team.id === wanted)
+}
+
+/** Every live team id in this process (sorted), i.e. the teams a pass may consider. */
+export function listTeamIds(dsh: DshAdapter): string[] {
+  return readTeams(dsh).map((team) => team.id).sort()
 }
 
 /**
  * The trigger, as a pure predicate so it can be falsified without a boot.
- * `terminal` is injected (not hard-coded) so the caller must hand in the OWNING
- * plugin's constant; the negative control is "any non-terminal task ⇒ never compact".
+ *
+ * The official service exposes NO "finished team" predicate, so it is DERIVED from BOTH halves of
+ * its readout: every task terminal (the BOARD, `teamListTasks`) AND no member active (the ROSTER,
+ * `teamListMembers`). `terminal` is injected (not hard-coded) so the caller must hand in the
+ * vocabulary that owns it; the negative controls are "any non-terminal task ⇒ never compact" and
+ * "any running/provisioning member ⇒ never compact".
+ *
+ * The roster half is a REFUSAL, not a substitute for the barrier: a member whose record status is
+ * stale but whose Agent is still working is caught by `compactTeamPass`'s idle barrier, which is
+ * the one that can see the live Agents.
  */
 export function teamIsFinished(team: TeamRecord, terminal: readonly string[]): boolean {
   if (!Array.isArray(team.tasks) || team.tasks.length === 0) return false
-  return team.tasks.every((task) => terminal.includes(task.status))
+  if (!team.tasks.every((task) => terminal.includes(task.status))) return false
+  return !team.members.some((member) => memberIsActive(member.status))
 }
 
 /** Members that this plugin may consider: every member except the captain. */
@@ -330,15 +393,22 @@ export async function compactTeamPass(
     engineResolution: "agent-scoped",
   }
 
-  // NEGATIVE CONTROL, first: a team that still has work must NEVER be compacted.
+  // NEGATIVE CONTROL, first: a team that still has work must NEVER be compacted. Both halves of
+  // the derived "finished" predicate are named in the refusal, so an audit never says "nothing to
+  // compact" when the real cause was a task, and never blames a task when the real cause was a
+  // member that is still running.
   if (!teamIsFinished(team, options.terminal)) {
     const nonTerminal = team.tasks.filter((task) => !options.terminal.includes(task.status))
-    return {
-      ...base,
-      outcome: "refused",
-      refusedReason: `team still has ${nonTerminal.length} non-terminal task(s): ${nonTerminal.map((task) => `${task.id}=${task.status}`).join(", ")}`,
-      members: [],
+    const stillActive = team.members.filter((member) => memberIsActive(member.status))
+    const reasons: string[] = []
+    if (nonTerminal.length > 0) {
+      reasons.push(`team still has ${nonTerminal.length} non-terminal task(s): ${nonTerminal.map((task) => `${task.id}=${task.status}`).join(", ")}`)
     }
+    if (stillActive.length > 0) {
+      reasons.push(`${stillActive.length} member(s) still active: ${stillActive.map((member) => `${member.name}=${String(member.status ?? "unknown")}`).join(", ")}`)
+    }
+    if (reasons.length === 0) reasons.push("the team's board carries no task at all: there is nothing to compact")
+    return { ...base, outcome: "refused", refusedReason: reasons.join("; "), members: [] }
   }
 
   // Resolve every member's live Agent ONCE, so the barrier and the drive agree.
@@ -447,13 +517,9 @@ export async function compactTeamPass(
 export function apply(ctx: Ctx): void {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx)
   const log = ctx.logger ?? { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} }
-  let terminal: readonly string[] = []
-  // Resolved lazily so an import-order surprise cannot stop the row from applying.
-  async function terminalStatuses(): Promise<readonly string[]> {
-    if (terminal.length > 0) return terminal
-    terminal = await terminalTaskStatuses()
-    return terminal
-  }
+  // The vocabulary is a local mirror of the OFFICIAL union (see `TERMINAL_TASK_STATUSES`), so it
+  // is available synchronously and can never park the row on a module load.
+  const terminalStatuses = (): readonly string[] => TERMINAL_TASK_STATUSES
 
   /** Identical-outcome attempts collapsed since the last WRITTEN record, per team. */
   const suppressedSinceWrite = new Map<string, number>()
@@ -489,14 +555,14 @@ export function apply(ctx: Ctx): void {
 
   /** Run one pass for one team and persist its audit (write-on-change). Returns the audit. */
   async function runPass(workspace: string, teamId: string, caller?: CompactAudit["caller"], force = false): Promise<CompactAudit> {
-    const team = readTeamRecord(workspace, teamId)
+    const team = readTeamRecord(dsh, teamId)
     if (team === undefined) {
       return writeOrSkip(workspace, teamId, {
         schema: "mpd/team-compact@1", teamId, teamName: "", at: Date.now(),
-        outcome: "refused", refusedReason: "no readable team record", members: [], engineResolution: "agent-scoped",
+        outcome: "refused", refusedReason: "no LIVE team with that id in this process", members: [], engineResolution: "agent-scoped",
       }, caller, force)
     }
-    const audit = await compactTeamPass(dsh, team, { terminal: await terminalStatuses() })
+    const audit = await compactTeamPass(dsh, team, { terminal: terminalStatuses() })
     return writeOrSkip(workspace, teamId, audit, caller, force)
   }
 
@@ -508,10 +574,10 @@ export function apply(ctx: Ctx): void {
     try {
       const workspace = dsh.workspaceRoot()
       if (workspace === undefined || workspace === "") return
-      for (const teamId of listTeamIds(workspace)) {
-        const team = readTeamRecord(workspace, teamId)
+      for (const teamId of listTeamIds(dsh)) {
+        const team = readTeamRecord(dsh, teamId)
         if (team === undefined) continue
-        if (!teamIsFinished(team, await terminalStatuses())) continue
+        if (!teamIsFinished(team, terminalStatuses())) continue
         await runPass(workspace, teamId, { via: "status" })
       }
     } catch (error) {
@@ -546,11 +612,11 @@ export function apply(ctx: Ctx): void {
       if (workspace === undefined || workspace === "") return undefined
       void (async () => {
         try {
-          for (const teamId of listTeamIds(workspace)) {
-            const team = readTeamRecord(workspace, teamId)
+          for (const teamId of listTeamIds(dsh)) {
+            const team = readTeamRecord(dsh, teamId)
             if (team === undefined) continue
             if (!compactableMembers(team).some((member) => member.id === sessionId)) continue
-            if (!teamIsFinished(team, await terminalStatuses())) continue
+            if (!teamIsFinished(team, terminalStatuses())) continue
             await runPass(workspace, teamId, { via: "turn-end", sessionId, cwd })
           }
         } catch (error) {
@@ -598,7 +664,7 @@ export function apply(ctx: Ctx): void {
     },
     async execute(args: { team_id?: string; force?: boolean }, exec: { agent?: { session?: { id?: string; header?: { cwd?: string } } } }) {
       const workspace = dsh.workspaceRoot(exec as never)
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(workspace) : [args.team_id]
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id]
       const sessionId = String(exec?.agent?.session?.id ?? "")
       const caller: CompactAudit["caller"] = {
         via: "tool",
@@ -633,7 +699,7 @@ export function apply(ctx: Ctx): void {
     },
     async execute(args: { team_id?: string }, exec: { agent?: { session?: { header?: { cwd?: string } } } }) {
       const workspace = dsh.workspaceRoot(exec as never)
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(workspace) : [args.team_id]
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id]
       return { teams: ids.map((teamId) => ({ teamId, passes: readAudits(workspace, teamId) })) }
     },
   })

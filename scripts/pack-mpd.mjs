@@ -48,6 +48,36 @@ const devPatch = join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml")
 const PKG_NAME = "@mpd-dsh/mpd"
 const BP = "(typeof baseUrl === \"string\" ? baseUrl.replace(/^file:\\/\\//, \"\").replace(/\\/+$/, \"\") : \"\")"
 
+/**
+ * The bundle's patch layer, from the ONE declaration the loader reads.
+ *
+ * 0.1.7-rc.2: `dsh.bundle.patch` is an ARRAY — the main bundle patch plus the
+ * preset patch that declares the whole `mpd` preset as a
+ * `@deepseek-ai/dsh-agent-preset` ROW (`presets/mpd.patch.yml`). The packer must
+ * ship EVERY declared patch, decoupled, and declare the same set in the packed
+ * manifest: a packed install missing the preset patch boots with NO `mpd` preset
+ * at all while `npm run pack` still exits 0 — the same silent-omission class the
+ * PLUGIN_PKGS / ROOT_ASSET_DIRS comments below record.
+ *
+ * The MAIN patch keeps its historical packed location (`<packed>/cordis.patch.yml`)
+ * so every existing packed-path consumer is untouched; an ADDITIONAL patch is
+ * staged at its own repo-relative path, which is also where ROOT_ASSET_DIRS'
+ * `presets` copy already puts it.
+ */
+const MAIN_PATCH_REL = "packages/mpd-bundle/cordis.patch.yml"
+function declaredPatches() {
+  const raw = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"))?.dsh?.bundle?.patch
+  const list = Array.isArray(raw) ? raw : typeof raw === "string" ? [raw] : []
+  return {
+    array: Array.isArray(raw),
+    entries: list.filter((value) => typeof value === "string" && value.trim() !== "")
+      .map((value) => ({ rel: value.replace(/^\.\//, ""), source: join(repoRoot, value) })),
+  }
+}
+const PATCHES = declaredPatches()
+/** Packed-relative path of one declared patch (the main patch keeps its root name). */
+function packedPatchRel(entry) { return entry.rel === MAIN_PATCH_REL ? "cordis.patch.yml" : entry.rel }
+
 function jsVal(expr) { return "!!js '" + expr + "'" }
 function pathExpr(rel) { return jsVal(BP + " + \"" + rel + "\"") }
 
@@ -320,14 +350,19 @@ function cpAssets() {
       if (existsSync(join(repoRoot, "packages", p, f))) cpSync(join(repoRoot, "packages", p, f), join(outDir, "packages", p, f))
     }
   }
-  // Positive closure check against the PATCH itself: every `packages/<pkg>/<file>`
-  // path a mounted row executes must exist in the packed tree (t25 acceptance).
-  const patchText = readFileSync(devPatch, "utf8")
-  for (const m of patchText.matchAll(/packages\/([a-z0-9-]+)\/(launch\.mjs|dist\/[A-Za-z0-9._/-]+\.js)/g)) {
-    const packed = join(outDir, "packages", m[1], m[2])
-    if (!existsSync(packed)) {
-      console.error("[pack-mpd] FAIL: the patch mounts packages/" + m[1] + "/" + m[2] + " but the packed tree has no such file")
-      process.exit(1)
+  // Positive closure check against the PATCH LAYER itself: every `packages/<pkg>/<file>`
+  // path a mounted row executes must exist in the packed tree (t25 acceptance). The
+  // check runs over EVERY declared patch, so a row that only the preset patch mounts
+  // is covered exactly like one in the main patch.
+  for (const entry of PATCHES.entries) {
+    if (!existsSync(entry.source)) continue
+    const patchText = readFileSync(entry.source, "utf8")
+    for (const m of patchText.matchAll(/packages\/([a-z0-9-]+)\/(launch\.mjs|dist\/[A-Za-z0-9._/-]+\.js)/g)) {
+      const packed = join(outDir, "packages", m[1], m[2])
+      if (!existsSync(packed)) {
+        console.error("[pack-mpd] FAIL: " + entry.rel + " mounts packages/" + m[1] + "/" + m[2] + " but the packed tree has no such file")
+        process.exit(1)
+      }
     }
   }
 }
@@ -369,6 +404,10 @@ function decouplePatch(srcPatch) {
 
 function writeManifest() {
   const root = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"))
+  // The packed patch layer mirrors the ROOT declaration, in order, at the paths the
+  // packer actually stages. The SHAPE mirrors the source too (array stays an array),
+  // so a single-patch bundle keeps the historical string form.
+  const patchTargets = PATCHES.entries.map((entry) => "./" + packedPatchRel(entry).split("\\").join("/"))
   const manifest = {
     name: PKG_NAME,
     version: root.version,
@@ -406,13 +445,17 @@ function writeManifest() {
       "docs/**",
       "agent-references/**",
       "scripts/**",
-      "cordis.patch.yml",
+      // every staged patch file, named individually as well: the wildcards above
+      // cover them TODAY, and this line is what keeps the declaration honest if a
+      // future patch lands somewhere the wildcards do not reach. `cordis.patch.yml`
+      // is NOT listed separately — the main patch IS a `patchTargets` entry.
+      ...patchTargets.map((target) => target.replace(/^\.\//, "")),
       // the named root files, from the SAME table the copy loop uses — one source of truth, so a
       // file cannot be copied without being declared or declared without being copied (T-70).
       ...ROOT_FILES
     ],
     dsh: {
-      bundle: { patch: "./cordis.patch.yml" },
+      bundle: { patch: PATCHES.array ? patchTargets : patchTargets[0] },
       // The bundle's web client (the adopted agent-teams panel + workmate library)
       // declares its own service injects inside the client factory; the bundle-level
       // graph-row inject stays empty, mirroring @linxin666/dsh-web-ui-all.
@@ -556,16 +599,48 @@ function writeValidatorEntry() {
   verifyValidatorEntry(dest, "generated")
 }
 
+/**
+ * Stage every declared patch, decoupled. The main patch goes to the packed root
+ * (its historical location); every additional patch keeps its repo-relative path,
+ * which is where the ROOT_ASSET_DIRS copy already placed it — the decoupled bytes
+ * OVERWRITE that copy so the two can never disagree.
+ */
+function writePatches() {
+  if (PATCHES.entries.length === 0) {
+    console.error("[pack-mpd] FAIL: package.json declares no dsh.bundle.patch — a packed bundle with no patch layer mounts nothing")
+    process.exit(1)
+  }
+  for (const entry of PATCHES.entries) {
+    if (!existsSync(entry.source)) {
+      console.error("[pack-mpd] FAIL: the manifest declares the patch " + entry.rel + " but it does not exist — a packed install would boot without it")
+      process.exit(1)
+    }
+    const rel = packedPatchRel(entry)
+    const dest = join(outDir, rel)
+    mkdirSync(dirname(dest), { recursive: true })
+    writeFileSync(dest, decouplePatch(entry.source))
+  }
+  if (!existsSync(join(outDir, "cordis.patch.yml"))) {
+    console.error("[pack-mpd] FAIL: the packed tree has no cordis.patch.yml — the main bundle patch was not staged")
+    process.exit(1)
+  }
+  console.log("[pack-mpd] staged " + PATCHES.entries.length + " patch file(s): " + PATCHES.entries.map((entry) => packedPatchRel(entry)).join(", "))
+}
+
 function main() {
   rmSync(outDir, { recursive: true, force: true })
   mkdirSync(outDir, { recursive: true })
   cpDist()
   cpAssets()
   writeValidatorEntry()
-  writeFileSync(join(outDir, "cordis.patch.yml"), decouplePatch(devPatch))
+  writePatches()
   writeManifest()
-  const raw = readFileSync(join(outDir, "cordis.patch.yml"), "utf8")
-  if (raw.includes(dev)) { console.error("[pack-mpd] FAIL: dev path leaked into staged patch"); process.exit(1) }
+  // No dev path may survive in ANY staged patch: the artifact is relocatable, and a
+  // leak in the second patch is as fatal as one in the first.
+  for (const entry of PATCHES.entries) {
+    const raw = readFileSync(join(outDir, packedPatchRel(entry)), "utf8")
+    if (raw.includes(dev)) { console.error("[pack-mpd] FAIL: dev path leaked into staged patch " + packedPatchRel(entry)); process.exit(1) }
+  }
   const modes = normalizeModes(outDir)
   console.log("[pack-mpd] modes normalized: " + modes.files + " files (644: " + modes.made644 + ", 755: " + modes.kept755 + ")")
   console.log("[pack-mpd] staged package -> " + outDir + "  (out-dir source: " + OUT.source + ")")

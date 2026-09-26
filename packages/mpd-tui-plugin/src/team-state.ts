@@ -1,36 +1,37 @@
-// Read-only projection of ONE team's workflow — the data behind the two new TUI
+// Read-only projection of ONE team's workflow — the data behind the two TUI
 // surfaces (`mpd-tui-team`, `mpd-tui-plan`).
 //
-// Boundary (frozen contract `.mpd/plans/tui-team-surface.md` §5.5): this module
-// READS `<workspace>/.mpd/team/<teamId>/team.json` (the adopted agent-teams
-// plugin owns that file) and the mailboxes under it. It performs ZERO writes —
-// no write primitive may appear in this package's built bytes — and it never
-// touches a harness service: mutation goes through the adapter, in index.ts.
+// 0.1.7 REBASE (boundary, frozen contract `.mpd/plans/tui-team-surface.md` §5.5): the retired
+// vendored `agent-teams` plugin and its `<workspace>/.mpd/team/<teamId>/team.json` are GONE. The
+// source is now the OFFICIAL live readout, resolved through the adapter
+// (`liveTeamViews(dsh, workspace)` → `dsh.teamLiveTeams()`), and the mailbox readers that mirrored
+// `<teamDir>/inbox/*.jsonl` are gone with the file they read.
 //
-// Everything is projected from the REAL durable record, not a hand-built object:
-// the field names below are the adopted `team.json` shape and the semantics of
-// `depth`, `failed-dependency` marking and "which task is a member on" mirror the
-// Web panel's own snapshot assembly (`lib/snapshot.js:56-118`,
-// `lib/state.js:114-128`/`:1397-1442`) so the two editions cannot disagree about
-// a fact they both display.
+// Those bytes are live — NOTHING here reads a disk record any more — and what the official plane
+// does not carry is reported as ABSENT rather than invented:
+//   * `subject`, `status`, `blockedBy`, `ownerName` come from the board, so the DAG, the depth
+//     ordering and the BLOCKED marking keep working;
+//   * `kind`, `verdict`, `round`, `attempt` have NO official field: they stay OPTIONAL and are
+//     never populated, so a renderer that prints them prints the honest blank;
+//   * `phase` is DERIVED (a teammate running/provisioning ⇒ `active`), there is no staged plan and
+//     no `approvedAt`/`createdAt`, so `staged` is always false;
+//   * the peer mailbox lives in the Lead Session log with no adapter seam: `unread` is `null`
+//     ("not observable"), never a fabricated `0`.
 //
-// Nothing here throws: a missing, unreadable or malformed record degrades to an
-// empty workflow plus a bounded problem note. A scene must never be able to take
-// the session down (contract §10, last acceptance criterion).
-import { readFileSync, readdirSync, statSync } from "node:fs"
-import { join } from "node:path"
+// This module still performs ZERO writes — no write primitive may appear in this package's built
+// bytes — and it never touches a harness service: the ADAPTER is the only contact surface, and a
+// scene receives its resolved views from the composition root.
+//
+// Nothing here throws: an absent/unreadable readout degrades to an empty workflow plus a bounded
+// problem note. A scene must never be able to take the session down (contract §10, last criterion).
+import type { DshAdapter, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { scalarText } from "./sanitize.js"
 
-/** Bounded caps — the board's own values, so one pathological record cannot stall a render. */
+/** Bounded caps — so one pathological readout cannot stall a render. */
 const MAX_TEAMS = 20
 const MAX_TASKS = 5000
 const MAX_PROBLEMS = 5
-const MAX_INBOX_TAIL = 5
-/** Mirror of the adopted mailbox lease: a delivery claim younger than this is not unread. */
-const MAILBOX_LEASE_MS = 60_000
-/** The captain's mailbox key (adopted `CAPTAIN_KEY`). */
-const CAPTAIN_KEY = "captain"
-/** The mailbox key cap (adopted `MAX_KEY_LENGTH`). */
+/** The mailbox key cap (mirrors the retired `MAX_KEY_LENGTH` the normalisation was written for). */
 const MAILBOX_KEY_MAX = 48
 
 /** One task row of the workflow view. */
@@ -63,7 +64,8 @@ export interface TeamMemberRow {
   total: number
   progress: number
   currentTask?: string
-  unread: number
+  /** `null` = NOT OBSERVABLE on the official plane (the mailbox is the Lead session's). */
+  unread: number | null
 }
 
 /** The team-level facts. */
@@ -98,7 +100,8 @@ export interface TeamWorkflow {
     cancelled: number
     other: number
   }
-  mail: { unread: number; captainInbox: { from: string; content: string }[] }
+  /** `unread: null` = not observable; `captainInbox` is always empty for the same reason. */
+  mail: { unread: number | null; captainInbox: { from: string; content: string }[] }
   /** Team ids the team watchdog currently holds for this workspace (never fabricated). */
   holds: readonly string[]
   problems: string[]
@@ -141,66 +144,6 @@ export function mailboxKey(name: string): string {
   if (cleaned === "") return ""
   const points = [...cleaned]
   return points.length > MAILBOX_KEY_MAX ? points.slice(0, MAILBOX_KEY_MAX).join("") : cleaned
-}
-
-/**
- * Unread messages in one mailbox file, by the adopted reader's own rule
- * (`state.js:845-855`): tombstones never count, a read message never counts, and
- * a delivery claim inside the lease window does not count yet.
- */
-function unreadCount(file: string): number {
-  let raw: string
-  try {
-    raw = readFileSync(file, "utf8")
-  } catch {
-    return 0
-  }
-  const now = Date.now()
-  let unread = 0
-  for (const rawLine of raw.split("\n")) {
-    const line = rawLine.replace(/^\uFEFF/u, "")
-    if (line.trim() === "") continue
-    let value: unknown
-    try {
-      value = JSON.parse(line)
-    } catch {
-      continue
-    }
-    if (!isRecord(value)) continue
-    if (value.tombstone === true) continue
-    if (value.readAt !== undefined) continue
-    const claimed = asNumber(value.deliveryClaimedAt)
-    if (claimed !== undefined && now - claimed < MAILBOX_LEASE_MS) continue
-    unread += 1
-  }
-  return unread
-}
-
-/** The last N captain-inbox rows, as `{from, content}` (the Web panel's own tail shape). */
-function captainInboxTail(file: string): { from: string; content: string }[] {
-  let raw: string
-  try {
-    raw = readFileSync(file, "utf8")
-  } catch {
-    return []
-  }
-  const tail: { from: string; content: string }[] = []
-  for (const rawLine of raw.split("\n")) {
-    const line = rawLine.replace(/^\uFEFF/u, "")
-    if (line.trim() === "") continue
-    let value: unknown
-    try {
-      value = JSON.parse(line)
-    } catch {
-      continue
-    }
-    if (!isRecord(value) || value.tombstone === true) continue
-    const from = scalarText(value.from, 40) ?? "?"
-    const content = scalarText(value.content, 200) ?? ""
-    if (content === "") continue
-    tail.push({ from, content })
-  }
-  return tail.slice(-MAX_INBOX_TAIL)
 }
 
 /** The dependency ids that still block (`state.js:dependencyStates`). */
@@ -286,45 +229,6 @@ function currentTaskOf(memberName: string, tasks: readonly TeamTaskRow[]): strin
   return undefined
 }
 
-/** Pick the newest record: `approvedAt ?? createdAt`, ties by file size (`state.ts:107-109`). */
-function newestRecordPath(teamsDir: string, problems: string[]): string | undefined {
-  let entries: string[]
-  try {
-    entries = readdirSync(teamsDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .slice(0, MAX_TEAMS)
-  } catch {
-    return undefined
-  }
-  let best: { path: string; record: Record<string, unknown>; sortKey: string } | undefined
-  for (const name of entries) {
-    const path = join(teamsDir, name, "team.json")
-    let size: number
-    try {
-      size = statSync(path).size
-    } catch {
-      problems.push(`team ${name}: unreadable`)
-      continue
-    }
-    let record: unknown
-    try {
-      record = JSON.parse(readFileSync(path, "utf8"))
-    } catch {
-      problems.push(`team ${name}: invalid JSON`)
-      continue
-    }
-    if (!isRecord(record)) {
-      problems.push(`team ${name}: not an object`)
-      continue
-    }
-    const stamp = String(record.approvedAt ?? record.createdAt ?? "")
-    const sortKey = `${stamp}\u0000${String(size).padStart(12, "0")}`
-    if (best === undefined || sortKey > best.sortKey) best = { path, record, sortKey }
-  }
-  return best?.path
-}
-
 /** An empty workflow: what every failure path renders instead of a crash. */
 function emptyWorkflow(workspace: string, problems: string[], holds: readonly string[]): TeamWorkflow {
   return {
@@ -332,59 +236,110 @@ function emptyWorkflow(workspace: string, problems: string[], holds: readonly st
     members: [],
     tasks: [],
     counts: { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 },
-    mail: { unread: 0, captainInbox: [] },
+    mail: { unread: null, captainInbox: [] },
     holds,
     problems,
   }
 }
 
 /**
- * Read one workflow projection.
- * @param workspace - the calling session's workspace root (never `process.cwd()` cached).
+ * The LIVE team views that belong to ONE workspace, resolved through the adapter.
+ *
+ * The official readout is process-wide, so the per-workspace scoping the TUI needs is recovered
+ * from the SAME registry the readout itself folds: a view belongs to `workspace` when its Lead
+ * session is a live Agent whose session cwd IS that workspace. When the registry cannot answer at
+ * all, every view is returned — the readout is then the only truth available, and showing a live
+ * team is better than showing none. A readout that throws degrades to `[]`, never a throw.
+ *
+ * @param dsh - the adapter (the ONE harness contact surface).
+ * @param workspace - the calling session's workspace root.
+ * @returns the views, never throwing.
+ */
+export function liveTeamViews(dsh: DshAdapter, workspace: string): DshTeamView[] {
+  let views: DshTeamView[]
+  try {
+    views = dsh.teamLiveTeams() ?? []
+  } catch {
+    return []
+  }
+  let agents: readonly unknown[] = []
+  try {
+    agents = dsh.liveAgents() ?? []
+  } catch {
+    agents = []
+  }
+  if (agents.length === 0 || workspace === "") return views.slice(0, MAX_TEAMS)
+  const cwdOf = new Map<string, string>()
+  for (const entry of agents) {
+    const agent = entry as { id?: unknown; session?: { header?: { cwd?: unknown } } } | undefined
+    const id = typeof agent?.id === "string" ? agent.id : ""
+    const cwd = agent?.session?.header?.cwd
+    if (id !== "" && typeof cwd === "string") cwdOf.set(id, cwd)
+  }
+  const own = views.filter((view) => cwdOf.get(String(view.leadSessionId ?? "")) === workspace)
+  // A view whose Lead the registry does not carry cannot be placed in any workspace; it is kept
+  // only when NOTHING could be placed, so a single-workspace host still renders its team.
+  return (own.length > 0 ? own : views).slice(0, MAX_TEAMS)
+}
+
+/** The roster status of a member, in the official vocabulary (`TeamMemberView.status`). */
+function memberStatus(view: DshTeamView, index: number): string {
+  const rows = Array.isArray(view.members) ? view.members : []
+  const row = rows[index]
+  return typeof row?.status === "string" ? row.status : "unknown"
+}
+
+/** Whether any teammate row is doing something (the DERIVED phase, see the module header). */
+function teamActive(view: DshTeamView): boolean {
+  const rows = Array.isArray(view.members) ? view.members : []
+  return rows.some((member) => member.role === "teammate" && (member.status === "running" || member.status === "provisioning"))
+}
+
+/**
+ * Choose the team the surface shows: the live view with the most tasks, ties broken by the
+ * readout's own order. There are no timestamps on the official plane, so "newest" is not a
+ * question that can be asked; "the one with a board" is.
+ */
+function principalView(views: readonly DshTeamView[]): DshTeamView | undefined {
+  let best: DshTeamView | undefined
+  for (const view of views) {
+    const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0
+    if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0)) best = view
+  }
+  return best
+}
+
+/**
+ * Read one workflow projection from the OFFICIAL readout.
+ *
+ * @param workspace - the calling session's workspace root (display + problem notes).
  * @param holds - the team ids the watchdog currently holds (read through its service).
+ * @param views - the LIVE team views for that workspace, resolved by the caller through the
+ *   adapter (`liveTeamViews(dsh, workspace)`); pass `[]` when the seam is absent.
  * @returns the projection; never throws.
  */
-export function readTeamWorkflow(workspace: string, holds: readonly string[] = []): TeamWorkflow {
+export function readTeamWorkflow(workspace: string, holds: readonly string[] = [], views: readonly DshTeamView[] = []): TeamWorkflow {
   const problems: string[] = []
-  const teamsDir = join(workspace, ".mpd", "team")
-  let path: string | undefined
-  try {
-    path = newestRecordPath(teamsDir, problems)
-  } catch {
-    problems.push("team state unreadable")
-  }
-  if (path === undefined) {
-    if (problems.length === 0) return emptyWorkflow(workspace, problems, holds)
-    return emptyWorkflow(workspace, problems.slice(0, MAX_PROBLEMS), holds)
-  }
-  let record: Record<string, unknown>
-  try {
-    const parsed = JSON.parse(readFileSync(path, "utf8"))
-    if (!isRecord(parsed)) throw new Error("not an object")
-    record = parsed
-  } catch {
-    problems.push("team record unreadable")
-    return emptyWorkflow(workspace, problems.slice(0, MAX_PROBLEMS), holds)
-  }
+  const view = principalView(views.slice(0, MAX_TEAMS))
+  if (view === undefined) return emptyWorkflow(workspace, problems, holds)
 
+  const rawTasks = Array.isArray(view.tasks) ? view.tasks.slice(0, MAX_TASKS) : []
   const tasks: TeamTaskRow[] = []
-  for (const raw of asArray(record.tasks).slice(0, MAX_TASKS)) {
-    if (!isRecord(raw)) continue
+  for (const raw of rawTasks) {
+    if (raw === null || typeof raw !== "object") continue
     const id = asText(raw.id, 40)
     if (id === undefined) continue
-    const dependencies = asArray(raw.dependencies)
+    const dependencies = (Array.isArray(raw.blockedBy) ? raw.blockedBy : [])
       .map((entry) => asText(entry, 40))
       .filter((entry): entry is string => entry !== undefined)
     tasks.push({
       id,
       subject: asText(raw.subject, 160) ?? "",
-      ...optional("kind", asText(raw.kind, 40)),
+      // `kind`/`round`/`verdict`/`attempt` have NO official source: the row leaves them absent so a
+      // renderer prints the honest blank instead of a value the board never carried.
       status: asText(raw.status, 40) ?? "pending",
       visual: "open",
-      ...optional("assignee", asText(raw.assignee, 80)),
-      ...(asNumber(raw.attempt) === undefined ? {} : { attempt: asNumber(raw.attempt) as number }),
-      ...(asNumber(raw.round) === undefined ? {} : { round: asNumber(raw.round) as number }),
-      ...optional("verdict", asText(raw.verdict, 40)),
+      ...optional("assignee", asText(raw.ownerName, 80)),
       dependencies,
       failedDependencies: [],
       depth: 0,
@@ -396,11 +351,8 @@ export function readTeamWorkflow(workspace: string, holds: readonly string[] = [
     task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed
     task.visual = taskVisualState(task.status, tasks, task.dependencies)
   }
-  // Frozen §3.1 item 4: the DAG is "ordered by `depth` then creation order". The order is
-  // established ONCE here, in the projection, so both renderers (`teamWorkflowLines` and
-  // `planProjectionLines`) emit the identical sequence and neither can drift. `createdAt`
-  // is not a per-task fact in the durable record, so the record's own array index IS the
-  // creation-order tiebreak (the array is appended in creation order by the adopted plugin).
+  // The DAG is ordered by `depth` then the board's own order (there is no per-task creation
+  // timestamp to sort by on the official plane, and the board's rows ARE append-ordered).
   const creationIndex = new Map(tasks.map((task, index) => [task.id, index]))
   tasks.sort((left, right) => left.depth - right.depth || (creationIndex.get(left.id) ?? 0) - (creationIndex.get(right.id) ?? 0))
   const cycle = cycleIds(tasks)
@@ -433,65 +385,57 @@ export function readTeamWorkflow(workspace: string, holds: readonly string[] = [
     }
   }
 
-  const teamId = asText(record.id, 60) ?? "?"
-  const inboxDir = join(workspace, ".mpd", "team", asString(record.id) ?? "", "inbox")
+  const memberRows = Array.isArray(view.members) ? view.members : []
   const members: TeamMemberRow[] = []
-  let unreadTotal = 0
-  for (const raw of asArray(record.members)) {
-    if (!isRecord(raw)) continue
-    const status = asText(raw.status, 40) ?? "unknown"
-    if (status === "removed") continue
+  memberRows.forEach((raw, index) => {
+    if (raw === null || typeof raw !== "object") return
+    if (raw.role === "lead") return
+    // A `removed` teammate is not part of the roster (the Web panel's own filter, tolerated here
+    // for a record-shaped fixture; the official statuses are running|inactive|provisioning|failed).
+    if ((raw as { status?: unknown }).status === "removed") return
     const name = asText(raw.name, 80) ?? "?"
+    const status = memberStatus(view, index)
     const provider = asString(raw.provider)?.trim() ?? ""
     const model = asString(raw.model)?.trim() ?? ""
     const route = provider !== "" && model !== "" ? `${provider}/${model}` : model !== "" ? model : undefined
     const owned = tasks.filter((task) => task.assignee === name)
     const done = owned.filter((task) => task.status === "completed").length
-    const key = mailboxKey(name)
-    const unread = key === "" ? 0 : unreadCount(join(inboxDir, `${key}.jsonl`))
-    unreadTotal += unread
-    const currentTask = currentTaskOf(name, tasks)
     members.push({
       name,
-      ...optional("role", asText(raw.role, 120)),
+      ...optional("role", asText(raw.description, 120)),
       ...optional("route", route),
       status,
       done,
       total: owned.length,
       progress: owned.length === 0 ? 0 : Math.round((done / owned.length) * 100),
-      ...optional("currentTask", currentTask),
-      unread,
+      ...optional("currentTask", currentTaskOf(name, tasks)),
+      unread: null,
     })
-  }
-  const captainKey = mailboxKey(CAPTAIN_KEY)
-  const captainFile = join(inboxDir, `${captainKey}.jsonl`)
-  const captainUnread = unreadCount(captainFile)
-  const inboxTail = captainInboxTail(captainFile)
+  })
 
-  const phase = asText(record.phase, 40) ?? "running"
-  const staged = phase === "staged"
-  const planReviewState = asText(record.planReviewState, 40) ?? (staged ? "awaiting_review" : undefined)
-  const stagedAt = asText(record.approvedAt ?? record.createdAt, 40)
+  const phase = teamActive(view) ? "active" : "idle"
   const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0)
+  // A team the readout carries at all is one a session owns; the plan surface's runnable gate is
+  // the Web's own (`members && tasks`).
+  const runnable = members.length > 0 && tasks.length > 0
 
   return {
     workspace,
     team: {
-      id: teamId,
-      name: asText(record.name, 80) ?? "?",
+      id: asText(view.teamId, 60) ?? "?",
+      name: asText(view.leadName, 80) ?? "?",
       phase,
-      ...optional("description", asText(record.description, 160)),
-      ...optional("captainSessionId", asText(record.captainSessionId, 80)),
-      ...optional("planReviewState", planReviewState),
-      ...optional("stagedAt", stagedAt),
-      staged,
-      runnable: members.length > 0 && tasks.length > 0,
+      ...optional("captainSessionId", asText(view.leadSessionId, 80)),
+      // No staged phase and no approval flow exist on the official plane: `staged` is ALWAYS false
+      // and the two stamp fields have no source, so they stay absent rather than invented.
+      staged: false,
+      runnable,
       links,
     },
     members,
     tasks,
     counts,
-    mail: { unread: unreadTotal + captainUnread, captainInbox: inboxTail },
+    mail: { unread: null, captainInbox: [] },
     holds,
     problems: problems.slice(0, MAX_PROBLEMS),
   }
@@ -525,7 +469,8 @@ export function teamWorkflowLines(workflow: TeamWorkflow): string[] {
     let row = `  ${parts.join(" · ")}`
     row += ` · ${member.done}/${member.total}`
     if (member.currentTask !== undefined) row += ` · ${member.currentTask}`
-    if (member.unread > 0) row += ` · ${member.unread} unread`
+    // Unread is `null` on the official plane: the row prints nothing rather than a fake `0`.
+    if (member.unread !== null && member.unread > 0) row += ` · ${member.unread} unread`
     lines.push(row)
   }
   lines.push("")
@@ -548,7 +493,7 @@ export function teamWorkflowLines(workflow: TeamWorkflow): string[] {
   lines.push(
     `tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`,
   )
-  lines.push(`mail       ${workflow.mail.unread} unread`)
+  lines.push(workflow.mail.unread === null ? "mail       (not observable on the official team plane)" : `mail       ${workflow.mail.unread} unread`)
   for (const message of workflow.mail.captainInbox) lines.push(`  ${message.from}: ${message.content}`)
   if (workflow.problems.length > 0) {
     lines.push("")

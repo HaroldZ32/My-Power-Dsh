@@ -1,13 +1,13 @@
 // packages/mpd-team-compact-plugin/src/index.ts
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
+var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -92,6 +92,75 @@ function scopeOfAgentContext(agent) {
     on: (event, handler) => on.call(context, event, handler),
     effect: (fn, label) => effect.call(context, fn, label)
   };
+}
+function teamContextOf(raw) {
+  return raw === "fresh" || raw === "fork" ? raw : undefined;
+}
+function teamStatusOf(raw) {
+  return raw === "running" || raw === "provisioning" || raw === "failed" ? raw : "inactive";
+}
+function teamTaskStatusOf(raw) {
+  return raw === "in_progress" || raw === "completed" || raw === "deleted" ? raw : "pending";
+}
+function teamStrings(raw) {
+  return Array.isArray(raw) ? raw.filter((entry) => typeof entry === "string") : [];
+}
+function teamMemberView(raw) {
+  const row = raw ?? {};
+  const context = teamContextOf(row.context);
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    role: row.role === "lead" ? "lead" : "teammate",
+    status: teamStatusOf(row.status),
+    ...typeof row.description === "string" ? { description: row.description } : {},
+    ...typeof row.provider === "string" ? { provider: row.provider } : {},
+    ...context === undefined ? {} : { context },
+    ...typeof row.model === "string" ? { model: row.model } : {},
+    diagnostics: teamStrings(row.diagnostics)
+  };
+}
+function teamTaskView(raw) {
+  const row = raw ?? {};
+  return {
+    id: String(row.id ?? ""),
+    revision: typeof row.revision === "number" ? row.revision : 0,
+    subject: String(row.subject ?? ""),
+    description: String(row.description ?? ""),
+    status: teamTaskStatusOf(row.status),
+    blockedBy: teamStrings(row.blockedBy),
+    writeScopes: teamStrings(row.writeScopes),
+    ...typeof row.ownerName === "string" ? { ownerName: row.ownerName } : {},
+    ready: row.ready === true,
+    writeScopeWarnings: teamStrings(row.writeScopeWarnings)
+  };
+}
+function teamRows(teams, method, agent, project) {
+  const reader = teams?.[method];
+  if (typeof reader !== "function")
+    return [];
+  try {
+    const rows = reader.call(teams, agent);
+    return Array.isArray(rows) ? rows.map(project) : [];
+  } catch {
+    return [];
+  }
+}
+function agentSystemPromptOf(agent) {
+  let context;
+  try {
+    context = agent?.ctx;
+  } catch {
+    return;
+  }
+  if (context === undefined || context === null)
+    return;
+  try {
+    const systemPrompt = context.systemPrompt;
+    return typeof systemPrompt?.section === "function" ? systemPrompt : undefined;
+  } catch {
+    return;
+  }
 }
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
@@ -285,6 +354,7 @@ function createDshAdapter(ctx, config = {}) {
       const compaction = service("compaction");
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
+      const agentTeams = service("agentTeams");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -325,7 +395,13 @@ function createDshAdapter(ctx, config = {}) {
         agentTurnStart: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
         agentTurnCancel: liveAgents().some((candidate) => typeof candidate?.cancel === "function"),
         agentTurnSteer: liveAgents().some((candidate) => typeof candidate?.steer === "function"),
-        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function")
+        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function"),
+        agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
+        agentPreStep: typeof ctx?.on === "function",
+        team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
+        teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
+        teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
       };
     },
     workspaceRoot,
@@ -341,11 +417,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config, signal) {
+    llmResolveCallConfig(config2, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config, signal);
+      return llm.resolveCallConfig.call(llm, config2, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -389,7 +465,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message) => adapter.submitUserTurn(host.agent, message)
+            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
           });
         }
       });
@@ -426,6 +502,20 @@ function createDshAdapter(ctx, config = {}) {
         const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
         const decided = await listener(exec ?? {}, result ?? {}, downstream);
         return decided ?? downstream;
+      });
+    },
+    onAgentPreStep(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("agent/pre-step", async (payload, next) => {
+        const fallback = { kind: "enter", messages: payload?.messages ?? [] };
+        const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
+        try {
+          const decided = await listener(payload ?? {}, downstream);
+          return decided ?? downstream;
+        } catch {
+          return downstream;
+        }
       });
     },
     hasTool(toolName) {
@@ -521,11 +611,129 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()");
       return subagents.startContinuable.call(subagents, spec);
     },
+    registerSubagentProvider(provider) {
+      const subagents = requireService("subagents", "cannot register a subagent provider");
+      if (typeof subagents.registerProvider !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no registerProvider()");
+      const registered = subagents.registerProvider(provider);
+      return typeof registered === "function" ? registered : noop;
+    },
     interruptAgent(targetSessionId, authority) {
       const subagents = requireService("subagents", 'cannot interrupt subagent session "' + String(targetSessionId) + '"');
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamService() {
+      const teams = service("agentTeams");
+      return teams === undefined || teams === null ? undefined : teams;
+    },
+    teamMembership(agent) {
+      const teams = service("agentTeams");
+      const tryMembership = teams?.tryMembership;
+      if (typeof tryMembership !== "function")
+        return;
+      let membership;
+      try {
+        membership = tryMembership.call(teams, agent);
+      } catch {
+        return;
+      }
+      if (membership === undefined || membership === null)
+        return;
+      const role = membership.role;
+      if (role !== "lead" && role !== "teammate")
+        return;
+      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+    },
+    teamListMembers(agent) {
+      const teams = requireService("agentTeams", "cannot list the team roster of an agent");
+      if (typeof teams.listMembers !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listMembers()");
+      const rows = teams.listMembers.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamMemberView) : [];
+    },
+    teamListTasks(agent) {
+      const teams = requireService("agentTeams", "cannot list the shared task board of an agent");
+      if (typeof teams.listTasks !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()");
+      const rows = teams.listTasks.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamTaskView) : [];
+    },
+    async teamCreateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot create team task "' + String(request?.subject) + '"');
+      if (typeof teams.createTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()");
+      return teamTaskView(await teams.createTask.call(teams, caller, request));
+    },
+    teamGetTask(caller, id) {
+      const teams = requireService("agentTeams", 'cannot read team task "' + String(id) + '"');
+      if (typeof teams.getTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()");
+      return teamTaskView(teams.getTask.call(teams, caller, id));
+    },
+    async teamUpdateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot update team task "' + String(request?.taskId) + '"');
+      if (typeof teams.updateTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()");
+      return teamTaskView(await teams.updateTask.call(teams, caller, request));
+    },
+    async teamSendMessage(caller, request) {
+      const teams = requireService("agentTeams", 'cannot send a team message to "' + String(request?.target) + '"');
+      if (typeof teams.sendMessage !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no sendMessage()");
+      const result = await teams.sendMessage.call(teams, caller, request);
+      return {
+        messageId: String(result?.messageId ?? ""),
+        status: result?.status === "queued" ? "queued" : "accepted"
+      };
+    },
+    async teamSpawnTeammate(caller, request) {
+      const teams = requireService("agentTeams", 'cannot spawn team member "' + String(request?.name) + '"');
+      if (typeof teams.spawnTeammate !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no spawnTeammate()");
+      const result = await teams.spawnTeammate.call(teams, caller, request);
+      return { member: teamMemberView(result?.member) };
+    },
+    teamInterrupt(caller, targetName) {
+      const teams = requireService("agentTeams", 'cannot interrupt team member "' + String(targetName) + '"');
+      if (typeof teams.interrupt !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no interrupt()");
+      const result = teams.interrupt.call(teams, caller, targetName);
+      return { previousStatus: result?.previousStatus === "running" ? "running" : "inactive" };
+    },
+    async teamWaitForChange(caller, timeoutMs, signal) {
+      const teams = requireService("agentTeams", "cannot wait for team activity");
+      if (typeof teams.waitForChange !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no waitForChange()");
+      const result = await teams.waitForChange.call(teams, caller, timeoutMs, signal);
+      return { timedOut: result?.timedOut === true };
+    },
+    teamLiveTeams() {
+      const teams = service("agentTeams");
+      if (teams === undefined || teams === null || typeof teams.tryMembership !== "function")
+        return [];
+      if (typeof service("agents")?.list !== "function")
+        return [];
+      const views = [];
+      for (const agent of liveAgents()) {
+        let membership;
+        try {
+          membership = teams.tryMembership.call(teams, agent);
+        } catch {
+          continue;
+        }
+        if (membership?.role !== "lead")
+          continue;
+        views.push({
+          teamId: String(membership.id ?? ""),
+          leadName: String(membership.name ?? ""),
+          leadSessionId: String(agent?.id ?? ""),
+          members: teamRows(teams, "listMembers", agent, teamMemberView),
+          tasks: teamRows(teams, "listTasks", agent, teamTaskView)
+        });
+      }
+      return views;
     },
     registerSkillProvider(provider) {
       const skills = requireService("skills", "cannot register a skill provider");
@@ -548,7 +756,7 @@ function createDshAdapter(ctx, config = {}) {
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
+        throw new Error("mpd-dsh-adapter: the harness agentPresets service exposes no resolve()");
       const preset = await presets.resolve(presetId);
       return {
         id: String(preset?.id ?? presetId),
@@ -682,11 +890,19 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message) {
+    agentPromptSection(agent, section) {
+      const systemPrompt = agentSystemPromptOf(agent);
+      if (systemPrompt === undefined) {
+        throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
+      }
+      const registered = systemPrompt.section(section);
+      return typeof registered === "function" ? registered : noop;
+    },
+    startAgentTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message);
+      followup.call(agent, message2);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -694,24 +910,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message) {
+    steerAgentTurn(agent, message2) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message);
+      steer.call(agent, message2);
     },
-    injectAgentMessage(agent, message) {
+    injectAgentMessage(agent, message2) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message);
+      inject.call(agent, message2);
     },
-    submitUserTurn(agent, message) {
+    submitUserTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message);
+        followup.call(agent, message2);
         return true;
       } catch {
         return false;
@@ -724,18 +940,14 @@ function createDshAdapter(ctx, config = {}) {
 // packages/mpd-team-compact-plugin/src/index.ts
 var name = "mpd-team-compact";
 var inject = ["tools"];
-var TEAM_STATE_DIR = join(".mpd", "team");
 var COMPACT_STATE_DIR = join(".mpd", "team-compact");
 var CAPTAIN_KEY = "captain";
-async function terminalTaskStatuses() {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const specifier = join(here, "..", "..", "mpd-agent-teams-plugin", "lib", "types.js");
-  const mod = await import(specifier);
-  const statuses = mod.TERMINAL_TASK_STATUSES;
-  if (!Array.isArray(statuses) || statuses.length === 0 || !statuses.every((s) => typeof s === "string")) {
-    throw new Error("mpd-team-compact: the agent-teams types module no longer exports a TERMINAL_TASK_STATUSES string array");
-  }
-  return statuses;
+var TERMINAL_TASK_STATUSES = ["completed", "deleted", "failed", "cancelled"];
+function terminalTaskStatuses() {
+  return TERMINAL_TASK_STATUSES;
+}
+function memberIsActive(status) {
+  return status === "running" || status === "provisioning";
 }
 var COMPACTION_FAILURE_CODES = ["busy", "cancelled", "changed", "summary", "commit", "persistence"];
 function sameAuditOutcome(previous, next) {
@@ -754,35 +966,61 @@ function sameAuditOutcome(previous, next) {
     return member.member === other.member && member.outcome === other.outcome && (member.reason ?? "") === (other.reason ?? "") && (member.failureCode ?? "") === (other.failureCode ?? "");
   });
 }
-function readTeamRecord(workspace, teamId) {
-  const file = join(workspace, TEAM_STATE_DIR, teamId, "team.json");
-  if (!existsSync(file))
+function projectTeam(view) {
+  const id = String(view?.teamId ?? "");
+  if (id === "")
     return;
-  try {
-    const parsed = JSON.parse(readFileSync(file, "utf8"));
-    if (parsed === null || typeof parsed !== "object")
-      return;
-    if (typeof parsed.id !== "string" || !Array.isArray(parsed.members) || !Array.isArray(parsed.tasks))
-      return;
-    return parsed;
-  } catch {
-    return;
-  }
+  const rows = Array.isArray(view.members) ? view.members : [];
+  const lead = rows.find((member) => member.role === "lead");
+  const active = rows.some((member) => member.role === "teammate" && memberIsActive(member.status));
+  return {
+    id,
+    name: String(lead?.name ?? view.leadName ?? ""),
+    captainSessionId: String(view.leadSessionId ?? lead?.id ?? ""),
+    phase: active ? "active" : "idle",
+    members: rows.filter((member) => member.role !== "lead").map((member) => ({
+      id: String(member.id ?? ""),
+      name: String(member.name ?? ""),
+      ...typeof member.status === "string" ? { status: member.status } : {}
+    })),
+    tasks: (Array.isArray(view.tasks) ? view.tasks : []).map((task) => ({
+      id: String(task.id ?? ""),
+      status: String(task.status ?? ""),
+      ...typeof task.ownerName === "string" && task.ownerName !== "" ? { assignee: task.ownerName } : {}
+    }))
+  };
 }
-function listTeamIds(workspace) {
-  const root = join(workspace, TEAM_STATE_DIR);
-  if (!existsSync(root))
-    return [];
+function readTeams(dsh) {
+  let views;
   try {
-    return readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "archive").map((entry) => entry.name);
+    views = dsh.teamLiveTeams() ?? [];
   } catch {
     return [];
   }
+  const teams = [];
+  for (const view of views) {
+    const team = projectTeam(view);
+    if (team === undefined)
+      continue;
+    if (team.members.length === 0 && team.tasks.length === 0)
+      continue;
+    teams.push(team);
+  }
+  return teams;
+}
+function readTeamRecord(dsh, teamId) {
+  const wanted = String(teamId);
+  return readTeams(dsh).find((team) => team.id === wanted);
+}
+function listTeamIds(dsh) {
+  return readTeams(dsh).map((team) => team.id).sort();
 }
 function teamIsFinished(team, terminal) {
   if (!Array.isArray(team.tasks) || team.tasks.length === 0)
     return false;
-  return team.tasks.every((task) => terminal.includes(task.status));
+  if (!team.tasks.every((task) => terminal.includes(task.status)))
+    return false;
+  return !team.members.some((member) => memberIsActive(member.status));
 }
 function compactableMembers(team) {
   return team.members.filter((member) => member.name !== CAPTAIN_KEY && member.status !== "removed");
@@ -840,7 +1078,7 @@ function agentIsIdle(agent) {
 }
 async function compactTeamPass(dsh, team, options) {
   const now = options.now ?? (() => Date.now());
-  const sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  const sleep = options.sleep ?? ((ms) => new Promise((resolve2) => setTimeout(resolve2, ms)));
   const at = now();
   const members = compactableMembers(team);
   const base = {
@@ -852,12 +1090,17 @@ async function compactTeamPass(dsh, team, options) {
   };
   if (!teamIsFinished(team, options.terminal)) {
     const nonTerminal = team.tasks.filter((task) => !options.terminal.includes(task.status));
-    return {
-      ...base,
-      outcome: "refused",
-      refusedReason: `team still has ${nonTerminal.length} non-terminal task(s): ${nonTerminal.map((task) => `${task.id}=${task.status}`).join(", ")}`,
-      members: []
-    };
+    const stillActive = team.members.filter((member) => memberIsActive(member.status));
+    const reasons = [];
+    if (nonTerminal.length > 0) {
+      reasons.push(`team still has ${nonTerminal.length} non-terminal task(s): ${nonTerminal.map((task) => `${task.id}=${task.status}`).join(", ")}`);
+    }
+    if (stillActive.length > 0) {
+      reasons.push(`${stillActive.length} member(s) still active: ${stillActive.map((member) => `${member.name}=${String(member.status ?? "unknown")}`).join(", ")}`);
+    }
+    if (reasons.length === 0)
+      reasons.push("the team's board carries no task at all: there is nothing to compact");
+    return { ...base, outcome: "refused", refusedReason: reasons.join("; "), members: [] };
   }
   const resolved = members.map((member) => ({
     member,
@@ -944,13 +1187,7 @@ async function compactTeamPass(dsh, team, options) {
 function apply(ctx) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
   const log = ctx.logger ?? { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} };
-  let terminal = [];
-  async function terminalStatuses() {
-    if (terminal.length > 0)
-      return terminal;
-    terminal = await terminalTaskStatuses();
-    return terminal;
-  }
+  const terminalStatuses = () => TERMINAL_TASK_STATUSES;
   const suppressedSinceWrite = new Map;
   function writeOrSkip(workspace, teamId, audit, caller, force) {
     if (audit.outcome === "not-live") {
@@ -975,7 +1212,7 @@ function apply(ctx) {
     return audit;
   }
   async function runPass(workspace, teamId, caller, force = false) {
-    const team = readTeamRecord(workspace, teamId);
+    const team = readTeamRecord(dsh, teamId);
     if (team === undefined) {
       return writeOrSkip(workspace, teamId, {
         schema: "mpd/team-compact@1",
@@ -983,12 +1220,12 @@ function apply(ctx) {
         teamName: "",
         at: Date.now(),
         outcome: "refused",
-        refusedReason: "no readable team record",
+        refusedReason: "no LIVE team with that id in this process",
         members: [],
         engineResolution: "agent-scoped"
       }, caller, force);
     }
-    const audit = await compactTeamPass(dsh, team, { terminal: await terminalStatuses() });
+    const audit = await compactTeamPass(dsh, team, { terminal: terminalStatuses() });
     return writeOrSkip(workspace, teamId, audit, caller, force);
   }
   dsh.onEvent?.("agent/status", async () => {
@@ -996,11 +1233,11 @@ function apply(ctx) {
       const workspace = dsh.workspaceRoot();
       if (workspace === undefined || workspace === "")
         return;
-      for (const teamId of listTeamIds(workspace)) {
-        const team = readTeamRecord(workspace, teamId);
+      for (const teamId of listTeamIds(dsh)) {
+        const team = readTeamRecord(dsh, teamId);
         if (team === undefined)
           continue;
-        if (!teamIsFinished(team, await terminalStatuses()))
+        if (!teamIsFinished(team, terminalStatuses()))
           continue;
         await runPass(workspace, teamId, { via: "status" });
       }
@@ -1020,13 +1257,13 @@ function apply(ctx) {
         return;
       (async () => {
         try {
-          for (const teamId of listTeamIds(workspace)) {
-            const team = readTeamRecord(workspace, teamId);
+          for (const teamId of listTeamIds(dsh)) {
+            const team = readTeamRecord(dsh, teamId);
             if (team === undefined)
               continue;
             if (!compactableMembers(team).some((member) => member.id === sessionId))
               continue;
-            if (!teamIsFinished(team, await terminalStatuses()))
+            if (!teamIsFinished(team, terminalStatuses()))
               continue;
             await runPass(workspace, teamId, { via: "turn-end", sessionId, cwd });
           }
@@ -1060,7 +1297,7 @@ function apply(ctx) {
     },
     async execute(args, exec) {
       const workspace = dsh.workspaceRoot(exec);
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(workspace) : [args.team_id];
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id];
       const sessionId = String(exec?.agent?.session?.id ?? "");
       const caller = {
         via: "tool",
@@ -1097,13 +1334,14 @@ function apply(ctx) {
     },
     async execute(args, exec) {
       const workspace = dsh.workspaceRoot(exec);
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(workspace) : [args.team_id];
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id];
       return { teams: ids.map((teamId) => ({ teamId, passes: readAudits(workspace, teamId) })) };
     }
   });
 }
 export {
   COMPACTION_FAILURE_CODES,
+  TERMINAL_TASK_STATUSES,
   apply,
   auditDir,
   classifyCompactionError,
@@ -1112,9 +1350,11 @@ export {
   inject,
   isStagedMember,
   listTeamIds,
+  memberIsActive,
   name,
   readAudits,
   readTeamRecord,
+  readTeams,
   sameAuditOutcome,
   teamIsFinished,
   terminalTaskStatuses,

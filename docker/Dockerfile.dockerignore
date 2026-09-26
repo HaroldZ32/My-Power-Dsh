@@ -1,0 +1,41 @@
+# docker/Dockerfile.dockerignore — what the build context carries into the image.
+#
+# BuildKit honours this file for builds of `docker/Dockerfile` (verified on Docker 29.8.1 with
+# `-f <dir>/Dockerfile.<name>` and a `<dir>/Dockerfile.<name>.dockerignore` companion, 2026-09-27),
+# which is why this repository needs no root-level `.dockerignore`: the rule lives next to the
+# Dockerfile it belongs to, inside the lane that owns it.
+#
+# WHAT THIS PREVENTS, beyond a slow build: without it the image would carry the HOST's node_modules,
+# .git, evidence and toolchain scratch, and the container's `bun install` could then "succeed" on
+# modules the host happened to have — a fake green. The entrypoint asserts the filtering held
+# (`copy.contextFiltered`) rather than trusting this file silently.
+#
+# Patterns are relative to the CONTEXT ROOT (the repository root). `dist` therefore matches the
+# repository's packed output at the root ONLY; `packages/*/dist` is deliberately kept, because the
+# container rebuilds every one of those entries from source and that rebuild is an assertion.
+
+# version-control history: an install must not need it
+.git
+.gitignore
+.gitattributes
+
+# dependencies: `bun install` recreates them inside the container
+node_modules
+**/node_modules
+
+# this repository's packed distribution (a source-tree test never consumes it)
+dist
+
+# host-local QA and toolchain state
+evidence
+.qa-*
+.toolchain
+.codegraph
+.t18ev
+.t28ev
+.bun-tmp
+.mpd
+
+# this case's own scratch
+docker/out
+docker/.selftest

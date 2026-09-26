@@ -47,7 +47,7 @@
 - **四个只读检查工具**：`mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show`。`mpd_ext_show` 会对 `env` 值脱敏；两个 list 工具都会拿每个声明的技能名去比对 harness 自身的目录，报成 `served` / `notServed`（或给出 `checked: false` 与原因），而不是直接断言。
 - **开发者 CLI**（`scripts/mpd-ext.mjs`）：`validate`、`scaffold`、`list` 以及离线 `--self-test`——对同一批目录的独立 oracle。
 - **随包参考扩展**（`extensions/mpd-ext-example/`，默认禁用）：四种种类齐备，含一台零依赖 stdio MCP 服务器，其唯一原始工具变成 `mcp__lint-mcp__describe_extension`。
-- **已声明的 v1 限制**：没有 reload（重启就是 reload，`docs/extensions.md:524`）；仅 stdio MCP；仅 JSON flow；无 MCP resources/prompts；无 GUI 面板、市场、远程下载或版本求解；扩展不能贡献 agent preset，扩展 role 也不会成为 agent-teams 的 teammate。
+- **已声明的 v1 限制**：没有 reload（重启就是 reload，`docs/extensions.md`）；仅 stdio MCP；仅 JSON flow；无 MCP resources/prompts；无 GUI 面板、市场、远程下载或版本求解；扩展不能贡献 agent preset，扩展 role 也不会自己成为队友（见 `docs/extensions.md`）。
 
 ## 4. 运行时行为与隔离姿态
 

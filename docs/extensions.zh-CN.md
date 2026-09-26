@@ -308,7 +308,7 @@ manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/code
 - `mpd_role_persona` 返回 persona 文本，`mpd_workmate_init base="<role 名>"` 可将其用作 workmate BASE 模板；
 - `provider` + `model`（必须同时提供）成为它的 route；两者都缺省则使用名册默认值。
 
-**role 永远不会成为 agent-teams 的 teammate。** 所采用的 agent-teams `mpd` profile 成员列表是静态 patch 配置（`packages/mpd-bundle/cordis.patch.yml`），插件无法在运行时扩展它。请以一次性 spawn 或 workmate base 的方式使用它。
+**role 不会自己变成 teammate。** 队友名册是 Lead 用官方 `spawn_teammate` 工具按名字创建出来的；它是一个面向模型的工具调用，而不是注册面，因此扩展插件无法往里面加成员。请以一次性 spawn 或 workmate base 的方式使用它。
 
 ## 6. 失败与冲突策略
 
@@ -416,7 +416,7 @@ bun scripts/mpd-ext.mjs --self-test   # scaffold -> validate -> list，仅使用
 - **仅 stdio MCP**——不支持 HTTP/SSE 传输，不支持 MCP resources 或 prompts（只有工具）。
 - **仅 JSON flow 文件**——YAML flow 属于后续项；flow 是声明式的，没有执行状态机。
 - **不支持扩展贡献 agent preset**——preset 面被刻意排除在范围外（没有干净的运行时 seam）。
-- **扩展 role 永远不会成为 agent-teams 的 teammate**——那份成员列表是静态 patch 配置。
+- **扩展 role 不会自己变成 teammate**——只有 Lead 用官方 `spawn_teammate` 按名字创建，才存在队友。
 - **没有 reload**——重启 dsh；失败的 MCP server 会在下次启动时重试。
 - **`extensions.*` 配置是进程级、不是按会话的**（§4.3），因为 `mpdConfig` 是 apply 期的进程级快照。
 - **跨 provider 的 skill 遮蔽需要读一次目录才可见**——我们自己的注册表只能比较扩展之间，因此 `mpd_ext_list` / `mpd_ext_show` 会去问 harness 的目录（`ctx.skills.list`），并把每个声明报成 `served` 或 `notServed`；若这次读取失败，报告会给出 `checked: false` 与原因，而不是猜测。

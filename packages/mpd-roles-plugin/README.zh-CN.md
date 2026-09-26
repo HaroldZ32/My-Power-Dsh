@@ -22,7 +22,7 @@
 - `mpdRoles` service（`ctx.get("mpdRoles")`）：`list()` / `get(key)` — 被 `mpd-modelchain-plugin` 消费（chain lookup）。
 - `mpd_roles_list` — roster，每个 role 一行：名称、route、做什么。
 - `mpd_role_spawn` — one-shot consult：将一个 role 作为 subagent 生成（roster persona + route + 对 read-only roles 的 write-deny toolFilter）。被生成的 subagent **以该 role 的名称为 label**（`Architect`、`Deep Worker`），而不再是 `role-<id>-<random>`。
-- `mpd_role_persona` — 为需要将 persona 作为文本使用的 spawn surface 获取 persona 文本（例如 `agent_teams_add_member`）。
+- `mpd_role_persona` — 为需要将 persona 作为文本使用的 spawn surface 获取 persona 文本（官方 Agent Teams 的 `spawn_teammate` 会把它作为 teammate 的 `prompt`）。
 
 **两个 surface 共用同一套命名（名称统一）。** 名称就是 role 的身份：它既是 team mode 下 agent-teams 为成员取的名称，也是单次 `mpd_role_spawn` 产生的 label。称呼时任意拼写均可：`Architect`、`architect`、`Deep Worker`、`deep-worker`、`deepworker`、`Plan Reviewer`（大小写、空格、连字符、下划线均不敏感）。**任何 surface 都不再展示沿袭自上游的别称** —— role 只用它做什么来描述。
 
@@ -41,10 +41,38 @@
 
 拒绝是响亮且隔离的：名称已被基础 role 或另一个扩展占用的 role，会在 `mpd_roles_list` 的 `refused` 列表中报告并记录一次日志 —— 它绝不会拖垮名册或启动。persona 文件不可读的 role 同样被拒绝；被配置禁用的扩展则完全不贡献 role。
 
-**已明确的边界 —— 扩展 role 不是 team member。** 所采用的 agent-teams `mpd` profile 成员列表是 `packages/mpd-bundle/cordis.patch.yml` 中的静态 patch 配置，插件无法在运行时扩展它；因此扩展 role 可以一次性 spawn、可以作为 workmate base，但永远无法通过 `agent_teams_create` 被 stage 为 teammate。
+**已明确的边界 —— roster 段落只列出 BASE 名册。** 扩展贡献的 role 是按调用（`mpdExtensions`）解析的，而不是在 agent scope 创建时解析，因此它们不会出现在下方的 `mpd:roster` 段落中。它们依然完全可用：可通过 `mpd_role_spawn` 一次性 spawn、可作为 **workmate BASE 模板**，而且知道它的 Lead 仍可用 `spawn_teammate` 并传入 `mpd_role_persona` 的文本把它 stage 为 teammate。
 
 ## Team mode
 
-多成员 team work 并非在此构建。它位于所采用的 `dsh-agent-teams` plugin 中：bundle patch 配置了一个普通命名的 `mpd` roster profile（`taskPlanning: captain`），其成员与上表一致。captain 调用 `agent_teams_create(profile="mpd")` 来 stage 这些 teammates，设计 task DAG，并复用 agent-teams Web plan panel + scheduler。
+多成员 team work 并非在此构建：它由**官方 Agent Teams 插件**承担（`@deepseek-ai/dsh-experimental-agent-team` + `-tool-agent-team` + `-client-ui-agent-team`，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载）；其 Lead 用 `spawn_teammate` 创建 teammate，用 `team_task_create` 为其开卡。本行贡献该路径的**名册一侧** —— 每一次调用都经由 `mpd-dsh-adapter`：
 
-Read-only roles（Architect、Researcher、Planner、Explorer、Plan Reviewer、Vision Analyst）在 `mpd_role_spawn` 处获得 write-tool deny filter；作为 team member，其 read-only discipline 通过 profile protocol / execution prompt 表达（它们只接受 requirements/review/analysis 类任务）。
+| 契约 | 本行的实现方式 |
+|---|---|
+| 名册送达到 Lead | 一个 **AGENT 作用域**的 `mpd:roster` 系统提示段落（顺序 `605`，紧跟 Harness 的 `TEAM_POLICY`（600）之后），只对顶层 `mpd` session 注册 —— 绝不在 host 平面（那会把名册注入本进程服务的每一个 session），也绝不进入 teammate 或其它 preset 的 session |
+| teammate 的 persona | 该段落点名 `spawn_teammate` 与 `mpd_role_persona`：Lead 把成员的 persona 文本作为 prompt 传入 |
+| 只读 teammate 的纪律 | 一道 TOOL GUARD（见下），经适配器注册 |
+| session 启动复杂度闸门 | 一个**仅建议**的 `agent/pre-step` 监听器（见下） |
+
+**模型路由只保留在一次性路径上。** `TeamService` 只把 `{prompt, parent}` 转发给 `ctx.subagents.startContinuable`（`docs/plan-0.1.7-adaptation.md` §3），因此 teammate 继承 Lead 的路由，无法为其附加 provider/persona/tool filter。`teamModels.slot*` 路由因此只作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点，而不是承诺 Harness 无法兑现的路由。
+
+### 只读 teammate 会被机械地拒绝
+
+那七个名称的拒绝清单在**两条**路径上生效，且共用**同一个**导出常量（`READONLY_DENY`），因此二者永远不会漂移：
+
+- **一次性路径** —— `mpd_role_spawn` 传入 `toolFilter: { deny: READONLY_DENY }`（保持不变）；
+- **team 路径** —— 一道 tool guard 经适配器解析**调用方** agent 的团队身份（`dsh.teamMembership(exec.agent)`）：当身份为 `teammate`，且其面向模型的名号经归一化（小写、每段非字母数字 → `-`，可选一个尾部 `-<数字>` 团队唯一后缀）后命中某个**只读**名册成员时，清单中的任何工具名都会被拒绝。拒绝信息会点名该成员与规则，并指向 Lead 或某个 worker 成员。Lead、worker 成员、非团队 agent 以及无法解析的身份一律放行；该 guard 从不抛错、从不改动状态、也从不放宽。
+
+这修掉了已退役、由 profile 携带 `toolDeny` 的实测缺陷：以 "Explorer" 身份 stage 却未带过滤器的 teammate 会保留 `write`/`edit`/`bash`。
+
+### session 启动复杂度闸门（仅建议）
+
+在 session 的第一个 pre-step，本行求值冻结谓词
+
+```
+trigger = explicit flag OR (matchedSignals >= 1)
+```
+
+信号为 **A**（`team:` 前缀或 `!team`；标记会从目标文本中被**消费**）、**B**（≥ 4 个不同的交付动词）、**C**（**一个**信号，由其三路子信号中的 ≥ 2 路触发：≥ 3 条枚举行、≥ 3 个不同动作动词、≥ 3 个动作小句）与 **D**（session 工作区存在 `.mpd/plans/*.md` 产物）。触发时注入**一条** user 角色通知，携带标记 `[AgentTeams] Session-start team rule`，点名触发的信号、声明**未 stage 任何团队**，并告诉 captain 在工作确实需要时用 `spawn_teammate` + `team_task_create` 自行 stage。
+
+**它绝不 stage 团队** —— 对显式的 `team:` / `!team` 请求也一样，那只是更充分的建议理由。它只作用于顶层 `mpd` session（子 session —— subagent、teammate、workflow worker —— 以及其它 preset 的 session 都不会收到），每个 session 只结算一次，且其内部失败不会影响该 step。

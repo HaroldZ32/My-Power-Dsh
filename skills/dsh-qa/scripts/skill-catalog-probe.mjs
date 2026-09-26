@@ -112,13 +112,14 @@ async function runReal() {
   const manifest = JSON.parse(readFileSync(join(profileDir, "package.json"), "utf8"))
   manifest.dsh.profile.bundles.push("@mpd-dsh/mpd")
   writeFileSync(join(profileDir, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
-  // Boot overlay: insert the headless profile's agent-presets row rooted at the
-  // INSTALLED bundle (headless has no stock roster row) and mount the QA probe
-  // that reads the live catalog. The bundle's own rows all stay enabled.
+  // Boot overlay: mount ONLY the QA probe that reads the live catalog. The bundle
+  // is added as a profile layer above, so its OWN patch array supplies the
+  // `agent-preset-registry` id-target and the `preset-mpd` row — 0.1.7-rc.2 has no
+  // preset ROOT to insert, and the retired `@deepseek-ai/dsh-agent-presets` row
+  // would now fail to resolve and take the boot down with it.
   const overlay = join(sandbox, "qa-probe.yml")
   const installedBundle = join(profileDir, "node_modules", "@mpd-dsh", "mpd")
   writeFileSync(overlay, "- insert:\n"
-    + "    - id: agent-presets\n      name: '@deepseek-ai/dsh-agent-presets'\n      config:\n        default: mpd\n        roots:\n          - path: " + JSON.stringify(join(installedBundle, "presets")) + "\n            trust: system\n"
     + "    - id: roles-probe\n      name: " + JSON.stringify(join(repoRoot, "packages", "mpd-qa-roles-probe", "dist", "index.js")) + "\n")
   const liveSpec = dshCommand(["--profile", "t", "--patch", overlay, "ok"], env)
   const live = liveSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING, error: new Error(DSH_MISSING) } : spawnSync(liveSpec.command, liveSpec.args, { env, cwd: ws, encoding: "utf8", timeout: 600000, stdio: ["ignore", "pipe", "pipe"] })

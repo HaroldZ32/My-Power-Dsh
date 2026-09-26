@@ -64,8 +64,9 @@ roster, the model-chain vocabulary and the roster's stable ids come from the ups
 the capability baseline is
 a pinned snapshot of `code-yeongyu/oh-my-openagent` (base commit `8c57e46`, v5.0.0-beta.20, recorded
 in `VENDOR_LOCK.json` and not chased per §9), whose 11 specialists ship as adapted teammate templates
-and workmate BASE templates; one component is adopted outright, the `agent-teams` plugin from
-dsh-agent-teams under the MIT License, vendored as first-class main code. **What is ours**: the DSH
+and workmate BASE templates; one component was adopted outright (the `agent-teams` plugin from
+dsh-agent-teams under the MIT License, vendored as first-class main code) and is now RETIRED from the
+composition in favour of the harness's own official Agent Teams plugin. **What is ours**: the DSH
 plumbing, the plugin set, the `mpd` preset and the QA suite. Upstream spec parity is an engineering
 reference, not an identity label — describe this repository by what it ships, never by what it is
 not. License: SUL-1.0 (`LICENSE.md`), inherited from upstream; inheritance and attribution are
@@ -82,42 +83,50 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
 - **Roster.** The 11 specialists are teammate instantiation templates — NOT presets — addressed by NAME
   and described by what they do, never by their internal stable `id`. One-shot consult goes through
   `mpd-roles-plugin` (`mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`, `mpdRoles` service
-  consumed by `mpd_modelchain_resolve`); team work uses the adopted **dsh-agent-teams** plugin
-  (first-class main code at `packages/mpd-agent-teams-plugin`, `agent_teams_*` tools + Web activity
-  panel) with the normal-named `mpd` roster profile (`taskPlanning: captain`); durable, evolving
-  instances come from the **workmate library** (`mpd-workmate-plugin`). §13 defines roster, stable
-  id, workmate and team-model slot precisely, and `mpd-roles-plugin` holds the authoritative names —
-  read §13 before touching any of them.
-- **The adopted `agent-teams` plugin** is a **0.1.14 body with the audited 0.1.16-rc.3 deltas
-  backported** (adopted package version `0.1.16-rc.3-mpd`; `lib/client.js` is still the 0.1.14 client
-  build), so the 0.1.14 body is real provenance, never a stale claim, and `LICENSE-NOTICES.md` is the
-  authoritative record. Its `stateDir` is overridden to `.mpd/team`, so all our state stays under one
-  `.mpd` root, and its `lib/` is mediated through `mpd-dsh-adapter` except the counted
-  `setup(childCtx, child)` residual that §6 names (five lines in `lib/members.js`, asserted
-  line-by-line) — so the namespace exception is about plugin ids and tool names ONLY. It loads from
-  the bundle exports map, so it needs no npm dependency; a dependency a third-party bundle DECLARES is
-  a different case — `dsh-app-boot`'s `healProfileModuleFallback` materializes that closure into
-  `<profile>/node_modules` before the loader runs, which is how the `mpd-better-sidebar` row (the
-  sidebar HOST the bundle's two GUI pages need, and deliberately id-named apart from the upstream
-  row) resolves its sidebar host.
+  consumed by `mpd_modelchain_resolve`); team work uses the **official Agent Teams plugin**
+  (`@deepseek-ai/dsh-experimental-agent-team` + `-tool-agent-team` + `-client-ui-agent-team`, mounted
+  by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows: the
+  `spawn_teammate` / `send_message` / `list_agents` / `wait_agent` / `interrupt_agent` / `team_task_*`
+  tools plus the official Web roster and task board); durable, evolving instances come from the
+  **workmate library** (`mpd-workmate-plugin`). §13 defines roster, stable id, workmate and
+  team-model slot precisely, and `mpd-roles-plugin` holds the authoritative names — read §13 before
+  touching any of them.
+- **The vendored `agent-teams` body is RETIRED from the composition (2026-09-27).** It is a **0.1.14
+  body with the audited 0.1.16-rc.3 deltas backported** (adopted package version `0.1.16-rc.3-mpd`;
+  `lib/client.js` is still the 0.1.14 client build), it still lives at
+  `packages/mpd-agent-teams-plugin`, and `LICENSE-NOTICES.md` remains its authoritative provenance
+  record — but **no loader row mounts it any more**, so `agent_teams_*` tools, that plugin's
+  `.mpd/team` record and its Web activity panel are NOT part of a shipped session. Harness 0.1.7-rc.2
+  shipped an official Agent Teams plugin, and this bundle adopted it (see the roster bullet above and
+  `docs/plan-0.1.7-adaptation.md`). Its `lib/` stays mediated through `mpd-dsh-adapter` except the
+  counted `setup(childCtx, child)` residual that §6 names, which is why the code is retained rather
+  than deleted: the D6 gate and the adapter still cover it, and a later wave can delete it without
+  re-deriving that analysis. Deleting it is a declared follow-up, not an oversight.
+- **A dependency a bundle DECLARES is mounted by a row that needs it.** The three official Agent Teams
+  packages are declared in this package's `dependencies`, and `dsh-app-boot`'s
+  `healProfileModuleFallback` materializes that closure into `<profile>/node_modules` before the
+  loader runs. The same mechanism is how the `mpd-better-sidebar` row (the sidebar HOST the bundle's
+  GUI pages need, deliberately id-named apart from the upstream row) resolves its sidebar host.
 - **ULW is user-invocable**: the C2 (Plan C) ultrawork v2 engine (`mpd-ulw-plugin`) is reachable as
   `/ulw <objective>` and `/ultrawork <objective>` (equivalent, objective as argument) — the command
   submits the ULW activation directive as the invoking agent's own next user turn, so the run
   actually starts; empty input returns usage, and a plain-text `/ulw …` gesture gets the same
   directive on surfaces without command adjudication (headless). An activated ULW run asks the user
   nothing: it triages an unclear or investigate-first objective first, evaluates the same complexity
-  predicate as any MPD request, stages a team itself with
-  `agent_teams_create(approval="automatic", profile="mpd")` when the work warrants one, loops to
+  predicate as any MPD request, stages a team itself with `spawn_teammate` + `team_task_create` (the
+  official tools, through the adapter) when the work warrants one, loops to
   completion, fixes defects on sight, and closes out through the verification and quality gates
   before reporting done.
 - **The session-start complexity gate ADVISES — it never pre-stages a team.** The frozen predicate
   `trigger = explicit flag OR (matchedSignals >= 1)` is still evaluated at the session's first
   pre-step, and its notice keeps the marker `[AgentTeams] Session-start team rule`, but a triggered
   auto-route only injects ONE advisory notice naming the fired signals and stating that **no team was
-  staged**; the captain stages a team with `agent_teams_create(approval="required", profile="mpd")`
+  staged**; the captain stages a team with `spawn_teammate` + `team_task_create`
   at the moment the work actually warrants one, or continues solo and says so. An explicit `team:` /
-  `!team` request and the `/agent-teams` command still stage, and `sessionTeamPolicy.mode: "auto"`
-  remains the opt-in unconditional-provisioning path.
+  `!team` request is likewise only ADVISED — the captain is told to stage, nothing is pre-staged for
+  it. The gate is implemented by `mpd-roles-plugin` on the official plugin's seams (the retired
+  `sessionTeamPolicy.mode: "auto"` unconditional-provisioning path is gone with the plugin that owned
+  it).
 - **The ONLY shipped preset is `mpd`** — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md` (falling back to
   `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
@@ -147,16 +156,18 @@ mpd-dsh/
 ├── LICENSE.md / LICENSE-NOTICES.md
 ├── VENDOR_LOCK.json              # upstream commit/version/stats + vendored asset fingerprints
 ├── package.json                  # THE BUNDLE MANIFEST (name @mpd-dsh/mpd): dsh.bundle.patch
-│                                 #   + dsh.client + exports -> `dsh plugin add .` is the whole install
+│                                 #   (an ARRAY of the bundle patch + the preset patch) + dsh.client
+│                                 #   + exports -> `dsh plugin add .` is the whole install
 ├── tsconfig.json                 # root tsgo config (covers packages/*/src/**/*.ts)
-├── presets/                      # the shipped `mpd` preset (served at <bundle>/presets)
+├── presets/                      # mpd.patch.yml: the `preset-mpd` row (@deepseek-ai/dsh-agent-preset,
+│                                 #   inline plugin list). The retired directory form is gone.
 ├── scripts/                      # gates, packer, installer, extension CLI, vendor + delta appliers
 ├── packages/                     # one dir per plugin package (src/ + dist/ + README.md each);
 │                                 #   mpd-skills-plugin was removed (its row is gone from the patch)
 │   ├── mpd-bundle/               # cordis.patch.yml: llm dual-track, skills, MCPs, all mpd plugins
 │   ├── mpd-dsh-adapter-plugin/   # THE single contact surface with harness seams (§6)
 │   ├── mpd-roles-plugin/         # the specialist roster + mpd_roles_* + the mpdRoles service
-│   ├── mpd-agent-teams-plugin/   # adopted dsh-agent-teams (MIT, main code): agent_teams_* + Web panel
+│   ├── mpd-agent-teams-plugin/   # RETIRED vendored dsh-agent-teams body — kept, NOT mounted (§1)
 │   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate)
 │   ├── mpd-ulw-plugin/           # C2 ultrawork v2 engine: mpd_ultrawork + /ulw, /ultrawork
 │   ├── mpd-mcp-astgrep / mpd-mcp-codegraph / mpd-mcp-gitbash / mpd-mcp-lsp / mpd-mcp-shared /
@@ -494,22 +505,24 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
 
 - **`cd <repo> && dsh plugin --profile web add .`** is the whole install. The repo root
   IS the bundle package: `package.json` is named `@mpd-dsh/mpd` and declares
-  `dsh.bundle.patch` (`./packages/mpd-bundle/cordis.patch.yml`), `dsh.client`
+  `dsh.bundle.patch` (an ARRAY: `./packages/mpd-bundle/cordis.patch.yml` then
+  `./presets/mpd.patch.yml`), `dsh.client`
   (`platform: web`), the `exports` map the rows resolve through (`./packages/*`,
   `./skills/*`, `./presets/*`, and the `client` subpath
   `packages/mpd-bundle-plugin/client.js`) and the toolchain `optionalDependencies`.
   `dsh plugin remove @mpd-dsh/mpd` is the matching one-command uninstall.
 - Every path-bearing patch value resolves through the loader's `baseUrl` (the profile
   directory), so the same patch works for a checkout install (`<profile>/node_modules/@mpd-dsh/mpd`
-  → the repo) and for a packed install. The adopted `agent-teams` plugin is first-class
-  main code at `packages/mpd-agent-teams-plugin` (no npm dependency); the `mpd` preset
-  and the skill corpus are SERVED by reference (`agent-presets` root → `<bundle>/presets`,
+  → the repo) and for a packed install. The three official Agent Teams packages are declared
+  `dependencies` of this bundle and mounted by this bundle's own rows (`healProfileModuleFallback`
+  materializes that closure before the loader runs); the `mpd` preset
+  and the skill corpus are SERVED by reference (the `preset-mpd` row → the inline plugin list,
   `mpd-bootstrap` → `<bundle>/skills`) — no home copy, so uninstall leaves no residue.
   Only user data stays: the workmate library under `~/.mpd/workmate`.
 - **`node scripts/pack-mpd.mjs` (alias `npm run pack`) is the RELEASE step, not an install
   step.** It assembles the relocatable `dist/mpd-package/` for publishing / tarball
   installs (`dsh plugin --profile web add dist/mpd-package`): it copies the built plugin
-  dists (incl. the combined web client), the adopted agent-teams main code, `skills/` +
+  dists (incl. the combined web client), the retired vendored agent-teams main code, `skills/` +
   `presets/`, `extensions/`, the scaffold `templates/`, the `docs/` set (EN + `*.zh-CN.md`
   pairs), the English-only on-demand `agent-references/`, `scripts/` (the extension CLI) and
   the licence/README files, and writes the packed-form manifest + patch — declaring all of
@@ -620,10 +633,17 @@ All seven are verified by `node scripts/mpd-bg.mjs --self-test` (13 arms) plus t
 - DSH: DeepSeek Harness (host; cordis plugin architecture, web/headless profiles).
 - bundle: npm package with `dsh.bundle.patch` patch layer (here: `mpd-bundle`).
 - patch layer: id-targeted override or `insert:` list applied in order.
-- preset: directory with `preset.yml` + `agent.cordis.yml` (agent-plane composition).
+- preset: a named agent-plane composition declared as an ordinary plugin ROW. Harness 0.1.7-rc.2
+  REPLACED the directory form (`preset.yml` + `agent.cordis.yml` served by
+  `@deepseek-ai/dsh-agent-presets`, a package that no longer exists): the deployment default lives on
+  `@deepseek-ai/dsh-agent-preset-registry` (`config.default`) and each preset is one
+  `@deepseek-ai/dsh-agent-preset` row whose `config.plugins` carries the child entry list inline. This
+  bundle declares `mpd` that way in `presets/mpd.patch.yml`, listed as the second entry of the
+  manifest's `dsh.bundle.patch` array.
 - roster: the specialist roster served by `mpd-roles-plugin` (`mpd_roles_list` / `mpd_role_spawn` /
-  `mpd_role_persona`), exposed as normal-named teammate instantiation templates through the adopted
-  dsh-agent-teams `mpd` roster profile. The eleven members are addressed by NAME and described by what
+  `mpd_role_persona`), exposed as normal-named teammate instantiation templates for the OFFICIAL Agent
+  Teams plugin (`spawn_teammate`, whose persona text the captain takes from `mpd_role_persona`). The
+  eleven members are addressed by NAME and described by what
   they do — Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer,
   Plan Reviewer, Vision Analyst, Junior Engineer. The stable `id` (chain key, `personas/<id>.md`,
   workmate `meta.baseId`) is INTERNAL: accepted for compatibility, and exposed by NO tool output,
@@ -631,22 +651,32 @@ All seven are verified by `node scripts/mpd-bg.mjs --self-test` (13 arms) plus t
   exactly seven names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted equal by
   `roles.test.ts`): `write`, `edit`, `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`,
   `mcp__ast_grep__scan`, `mcp__lsp__rename`. `bash` is denied on purpose (a shell can write files), and
-  `read`/`glob`/`grep` stay available. **Do NOT re-add `str_replace_editor` or `apply_patch`**: both
+  `read`/`glob`/`grep` stay available. It is enforced TWO ways, and both must keep agreeing: the
+  one-shot path passes it as `toolFilter.deny` to `mpd_role_spawn`, and a tool GUARD denies the same
+  seven names for a live Team teammate whose name normalises to a read-only roster member — because the
+  official `spawn_teammate` cannot accept a per-teammate tool filter. **Do NOT re-add
+  `str_replace_editor` or `apply_patch`**: both
   were REMOVED because they are not registered in this profile — the harness validates the WHOLE list
   at spawn time and rejects the child when any single name is unknown, so one dead entry breaks every
   read-only spawn (an installed `dsh-tool-str-replace-editor` package or a `dsh-base` patch row is NOT
   proof of runtime registration, and `dsh --dump-config` composes rows without mounting them). Do not
   filter the list with `dsh.hasTool` either: it reads the global tool view, where `write`/`edit`/`bash`
   answer false, so filtering would silently DROP the entries that are the guarantee.
-- team-model slot: one of the four configurable default model routes of the agent-teams members —
+- team-model slot: one of the four configurable default model routes of the ROSTER members —
   `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the `mpd` settings
   namespace, whose defaults are `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high`, plus
   `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high` for slot 4. Slot 1 routes
   Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep
   Worker/Junior Engineer, slot 4 Vision Analyst (the vision member; the model here MUST accept image
-  input); a member may still declare an explicit `route` instead. A slot that cannot be resolved — a
-  missing service, a missing or incomplete slot, an unknown model, an unsupported effort — fails team
-  creation LOUDLY naming the member and the slot, writes no team state, and NEVER clamps an effort.
+  input). A slot that cannot be resolved — a
+  missing service, a missing or incomplete slot, an unknown model, an unsupported effort — fails the
+  corresponding spawn LOUDLY naming the member and the slot, writes no state, and NEVER clamps an
+  effort. **BOUND (measured, 0.1.7-rc.2):** the slot applies to the mpd ONE-SHOT consult paths
+  (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass an explicit `agentOptions`. It does NOT apply
+  to a teammate created by the official `spawn_teammate`: `TeamService` forwards only
+  `{ prompt, parent }` to `ctx.subagents.startContinuable`, so a continuable teammate inherits the
+  LEAD's route and no provider, persona or tool filter can be injected for it. State that in a
+  teammate's prompt instead of promising a route (see `docs/plan-0.1.7-adaptation.md` §3).
 - workmate: a durable, evolving agent instance in `~/.mpd/workmate/` created by `mpd-workmate-plugin`
   (`mpd_workmate_*`) from a roster BASE template with an independent name; it self-summarizes after each
   work (persona + independent memory, size-capped) and keeps a short note card. Reuse is via

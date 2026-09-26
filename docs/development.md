@@ -16,7 +16,7 @@ How to build, test, QA, pack and release this repository.
 │   ├── pack-mpd.mjs       assemble dist/mpd-package/ (Plan D bundle)
 │   ├── build-mpd-client.mjs  compose the combined web client (client.js)
 │   ├── build-mcp.mjs      offline build of the ast-grep/git-bash/lsp MCP servers
-│   ├── vendor-agent-teams.mjs  materialize the adopted agent-teams server closure (_deps/)
+│   ├── vendor-agent-teams.mjs  materialize the RETAINED (unmounted) agent-teams server closure (_deps/)
 │   ├── install-profile.mjs    legacy installer (default dry-run; --dsh-home for QA)
 │   ├── mpd-ext.mjs        extension developer CLI: validate / scaffold / list / --self-test
 │   ├── bootstrap.mjs      preflight + vendor check (P0-era, kept as checks)
@@ -109,13 +109,12 @@ The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-te
 | Case | Proves | How to run (from an approved permission context) |
 |---|---|---|
 | `mount-assert` | bundle rows present/absent in `--dump-config` | `bun run test:qa` (all self-tests) |
-| `preset-register` | mpd preset resolves FROM the bundle-served root (no `$DSH_HOME/.agent-presets` copy) + roster serves 11 roles | `node skills/dsh-qa/scripts/preset-register.mjs` |
+| `preset-register` | the mpd preset resolves from the bundle's own `presets/mpd.patch.yml` PRESET ROW (no `$DSH_HOME/.agent-presets` copy) + roster serves 11 roles | `node skills/dsh-qa/scripts/preset-register.mjs` |
 | `bundle-lifecycle` | ONE command from the checkout (`dsh plugin add <repo root>`, no pack step) installs the whole unit → real boot serves preset + skills from the installed bundle and proves the harness adapter (`ADAPTER_SEAMS`, `ADAPTER_TOOL_CALL=ok`) → `dsh plugin remove` leaves no residue | `node skills/dsh-qa/scripts/bundle-lifecycle.mjs` |
 | `skill-catalog-probe` | installed bundle serves the skill catalog (18 bundled skills, fixture loads) with no `$DSH_HOME/skills` copy | `node skills/dsh-qa/scripts/skill-catalog-probe.mjs` |
 | `relocate-smoke` | relocated bundle serves preset + corpus, no dev-path leak, no home copy | `node skills/dsh-qa/scripts/relocate-smoke.mjs` |
-| `team-route-rewire` | staged bundle install → agent-teams row composed → probe boot → web `/plugins/dsh-agent-teams/state` 200 | `node skills/dsh-qa/scripts/team-route-rewire.mjs` |
 | `workmate-library` | init→list→spawn→reflect→match against a sandbox HOME; the self-test also pins the rename/delete host routes, the service surface and the §D reason matrix | `node skills/dsh-qa/scripts/workmate-library.mjs` |
-| `workmate-team-member` | workmate-backed member injection + self-reflect in a live team | `node skills/dsh-qa/scripts/workmate-team-member.mjs` |
+| `workmate-team-member` | a workmate instance taking part in a real headless team run + its own `mpd_workmate_reflect` afterwards. NOTE: a workmate's persona/memory reaches a teammate only through the `spawn_teammate` PROMPT — the automatic `memberPersona` injection this case was written against belonged to the retired vendored plugin | `node skills/dsh-qa/scripts/workmate-team-member.mjs` |
 | `web-client-adapt` | the `@mpd-dsh/mpd` boot-graph client entry + client.js ids + workmate host routes (incl. the client's rename/delete URLs) | `node skills/dsh-qa/scripts/web-client-adapt.mjs` |
 | `preset-conformance` | every harness-owned row config (preset + bundle patch + QA overlays) conforms to the INSTALLED harness schemas, the `mpd` preset's row set equals the installed `standard` preset's, and a real session created with `agentPreset: "mpd"` MOUNTS — with a negative control that must fail | `node skills/dsh-qa/scripts/preset-conformance.mjs` |
 | `software-smoke` | software dev flow: a REAL headless mpd session (local OpenAI-shaped stub, throwaway key — no provider credential) writes a tiny deterministic game with the `write` tool and runs it with the `bash` tool in a SANDBOX workspace; the case replays the REAL transcript through its own oracle (legality, optimality, winner, determinism) and requires the mutation control to go RED | `node skills/dsh-qa/scripts/software-smoke.mjs` |
@@ -126,7 +125,7 @@ The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-te
 | `tui-spec-conformance` | the HOST's own pinned conformance suite against our manifest and a captured host descriptor, with the suite revision and every input digest recorded, and the three-way sha256 identity of the payload re-measured | `bun skills/dsh-qa/scripts/tui-spec-conformance.mjs` |
 | `tui-settings-bridge` | the TUI arm of the settings bridge, judged against the BUILT bytes: every `/settings` hint carries the post-bridge disclosure (`a save writes <workspace>/.mpd/mpd.jsonc … after a restart`), the pre-bridge "not bridged" sentence is DELETED, the `no-live-session` runtime notice is present AND wired into the status-line composition, and the TUI dist performs ZERO filesystem writes | `bun skills/dsh-qa/scripts/tui-settings-bridge.mjs` |
 
-| `agent-teams-adopt` (historical C1) | MIT notice + adoption wiring | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
+| `agent-teams-adopt` (historical C1 — the RETIRED vendored body; the team path now runs on the official plugin) | MIT notice + adoption wiring | `node skills/dsh-qa/scripts/agent-teams-adopt.mjs` |
 | `extension-lifecycle` (**new**) | the extension interface on a REAL mounted boot (sandboxed `DSH_HOME` + `HOME` + session cwd; the rows are composed from THIS checkout, and the model step is answered by a local OpenAI-shaped stub, so no provider credential is needed): a data-plane extension in `<sandbox-ws>/.mpd/extensions/` appears in `mpd_ext_list`, its flow loads, its role spawns, a broken extension of each kind leaves the good ones working, and two sessions with different cwds on one host see only their own project extensions | `bun skills/dsh-qa/scripts/extension-lifecycle.mjs` |
 | `extension-mcp-bridge` (**new**) | the runtime stdio MCP bridge on the same REAL mounted boot + stub recipe: a declared server publishes `mcp__<server>__<tool>` in both tool-list readings and a real tool call succeeds, while the dead/hang/schema/dup arms prove one failing server never breaks the others | `bun skills/dsh-qa/scripts/extension-mcp-bridge.mjs` |
 
@@ -215,7 +214,7 @@ evidence.
 
 ## 8. Vendoring & baseline
 
-- `scripts/vendor-agent-teams.mjs` re-materializes the adopted agent-teams server
+- `scripts/vendor-agent-teams.mjs` re-materializes the RETAINED (unmounted) agent-teams server
   runtime closure (`packages/mpd-agent-teams-plugin/_deps/`) from the host installation
   (`DSH_HOST_NM`), rewriting bare `@deepseek-ai/*` + `zod` imports to relative paths —
   the client bundle keeps bare imports (the web app bundler provides them).

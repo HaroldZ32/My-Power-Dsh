@@ -1,9 +1,10 @@
 // The durable sidecars: the preserving hold, the incident log and the per-reader
 // read watermark.
 //
-// All three live BESIDE `team.json` (never inside it), so the adopted `state.js`
-// keeps sole ownership of the team record and a watchdog write can never change
-// one byte of it (AC-6 side of the contract, design §4.1/§5.3).
+// All three are this plugin's OWN files under `<stateDir>/watchdog/`, so no team
+// state can be touched by a watchdog write (AC-6 side of the contract, design §4.1/§5.3).
+// The team board itself is the harness's (the official service keeps it in the Lead
+// Session log), and no adapter seam this plugin calls can write it at all.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs"
 import { dirname } from "node:path"
 import { holdPath, incidentsPath, watermarkPath } from "./paths.js"

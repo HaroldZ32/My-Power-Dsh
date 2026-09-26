@@ -1,91 +1,231 @@
 #!/usr/bin/env node
-// Case session-start-team (the session-start TEAM GATE): prove all THREE directions of
-// the frozen complexity gate on the SAME settled revision — a simple prompt must leave
-// NO team and NO notice, a SOFT-complex prompt must leave NO PLUGIN-PROVISIONED team and
-// exactly ONE ADVISORY notice ("no team was staged", user clause 4), and an EXPLICIT
-// `team:` prompt must still stage EXACTLY ONE team plus the provisioning notice. A gate
-// that cannot fail one side is not accepted.
+// Case session-start-team (the session-start TEAM GATE), rebased onto the OFFICIAL-era
+// implementation in `packages/mpd-roles-plugin/src/session-gate.ts`.
 //
-// R1 REPAIR — the soft-complex arm asserts the PLUGIN-side property, never a
-// model-dependent absolute: the notice INVITES the captain to stage a team at the moment
-// the work warrants it, so a live model that follows the notice and stages one is the
-// DESIGNED behaviour and must not fail the case. Every team record is therefore attributed
-// to its author from the HARNESS's own evidence (`attributeOrigin`): the plugin's own
-// auto-route description + the record's `captainSessionId` for a PLUGIN record, an
-// `agent_teams_create` tool call in the captain session's own log for a MODEL record, and
-// `unknown` — which always fails — when neither signal holds.
+// WHAT MOVED (2026-09-27, D5): the vendored agent-teams body that used to own this gate is
+// RETIRED from the composition (AGENTS.md §1) — its mount is gone, so nothing in a shipped
+// session reached `lib/session-start.js` any more. The BINDING CONTRACT survived the
+// retirement and is still stated in AGENTS.md §1: the marker
+// `[AgentTeams] Session-start team rule` and the frozen predicate
+// `trigger = explicit flag OR (matchedSignals >= 1)`. Its new home is
+// `packages/mpd-roles-plugin/src/session-gate.ts`, reached only through the adapter.
 //
-// 1) offline --self-test: the SAME prompt arrays the live sides boot are fed through
-//    the shipped gate module (trigger + routeDecision action: none / advise / provision)
-//    plus a policy-disabled control and an always-advise negative control; the installer
-//    row and the bundle patch must carry mode off + autoRoute true; the advisory /
-//    provisioning notice builders must carry their distinguishing phrases; and the
-//    attribution + per-side evaluators are driven by fixtures, both ways.
-// 2) real run: isolated DSH_HOME + sandboxed HOME + sandbox workspace; per prompt, an
-//    isolated headless boot; asserts the team records (active + archived, with their
-//    attributed origin) and the notice KIND read from the user-role messages of the
-//    harness session log, then assertSessionsSandboxed() on the side home.
+// THE CONTRACT THIS CASE ASSERTS (lane F's implementation is read as the source of truth):
+//   * the gate ADVISES and stages NOTHING — including for an explicit `team:` / `!team`
+//     request, which is only a stronger reason to advise. The retired `provision` route is
+//     GONE with the plugin that owned it, so this case can no longer assert a staged team;
+//     dropping that arm is the retirement's cost, and it is NAMED here on purpose;
+//   * ONE notice carrying the frozen marker, naming the fired signals, stating that NO team
+//     was staged, and naming the OFFICIAL staging tools (`spawn_teammate`,
+//     `team_task_create`) — never the retired `agent_teams_*` vocabulary;
+//   * an untriggered (simple) session gets NO notice at all — the falsifiability arm;
+//   * the explicit marker is CONSUMED from the goal text;
+//   * scope: a top-level session of a configured preset only, never a child session.
+//
+// 1) `--self-test` (offline, no boot): imports the SHIPPED source module and drives the
+//    frozen predicate over three frozen prompt sets, BOTH directions, plus TWO negative
+//    controls that must redden (an always-trigger gate and an always-silent one) driven
+//    through the SAME `contractProblems()` the real gate is judged by — so a green
+//    self-test cannot be vacuous. It also asserts the wiring (the bundle mounts
+//    `mpd-roles`, the retired row is gone, the preset carries the SESSION STARTUP RULE).
+// 2) real run: isolated DSH_HOME + sandboxed HOME + sandbox workspace, one headless boot
+//    per prompt side; the notices are read from the HARNESS session log through the
+//    sanctioned reader (`lib/session-evidence.mjs`), never from the model's prose
+//    (AGENTS.md §7).
+//
+// NOTE ON `node` AND `.ts`: this case imports a TypeScript SOURCE module. Node >= 22.18
+// strips types by default (measured: v24.19.0 imports it directly); the import is NOT
+// wrapped in a skip, because a case that silently stops asserting its subject is worse
+// than one that fails loudly.
 //
 // Never touches the real ~/.dsh (credentials/settings are COPIED into a sandbox).
-// Evidence root: evidence/dsh-qa/session-start-team/<ts> unless MPD_QA_EVIDENCE_DIR is
-// set, which redirects it (a wave whose lane owns only its own evidence subtree uses it).
+// Evidence root: evidence/dsh-qa/session-start-team/<ts>, or MPD_QA_EVIDENCE_DIR when set.
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync, cpSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir, homedir } from "node:os"
 import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
-import { EXPLICIT_PROMPTS, SIMPLE_PROMPTS, SOFT_COMPLEX_PROMPTS, loadAndProbe, probeAll } from "./lib/gate-probe.mjs"
-import { decodeSessionLog, findToolCall, readSessionEvents } from "./lib/session-evidence.mjs"
-import { assertSessionsSandboxed, projectKey, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
+import { readSessionEvents } from "./lib/session-evidence.mjs"
+import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
+import { readMpdPresetSource } from "./lib/preset-source.mjs"
 
-const safeJson = (text) => { try { return JSON.parse(text) } catch { return null } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const NOTICE_MARKER = "[AgentTeams] Session-start team rule"
-// The two notice KINDS share the marker; these phrases are what distinguishes them
-// (see `advisoryNotice` / `provisionedNotice` in lib/session-start.js).
+/** The advisory sentence the gate must state (clause 4: it stages nothing). */
 const ADVISORY_PHRASE = "NO team was staged"
-const PROVISIONED_PHRASE = "is staged in this workspace"
+/** The retired PROVISIONING sentence: it must not come back through this gate. */
+const RETIRED_PROVISIONED_PHRASE = "is staged in this workspace"
+/** The OFFICIAL staging vocabulary the notice must name. */
+const OFFICIAL_TOOLS = ["spawn_teammate", "team_task_create"]
+/** The retired tool vocabulary the notice must NOT name. */
+const RETIRED_TOOL_PATTERN = /agent_teams_/
+const GATE_SOURCE = join(repoRoot, "packages", "mpd-roles-plugin", "src", "session-gate.ts")
+const ROLES_DIST = join(repoRoot, "packages", "mpd-roles-plugin", "dist", "index.js")
+const REBUILD_COMMAND = "bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js"
 const SETTLE_MS = 50000
 const LOG = []
 
-// The live sides boot the SAME verbatim prompts the offline probe evaluates
-// (lib/gate-probe.mjs), so the offline predicate and the live runs cannot drift.
-const SIMPLE = SIMPLE_PROMPTS
-const SOFT_COMPLEX = SOFT_COMPLEX_PROMPTS
-const EXPLICIT = EXPLICIT_PROMPTS
+// ── the frozen prompt sets (ONE source of truth: the live sides boot these verbatim) ──
+export const SIMPLE_PROMPTS = [
+  "Reply with exactly: hello-ok",
+  "What does the git-master skill do? Answer in one sentence.",
+  "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+]
+export const SOFT_COMPLEX_PROMPTS = [
+  "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+  "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+]
+export const EXPLICIT_PROMPTS = [
+  "team: fix the flaky test",
+]
 
 function fail(msg) { console.error("[session-start-team] FAIL: " + msg); process.exit(1) }
 
-function teamRoot(ws) { return join(ws, ".mpd", "team") }
-
-function loadTeam(path) { try { return JSON.parse(readFileSync(path, "utf8")) } catch { return null } }
-
-/**
- * Every team record this workspace ever carried: ACTIVE (`<id>/team.json`) plus
- * ARCHIVED (`archive/<id>/team.json`). The distinction matters for the EXPLICIT
- * `team:` side: the gate stages the team, and the provisioning notice itself names
- * `agent_teams_delete` as an accepted outcome when the staged team does not fit the
- * session — a live model that archives it must not read as "the gate staged nothing".
- */
-function teamRecords(ws) {
-  const root = teamRoot(ws)
-  if (!existsSync(root)) return { active: [], archived: [] }
-  const ids = readdirSync(root).filter((d) => d !== "archive" && d !== "retired-members.json" && existsSync(join(root, d, "team.json")))
-  const archiveRoot = join(root, "archive")
-  const archivedIds = existsSync(archiveRoot) ? readdirSync(archiveRoot).filter((d) => existsSync(join(archiveRoot, d, "team.json"))) : []
-  return {
-    active: ids.map((id) => loadTeam(join(root, id, "team.json"))).filter(Boolean),
-    archived: archivedIds.map((id) => loadTeam(join(archiveRoot, id, "team.json"))).filter(Boolean),
+/** The shipped gate module. A load failure is fatal: never silently skip the subject. */
+async function loadGate() {
+  if (!existsSync(GATE_SOURCE)) fail("the gate source is missing: " + GATE_SOURCE)
+  try {
+    return await import(pathToFileURL(GATE_SOURCE).href)
+  } catch (error) {
+    fail("cannot import the shipped gate source " + GATE_SOURCE + ": " + String(error?.message ?? error)
+      + " — this case needs a node that strips TypeScript types (>= 22.18; measured on v24.19.0). Do not skip this arm.")
   }
 }
 
 /**
- * The user-role messages the HARNESS recorded for one workspace, decoded through the
- * sanctioned reader (concatenated-zstd-frame containers: one zstdDecompressSync would
- * see the header frame only). A missing store is reported, never silently empty.
+ * The whole frozen contract, evaluated against ONE gate implementation.
+ *
+ * Parameterized on the gate object on purpose: `--self-test` drives the real module AND
+ * two deliberately broken stubs through this SAME function, so "the contract holds" and
+ * "the contract can fail" are proven by one code path rather than two claims.
+ *
+ * @returns {Promise<string[]>} contract violations (empty = the implementation conforms)
  */
+export async function contractProblems(gate) {
+  const problems = []
+  const at = (label) => label + ": "
+
+  if (gate.STARTUP_NOTICE_MARKER !== NOTICE_MARKER) {
+    problems.push(at("marker") + "the notice marker must be " + JSON.stringify(NOTICE_MARKER) + ", got " + JSON.stringify(gate.STARTUP_NOTICE_MARKER))
+  }
+
+  // Direction 1: a SIMPLE prompt must NOT trigger and must match NO signal.
+  for (const prompt of SIMPLE_PROMPTS) {
+    const verdict = gate.evaluateComplexityGate(prompt)
+    if (verdict.trigger !== false || verdict.signals.length !== 0) {
+      problems.push(at("simple") + JSON.stringify(prompt.slice(0, 44)) + " must stay untriggered with no signal, got " + JSON.stringify(verdict))
+    }
+  }
+
+  // Direction 2: a SOFT-complex prompt must trigger and name at least one signal.
+  for (const prompt of SOFT_COMPLEX_PROMPTS) {
+    const verdict = gate.evaluateComplexityGate(prompt)
+    if (verdict.trigger !== true || verdict.signals.length === 0) {
+      problems.push(at("soft-complex") + JSON.stringify(prompt.slice(0, 44)) + " must trigger with a named signal, got " + JSON.stringify(verdict))
+    }
+  }
+
+  // Direction 3: the EXPLICIT flag is CONSUMED and counts as signal A.
+  for (const prompt of EXPLICIT_PROMPTS) {
+    const consumed = gate.consumeExplicitFlag(prompt)
+    if (consumed.flagged !== true) problems.push(at("explicit") + "the explicit marker must be detected in " + JSON.stringify(prompt))
+    if (/(^|\s)!team|^team:/iu.test(consumed.text.trim())) problems.push(at("explicit") + "the marker must be CONSUMED from the goal text, got " + JSON.stringify(consumed.text))
+    const verdict = gate.evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged })
+    if (verdict.trigger !== true || !verdict.signals.includes("A")) {
+      problems.push(at("explicit") + "an explicit request must trigger with signal A, got " + JSON.stringify(verdict))
+    }
+  }
+
+  // Signal D: a `.mpd/plans/*.md` artifact for the workspace.
+  const withPlan = gate.evaluateComplexityGate("hello", { planArtifact: true })
+  if (!withPlan.signals.includes("D")) problems.push(at("signal D") + "a plan artifact must contribute signal D, got " + JSON.stringify(withPlan))
+
+  // The notice: marker + advisory + official tools, and NONE of the retired vocabulary.
+  const notices = [
+    ["advisory", gate.advisoryNoticeText(["C"], false)],
+    ["explicit-advisory", gate.advisoryNoticeText(["A"], true)],
+  ]
+  for (const [label, text] of notices) {
+    const body = String(text ?? "")
+    if (!body.includes(NOTICE_MARKER)) problems.push(at("notice/" + label) + "the frozen marker is missing")
+    if (!body.includes(ADVISORY_PHRASE)) problems.push(at("notice/" + label) + "the notice must state " + JSON.stringify(ADVISORY_PHRASE))
+    for (const tool of OFFICIAL_TOOLS) if (!body.includes(tool)) problems.push(at("notice/" + label) + "the notice must name the official tool `" + tool + "`")
+    if (RETIRED_TOOL_PATTERN.test(body)) problems.push(at("notice/" + label) + "the notice must not name the RETIRED agent_teams_* vocabulary")
+    if (body.includes(RETIRED_PROVISIONED_PHRASE)) problems.push(at("notice/" + label) + "the retired PROVISIONING sentence must be gone (the gate stages nothing)")
+  }
+
+  // Scope: configured presets, top-level sessions only.
+  if (!Array.isArray(gate.DEFAULT_GATE_PRESETS) || !gate.DEFAULT_GATE_PRESETS.includes("mpd")) {
+    problems.push(at("scope") + "the default gate presets must include `mpd`, got " + JSON.stringify(gate.DEFAULT_GATE_PRESETS))
+  }
+  if (gate.sessionQualifies({ session: { header: { parentSession: "parent-1", agentPreset: "mpd" } } }) !== false) {
+    problems.push(at("scope") + "a CHILD session must never get a gate of its own")
+  }
+  if (gate.sessionQualifies({ session: { header: { agentPreset: "standard" } } }) !== false) {
+    problems.push(at("scope") + "another preset's session must not be gated")
+  }
+
+  // The plan-artifact probe really reads the workspace.
+  const probe = mkdtempSync(join(tmpdir(), "mpd-gate-contract-"))
+  try {
+    if (await gate.hasPlanArtifact(probe) !== false) problems.push(at("signal D") + "an empty workspace must report no plan artifact")
+    mkdirSync(join(probe, ".mpd", "plans"), { recursive: true })
+    writeFileSync(join(probe, ".mpd", "plans", "p.md"), "# plan\n")
+    if (await gate.hasPlanArtifact(probe) !== true) problems.push(at("signal D") + "a `.mpd/plans/*.md` artifact must be detected")
+  } finally {
+    rmSync(probe, { recursive: true, force: true })
+  }
+  return problems
+}
+
+async function selfTest() {
+  const gate = await loadGate()
+  const problems = await contractProblems(gate)
+  if (problems.length > 0) {
+    for (const problem of problems) console.error("  - " + problem)
+    fail("the shipped gate violates its frozen contract (" + problems.length + " problem(s))")
+  }
+
+  // ── NEGATIVE CONTROLS: the SAME contract must REDDEN for a broken implementation ──
+  // Both directions are covered, so neither "always fires" nor "never fires" can pass.
+  const alwaysTrigger = {
+    ...gate,
+    evaluateComplexityGate: () => ({ trigger: true, signals: ["C"] }),
+  }
+  const alwaysSilent = {
+    ...gate,
+    evaluateComplexityGate: () => ({ trigger: false, signals: [] }),
+    advisoryNoticeText: () => "nothing to see here",
+  }
+  const triggerProblems = await contractProblems(alwaysTrigger)
+  if (triggerProblems.length === 0) fail("negative control: a gate that triggers on EVERYTHING passed the contract")
+  const silentProblems = await contractProblems(alwaysSilent)
+  if (silentProblems.length === 0) fail("negative control: a gate that triggers on NOTHING passed the contract")
+
+  // ── the wiring the live boot depends on ──
+  const patch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  if (!/id: mpd-roles\b/.test(patch)) fail("the bundle patch no longer mounts the `mpd-roles` row — the gate has no home")
+  if (/^\s*name: '@deepseek-ai\/dsh-agent-presets'\s*$/m.test(patch)) fail("the retired @deepseek-ai/dsh-agent-presets row came back")
+  if (/id:\s*agent-teams\s*$/m.test(patch)) fail("the RETIRED vendored `agent-teams` row came back into the bundle patch")
+  if (patch.includes("sessionTeamPolicy")) fail("the retired `sessionTeamPolicy` row config came back into the bundle patch")
+  // The preset carries the convention the gate serves, in the OFFICIAL vocabulary.
+  const preset = readMpdPresetSource(repoRoot)
+  if (preset === "") fail("no declared bundle patch declares the `preset-mpd` row — the preset audit has no subject")
+  if (!preset.includes("SESSION STARTUP RULE")) fail("the mpd preset no longer states the SESSION STARTUP RULE")
+  if (!preset.includes("spawn_teammate")) fail("the mpd preset must name the OFFICIAL staging tool `spawn_teammate`")
+  if (/MUST start inside a team|MUST begin inside a team/.test(preset)) fail("the mpd preset still carries the retired mandatory-team invariant")
+
+  console.log("[session-start-team self-test] ok: shipped gate source conforms to the frozen contract ("
+    + SIMPLE_PROMPTS.length + " simple / " + SOFT_COMPLEX_PROMPTS.length + " soft-complex / " + EXPLICIT_PROMPTS.length + " explicit prompts, marker + advisory + official tools + scope)"
+    + "; negative controls reddened both ways (always-trigger " + triggerProblems.length + ", always-silent " + silentProblems.length + " problem(s))"
+    + "; bundle mounts mpd-roles with the retired rows gone; preset carries the SESSION STARTUP RULE")
+}
+
+// ── live lane ────────────────────────────────────────────────────────────────
+
+/** The user-role messages the HARNESS recorded for one workspace (sanctioned reader). */
 function recordedUserTexts(home, ws) {
   try {
     const store = readSessionEvents(home, { workspace: ws })
@@ -96,242 +236,58 @@ function recordedUserTexts(home, ws) {
       const text = content.filter((block) => block?.type === "text").map((block) => String(block.text ?? "")).join("\n")
       if (text.length > 0) texts.push(text)
     }
-    return { ok: true, texts, events: store.records, records: store.records.length, frames: store.frames, file: store.file }
+    return { ok: true, texts, records: store.records.length, frames: store.frames, file: store.file }
   } catch (error) {
-    return { ok: false, texts: [], events: [], records: 0, frames: 0, file: null, error: String(error?.message ?? error) }
+    return { ok: false, texts: [], records: 0, frames: 0, file: null, error: String(error?.message ?? error) }
   }
 }
 
-/** Which notices (none / advisory / provisioned) the session log carries, and the signals. */
-function classifyNotice(texts) {
+/** The notices the session log carries: marker, advisory, and the fired signals. */
+function classifyNotices(texts) {
   const marked = texts.filter((text) => text.includes(NOTICE_MARKER))
   const advisory = marked.filter((text) => text.includes(ADVISORY_PHRASE))
-  const provisioned = marked.filter((text) => text.includes(PROVISIONED_PHRASE))
+  const retiredProvisioned = marked.filter((text) => text.includes(RETIRED_PROVISIONED_PHRASE))
+  const officialTools = marked.filter((text) => OFFICIAL_TOOLS.every((tool) => text.includes(tool)))
+  const retiredVocabulary = marked.filter((text) => RETIRED_TOOL_PATTERN.test(text))
   const signals = advisory.map((text) => /complexity signals ([A-D](?:\/[A-D])*)/.exec(text)?.[1]).filter((value) => value !== undefined)
-  return { any: marked.length > 0, advisory: advisory.length, provisioned: provisioned.length, signals }
+  return { any: marked.length, advisory: advisory.length, retiredProvisioned: retiredProvisioned.length, officialTools: officialTools.length, retiredVocabulary: retiredVocabulary.length, signals }
 }
 
-/** sha256 of a file via coreutils (keeps the settle-window assertion dependency-free). */
+/** Every team record in a workspace (the retired `.mpd/team` root: any of them is a stage). */
+function teamRecords(ws) {
+  const root = join(ws, ".mpd", "team")
+  if (!existsSync(root)) return { active: 0, archived: 0, ids: [] }
+  const ids = readdirSync(root).filter((name) => name !== "archive" && existsSync(join(root, name, "team.json")))
+  const archiveRoot = join(root, "archive")
+  const archived = existsSync(archiveRoot) ? readdirSync(archiveRoot).filter((name) => existsSync(join(archiveRoot, name, "team.json"))) : []
+  return { active: ids.length, archived: archived.length, ids: [...ids, ...archived] }
+}
+
 function sha256(path) {
   const r = spawnSync("sha256sum", [path], { encoding: "utf8" })
   return (r.stdout || "").trim().split(/\s+/)[0]
 }
 
-// ── origin attribution: PLUGIN provisioning vs MODEL staging (R1 repair) ──────
-//
-// The soft-complex arm must assert the PLUGIN-side property (the gate advises and
-// provisions nothing). It must NOT fail because the live MODEL followed the advisory
-// notice and staged a team itself — that is the designed behaviour the notice invites
-// ("stage one at the moment the work actually warrants one"). A team record is therefore
-// attributed to its author from the HARNESS's own evidence, never from the answer text:
-//   - `plugin`  — the record carries the plugin's own auto-route description and belongs
-//                 to the session whose log we read (lib/session-start.js writes it);
-//   - `model`   — the captain session's log carries an `agent_teams_create` tool call;
-//   - `unknown` — neither signal holds; a record nobody can attribute is never excused.
-
-/** The plugin's auto-route description prefix (`provisionSessionTeam`'s default description). */
-export const PLUGIN_ROUTE_DESCRIPTION_PREFIX = "Auto-routed by the complexity gate"
-
-/** Where ONE team record came from. Pure: fixtures drive it in `--self-test`. */
-export function attributeOrigin({ record, createCall, sessionIdMatch }) {
-  const pluginDescription = typeof record?.description === "string" && record.description.startsWith(PLUGIN_ROUTE_DESCRIPTION_PREFIX)
-  const modelCalled = createCall?.called === true
-  if (pluginDescription && sessionIdMatch === true) {
-    return { origin: "plugin", reasons: ["the record carries the plugin's auto-route description and belongs to this session"], pluginDescription, modelCalled }
-  }
-  if (modelCalled) {
-    return { origin: "model", reasons: ["the captain session log records an agent_teams_create tool call"], pluginDescription, modelCalled }
-  }
-  if (pluginDescription) {
-    return { origin: "unknown", reasons: ["the plugin description does not match this session's captainSessionId"], pluginDescription, modelCalled }
-  }
-  return { origin: "unknown", reasons: ["no agent_teams_create call and no plugin auto-route description"], pluginDescription, modelCalled }
-}
-
-/**
- * The harness's session log for ONE session id under `<dshHome>/sessions/<projectKey(ws)>/`.
- * `resolution` records which log the attribution actually used, so a reader can see whether
- * the captain's OWN log was found (`session-id`) or the newest log was used as a fallback
- * (`newest`) — or that no log exists at all (`none`).
- */
-export function captainSessionEvidence(dshHome, ws, sessionId) {
-  const root = join(dshHome, "sessions", projectKey(ws))
-  const ids = (() => {
-    try { return readdirSync(root).filter((id) => statSync(join(root, id)).isDirectory()) } catch { return [] }
-  })()
-  const logFor = (id) => {
-    try {
-      for (const name of readdirSync(join(root, id))) if (/^session\..*jsonl(\.zstd)?$/.test(name)) return join(root, id, name)
-    } catch { /* unreadable session */ }
-    return null
-  }
-  let file = null
-  let usedId = null
-  let resolution = "none"
-  if (typeof sessionId === "string" && ids.includes(sessionId)) {
-    file = logFor(sessionId)
-    usedId = sessionId
-    if (file !== null) resolution = "session-id"
-  }
-  if (file === null && ids.length > 0) {
-    const newest = ids.map((id) => ({ id, file: logFor(id) })).filter((entry) => entry.file !== null)
-      .sort((a, b) => statSync(b.file).mtimeMs - statSync(a.file).mtimeMs)[0]
-    if (newest !== undefined) {
-      file = newest.file
-      usedId = newest.id
-      resolution = "newest"
-    }
-  }
-  if (file === null) return { resolution: "none", sessionId: usedId, file: null, records: [], frames: 0 }
-  const decoded = decodeSessionLog(file)
-  const records = []
-  for (const line of decoded.text.split("\n")) {
-    const text = line.trim()
-    if (text.length === 0) continue
-    try { records.push(JSON.parse(text)) } catch { /* torn tail */ }
-  }
-  return { resolution, sessionId: usedId, file, records, frames: decoded.frames }
-}
-
-/**
- * The verdict of ONE side. Pure, so `--self-test` drives every branch with fixtures.
- * `entries` is `[{slot, record}]` in active-then-archived order; `attributions` is parallel.
- */
-export function evaluateSide({ expect, entries = [], notice, attributions = [] }) {
+/** The verdict of ONE live side. Pure, so `--self-test` fixtures could drive it too. */
+export function evaluateSide({ expect, notice, teams, markerConsumed }) {
   const problems = []
-  const total = entries.length
   if (expect === "none") {
-    if (total !== 0) problems.push("a simple prompt must leave NO team record (active or archived)")
-    if (notice.any) problems.push("a simple prompt must leave NO notice")
+    // THE FALSIFIABILITY ARM: a gate that fires on everything reddens HERE.
+    if (notice.any !== 0) problems.push("a simple prompt must leave NO notice, got " + notice.any)
+    if (teams.active + teams.archived !== 0) problems.push("a simple prompt must stage NO team")
     return { ok: problems.length === 0, problems }
   }
-  if (expect === "advise") {
-    // The PLUGIN-side property (clause 4): the gate ADVises and provisions NOTHING.
-    if (notice.provisioned !== 0) problems.push("an advisory route must NOT record the provisioning notice (the plugin provisioned)")
-    if (notice.advisory !== 1) problems.push("an advisory route must record EXACTLY ONE advisory notice, got " + notice.advisory)
-    if (notice.signals.length === 0) problems.push("the advisory notice must name the fired complexity signals")
-    // A record IS allowed here — the notice invites the captain to stage at the moment the
-    // work warrants it — but it must be attributed to the MODEL. A record the model did not
-    // ask for is exactly the clause-4 violation this arm exists to catch.
-    for (let index = 0; index < entries.length; index += 1) {
-      const attribution = attributions[index] ?? { origin: "unknown", reasons: ["no attribution recorded"] }
-      if (attribution.origin !== "model") {
-        problems.push("a team record on the advisory path is not attributed to the model (id=" + String(entries[index].record?.id ?? "?") + ", origin=" + attribution.origin + ": " + attribution.reasons.join("; ") + ")")
-      }
-    }
-    return { ok: problems.length === 0, problems }
-  }
-  if (expect === "provision") {
-    if (total !== 1) problems.push("an explicit team: prompt must stage EXACTLY ONE team (active+archived=" + total + ")")
-    if (notice.provisioned === 0) problems.push("the explicit path must record the provisioning notice")
-    if (notice.advisory !== 0) problems.push("the explicit path must NOT record the advisory notice")
-    const record = entries[0]?.record
-    if (record !== undefined) {
-      if (record.phase !== "staged") problems.push("the staged team must be in phase 'staged', got " + JSON.stringify(record.phase))
-      if ((record.profile?.name ?? null) !== "mpd") problems.push("the staged team must use the mpd profile, got " + JSON.stringify(record.profile?.name ?? null))
-      const attribution = attributions[0]
-      if (attribution !== undefined && attribution.origin !== "plugin") {
-        problems.push("the explicit path's record must be the PLUGIN's provisioning, got origin=" + attribution.origin + ": " + attribution.reasons.join("; "))
-      }
-    }
-    return { ok: problems.length === 0, problems }
-  }
-  problems.push("unknown expectation " + expect)
-  return { ok: false, problems }
-}
-
-async function selfTest() {
-  const plugin = join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "session-start.js")
-  if (!existsSync(plugin)) fail("lib/session-start.js missing")
-  const src = readFileSync(plugin, "utf8")
-  if (!src.includes("agent/pre-step") || !src.includes("provisionSessionTeam")) fail("session-start.js policy hooks missing")
-  if (!src.includes("evaluateComplexityGate") || !src.includes("consumeExplicitFlag")) fail("session-start.js complexity gate missing")
-  // The ADVISORY path must exist and must be the one a triggered soft auto-route takes:
-  // action 'advise' + the advisory notice builder; the provisioning notice stays for
-  // mode:'auto' / the explicit flag.
-  if (!src.includes("advisoryNotice") || !src.includes("'advise'")) fail("session-start.js has no advisory route/notice (clause 4)")
-  if (!src.includes(ADVISORY_PHRASE)) fail("advisoryNotice must state that NO team was staged")
-  if (!src.includes(PROVISIONED_PHRASE)) fail("provisionedNotice must state that the team is staged")
-  // §4.3 consistency: the ADVISORY text instructs approval="required" (normal mode) and
-  // must not forbid automatic staging — the ULW path stages with approval="automatic".
-  const advisoryBody = src.slice(src.indexOf("export function advisoryNotice"), src.indexOf("export function instructNotice"))
-  if (advisoryBody.length === 0) fail("advisoryNotice body not found")
-  if (!advisoryBody.includes('approval="required"')) fail("advisoryNotice must instruct approval=\"required\" for normal-mode staging")
-  if (/automatic/u.test(advisoryBody)) fail("advisoryNotice must not mention automatic approval (the ULW path uses it)")
-  const patch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
-  if (!patch.includes("sessionTeamPolicy") || !patch.includes("mode: off") || !patch.includes("autoRoute: true")) fail("bundle patch sessionTeamPolicy must carry mode: off + autoRoute: true")
-  const installer = readFileSync(join(repoRoot, "scripts", "install-profile.mjs"), "utf8")
-  if (!installer.includes("sessionTeamPolicy") || !installer.includes('mode: "off"') || !installer.includes("autoRoute: true")) fail("installer row config must carry mode off + autoRoute true")
-  const persona = readFileSync(join(repoRoot, "presets", "mpd", "agent.cordis.yml"), "utf8")
-  if (!persona.includes("SESSION STARTUP RULE")) fail("preset persona missing SESSION STARTUP RULE")
-  if (/MUST start inside a team|MUST begin inside a team/.test(persona)) fail("preset persona still carries the mandatory-team invariant")
-
-  // The three-way offline predicate over the VERY prompt arrays the live sides boot.
-  const probed = await loadAndProbe()
-  const bad = [...probed.rows, ...probed.disabled].filter((row) => row.problems.length > 0)
-  if (bad.length > 0) {
-    for (const row of bad) console.error("  - " + row.label + " " + JSON.stringify(row.prompt.slice(0, 40)) + ": " + row.problems.join("; "))
-    fail("offline three-way probe failed (" + bad.length + " row(s)); run node skills/dsh-qa/scripts/lib/gate-probe.mjs")
-  }
-  const byLabel = { simple: probed.rows.filter((r) => r.label === "simple"), soft: probed.rows.filter((r) => r.label === "soft"), explicit: probed.rows.filter((r) => r.label === "explicit") }
-  if (byLabel.simple.length !== SIMPLE.length || byLabel.soft.length !== SOFT_COMPLEX.length || byLabel.explicit.length !== EXPLICIT.length) fail("probe did not evaluate every prompt of every set")
-
-  // NEGATIVE CONTROL (offline): a gate that answers `advise` to EVERYTHING must FAIL the
-  // same predicate. Without this an always-advise stub could pass the probe vacuously.
-  const alwaysAdvise = {
-    consumeExplicitFlag: (text) => ({ flagged: false, text }),
-    evaluateComplexityGate: () => ({ trigger: true, signals: ["C"] }),
-    hasPlanArtifact: async () => false,
-    routeDecision: async () => ({ action: "advise", signals: ["C"] }),
-  }
-  const controlWorkspace = mkdtempSync(join(tmpdir(), "mpd-sst-control-"))
-  const control = await probeAll(alwaysAdvise, controlWorkspace)
-  rmSync(controlWorkspace, { recursive: true, force: true })
-  if (control.failed === 0) fail("negative control: an always-advise gate passed the offline predicate")
-
-  // The case's own prompt arrays must be bound to the probe's (no drift allowed).
-  if (SIMPLE !== SIMPLE_PROMPTS || SOFT_COMPLEX !== SOFT_COMPLEX_PROMPTS || EXPLICIT !== EXPLICIT_PROMPTS) fail("live prompt sets must be the probe's arrays")
-
-  // ── the R1-repair predicates, driven by fixtures BOTH ways ──────────────────
-  const pluginRecord = { id: "mpd-default", phase: "staged", description: PLUGIN_ROUTE_DESCRIPTION_PREFIX + " (sessionTeamPolicy.autoRoute; …)", captainSessionId: "session-A", profile: { name: "mpd" }, members: [] }
-  const modelRecord = { id: "mpd-default", phase: "staged", description: "Audit the orchestration surface and implement the routing change", captainSessionId: "session-A", profile: { name: "mpd" }, members: [] }
-  const strangerRecord = { id: "mpd-default", phase: "staged", description: "something else", captainSessionId: "session-OTHER", profile: { name: "mpd" }, members: [] }
-  const createCall = { called: true, callIds: ["call-1"] }
-  const noCreateCall = { called: false, callIds: [] }
-  const pluginOrigin = attributeOrigin({ record: pluginRecord, createCall: noCreateCall, sessionIdMatch: true })
-  if (pluginOrigin.origin !== "plugin") fail("attribution: the plugin's own description + session match must read as 'plugin'")
-  const modelOrigin = attributeOrigin({ record: modelRecord, createCall, sessionIdMatch: true })
-  if (modelOrigin.origin !== "model") fail("attribution: an agent_teams_create call must read as 'model'")
-  if (attributeOrigin({ record: modelRecord, createCall: noCreateCall, sessionIdMatch: true }).origin !== "unknown") fail("attribution negative control: a record with no call and no plugin description must be 'unknown'")
-  if (attributeOrigin({ record: pluginRecord, createCall: noCreateCall, sessionIdMatch: false }).origin !== "unknown") fail("attribution negative control: a plugin description from ANOTHER session must be 'unknown'")
-  if (attributeOrigin({ record: pluginRecord, createCall, sessionIdMatch: true }).origin !== "plugin") fail("attribution: the record's own description must outrank a stray create call")
-
-  const advisoryNotice = { any: true, advisory: 1, provisioned: 0, signals: ["C"] }
-  const provisionedNotice = { any: true, advisory: 0, provisioned: 1, signals: [] }
-  const softClean = evaluateSide({ expect: "advise", entries: [], notice: advisoryNotice, attributions: [] })
-  if (!softClean.ok) fail("evaluateSide: an advisory side with no record must pass")
-  const softModelStaged = evaluateSide({ expect: "advise", entries: [{ slot: "active", record: modelRecord }], notice: advisoryNotice, attributions: [{ origin: "model", reasons: [] }] })
-  if (!softModelStaged.ok) fail("evaluateSide: a MODEL-staged record after the advisory notice must PASS (designed behaviour)")
-  const softPluginStaged = evaluateSide({ expect: "advise", entries: [{ slot: "active", record: pluginRecord }], notice: advisoryNotice, attributions: [{ origin: "plugin", reasons: [] }] })
-  if (softPluginStaged.ok) fail("evaluateSide negative control: a PLUGIN-staged record on the advisory path must FAIL (clause 4)")
-  if (evaluateSide({ expect: "advise", entries: [{ slot: "active", record: strangerRecord }], notice: advisoryNotice, attributions: [{ origin: "unknown", reasons: [] }] }).ok) fail("evaluateSide negative control: an unattributable record must FAIL")
-  if (evaluateSide({ expect: "advise", entries: [], notice: { any: true, advisory: 0, provisioned: 1, signals: ["C"] }, attributions: [] }).ok) fail("evaluateSide negative control: a provisioning notice on the advisory path must FAIL")
-  if (evaluateSide({ expect: "advise", entries: [], notice: { any: true, advisory: 2, provisioned: 0, signals: ["C"] }, attributions: [] }).ok) fail("evaluateSide negative control: TWO advisory notices must FAIL")
-  if (evaluateSide({ expect: "advise", entries: [], notice: { any: true, advisory: 1, provisioned: 0, signals: [] }, attributions: [] }).ok) fail("evaluateSide negative control: an advisory notice without signals must FAIL")
-  if (!evaluateSide({ expect: "none", entries: [], notice: { any: false, advisory: 0, provisioned: 0, signals: [] } }).ok) fail("evaluateSide: a clean simple side must pass")
-  if (evaluateSide({ expect: "none", entries: [{ slot: "archived", record: modelRecord }], notice: { any: false, advisory: 0, provisioned: 0, signals: [] } }).ok) fail("evaluateSide negative control: any record on the simple side must FAIL")
-  const explicitOk = evaluateSide({ expect: "provision", entries: [{ slot: "active", record: pluginRecord }], notice: provisionedNotice, attributions: [{ origin: "plugin", reasons: [] }] })
-  if (!explicitOk.ok) fail("evaluateSide: the explicit side's plugin-staged record must pass")
-  if (evaluateSide({ expect: "provision", entries: [{ slot: "active", record: modelRecord }], notice: provisionedNotice, attributions: [{ origin: "model", reasons: [] }] }).ok) fail("evaluateSide negative control: an explicit side staged by the MODEL must FAIL")
-  if (evaluateSide({ expect: "provision", entries: [{ slot: "active", record: pluginRecord }, { slot: "archived", record: pluginRecord }], notice: provisionedNotice, attributions: [{ origin: "plugin", reasons: [] }, { origin: "plugin", reasons: [] }] }).ok) fail("evaluateSide negative control: TWO explicit records must FAIL")
-
-  const probe = spawnSync(process.execPath, [join(repoRoot, "skills", "dsh-qa", "scripts", "lib", "gate-probe.mjs")], { encoding: "utf8", cwd: repoRoot })
-  if (probe.status !== 0) {
-    console.error(probe.stdout || "")
-    console.error(probe.stderr || "")
-    fail("gate probe failed (all three directions must hold on the frozen prompt sets)")
-  }
-  console.log("[session-start-team self-test] ok: gate module + advisory/provision notices + bundle patch + installer + persona + THREE-WAY prompt directions + always-advise control + attribution/evaluator fixtures (plugin vs model vs unattributable) verified")
+  // Both triggered sides are ADVISORY — the explicit one included (the retired provision route is gone).
+  if (notice.any !== 1) problems.push("a triggered prompt must record EXACTLY ONE advisory notice, got " + notice.any)
+  if (notice.advisory !== 1) problems.push("the notice must state " + JSON.stringify(ADVISORY_PHRASE) + ", got " + notice.advisory)
+  if (notice.officialTools !== 1) problems.push("the notice must name BOTH official tools (" + OFFICIAL_TOOLS.join(", ") + "), got " + notice.officialTools)
+  if (notice.retiredVocabulary !== 0) problems.push("the notice must not name the RETIRED agent_teams_* vocabulary")
+  if (notice.retiredProvisioned !== 0) problems.push("the retired PROVISIONING notice must not come back (the gate stages nothing)")
+  if (notice.signals.length === 0) problems.push("the advisory notice must name the fired complexity signals")
+  // The gate itself must not have staged anything, on ANY side.
+  if (teams.active + teams.archived !== 0) problems.push("the advisory gate must stage NO team (active+archived=" + (teams.active + teams.archived) + ")")
+  if (expect === "explicit" && markerConsumed !== true) problems.push("the explicit `team:` marker must be CONSUMED from the recorded goal text")
+  return { ok: problems.length === 0, problems }
 }
 
 async function runReal() {
@@ -343,25 +299,34 @@ async function runReal() {
     : join(repoRoot, "evidence", "dsh-qa", "session-start-team", ts)
   mkdirSync(outDir, { recursive: true })
 
+  // The live lane boots an INSTALLED profile: the row that runs is the built dist, so a
+  // dist that does not carry the gate would make this whole lane prove NOTHING while
+  // looking green-free. Assert the artifact really carries the contract, and name the
+  // rebuild command instead of reporting a mysterious "no notice".
+  const distText = readFileSync(ROLES_DIST, "utf8")
+  const distCarriesGate = ["installSessionGate", "STARTUP_NOTICE_MARKER", ADVISORY_PHRASE, "spawn_teammate"].every((needle) => distText.includes(needle))
+  if (!distCarriesGate) {
+    fail("the built row " + ROLES_DIST + " does not carry the session-start gate, so a boot would prove nothing — rebuild it: " + REBUILD_COMMAND)
+  }
+
   const rev0 = spawnSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).stdout.trim()
-  const gatePath = join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "session-start.js")
-  const gate0 = sha256(gatePath)
-  LOG.push("settleWait: " + SETTLE_MS + " ms (revision " + rev0 + ", session-start.js " + gate0.slice(0, 16) + ")")
+  const gateHash0 = sha256(GATE_SOURCE)
+  LOG.push("settleWait: " + SETTLE_MS + " ms (revision " + rev0 + ", session-gate.ts " + gateHash0.slice(0, 16) + ")")
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
   const rev1 = spawnSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).stdout.trim()
-  const gate1 = sha256(gatePath)
-  const settled = rev0 === rev1 && gate0 === gate1
-  const steps = { settled: { ok: settled, rev: rev1, gateHash: gate1 } }
-  if (!settled) fail("revision did not settle (HEAD or gate file changed during the window)")
+  const gateHash1 = sha256(GATE_SOURCE)
+  const settled = rev0 === rev1 && gateHash0 === gateHash1
+  const steps = { settled: { ok: settled, rev: rev1, gateHash: gateHash1 } }
+  if (!settled) fail("revision did not settle (HEAD or session-gate.ts changed during the window)")
 
   const sandbox = mkdtempSync(join(tmpdir(), "mpd-sst-"))
   const sandboxHome = join(sandbox, "home")
   mkdirSync(sandboxHome, { recursive: true })
   seedSandboxCredentials(sandbox, { credentialsFile: creds })
   const settings = join(homedir(), ".dsh", "settings.yaml")
-  if (existsSync(settings)) cpSync(settings, join(sandbox, "settings.yaml"))
-  // AGENTS.md §7: HOME is sandboxed too (skill roots, workmate library), and the
-  // workspace is passed explicitly on every spawn (env alone cannot isolate it).
+  if (existsSync(settings)) writeFileSync(join(sandbox, "settings.yaml"), readFileSync(settings))
+  // AGENTS.md §7: HOME is sandboxed too, and the workspace is passed explicitly on every
+  // spawn (env alone cannot isolate it).
   const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: sandboxHome })
   if (env.DSH_HOME !== sandbox || env.HOME !== sandboxHome) fail("isolation assertion failed")
 
@@ -375,175 +340,81 @@ async function runReal() {
 
   const inst = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { timeout: 600000 })
   steps.installer = { ok: inst.status === 0, exit: inst.status }
-
   const homePatch = readFileSync(join(sandbox, "cordis.patch.yml"), "utf8")
-  steps.patchRow = { ok: /id:\s*agent-teams/.test(homePatch) && homePatch.includes("sessionTeamPolicy") && homePatch.includes('"off"') && homePatch.includes("autoRoute") && homePatch.includes("MPD Default"), hasRow: homePatch.includes("agent-teams") }
-
-  // T-69: the wrapper composes; `--json` keeps the child's output parseable (banner on stderr).
-  const dump = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "mpd-headless", "--json"], { timeout: 120000 })
-  const dumpText = safeJson(dump.stdout)?.stdout ?? dump.stdout
-  steps.compose = { ok: dump.status === 0 && dumpText.includes("agent-teams") && dumpText.includes("sessionTeamPolicy") && dumpText.includes("MPD Default"), exit: dump.status }
+  steps.patchRow = {
+    ok: /id:\s*mpd-roles/.test(homePatch) && !/id:\s*agent-teams\s*$/m.test(homePatch) && !homePatch.includes("sessionTeamPolicy"),
+    mountsRoles: /id:\s*mpd-roles/.test(homePatch),
+    retiredAgentTeamsRow: /id:\s*agent-teams\s*$/m.test(homePatch),
+  }
   assertSessionsSandboxed(sandbox, sandbox, { label: "session-start-team-main" })
 
-  /**
-   * One boot per prompt. `expect` is the routing action the frozen contract requires:
-   * "none" (simple: no team, no notice), "advise" (soft complex: no team, ADVISORY
-   * notice naming the signals) or "provision" (explicit `team:`: exactly one team).
-   */
-  async function runSide(label, prompts, expect) {
+  /** One boot per prompt, in its own sandbox workspace (never the checkout). */
+  function runSide(label, prompts, expect) {
     const results = []
-    for (let i = 0; i < prompts.length; i += 1) {
-      const sideHome = join(sandbox, "side", label, String(i))
-      const sideWs = sandboxWorkspace(sandbox, join("side", label, String(i), "ws"))
-      const sideUserHome = join(sideHome, "home")
-      mkdirSync(sideUserHome, { recursive: true })
-      cpSync(join(sandbox, ".credentials.yaml"), join(sideHome, ".credentials.yaml"))
-      if (existsSync(join(sandbox, "settings.yaml"))) cpSync(join(sandbox, "settings.yaml"), join(sideHome, "settings.yaml"))
-      cpSync(join(sandbox, "profiles"), join(sideHome, "profiles"), { recursive: true })
-      cpSync(join(sandbox, "cordis.patch.yml"), join(sideHome, "cordis.patch.yml"))
-      const sideEnv = { ...process.env, DSH_HOME: sideHome, HOME: sideUserHome }
-      const sideSpec = dshCommand(["--profile", "mpd-headless", prompts[i]], sideEnv)
-      const live = sideSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(sideSpec.command, sideSpec.args, { env: sideEnv, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: sideWs, stdio: ["ignore", "pipe", "pipe"] })
-      LOG.push("[" + label + " " + i + "] $ dsh --profile mpd-headless " + JSON.stringify(prompts[i]) + "\n[[exit=" + live.status + "]]\n" + ((live.stdout || "") + (live.stderr || "")).slice(0, 20000))
-      const records = teamRecords(sideWs)
-      // Preserve the side's state before the sandbox tmpdir is understood only through
-      // the evidence dir: copy the workspace team records and the session logs so the
-      // notice assertion stays auditable after the run.
-      try {
-        const keep = join(outDir, "sides", label, String(i))
-        mkdirSync(keep, { recursive: true })
-        if (existsSync(teamRoot(sideWs))) cpSync(teamRoot(sideWs), join(keep, "team"), { recursive: true })
-        if (existsSync(join(sideHome, "sessions"))) cpSync(join(sideHome, "sessions"), join(keep, "sessions"), { recursive: true })
-        writeFileSync(join(keep, "prompt.txt"), prompts[i])
-      } catch { /* evidence copy is best-effort; the assertions below are the gate */ }
-      const recorded = recordedUserTexts(sideHome, sideWs)
-      const notice = classifyNotice(recorded.texts)
+    for (let index = 0; index < prompts.length; index += 1) {
+      const sideWs = sandboxWorkspace(sandbox, join("side", label, String(index), "ws"))
+      mkdirSync(sideWs, { recursive: true })
+      const spec = dshCommand(["--profile", "mpd-headless", prompts[index]], env)
+      const live = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: sideWs, stdio: ["ignore", "pipe", "pipe"] })
+      LOG.push("[" + label + " " + index + "] $ dsh --profile mpd-headless " + JSON.stringify(prompts[index]) + "\n[[exit=" + live.status + "]]\n" + ((live.stdout || "") + (live.stderr || "")).slice(0, 20000))
+      const recorded = recordedUserTexts(sandbox, sideWs)
+      const notice = classifyNotices(recorded.texts)
+      const teams = teamRecords(sideWs)
+      // The explicit marker must have been CONSUMED: the recorded goal must no longer open with it.
+      const goal = recorded.texts.find((text) => !text.includes(NOTICE_MARKER) && !text.startsWith("<")) ?? ""
+      const markerConsumed = expect !== "explicit" ? undefined : !/(^|\s)!team|^team:/iu.test(goal.trim())
       const isolation = (() => {
-        try { return { ok: true, ...assertSessionsSandboxed(sideHome, sideWs, { label: "session-start-team-" + label + "-" + i }) } } catch (error) { return { ok: false, error: String(error?.message ?? error) } }
+        try { return { ok: true, ...assertSessionsSandboxed(sandbox, sideWs, { label: "session-start-team-" + label + "-" + index }) } } catch (error) { return { ok: false, error: String(error?.message ?? error) } }
       })()
-      // The explicit side may have been ARCHIVED mid-session by the live model: the
-      // provisioning notice itself names `agent_teams_delete` as an accepted outcome.
-      // The harness's own tool record is the evidence for who did it.
-      const archiveCall = findToolCall(recorded.events ?? [], "agent_teams_delete")
-      // ── origin attribution of every record (R1 repair) ────────────────────────
-      const entries = [
-        ...records.active.map((record) => ({ slot: "active", record })),
-        ...records.archived.map((record) => ({ slot: "archived", record })),
-      ]
-      const attributions = entries.map((entry) => {
-        const evidence = captainSessionEvidence(sideHome, sideWs, entry.record?.captainSessionId)
-        const createCall = findToolCall(evidence.records, "agent_teams_create")
-        const attribution = attributeOrigin({
-          record: entry.record,
-          createCall,
-          sessionIdMatch: typeof entry.record?.captainSessionId === "string" && entry.record.captainSessionId === evidence.sessionId,
-        })
-        return {
-          slot: entry.slot,
-          id: entry.record?.id ?? null,
-          phase: entry.record?.phase ?? null,
-          description: String(entry.record?.description ?? "").slice(0, 240),
-          captainSessionId: entry.record?.captainSessionId ?? null,
-          logResolution: evidence.resolution,
-          logSessionId: evidence.sessionId,
-          createCalls: createCall.callIds ?? [],
-          archiveCalls: archiveCall.callIds ?? [],
-          ...attribution,
-        }
-      })
-      const verdict = evaluateSide({ expect, entries, notice, attributions })
-      const stagedRecord = entries[0]?.record
-      const spawned = stagedRecord ? (stagedRecord.members || []).filter((m) => m.status === "active" || m.spawned === true).length : 0
+      const verdict = evaluateSide({ expect, notice, teams, markerConsumed })
       const problems = [...verdict.problems]
       if (!recorded.ok) problems.push("session log unreadable: " + recorded.error)
       if (!isolation.ok) problems.push("workspace isolation violated: " + isolation.error)
+      try {
+        const keep = join(outDir, "sides", label, String(index))
+        mkdirSync(keep, { recursive: true })
+        writeFileSync(join(keep, "prompt.txt"), prompts[index])
+        writeFileSync(join(keep, "notices.json"), JSON.stringify({ notice, teams, goal: goal.slice(0, 400), problems }, null, 2))
+      } catch { /* evidence copy is best-effort; the assertions are the gate */ }
       results.push({
-        prompt: prompts[i], expect, exited: live.status, teams: records.active.length, stagedTotal: entries.length,
-        staged: stagedRecord ? stagedRecord.phase : undefined,
-        profile: stagedRecord && stagedRecord.profile ? stagedRecord.profile.name : undefined,
-        members: stagedRecord ? (stagedRecord.members || []).length : 0, spawnedMembers: spawned,
-        archivedRecords: records.archived.length,
-        archivedByModel: archiveCall.called,
-        modelStaged: attributions.filter((attribution) => attribution.origin === "model").length,
-        pluginStaged: attributions.filter((attribution) => attribution.origin === "plugin").length,
-        unattributed: attributions.filter((attribution) => attribution.origin === "unknown").length,
-        attributions,
-        notice: { any: notice.any, advisory: notice.advisory, provisioned: notice.provisioned, signals: notice.signals },
-        isolation: isolation.ok, sessionRecords: recorded.records, sessionFrames: recorded.frames,
-        problems, ok: problems.length === 0,
+        prompt: prompts[index], expect, exited: live.status,
+        notices: notice.any, advisory: notice.advisory, officialTools: notice.officialTools,
+        retiredVocabulary: notice.retiredVocabulary, retiredProvisioned: notice.retiredProvisioned,
+        signals: notice.signals, teams: teams.active + teams.archived, markerConsumed,
+        sessionRecords: recorded.records, sessionFrames: recorded.frames,
+        isolation: isolation.ok, problems, ok: problems.length === 0,
       })
-      rmSync(teamRoot(sideWs), { recursive: true, force: true })
     }
     return results
   }
 
-  // NEGATIVE CONTROL: with the gate explicitly DISABLED the same soft-complex prompt must
-  // produce NO team AND NO notice. Without this, a notice written unconditionally (or a
-  // gate that is accidentally always-true) could still "pass" the advisory side.
-  function runNegativeControl() {
-    const controlHome = join(sandbox, "negative-control")
-    const controlWs = sandboxWorkspace(sandbox, "negative-control/ws")
-    mkdirSync(join(controlHome, "home"), { recursive: true })
-    cpSync(join(sandbox, ".credentials.yaml"), join(controlHome, ".credentials.yaml"))
-    if (existsSync(join(sandbox, "settings.yaml"))) cpSync(join(sandbox, "settings.yaml"), join(controlHome, "settings.yaml"))
-    cpSync(join(sandbox, "profiles"), join(controlHome, "profiles"), { recursive: true })
-    const patchText = readFileSync(join(sandbox, "cordis.patch.yml"), "utf8")
-    // the installed row renders autoRoute as JSON-ish YAML; flipping it to false must
-    // disarm the gate. If the pattern is absent the control FAILS loudly instead of
-    // passing vacuously.
-    if (!patchText.includes("autoRoute")) return { ok: false, reason: "autoRoute not found in the installed row patch" }
-    const disarmed = patchText.replace(/autoRoute:\s*true/g, "autoRoute: false")
-    writeFileSync(join(controlHome, "cordis.patch.yml"), disarmed)
-    const env = credentialEnv({ ...process.env, DSH_HOME: controlHome, HOME: join(controlHome, "home") })
-    const controlSpec = dshCommand(["--profile", "mpd-headless", SOFT_COMPLEX[0]], env)
-    const live = controlSpec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(controlSpec.command, controlSpec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: controlWs, stdio: ["ignore", "pipe", "pipe"] })
-    LOG.push("[negative-control] autoRoute=false + soft-complex prompt\n[[exit=" + live.status + "]]\n" + ((live.stdout || "") + (live.stderr || "")).slice(0, 4000))
-    const controlRecords = teamRecords(controlWs)
-    const controlStaged = controlRecords.active.length + controlRecords.archived.length
-    const recorded = recordedUserTexts(controlHome, controlWs)
-    const notice = classifyNotice(recorded.texts)
-    const isolation = (() => {
-      try { return { ok: true, ...assertSessionsSandboxed(controlHome, controlWs, { label: "session-start-team-control" }) } } catch (error) { return { ok: false, error: String(error?.message ?? error) } }
-    })()
-    const problems = []
-    if (controlStaged !== 0) problems.push("a disarmed gate must stage no team (active or archived)")
-    if (notice.any) problems.push("a disarmed gate must inject NO notice")
-    if (!isolation.ok) problems.push("workspace isolation violated: " + isolation.error)
-    return { ok: problems.length === 0, teams: controlRecords.active.length, stagedTotal: controlStaged, notice: { any: notice.any, advisory: notice.advisory, provisioned: notice.provisioned }, disarmed: disarmed !== patchText, isolation: isolation.ok, problems }
-  }
-
-  steps.simpleSide = await runSide("simple", SIMPLE, "none")
-  steps.softComplexSide = await runSide("soft-complex", SOFT_COMPLEX, "advise")
-  steps.explicitSide = await runSide("explicit", EXPLICIT, "provision")
-  steps.negativeControl = runNegativeControl()
+  steps.simpleSide = runSide("simple", SIMPLE_PROMPTS, "none")
+  steps.softComplexSide = runSide("soft-complex", SOFT_COMPLEX_PROMPTS, "advise")
+  steps.explicitSide = runSide("explicit", EXPLICIT_PROMPTS, "explicit")
   steps.threeWay = {
-    ok: steps.simpleSide.every((r) => r.ok) && steps.softComplexSide.every((r) => r.ok) && steps.explicitSide.every((r) => r.ok) && steps.negativeControl.ok,
-    simpleTeams: steps.simpleSide.map((r) => r.stagedTotal),
-    simpleNotices: steps.simpleSide.map((r) => r.notice.any),
-    softTeams: steps.softComplexSide.map((r) => r.stagedTotal),
-    softModelStaged: steps.softComplexSide.map((r) => r.modelStaged),
-    softPluginStaged: steps.softComplexSide.map((r) => r.pluginStaged),
-    softAdvisory: steps.softComplexSide.map((r) => r.notice.advisory),
-    softSignals: steps.softComplexSide.map((r) => r.notice.signals),
-    explicitTeams: steps.explicitSide.map((r) => r.stagedTotal),
-    explicitActive: steps.explicitSide.map((r) => r.teams),
-    explicitArchived: steps.explicitSide.map((r) => r.archivedRecords),
-    explicitPluginStaged: steps.explicitSide.map((r) => r.pluginStaged),
-    explicitProvisioned: steps.explicitSide.map((r) => r.notice.provisioned),
+    // The SIMPLE side is the negative control: an always-firing gate reddens it.
+    ok: steps.simpleSide.every((r) => r.ok) && steps.softComplexSide.every((r) => r.ok) && steps.explicitSide.every((r) => r.ok),
+    simpleNotices: steps.simpleSide.map((r) => r.notices),
+    softNotices: steps.softComplexSide.map((r) => r.advisory),
+    softSignals: steps.softComplexSide.map((r) => r.signals),
+    softStaged: steps.softComplexSide.map((r) => r.teams),
+    explicitNotices: steps.explicitSide.map((r) => r.advisory),
+    explicitStaged: steps.explicitSide.map((r) => r.teams),
+    explicitMarkerConsumed: steps.explicitSide.map((r) => r.markerConsumed),
   }
 
   const allOk = Object.values(steps).every((s) => (typeof s === "object" && "ok" in s) ? s.ok : true)
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: allOk, sandbox, steps, totalSteps: Object.keys(steps).length }, null, 2))
   writeFileSync(join(outDir, "output.log"), LOG.join("\n\n---\n\n"))
+  try { rmSync(sandbox, { recursive: true, force: true }) } catch { /* best-effort scratch cleanup */ }
   console.log("[session-start-team] ok=" + allOk + " -> " + outDir)
   for (const [k, v] of Object.entries(steps)) console.log("  " + k + ": " + JSON.stringify(v).slice(0, 400))
   if (!allOk) process.exit(1)
   console.log("[session-start-team] PASS")
 }
 
-// Guarded on being the ENTRY module: another artifact (e.g. the soft-origin replay in
-// evidence/ulw/l5b-case-origin/) may import `attributeOrigin` / `evaluateSide` without
-// triggering this case's own run.
+// Guarded on being the ENTRY module: an evidence replay may import `contractProblems` /
+// `evaluateSide` without triggering this case's own run.
 const argv = process.argv.slice(2)
 const isEntry = process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1]
 if (isEntry) {

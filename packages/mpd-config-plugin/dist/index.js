@@ -2,6 +2,7 @@ var __create = Object.create;
 var __getProtoOf = Object.getPrototypeOf;
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 function __accessProp(key) {
   return this[key];
@@ -17,7 +18,7 @@ var __toESM = (mod, isNodeMode, target) => {
       return cached;
   }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
-  const to = isNodeMode || !mod || !mod.__esModule || !__hasOwnProp.call(mod, "default") ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
+  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
   if (mod && typeof mod === "object" || typeof mod === "function") {
     for (let key of __getOwnPropNames(mod))
       if (!__hasOwnProp.call(to, key))
@@ -30,22 +31,85 @@ var __toESM = (mod, isNodeMode, target) => {
     cache.set(mod, to);
   return to;
 };
-var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
-var __esm = (fn, res, err) => () => {
-  if (fn)
-    try {
-      res = fn(fn = 0);
-    } catch (e) {
-      err = [e];
-    }
-  if (err)
-    throw err[0];
-  return res;
+var __toCommonJS = (from) => {
+  var entry = (__moduleCache ??= new WeakMap).get(from), desc;
+  if (entry)
+    return entry;
+  entry = __defProp({}, "__esModule", { value: true });
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (var key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(entry, key))
+        __defProp(entry, key, {
+          get: __accessProp.bind(from, key),
+          enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+        });
+  }
+  __moduleCache.set(from, entry);
+  return entry;
 };
+var __moduleCache;
+var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
+var __returnValue = (v) => v;
+function __exportSetter(name, newValue) {
+  this[name] = __returnValue.bind(null, newValue);
+}
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, {
+      get: all[name],
+      enumerable: true,
+      configurable: true,
+      set: __exportSetter.bind(all, name)
+    });
+};
+var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
 // packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
+var exports_lib = {};
+__export(exports_lib, {
+  Binary: () => Binary,
+  Time: () => Time,
+  arrayBufferToBase64: () => arrayBufferToBase64,
+  arrayBufferToHex: () => arrayBufferToHex,
+  base64ToArrayBuffer: () => base64ToArrayBuffer,
+  camelCase: () => camelCase,
+  camelize: () => camelize,
+  capitalize: () => capitalize,
+  clone: () => clone,
+  contain: () => contain,
+  deduplicate: () => deduplicate,
+  deepEqual: () => deepEqual,
+  defineProperty: () => defineProperty,
+  difference: () => difference,
+  filterKeys: () => filterKeys,
+  formatProperty: () => formatProperty,
+  hexToArrayBuffer: () => hexToArrayBuffer,
+  hyphenate: () => hyphenate,
+  intersection: () => intersection,
+  is: () => is,
+  isNonNullable: () => isNonNullable,
+  isNullable: () => isNullable,
+  isPlainObject: () => isPlainObject,
+  makeArray: () => makeArray,
+  mapValues: () => mapValues,
+  noop: () => noop2,
+  omit: () => omit,
+  paramCase: () => paramCase,
+  pick: () => pick,
+  remove: () => remove,
+  sanitize: () => sanitize,
+  snakeCase: () => snakeCase,
+  trimSlash: () => trimSlash,
+  uncapitalize: () => uncapitalize,
+  union: () => union,
+  valueMap: () => mapValues
+});
+function noop2() {}
 function isNullable(value) {
   return value === null || value === undefined;
+}
+function isNonNullable(value) {
+  return !isNullable(value);
 }
 function isPlainObject(data) {
   return data && typeof data === "object" && !Array.isArray(data);
@@ -65,9 +129,50 @@ function pick(source, keys, forced) {
       result[key] = source[key];
   return result;
 }
+function omit(source, keys) {
+  if (!keys)
+    return { ...source };
+  const result = { ...source };
+  for (const key of keys)
+    Reflect.deleteProperty(result, key);
+  return result;
+}
+function defineProperty(object, key, value) {
+  return Object.defineProperty(object, key, {
+    writable: true,
+    value,
+    enumerable: false
+  });
+}
+function contain(array1, array2) {
+  return array2.every((item) => array1.includes(item));
+}
+function intersection(array1, array2) {
+  return array1.filter((item) => array2.includes(item));
+}
+function difference(array1, array2) {
+  return array1.filter((item) => !array2.includes(item));
+}
+function union(array1, array2) {
+  return Array.from(new Set([...array1, ...array2]));
+}
+function deduplicate(array) {
+  return [...new Set(array)];
+}
+function remove(list, item) {
+  const index = list?.indexOf(item);
+  if (index >= 0) {
+    list.splice(index, 1);
+    return true;
+  } else
+    return false;
+}
+function makeArray(source) {
+  return Array.isArray(source) ? source : isNullable(source) ? [] : [source];
+}
 function is(type, value) {
   if (arguments.length === 1)
-    return (value) => is(type, value);
+    return (value2) => is(type, value2);
   return type in globalThis && value instanceof globalThis[type] || Object.prototype.toString.call(value).slice(8, -1) === type;
 }
 function isArrayBufferLike(value) {
@@ -91,12 +196,12 @@ function clone(source, refs = /* @__PURE__ */ new Map) {
   if (cached)
     return cached;
   if (Array.isArray(source)) {
-    const result = [];
-    refs.set(source, result);
+    const result2 = [];
+    refs.set(source, result2);
     source.forEach((value, index) => {
-      result[index] = Reflect.apply(clone, null, [value, refs]);
+      result2[index] = Reflect.apply(clone, null, [value, refs]);
     });
-    return result;
+    return result2;
   }
   const result = Object.create(Object.getPrototypeOf(source));
   refs.set(source, result);
@@ -122,11 +227,11 @@ function deepEqual(a, b, strict) {
   function check(test, then) {
     return test(a) ? test(b) ? then(a, b) : false : test(b) ? false : undefined;
   }
-  return check(Array.isArray, (a, b) => a.length === b.length && a.every((item, index) => deepEqual(item, b[index]))) ?? check(is("Date"), (a, b) => a.valueOf() === b.valueOf()) ?? check(is("RegExp"), (a, b) => a.source === b.source && a.flags === b.flags) ?? check(isArrayBufferLike, (a, b) => {
-    if (a.byteLength !== b.byteLength)
+  return check(Array.isArray, (a2, b2) => a2.length === b2.length && a2.every((item, index) => deepEqual(item, b2[index]))) ?? check(is("Date"), (a2, b2) => a2.valueOf() === b2.valueOf()) ?? check(is("RegExp"), (a2, b2) => a2.source === b2.source && a2.flags === b2.flags) ?? check(isArrayBufferLike, (a2, b2) => {
+    if (a2.byteLength !== b2.byteLength)
       return false;
-    const viewA = new Uint8Array(a);
-    const viewB = new Uint8Array(b);
+    const viewA = new Uint8Array(a2);
+    const viewB = new Uint8Array(b2);
     for (let i = 0;i < viewA.length; i++)
       if (viewA[i] !== viewB[i])
         return false;
@@ -136,18 +241,75 @@ function deepEqual(a, b, strict) {
     ...b
   }).every((key) => deepEqual(a[key], b[key], strict));
 }
-var Binary, base64ToArrayBuffer, arrayBufferToBase64, hexToArrayBuffer, arrayBufferToHex, Time;
+function capitalize(source) {
+  return source.charAt(0).toUpperCase() + source.slice(1);
+}
+function uncapitalize(source) {
+  return source.charAt(0).toLowerCase() + source.slice(1);
+}
+function camelCase(source) {
+  return source.replace(/[_-][a-z]/g, (str) => str.slice(1).toUpperCase());
+}
+function tokenize(source, delimiters, delimiter) {
+  const output = [];
+  let state = 0;
+  for (let i = 0;i < source.length; i++) {
+    const code = source.charCodeAt(i);
+    if (code >= 65 && code <= 90) {
+      if (state === 1) {
+        const next = source.charCodeAt(i + 1);
+        if (next >= 97 && next <= 122)
+          output.push(delimiter);
+        output.push(code + 32);
+      } else {
+        if (state !== 0)
+          output.push(delimiter);
+        output.push(code + 32);
+      }
+      state = 1;
+    } else if (code >= 97 && code <= 122) {
+      output.push(code);
+      state = 2;
+    } else if (delimiters.includes(code)) {
+      if (state !== 0)
+        output.push(delimiter);
+      state = 0;
+    } else
+      output.push(code);
+  }
+  return String.fromCharCode(...output);
+}
+function paramCase(source) {
+  return tokenize(source, [45, 95], 45);
+}
+function snakeCase(source) {
+  return tokenize(source, [45, 95], 95);
+}
+function formatProperty(key) {
+  if (typeof key !== "string")
+    return `[${key.toString()}]`;
+  return /^[a-z_$][\w$]*$/i.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
+}
+function trimSlash(source) {
+  return source.replace(/\/$/, "");
+}
+function sanitize(source) {
+  if (!source.startsWith("/"))
+    source = "/" + source;
+  return trimSlash(source);
+}
+var Binary, base64ToArrayBuffer, arrayBufferToBase64, hexToArrayBuffer, arrayBufferToHex, camelize, hyphenate, Time;
 var init_lib = __esm(() => {
-  (function(Binary) {
-    Binary.is = isArrayBufferLike;
-    Binary.isSource = isArrayBufferSource;
+  (function(Binary2) {
+    Binary2.is = isArrayBufferLike;
+    Binary2.isSource = isArrayBufferSource;
     function fromSource(source) {
       if (ArrayBuffer.isView(source))
         return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
       else
         return source;
     }
-    Binary.fromSource = fromSource;
+    Binary2.fromSource = fromSource;
     function toBase64(source) {
       source = fromSource(source);
       if (typeof Buffer !== "undefined")
@@ -158,20 +320,20 @@ var init_lib = __esm(() => {
         binary += String.fromCharCode(bytes[i]);
       return btoa(binary);
     }
-    Binary.toBase64 = toBase64;
+    Binary2.toBase64 = toBase64;
     function fromBase64(source) {
       if (typeof Buffer !== "undefined")
         return fromSource(Buffer.from(source, "base64"));
       return Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
     }
-    Binary.fromBase64 = fromBase64;
+    Binary2.fromBase64 = fromBase64;
     function toHex(source) {
       source = fromSource(source);
       if (typeof Buffer !== "undefined")
         return Buffer.from(source).toString("hex");
       return Array.from(new Uint8Array(source), (byte) => byte.toString(16).padStart(2, "0")).join("");
     }
-    Binary.toHex = toHex;
+    Binary2.toHex = toHex;
     function fromHex(source) {
       if (typeof Buffer !== "undefined")
         return fromSource(Buffer.from(source, "hex"));
@@ -181,43 +343,45 @@ var init_lib = __esm(() => {
         buffer.push(parseInt(`${hex[i]}${hex[i + 1]}`, 16));
       return Uint8Array.from(buffer).buffer;
     }
-    Binary.fromHex = fromHex;
+    Binary2.fromHex = fromHex;
   })(Binary || (Binary = {}));
   base64ToArrayBuffer = Binary.fromBase64;
   arrayBufferToBase64 = Binary.toBase64;
   hexToArrayBuffer = Binary.fromHex;
   arrayBufferToHex = Binary.toHex;
-  (function(Time) {
-    Time.millisecond = 1;
-    Time.second = 1000;
-    Time.minute = Time.second * 60;
-    Time.hour = Time.minute * 60;
-    Time.day = Time.hour * 24;
-    Time.week = Time.day * 7;
+  camelize = camelCase;
+  hyphenate = paramCase;
+  (function(Time2) {
+    Time2.millisecond = 1;
+    Time2.second = 1000;
+    Time2.minute = Time2.second * 60;
+    Time2.hour = Time2.minute * 60;
+    Time2.day = Time2.hour * 24;
+    Time2.week = Time2.day * 7;
     let timezoneOffset = (/* @__PURE__ */ new Date()).getTimezoneOffset();
     function setTimezoneOffset(offset) {
       timezoneOffset = offset;
     }
-    Time.setTimezoneOffset = setTimezoneOffset;
+    Time2.setTimezoneOffset = setTimezoneOffset;
     function getTimezoneOffset() {
       return timezoneOffset;
     }
-    Time.getTimezoneOffset = getTimezoneOffset;
+    Time2.getTimezoneOffset = getTimezoneOffset;
     function getDateNumber(date = /* @__PURE__ */ new Date, offset) {
       if (typeof date === "number")
         date = new Date(date);
       if (offset === undefined)
         offset = timezoneOffset;
-      return Math.floor((date.valueOf() / Time.minute - offset) / 1440);
+      return Math.floor((date.valueOf() / Time2.minute - offset) / 1440);
     }
-    Time.getDateNumber = getDateNumber;
+    Time2.getDateNumber = getDateNumber;
     function fromDateNumber(value, offset) {
-      const date = new Date(value * Time.day);
+      const date = new Date(value * Time2.day);
       if (offset === undefined)
         offset = timezoneOffset;
-      return new Date(+date + offset * Time.minute);
+      return new Date(+date + offset * Time2.minute);
     }
-    Time.fromDateNumber = fromDateNumber;
+    Time2.fromDateNumber = fromDateNumber;
     const numeric = /\d+(?:\.\d+)?/.source;
     const timeRegExp = new RegExp(`^${[
       "w(?:eek(?:s)?)?",
@@ -230,9 +394,9 @@ var init_lib = __esm(() => {
       const capture = timeRegExp.exec(source);
       if (!capture)
         return 0;
-      return (parseFloat(capture[1]) * Time.week || 0) + (parseFloat(capture[2]) * Time.day || 0) + (parseFloat(capture[3]) * Time.hour || 0) + (parseFloat(capture[4]) * Time.minute || 0) + (parseFloat(capture[5]) * Time.second || 0);
+      return (parseFloat(capture[1]) * Time2.week || 0) + (parseFloat(capture[2]) * Time2.day || 0) + (parseFloat(capture[3]) * Time2.hour || 0) + (parseFloat(capture[4]) * Time2.minute || 0) + (parseFloat(capture[5]) * Time2.second || 0);
     }
-    Time.parseTime = parseTime;
+    Time2.parseTime = parseTime;
     function parseDate(date) {
       const parsed = parseTime(date);
       if (parsed)
@@ -243,34 +407,34 @@ var init_lib = __esm(() => {
         date = `${(/* @__PURE__ */ new Date()).getFullYear()}-${date}`;
       return date ? new Date(date) : /* @__PURE__ */ new Date;
     }
-    Time.parseDate = parseDate;
+    Time2.parseDate = parseDate;
     function format(ms) {
       const abs = Math.abs(ms);
-      if (abs >= Time.day - Time.hour / 2)
-        return Math.round(ms / Time.day) + "d";
-      else if (abs >= Time.hour - Time.minute / 2)
-        return Math.round(ms / Time.hour) + "h";
-      else if (abs >= Time.minute - Time.second / 2)
-        return Math.round(ms / Time.minute) + "m";
-      else if (abs >= Time.second)
-        return Math.round(ms / Time.second) + "s";
+      if (abs >= Time2.day - Time2.hour / 2)
+        return Math.round(ms / Time2.day) + "d";
+      else if (abs >= Time2.hour - Time2.minute / 2)
+        return Math.round(ms / Time2.hour) + "h";
+      else if (abs >= Time2.minute - Time2.second / 2)
+        return Math.round(ms / Time2.minute) + "m";
+      else if (abs >= Time2.second)
+        return Math.round(ms / Time2.second) + "s";
       return ms + "ms";
     }
-    Time.format = format;
+    Time2.format = format;
     function toDigits(source, length = 2) {
       return source.toString().padStart(length, "0");
     }
-    Time.toDigits = toDigits;
-    function template(template, time = /* @__PURE__ */ new Date) {
-      return template.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
+    Time2.toDigits = toDigits;
+    function template(template2, time = /* @__PURE__ */ new Date) {
+      return template2.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
     }
-    Time.template = template;
+    Time2.template = template;
   })(Time || (Time = {}));
 });
 
 // packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
 var require_lib = __commonJS(function(exports, module) {
-  var _deepseek_ai_cosmokit = (init_lib(), {});
+  var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
   var kSchema = Symbol.for("schemastery");
   var kValidationError = Symbol.for("ValidationError");
   globalThis.__schemastery_index__ ??= 0;
@@ -278,7 +442,7 @@ var require_lib = __commonJS(function(exports, module) {
   var ValidationError = class extends TypeError {
     options;
     name = "ValidationError";
-    constructor(message, options) {
+    constructor(message2, options) {
       let prefix = "$";
       for (const segment of options.path || [])
         if (typeof segment === "string")
@@ -289,7 +453,7 @@ var require_lib = __commonJS(function(exports, module) {
           prefix += `[Symbol(${segment.toString()})]`;
       if (prefix.startsWith("."))
         prefix = prefix.slice(1);
-      super((prefix === "$" ? "" : `${prefix} `) + message);
+      super((prefix === "$" ? "" : `${prefix} `) + message2);
       this.options = options;
     }
     static is(error) {
@@ -298,18 +462,18 @@ var require_lib = __commonJS(function(exports, module) {
   };
   Object.defineProperty(ValidationError.prototype, kValidationError, { value: true });
   var Schema = function(options) {
-    const schema = function(data, options = {}) {
-      return Schema.resolve(data, schema, options)[0];
+    const schema = function(data, options2 = {}) {
+      return Schema.resolve(data, schema, options2)[0];
     };
     if (options.refs) {
-      const refs = (0, mapValues)(options.refs, (options) => new Schema(options));
+      const refs = (0, _deepseek_ai_cosmokit.valueMap)(options.refs, (options2) => new Schema(options2));
       const getRef = (uid) => refs[uid];
       for (const key in refs) {
-        const options = refs[key];
-        options.sKey = getRef(options.sKey);
-        options.inner = getRef(options.inner);
-        options.list = options.list && options.list.map(getRef);
-        options.dict = options.dict && (0, mapValues)(options.dict, getRef);
+        const options2 = refs[key];
+        options2.sKey = getRef(options2.sKey);
+        options2.inner = getRef(options2.inner);
+        options2.list = options2.list && options2.list.map(getRef);
+        options2.dict = options2.dict && (0, _deepseek_ai_cosmokit.valueMap)(options2.dict, getRef);
       }
       return refs[options.uid];
     }
@@ -382,7 +546,7 @@ var require_lib = __commonJS(function(exports, module) {
     return value?.$value ?? value?.$inner;
   }
   function extractKeys(data) {
-    return (0, filterKeys)(data ?? {}, (key) => !key.startsWith("$"));
+    return (0, _deepseek_ai_cosmokit.filterKeys)(data ?? {}, (key) => !key.startsWith("$"));
   }
   Schema.prototype.i18n = function i18n(messages) {
     const schema = Schema(this);
@@ -390,12 +554,12 @@ var require_lib = __commonJS(function(exports, module) {
     if (Object.keys(desc).length)
       schema.meta.description = desc;
     if (schema.dict)
-      schema.dict = (0, mapValues)(schema.dict, (inner, key) => {
-        return inner.i18n((0, mapValues)(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
+      schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(schema.dict, (inner, key) => {
+        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
       });
     if (schema.list)
       schema.list = schema.list.map((inner, index) => {
-        return inner.i18n((0, mapValues)(messages, (data = {}) => {
+        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data = {}) => {
           if (Array.isArray(getInner(data)))
             return getInner(data)[index];
           if (Array.isArray(data))
@@ -404,13 +568,13 @@ var require_lib = __commonJS(function(exports, module) {
         }));
       });
     if (schema.inner)
-      schema.inner = schema.inner.i18n((0, mapValues)(messages, (data) => {
+      schema.inner = schema.inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => {
         if (getInner(data))
           return getInner(data);
         return extractKeys(data);
       }));
     if (schema.sKey)
-      schema.sKey = schema.sKey.i18n((0, mapValues)(messages, (data) => data?.$key));
+      schema.sKey = schema.sKey.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => data?.$key));
     return schema;
   };
   Schema.prototype.extra = function extra(key, value) {
@@ -456,33 +620,33 @@ var require_lib = __commonJS(function(exports, module) {
   };
   Schema.prototype.pattern = function pattern(regexp) {
     const schema = Schema(this);
-    const pattern = (0, pick)(regexp, ["source", "flags"]);
+    const pattern2 = (0, _deepseek_ai_cosmokit.pick)(regexp, ["source", "flags"]);
     schema.meta = {
       ...schema.meta,
-      pattern
+      pattern: pattern2
     };
     return schema;
   };
   Schema.prototype.simplify = function simplify(value) {
-    if ((0, deepEqual)(value, this.meta.default, this.type === "dict"))
+    if ((0, _deepseek_ai_cosmokit.deepEqual)(value, this.meta.default, this.type === "dict"))
       return null;
-    if ((0, isNullable)(value))
+    if ((0, _deepseek_ai_cosmokit.isNullable)(value))
       return value;
     if (this.type === "object" || this.type === "dict") {
       const result = {};
       for (const key in value) {
         const item = (this.type === "object" ? this.dict[key] : this.inner)?.simplify(value[key]);
-        if (this.type === "dict" || !(0, isNullable)(item))
+        if (this.type === "dict" || !(0, _deepseek_ai_cosmokit.isNullable)(item))
           result[key] = item;
       }
-      if ((0, deepEqual)(result, this.meta.default, this.type === "dict"))
+      if ((0, _deepseek_ai_cosmokit.deepEqual)(result, this.meta.default, this.type === "dict"))
         return null;
       return result;
     } else if (this.type === "array" || this.type === "tuple") {
       const result = [];
-      value.forEach((value, index) => {
+      value.forEach((value2, index) => {
         const schema = this.type === "array" ? this.inner : this.list[index];
-        const item = schema ? schema.simplify(value) : value;
+        const item = schema ? schema.simplify(value2) : value2;
         result.push(item);
       });
       return result;
@@ -529,26 +693,26 @@ var require_lib = __commonJS(function(exports, module) {
       return schema;
     } });
   var resolvers = {};
-  Schema.extend = function extend(type, resolve) {
-    resolvers[type] = resolve;
+  Schema.extend = function extend(type, resolve2) {
+    resolvers[type] = resolve2;
   };
-  Schema.resolve = function resolve(data, schema, options = {}, strict = false) {
+  Schema.resolve = function resolve2(data, schema, options = {}, strict = false) {
     if (!schema)
       return [data];
     if (options.ignore?.(data, schema))
       return [data];
-    if ((0, isNullable)(data) && schema.type !== "lazy") {
+    if ((0, _deepseek_ai_cosmokit.isNullable)(data) && schema.type !== "lazy") {
       if (schema.meta.required)
         throw new ValidationError(`missing required value`, options);
       let current = schema;
       let fallback = schema.meta.default;
-      while (current?.type === "intersect" && (0, isNullable)(fallback)) {
+      while (current?.type === "intersect" && (0, _deepseek_ai_cosmokit.isNullable)(fallback)) {
         current = current.list[0];
         fallback = current?.meta.default;
       }
-      if ((0, isNullable)(fallback))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(fallback))
         return [data];
-      data = (0, clone)(fallback);
+      data = (0, _deepseek_ai_cosmokit.clone)(fallback);
     }
     const callback = resolvers[schema.type];
     if (!callback)
@@ -562,7 +726,7 @@ var require_lib = __commonJS(function(exports, module) {
     }
   };
   Schema.from = function from(source) {
-    if ((0, isNullable)(source))
+    if ((0, _deepseek_ai_cosmokit.isNullable)(source))
       return Schema.any();
     else if ([
       "string",
@@ -614,10 +778,10 @@ var require_lib = __commonJS(function(exports, module) {
   };
   Schema.date = function date() {
     return Schema.union([Schema.is(Date), Schema.transform(Schema.string().role("datetime"), (value, options) => {
-      const date = new Date(value);
-      if (isNaN(+date))
+      const date2 = new Date(value);
+      if (isNaN(+date2))
         throw new ValidationError(`invalid date "${value}"`, options);
-      return date;
+      return date2;
     }, true)]);
   };
   Schema.regExp = function regExp(flag = "") {
@@ -634,13 +798,13 @@ var require_lib = __commonJS(function(exports, module) {
       Schema.is(ArrayBuffer),
       Schema.is(SharedArrayBuffer),
       Schema.transform(Schema.any(), (value, options) => {
-        if (Binary.isSource(value))
-          return Binary.fromSource(value);
+        if (_deepseek_ai_cosmokit.Binary.isSource(value))
+          return _deepseek_ai_cosmokit.Binary.fromSource(value);
         throw new ValidationError(`expected ArrayBufferSource but got ${value}`, options);
       }, true),
       ...encoding ? [Schema.transform(Schema.string(), (value, options) => {
         try {
-          return encoding === "base64" ? Binary.fromBase64(value) : Binary.fromHex(value);
+          return encoding === "base64" ? _deepseek_ai_cosmokit.Binary.fromBase64(value) : _deepseek_ai_cosmokit.Binary.fromHex(value);
         } catch (e) {
           throw new ValidationError(e.message, options);
         }
@@ -664,7 +828,7 @@ var require_lib = __commonJS(function(exports, module) {
     throw new ValidationError(`expected nullable but got ${data}`, options);
   });
   Schema.extend("const", (data, { value }, options) => {
-    if ((0, deepEqual)(data, value))
+    if ((0, _deepseek_ai_cosmokit.deepEqual)(data, value))
       return [value];
     throw new ValidationError(`expected ${value} but got ${data}`, options);
   });
@@ -753,7 +917,7 @@ var require_lib = __commonJS(function(exports, module) {
         return [data];
       throw new ValidationError(`expected ${constructor.name} but got ${data}`, options);
     } else {
-      if ((0, isNullable)(data))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(data))
         throw new ValidationError(`expected ${constructor} but got ${data}`, options);
       let prototype = Object.getPrototypeOf(data);
       while (prototype) {
@@ -783,11 +947,11 @@ var require_lib = __commonJS(function(exports, module) {
   Schema.extend("array", (data, { inner, meta }, options) => {
     if (!Array.isArray(data))
       throw new ValidationError(`expected array but got ${data}`, options);
-    checkWithinRange(data.length, meta, "array length", options, !(0, isNullable)(inner.meta.default));
+    checkWithinRange(data.length, meta, "array length", options, !(0, _deepseek_ai_cosmokit.isNullable)(inner.meta.default));
     return [data.map((_, index) => property(data, index, inner, options))];
   });
   Schema.extend("dict", (data, { inner, sKey }, options, strict) => {
-    if (!(0, isPlainObject)(data))
+    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
       throw new ValidationError(`expected object but got ${data}`, options);
     const result = {};
     for (const key in data) {
@@ -823,12 +987,12 @@ var require_lib = __commonJS(function(exports, module) {
     }
   }
   Schema.extend("object", (data, { dict }, options, strict) => {
-    if (!(0, isPlainObject)(data))
+    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
       throw new ValidationError(`expected object but got ${data}`, options);
     const result = {};
     for (const key in dict) {
       const value = property(data, key, dict[key], options);
-      if (!(0, isNullable)(value) || key in data)
+      if (!(0, _deepseek_ai_cosmokit.isNullable)(value) || key in data)
         result[key] = value;
     }
     if (!strict)
@@ -851,9 +1015,9 @@ var require_lib = __commonJS(function(exports, module) {
     let result;
     for (const inner of list) {
       const value = Schema.resolve(data, inner, options, true)[0];
-      if ((0, isNullable)(value))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(value))
         continue;
-      if ((0, isNullable)(result))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(result))
         result = value;
       else if (typeof result !== typeof value)
         throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
@@ -862,7 +1026,7 @@ var require_lib = __commonJS(function(exports, module) {
       else if (result !== value)
         throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
     }
-    if (!strict && (0, isPlainObject)(data))
+    if (!strict && (0, _deepseek_ai_cosmokit.isPlainObject)(data))
       merge(result, data);
     return [result];
   });
@@ -890,14 +1054,14 @@ var require_lib = __commonJS(function(exports, module) {
             schema.list = args[index].map(Schema.from);
             break;
           case "dict":
-            schema.dict = (0, mapValues)(args[index], Schema.from);
+            schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(args[index], Schema.from);
             break;
           case "bits":
             schema.bits = {};
-            for (const key in args[index]) {
-              if (typeof args[index][key] !== "number")
+            for (const key2 in args[index]) {
+              if (typeof args[index][key2] !== "number")
                 continue;
-              schema.bits[key] = args[index][key];
+              schema.bits[key2] = args[index][key2];
             }
             break;
           case "callback": {
@@ -973,6 +1137,7 @@ import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
+var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -1057,6 +1222,75 @@ function scopeOfAgentContext(agent) {
     on: (event, handler) => on.call(context, event, handler),
     effect: (fn, label) => effect.call(context, fn, label)
   };
+}
+function teamContextOf(raw) {
+  return raw === "fresh" || raw === "fork" ? raw : undefined;
+}
+function teamStatusOf(raw) {
+  return raw === "running" || raw === "provisioning" || raw === "failed" ? raw : "inactive";
+}
+function teamTaskStatusOf(raw) {
+  return raw === "in_progress" || raw === "completed" || raw === "deleted" ? raw : "pending";
+}
+function teamStrings(raw) {
+  return Array.isArray(raw) ? raw.filter((entry) => typeof entry === "string") : [];
+}
+function teamMemberView(raw) {
+  const row = raw ?? {};
+  const context = teamContextOf(row.context);
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    role: row.role === "lead" ? "lead" : "teammate",
+    status: teamStatusOf(row.status),
+    ...typeof row.description === "string" ? { description: row.description } : {},
+    ...typeof row.provider === "string" ? { provider: row.provider } : {},
+    ...context === undefined ? {} : { context },
+    ...typeof row.model === "string" ? { model: row.model } : {},
+    diagnostics: teamStrings(row.diagnostics)
+  };
+}
+function teamTaskView(raw) {
+  const row = raw ?? {};
+  return {
+    id: String(row.id ?? ""),
+    revision: typeof row.revision === "number" ? row.revision : 0,
+    subject: String(row.subject ?? ""),
+    description: String(row.description ?? ""),
+    status: teamTaskStatusOf(row.status),
+    blockedBy: teamStrings(row.blockedBy),
+    writeScopes: teamStrings(row.writeScopes),
+    ...typeof row.ownerName === "string" ? { ownerName: row.ownerName } : {},
+    ready: row.ready === true,
+    writeScopeWarnings: teamStrings(row.writeScopeWarnings)
+  };
+}
+function teamRows(teams, method, agent, project) {
+  const reader = teams?.[method];
+  if (typeof reader !== "function")
+    return [];
+  try {
+    const rows = reader.call(teams, agent);
+    return Array.isArray(rows) ? rows.map(project) : [];
+  } catch {
+    return [];
+  }
+}
+function agentSystemPromptOf(agent) {
+  let context;
+  try {
+    context = agent?.ctx;
+  } catch {
+    return;
+  }
+  if (context === undefined || context === null)
+    return;
+  try {
+    const systemPrompt = context.systemPrompt;
+    return typeof systemPrompt?.section === "function" ? systemPrompt : undefined;
+  } catch {
+    return;
+  }
 }
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
@@ -1250,6 +1484,7 @@ function createDshAdapter(ctx, config = {}) {
       const compaction = service("compaction");
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
+      const agentTeams = service("agentTeams");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -1290,7 +1525,13 @@ function createDshAdapter(ctx, config = {}) {
         agentTurnStart: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
         agentTurnCancel: liveAgents().some((candidate) => typeof candidate?.cancel === "function"),
         agentTurnSteer: liveAgents().some((candidate) => typeof candidate?.steer === "function"),
-        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function")
+        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function"),
+        agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
+        agentPreStep: typeof ctx?.on === "function",
+        team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
+        teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
+        teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
       };
     },
     workspaceRoot,
@@ -1306,11 +1547,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config, signal) {
+    llmResolveCallConfig(config2, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config, signal);
+      return llm.resolveCallConfig.call(llm, config2, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -1354,7 +1595,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message) => adapter.submitUserTurn(host.agent, message)
+            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
           });
         }
       });
@@ -1391,6 +1632,20 @@ function createDshAdapter(ctx, config = {}) {
         const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
         const decided = await listener(exec ?? {}, result ?? {}, downstream);
         return decided ?? downstream;
+      });
+    },
+    onAgentPreStep(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("agent/pre-step", async (payload, next) => {
+        const fallback = { kind: "enter", messages: payload?.messages ?? [] };
+        const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
+        try {
+          const decided = await listener(payload ?? {}, downstream);
+          return decided ?? downstream;
+        } catch {
+          return downstream;
+        }
       });
     },
     hasTool(toolName) {
@@ -1486,11 +1741,129 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()");
       return subagents.startContinuable.call(subagents, spec);
     },
+    registerSubagentProvider(provider) {
+      const subagents = requireService("subagents", "cannot register a subagent provider");
+      if (typeof subagents.registerProvider !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no registerProvider()");
+      const registered = subagents.registerProvider(provider);
+      return typeof registered === "function" ? registered : noop;
+    },
     interruptAgent(targetSessionId, authority) {
       const subagents = requireService("subagents", 'cannot interrupt subagent session "' + String(targetSessionId) + '"');
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamService() {
+      const teams = service("agentTeams");
+      return teams === undefined || teams === null ? undefined : teams;
+    },
+    teamMembership(agent) {
+      const teams = service("agentTeams");
+      const tryMembership = teams?.tryMembership;
+      if (typeof tryMembership !== "function")
+        return;
+      let membership;
+      try {
+        membership = tryMembership.call(teams, agent);
+      } catch {
+        return;
+      }
+      if (membership === undefined || membership === null)
+        return;
+      const role = membership.role;
+      if (role !== "lead" && role !== "teammate")
+        return;
+      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+    },
+    teamListMembers(agent) {
+      const teams = requireService("agentTeams", "cannot list the team roster of an agent");
+      if (typeof teams.listMembers !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listMembers()");
+      const rows = teams.listMembers.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamMemberView) : [];
+    },
+    teamListTasks(agent) {
+      const teams = requireService("agentTeams", "cannot list the shared task board of an agent");
+      if (typeof teams.listTasks !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()");
+      const rows = teams.listTasks.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamTaskView) : [];
+    },
+    async teamCreateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot create team task "' + String(request?.subject) + '"');
+      if (typeof teams.createTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()");
+      return teamTaskView(await teams.createTask.call(teams, caller, request));
+    },
+    teamGetTask(caller, id) {
+      const teams = requireService("agentTeams", 'cannot read team task "' + String(id) + '"');
+      if (typeof teams.getTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()");
+      return teamTaskView(teams.getTask.call(teams, caller, id));
+    },
+    async teamUpdateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot update team task "' + String(request?.taskId) + '"');
+      if (typeof teams.updateTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()");
+      return teamTaskView(await teams.updateTask.call(teams, caller, request));
+    },
+    async teamSendMessage(caller, request) {
+      const teams = requireService("agentTeams", 'cannot send a team message to "' + String(request?.target) + '"');
+      if (typeof teams.sendMessage !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no sendMessage()");
+      const result = await teams.sendMessage.call(teams, caller, request);
+      return {
+        messageId: String(result?.messageId ?? ""),
+        status: result?.status === "queued" ? "queued" : "accepted"
+      };
+    },
+    async teamSpawnTeammate(caller, request) {
+      const teams = requireService("agentTeams", 'cannot spawn team member "' + String(request?.name) + '"');
+      if (typeof teams.spawnTeammate !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no spawnTeammate()");
+      const result = await teams.spawnTeammate.call(teams, caller, request);
+      return { member: teamMemberView(result?.member) };
+    },
+    teamInterrupt(caller, targetName) {
+      const teams = requireService("agentTeams", 'cannot interrupt team member "' + String(targetName) + '"');
+      if (typeof teams.interrupt !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no interrupt()");
+      const result = teams.interrupt.call(teams, caller, targetName);
+      return { previousStatus: result?.previousStatus === "running" ? "running" : "inactive" };
+    },
+    async teamWaitForChange(caller, timeoutMs, signal) {
+      const teams = requireService("agentTeams", "cannot wait for team activity");
+      if (typeof teams.waitForChange !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no waitForChange()");
+      const result = await teams.waitForChange.call(teams, caller, timeoutMs, signal);
+      return { timedOut: result?.timedOut === true };
+    },
+    teamLiveTeams() {
+      const teams = service("agentTeams");
+      if (teams === undefined || teams === null || typeof teams.tryMembership !== "function")
+        return [];
+      if (typeof service("agents")?.list !== "function")
+        return [];
+      const views = [];
+      for (const agent of liveAgents()) {
+        let membership;
+        try {
+          membership = teams.tryMembership.call(teams, agent);
+        } catch {
+          continue;
+        }
+        if (membership?.role !== "lead")
+          continue;
+        views.push({
+          teamId: String(membership.id ?? ""),
+          leadName: String(membership.name ?? ""),
+          leadSessionId: String(agent?.id ?? ""),
+          members: teamRows(teams, "listMembers", agent, teamMemberView),
+          tasks: teamRows(teams, "listTasks", agent, teamTaskView)
+        });
+      }
+      return views;
     },
     registerSkillProvider(provider) {
       const skills = requireService("skills", "cannot register a skill provider");
@@ -1513,7 +1886,7 @@ function createDshAdapter(ctx, config = {}) {
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
+        throw new Error("mpd-dsh-adapter: the harness agentPresets service exposes no resolve()");
       const preset = await presets.resolve(presetId);
       return {
         id: String(preset?.id ?? presetId),
@@ -1647,11 +2020,19 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message) {
+    agentPromptSection(agent, section) {
+      const systemPrompt = agentSystemPromptOf(agent);
+      if (systemPrompt === undefined) {
+        throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
+      }
+      const registered = systemPrompt.section(section);
+      return typeof registered === "function" ? registered : noop;
+    },
+    startAgentTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message);
+      followup.call(agent, message2);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -1659,24 +2040,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message) {
+    steerAgentTurn(agent, message2) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message);
+      steer.call(agent, message2);
     },
-    injectAgentMessage(agent, message) {
+    injectAgentMessage(agent, message2) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message);
+      inject.call(agent, message2);
     },
-    submitUserTurn(agent, message) {
+    submitUserTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message);
+        followup.call(agent, message2);
         return true;
       } catch {
         return false;
@@ -1888,17 +2269,17 @@ function parseContainer(src, open) {
       return { kind, open, close: i, entries };
     }
     if (kind === "array") {
-      let end;
+      let end2;
       if (src[i] === "{" || src[i] === "[") {
         const nested = parseContainer(src, i);
         if (nested === undefined)
           return;
-        end = nested.close + 1;
+        end2 = nested.close + 1;
       } else {
-        end = scanValue(src, i).end;
+        end2 = scanValue(src, i).end;
       }
-      entries.push({ valueStart: i, valueEnd: end });
-      i = skipTrivia(src, end);
+      entries.push({ valueStart: i, valueEnd: end2 });
+      i = skipTrivia(src, end2);
       if (src[i] === ",") {
         i = skipTrivia(src, i + 1);
         trailingComma = src[i] === closeCh;
@@ -2053,13 +2434,13 @@ function locate(src, root, path, allowMaterialise, parentOnly = false) {
           return { container, missingFrom: index, ok: true };
         return { ok: false, reason: "span-not-proven", detail: `array index ${segment} out of range` };
       }
-      const entry = container.entries[at];
+      const entry2 = container.entries[at];
       if (last)
-        return { container, ...parentOnly ? {} : { entry }, ok: true };
-      const nested = parseContainer(src, entry.valueStart);
-      if (nested === undefined)
+        return { container, ...parentOnly ? {} : { entry: entry2 }, ok: true };
+      const nested2 = parseContainer(src, entry2.valueStart);
+      if (nested2 === undefined)
         return { ok: false, reason: "unsupported-shape", detail: "array element is not a container" };
-      container = nested;
+      container = nested2;
       continue;
     }
     const matches = container.entries.filter((e) => e.key === segment);
@@ -2142,23 +2523,23 @@ function surgicalEdit(raw, path, value, options = {}) {
   const serialisedSubtree = JSON.stringify(subtree, null, 2);
   const container = found.container;
   if (container.kind === "object") {
-    const indent = indentFor(raw, container.open, style);
-    const inner = indent + style.indent;
+    const indent2 = indentFor(raw, container.open, style);
+    const inner2 = indent2 + style.indent;
     const memberText = `${JSON.stringify(leafKey)}: ${serialisedSubtree.split(`
-`).join(eol + inner)}`;
-    const entries = container.entries;
-    if (entries.length === 0) {
-      const text = raw.slice(0, container.open + 1) + eol + inner + memberText + eol + indent + raw.slice(container.close);
+`).join(eol + inner2)}`;
+    const entries2 = container.entries;
+    if (entries2.length === 0) {
+      const text = raw.slice(0, container.open + 1) + eol + inner2 + memberText + eol + indent2 + raw.slice(container.close);
       return { ok: true, text, style, changed: true };
     }
-    const lastEntry = entries[entries.length - 1];
-    const afterLast = skipTrivia(raw, lastEntry.valueEnd);
-    if (raw[afterLast] === ",") {
-      const insertAt = afterLast + 1;
+    const lastEntry2 = entries2[entries2.length - 1];
+    const afterLast2 = skipTrivia(raw, lastEntry2.valueEnd);
+    if (raw[afterLast2] === ",") {
+      const insertAt = afterLast2 + 1;
       const tail = style.trailingComma ? "," : "";
-      return { ok: true, text: raw.slice(0, insertAt) + eol + inner + memberText + tail + raw.slice(insertAt), style, changed: true };
+      return { ok: true, text: raw.slice(0, insertAt) + eol + inner2 + memberText + tail + raw.slice(insertAt), style, changed: true };
     }
-    return { ok: true, text: raw.slice(0, lastEntry.valueEnd) + "," + eol + inner + memberText + raw.slice(lastEntry.valueEnd), style, changed: true };
+    return { ok: true, text: raw.slice(0, lastEntry2.valueEnd) + "," + eol + inner2 + memberText + raw.slice(lastEntry2.valueEnd), style, changed: true };
   }
   const indent = indentFor(raw, container.open, style);
   const inner = indent + style.indent;
@@ -2584,11 +2965,11 @@ function withTeamModelsDefaults(config) {
 }
 function apply(ctx, config = {}) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
-  const warn = (message) => {
+  const warn = (message2) => {
     try {
-      console.log(message);
+      console.log(message2);
       if (ctx.logger && typeof ctx.logger.warn === "function")
-        ctx.logger.warn(message);
+        ctx.logger.warn(message2);
     } catch {}
   };
   const bridge = {
@@ -2759,10 +3140,10 @@ function apply(ctx, config = {}) {
       const dir = dirname2(file);
       if (!existsSync2(dir))
         return;
-      const name = basename(file);
+      const name2 = basename(file);
       let timer;
       const listener = (_event, changed) => {
-        if (changed !== null && changed !== undefined && String(changed) !== name)
+        if (changed !== null && changed !== undefined && String(changed) !== name2)
           return;
         if (timer !== undefined)
           clearTimeout(timer);

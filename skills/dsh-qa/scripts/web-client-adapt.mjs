@@ -72,8 +72,21 @@ function selfTest() {
     /inject\(\s*["'`]shell\.overlay["'`]/,
     /inject\(\s*["'`]sidebar\.footer\.action["'`]/,
   ]
+  // The no-host guard STRING moved with the page it guards: the bundle's sidebar tab is now the
+  // TEAM WATCHDOG page (the official client owns the AgentTeams roster/board UI), so the warning
+  // reads "the team watchdog page has no host". Matched on the STABLE tail ("page has no host")
+  // rather than the page's name, so a future rename of the page cannot redden a case whose claim is
+  // "the guard exists", not "the page is called X" — measured 2026-09-27: the retired literal was
+  // the only clause of this check left red after lane E rebased the page.
+  //
+  // The stable tail alone is NOT falsifiable on its own, though: the retired literal also ends in
+  // "page has no host", so a REVERT to it would still satisfy the tail while telling an operator
+  // that the AgentTeams GUI is unmounted — which is exactly what is no longer true. The retired
+  // sentence is therefore forbidden in its own right, and THAT is the clause a rename cannot
+  // weaken: the page may be called anything, but it may not claim the page the official client owns.
   checks.push(["both GUIs are sidebar-only", mpdSources.some((s) => s.includes("registerTeamSidebarTab"))
-    && mpdSources.some((s) => s.includes("the AgentTeams page has no host"))
+    && mpdSources.some((s) => s.includes("page has no host"))
+    && mpdSources.every((s) => !s.includes("AgentTeams page has no host"))
     && mpdSources.some((s) => s.includes("registerWorkmateSidebarTab"))
     && mpdSources.every((s) => removedRegistrations.every((re) => !re.test(s)))])
   const wm = readFileSync(join(ROOT, "packages", "mpd-workmate-plugin", "src", "index.ts"), "utf8")
