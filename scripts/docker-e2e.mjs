@@ -225,6 +225,7 @@ function selfTest() {
   check("entrypoint never reads the real harness home", !/~\/\.dsh/.test(entrypoint) && !/\$HOME\/\.dsh/.test(entrypoint))
   check("entrypoint asserts the build context was filtered", /record copy\.contextFiltered/.test(entrypoint))
   check("entrypoint asserts the preset mount through /api/session/create", entrypoint.includes("/api/session/create"))
+  check("entrypoint asserts the session-gate LISTENER registration", /record boot\.sessionGateListener/.test(entrypoint) && entrypoint.includes("session gate listener registered for agent"))
   check("entrypoint records the un-provable LLM assertion as null", /record boot\.llmTurn null/.test(entrypoint))
 
   // 9. BUILDX_CONFIG: the sandbox cannot write ~/.docker/buildx, so every docker child must run

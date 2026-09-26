@@ -57,6 +57,7 @@ const EXPECTED = [
   "boot.adapterToolCall",
   "boot.mpdTools",
   "boot.agentTeamTools",
+  "boot.sessionGateListener",
   "boot.agentTeamService",
   "boot.servesHttp",
   "boot.presetMount",
@@ -222,6 +223,7 @@ const result = {
     "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
     "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
     "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition)",
     "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd",
   ],
   // COMPOSITION ONLY = row lists. Kept in its own field so nothing here can be read as a load proof

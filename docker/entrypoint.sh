@@ -687,6 +687,25 @@ else
   record boot.agentTeamTools false "the official agent-team tools were not visible in an agent scope" "${AGENT_TOOL_MISSING:-[docker-probe] AGENT_TEAM_TOOLS=<no line>} root-plane=$(grep -m1 -oE 'TEAM_TOOLS_ROOT=[0-9]+/[0-9]+' "$BOOT_LOG" 2>/dev/null || echo 'n/a')"
 fi
 
+# THE SESSION-GATE LIVENESS PROOF. `mpd-roles-plugin` mounts the session-start complexity gate per
+# qualifying agent and prints one line when the listener is ACTUALLY registered. In v0.10.0 the gate
+# was MOUNTED BUT NEVER FIRED (three root causes, fixed for v0.10.1), so "the row composed" was never
+# evidence for this contract — only this line is. It is emitted on `agent/created`, i.e. for the agent
+# the session created above, which is exactly the session the gate must cover.
+GATE_LINE=""
+GATE_DEADLINE=$(( $(date +%s) + 45 ))
+while [ "$(date +%s)" -lt "$GATE_DEADLINE" ]; do
+  GATE_LINE="$(grep -m1 -oE '\[mpd-roles\] session gate listener registered for agent "[^"]*" agentPreset=[A-Za-z0-9_-]+' "$BOOT_LOG" 2>/dev/null || true)"
+  [ -n "$GATE_LINE" ] && break
+  sleep 2
+done
+fact bootSessionGate "${GATE_LINE:-<no gate registration line>}"
+if printf '%s' "$GATE_LINE" | grep -q 'agentPreset=mpd'; then
+  record boot.sessionGateListener true "the mpd session gate listener is REGISTERED for the created session — liveness, not composition (the contract that was silently dead in v0.10.0)" "$GATE_LINE"
+else
+  record boot.sessionGateListener false "no '[mpd-roles] session gate listener registered … agentPreset=mpd' line after session creation" "${GATE_LINE:-<absent>} warn-lines=$(witness "$BOOT_LOG" 'session-start gate not registered' 2)"
+fi
+
 FATAL_LINES="$(grep -cE 'Cannot find module|did not activate|Unhandled|uncaught|is not a function' "$BOOT_LOG" 2>/dev/null || true)"
 if [ "${FATAL_LINES:-0}" -eq 0 ]; then
   record boot.noFatalSignatures true "no fatal apply/module signature in the boot log" "0 matches"
