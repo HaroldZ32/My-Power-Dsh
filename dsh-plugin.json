@@ -3,7 +3,7 @@
   "manifestVersion": "0.15",
   "id": "com.mpd-dsh.mpd-tui",
   "name": "@mpd-dsh/mpd",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "facets": {
     "host": {
       "entry": "packages/mpd-tui-plugin/dist/index.js",
@@ -54,7 +54,7 @@
     "hosts": ["@deepseek-harness-tui/dsh-tui@0.10.1"]
   },
   "x-mpd-tui-surfaces": {
-    "note": "Disclosure, not a contribution point. This file sits at the root of the @mpd-dsh/mpd bundle package (version 0.10.0) and self-describes as THAT package, because the admission path resolves a row's specifier ('@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js') to the package that carries it. It declares ONE Community v0.15 host facet whose module is packages/mpd-tui-plugin/dist/index.js, implemented by the separate @mpd-dsh/mpd-tui package (version 0.1.0, from its own package.json). The bundle-level manifest is intentional (user decision D6), so no per-package manifest exists.",
+    "note": "Disclosure, not a contribution point. This file sits at the root of the @mpd-dsh/mpd bundle package (version 0.10.1) and self-describes as THAT package, because the admission path resolves a row's specifier ('@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js') to the package that carries it. It declares ONE Community v0.15 host facet whose module is packages/mpd-tui-plugin/dist/index.js, implemented by the separate @mpd-dsh/mpd-tui package (version 0.1.0, from its own package.json). The bundle-level manifest is intentional (user decision D6), so no per-package manifest exists.",
     "runtimeBoundSurfaces": [
       "tuiStatus",
       "tuiRenderers",

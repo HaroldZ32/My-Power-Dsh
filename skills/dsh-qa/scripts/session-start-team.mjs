@@ -47,7 +47,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 import { readSessionEvents } from "./lib/session-evidence.mjs"
-import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
+import { assertSessionsSandboxed, projectKey, sandboxWorkspace } from "./lib/workspace-isolation.mjs"
 import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
 import { readMpdPresetSource } from "./lib/preset-source.mjs"
 
@@ -356,7 +356,11 @@ async function runReal() {
       mkdirSync(sideWs, { recursive: true })
       const spec = dshCommand(["--profile", "mpd-headless", prompts[index]], env)
       const live = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600000, cwd: sideWs, stdio: ["ignore", "pipe", "pipe"] })
-      LOG.push("[" + label + " " + index + "] $ dsh --profile mpd-headless " + JSON.stringify(prompts[index]) + "\n[[exit=" + live.status + "]]\n" + ((live.stdout || "") + (live.stderr || "")).slice(0, 20000))
+      // `spawnSync` answers `.stdout`/`.stderr` — NOT `.out` (measured 2026-09-27: reading a
+      // non-existent `.out` made `gateInstalled` false on EVERY side while the evidence log
+      // carried the line, i.e. the instrumentation itself lied).
+      const sideOut = (live.stdout || "") + (live.stderr || "")
+      LOG.push("[" + label + " " + index + "] $ dsh --profile mpd-headless " + JSON.stringify(prompts[index]) + "\n[[exit=" + live.status + "]]\n" + sideOut.slice(0, 20000))
       const recorded = recordedUserTexts(sandbox, sideWs)
       const notice = classifyNotices(recorded.texts)
       const teams = teamRecords(sideWs)
@@ -364,17 +368,34 @@ async function runReal() {
       const goal = recorded.texts.find((text) => !text.includes(NOTICE_MARKER) && !text.startsWith("<")) ?? ""
       const markerConsumed = expect !== "explicit" ? undefined : !/(^|\s)!team|^team:/iu.test(goal.trim())
       const isolation = (() => {
-        try { return { ok: true, ...assertSessionsSandboxed(sandbox, sideWs, { label: "session-start-team-" + label + "-" + index }) } } catch (error) { return { ok: false, error: String(error?.message ?? error) } }
+        // The sandbox ROOT is the bound, not the side's own workspace: every side shares this
+        // DSH_HOME, so the store legitimately holds one key per side and passing the side key as
+        // the bound would flag its SIBLINGS as escapees (measured 2026-09-27: `isolation:false`
+        // on 3 of 6 sides for exactly that reason). What isolation means here is "no key belongs
+        // to the real checkout / the process cwd / the real home".
+        try { return { ok: true, ...assertSessionsSandboxed(sandbox, sandbox, { label: "session-start-team-" + label + "-" + index }) } } catch (error) { return { ok: false, error: String(error?.message ?? error) } }
       })()
+      // Registration instrumentation: the side's OWN store key must exist, which proves this
+      // boot really wrote into the sandbox rather than reusing a neighbour's run.
+      const ownKeyWritten = (() => {
+        try { return readdirSync(join(sandbox, "sessions")).includes(projectKey(sideWs)) } catch { return false }
+      })()
+      // …and the row must REPORT the gate as installed. Without this the case cannot tell
+      // "the gate was never mounted" from "the gate is mounted and did not fire", which are
+      // different defects with different owners (measured 2026-09-27: `sessionGate=advisory`
+      // was present while ZERO notices fired, and the single opaque failure hid that split).
+      const gateInstalled = /\[mpd-roles\] team plane:.*sessionGate=advisory/.test(sideOut)
       const verdict = evaluateSide({ expect, notice, teams, markerConsumed })
       const problems = [...verdict.problems]
       if (!recorded.ok) problems.push("session log unreadable: " + recorded.error)
       if (!isolation.ok) problems.push("workspace isolation violated: " + isolation.error)
+      if (!ownKeyWritten) problems.push("this side's own session-store key was not written — the boot did not run in its sandbox workspace")
+      if (!gateInstalled) problems.push("the row did not report `sessionGate=advisory` — the gate was NOT mounted on this boot (a different defect from a mounted-but-silent gate)")
       try {
         const keep = join(outDir, "sides", label, String(index))
         mkdirSync(keep, { recursive: true })
         writeFileSync(join(keep, "prompt.txt"), prompts[index])
-        writeFileSync(join(keep, "notices.json"), JSON.stringify({ notice, teams, goal: goal.slice(0, 400), problems }, null, 2))
+        writeFileSync(join(keep, "notices.json"), JSON.stringify({ notice, teams, goal: goal.slice(0, 400), gateInstalled, ownKeyWritten, problems }, null, 2))
       } catch { /* evidence copy is best-effort; the assertions are the gate */ }
       results.push({
         prompt: prompts[index], expect, exited: live.status,
@@ -382,7 +403,7 @@ async function runReal() {
         retiredVocabulary: notice.retiredVocabulary, retiredProvisioned: notice.retiredProvisioned,
         signals: notice.signals, teams: teams.active + teams.archived, markerConsumed,
         sessionRecords: recorded.records, sessionFrames: recorded.frames,
-        isolation: isolation.ok, problems, ok: problems.length === 0,
+        isolation: isolation.ok, ownKeyWritten, gateInstalled, problems, ok: problems.length === 0,
       })
     }
     return results
