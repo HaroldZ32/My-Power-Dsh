@@ -1,0 +1,39 @@
+# docker/docker-compose.yml — ONE service, and it mounts no host harness state.
+#
+# THE ISOLATION RULE THIS FILE ENFORCES (AGENTS.md §7, task lane D): the only host path this service
+# touches is the evidence mount ${MPD_DOCKER_OUT}. There is deliberately NO bind of $HOME, ~/.dsh,
+# ~/.mpd, ~/.agents, the docker socket or the repository: the repository travels into the image as a
+# COPY of the build context (filtered by docker/Dockerfile.dockerignore), so a container bug can never
+# read or write the operator's harness home — which is what makes the entrypoint's isolation assertion
+# meaningful instead of decorative. `node scripts/docker-e2e.mjs --self-test` asserts this statically.
+#
+# The build context is the REPOSITORY ROOT, and NOTHING is staged inside the repository: an earlier
+# driver shape copied the tree into docker/src as the context, and that in-repo copy was picked up by
+# `bun test`'s globs and by every tree-walking gate (measured 2026-09-27).
+#
+# SANCTIONED ONE COMMAND:
+#     node scripts/docker-e2e.mjs
+# It builds this image, runs this service and lands the evidence under
+# evidence/docker/client-install/<UTC stamp>/.
+#
+# RAW COMPOSE (the same stack, by hand):
+#     docker compose -f docker/docker-compose.yml build
+#     docker compose -f docker/docker-compose.yml run --rm mpd-client
+# A directory outside the repository cannot be written by the sandboxed docker CLI, so if the build
+# fails with `mkdir <home>/.docker/buildx: read-only file system`, point BUILDX_CONFIG at a writable
+# directory; the driver does exactly that by itself.
+services:
+  mpd-client:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: mpd-docker-e2e:local
+    # No init shim and no TTY: the entrypoint IS the process, and its exit code is the verdict.
+    init: false
+    tty: false
+    environment:
+      MPD_E2E_OUT: /out
+    volumes:
+      # The driver points this at evidence/docker/client-install/<stamp>/; the default keeps
+      # `docker compose run` usable by hand and writes ./docker/out.
+      - ${MPD_DOCKER_OUT:-./out}:/out

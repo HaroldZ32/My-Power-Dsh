@@ -5,10 +5,10 @@
 // from a module-level constant and never from `process.cwd()` directly, because
 // one host serves many sessions with different workspaces (AGENTS.md §6 State).
 //
-// Layout, all under the ADOPTED plugin's team state root so both owners stay
-// side by side without ever sharing a file:
+// Layout, entirely this plugin's own (`<workspace>/<stateDir>` is shared with the team plane by
+// convention only — no harness team file lives under it any more, because the official Agent Teams
+// service keeps team state in the Lead Session log and the watchdog reads it through the adapter):
 //
-//   <workspace>/<stateDir>/<teamId>/team.json          adopted, READ-ONLY here
 //   <workspace>/<stateDir>/watchdog/heartbeat/<key>.jsonl
 //   <workspace>/<stateDir>/watchdog/scene/<teamId>/<iso>.json + latest.json
 //   <workspace>/<stateDir>/watchdog/hold/<teamId>.json
@@ -17,9 +17,9 @@
 import { createHash } from "node:crypto"
 import { join } from "node:path"
 
-/** The adopted agent-teams plugin's default team state directory. */
+/** The default state directory. The harness keeps no team file under it (see the layout above). */
 export const DEFAULT_STATE_DIR = join(".mpd", "team")
-/** This plugin's own namespace inside the team state root. Never `team.json`. */
+/** This plugin's own namespace inside the state root. */
 export const WATCHDOG_DIR = "watchdog"
 /** Heartbeat generations kept per member file (older generations are dropped). */
 export const DEFAULT_KEEP_GENERATIONS = 3
@@ -27,7 +27,7 @@ export const DEFAULT_KEEP_GENERATIONS = 3
 /**
  * Fold a free-form id into ONE safe path segment.
  *
- * Mirrors the adopted `sanitizeKey` policy (Unicode letters and digits survive,
+ * Mirrors the retired plugin's `sanitizeKey` policy (Unicode letters and digits survive,
  * everything else folds to `-`) so a member name keeps meaning in the file name,
  * and a value with no letter/digit at all still gets a stable, unique segment
  * via a digest instead of a shared constant.
@@ -53,7 +53,7 @@ function digest(text: string): string {
   return createHash("sha256").update(text).digest("hex").slice(0, 8)
 }
 
-/** The team state root (`<workspace>/<stateDir>`) shared with the adopted plugin. */
+/** The state root (`<workspace>/<stateDir>`); only this plugin's own files live under it. */
 export function stateRoot(workspace: string, stateDir: string = DEFAULT_STATE_DIR): string {
   return join(workspace, stateDir)
 }
@@ -61,16 +61,6 @@ export function stateRoot(workspace: string, stateDir: string = DEFAULT_STATE_DI
 /** `<workspace>/<stateDir>/watchdog`. */
 export function watchdogRoot(workspace: string, stateDir: string = DEFAULT_STATE_DIR): string {
   return join(stateRoot(workspace, stateDir), WATCHDOG_DIR)
-}
-
-/** The adopted team record path — READ-ONLY for this plugin. */
-export function teamPath(workspace: string, stateDir: string, teamId: string): string {
-  return join(stateRoot(workspace, stateDir), String(teamId), "team.json")
-}
-
-/** The directory holding one team's adopted record and its mailbox. */
-export function teamDir(workspace: string, stateDir: string, teamId: string): string {
-  return join(stateRoot(workspace, stateDir), String(teamId))
 }
 
 /** `<stateDir>/watchdog/heartbeat`. */
@@ -93,7 +83,7 @@ export function holdDir(workspace: string, stateDir: string = DEFAULT_STATE_DIR)
   return join(watchdogRoot(workspace, stateDir), "hold")
 }
 
-/** One team's durable hold sidecar (beside `team.json`, never inside it). */
+/** One team's durable hold sidecar (the watchdog's own file, keyed by the official team id). */
 export function holdPath(workspace: string, stateDir: string, teamId: string): string {
   return join(holdDir(workspace, stateDir), safeSegment(teamId) + ".json")
 }

@@ -1,10 +1,12 @@
 // mpd-roles-plugin: the specialists live as a SPECIALIST ROSTER, not as
 // presets. Each role = { stable id (chain key), normal display name, persona
 // text, DeepSeek model chain, read-only discipline }. Consumers: mpd_role_spawn
-// (one-shot specialist from anywhere), mpd_role_persona (text for spawn
-// surfaces like agent_teams_add_member), and the mpdRoles service (mpd-modelchain
-// chain lookup). Team mode lives in the adopted dsh-agent-teams plugin, whose
-// normal-named member templates are configured in the bundle patch.
+// (one-shot specialist from anywhere), mpd_role_persona (text for spawn surfaces —
+// the official Agent Teams `spawn_teammate` takes it as the teammate's prompt), and
+// the mpdRoles service (mpd-modelchain chain lookup). Team mode is the OFFICIAL Agent
+// Teams plugin (`spawn_teammate` + `team_task_create`), which THIS row feeds: it
+// registers the read-only tool guard, the agent-scoped roster section and the advisory
+// session-start gate.
 // ADDRESSING CONTRACT: a role is addressed by its normal display NAME — the member
 // name in team mode, the label of a one-shot mpd_role_spawn, and what every
 // description/render lists. The stable `id` is an INTERNAL key (modelchain chain key,
@@ -17,6 +19,9 @@ import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
+import { installReadonlyGuard } from "./team-guard.ts"
+import { installRosterSection } from "./roster-section.ts"
+import { installSessionGate } from "./session-gate.ts"
 import { createLazyDshAdapter, dshAdapterIdentity, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 export const name = "mpd-roles"
@@ -414,7 +419,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_roles_list",
-    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work call agent_teams_create profile=mpd instead of repeated one-shot spawns.",
+    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with spawn_teammate + team_task_create (persona text from mpd_role_persona) instead of repeated one-shot spawns.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a: unknown, v: any) => textBlock("roster (" + v.count + "):\n" + v.roles.map((r: any) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + (r.extension ? " extension:" + r.extension : "") + "] — " + r.description).join("\n") + (Array.isArray(v.refused) && v.refused.length > 0 ? "\nrefused (" + v.refused.length + "):\n" + v.refused.map((r: any) => "- " + r.name + " (" + r.extension + ") — " + r.reason).join("\n") : "")) },
     execute: async (_args: any, exec: any) => {
@@ -426,7 +431,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Spawn one specialist as a one-shot subagent, carrying its persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The subagent is labelled with that name. For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
+    description: "Spawn one specialist as a one-shot subagent, carrying its persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The subagent is labelled with that name. For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated one-shot spawns: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
     execute: async (args: any, exec: any) => {
@@ -457,7 +462,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_role_persona",
-    description: "Return the full persona text of one roster role, addressed by its name (\"Architect\", \"Deep Worker\", \"Plan Reviewer\"). Use it when a spawn surface takes the persona as TEXT — e.g. an agent_teams_add_member member whose name is that same name — so the member gets the real role instructions instead of a bare label.",
+    description: "Return the full persona text of one roster role, addressed by its name (\"Architect\", \"Deep Worker\", \"Plan Reviewer\"). Use it when a spawn surface takes the persona as TEXT — e.g. the prompt of a spawn_teammate teammate whose name is that same name — so the member gets the real role instructions instead of a bare label.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a: unknown, v: any) => textBlock("persona " + v.role + " (" + v.chars + " chars):\n" + v.persona) },
     execute: async (args: any, exec: any) => {
@@ -467,6 +472,57 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       return { role: spec.name, persona: spec.persona, chars: spec.persona.length }
     }
   })
+
+  // ── the roster's TEAM plane (AGENTS.md §13 + §1) ────────────────────────────
+  // Retiring the vendored agent-teams body removed the ONLY implementation of two BINDING
+  // contracts: the roster's mechanical read-only discipline (the shipped profile carried
+  // each read-only member's toolDeny) and the session-start complexity gate. Both are
+  // restored HERE, on the OFFICIAL plugin's seams, reached only through the adapter:
+  //   1. a tool guard over the SAME seven names the one-shot path denies;
+  //   2. an AGENT-SCOPED roster section, so an mpd Lead knows the members it can stage;
+  //   3. the advisory session-start gate (it NEVER stages a team).
+  // Each installer degrades with a warning instead of taking the row down.
+  const teamMembers = () => ROLES.map((role) => ({ name: role.name, description: role.description, readonly: role.readonly }))
+  // The TEAM PLANE's boot signature: ONE line naming the three restored contracts and their
+  // outcome, so an integration boot asserts the guard reached the tool registry (a
+  // `[mpd-roles] team plane: readOnlyGuard=installed deny=7 …` line) instead of trusting the
+  // absence of an error. The roster section logs its OWN line per agent scope when it lands.
+  const guardOutcome: string[] = []
+  try {
+    const guard = installReadonlyGuard(dsh, {
+      deny: READONLY_DENY,
+      members: teamMembers(),
+      warn: (line) => warnOnce("team-guard:" + line, line),
+    })
+    guardOutcome.push(guard.installed
+      ? "readOnlyGuard=installed deny=" + READONLY_DENY.length
+      : "readOnlyGuard=absent reason=" + String(guard.reason))
+  } catch (error) {
+    guardOutcome.push("readOnlyGuard=absent reason=threw")
+    warnOnce("team-guard:threw", "the team-path read-only guard could not be installed (" + errText(error) + ")")
+  }
+  try {
+    installRosterSection(dsh, {
+      members: teamMembers(),
+      presets: ["mpd"],
+      warn: (line) => warnOnce("team-section:" + line, line),
+      log: (line) => console.log("[mpd-roles] " + line),
+    })
+    guardOutcome.push("rosterSection=agent-scoped order=605")
+  } catch (error) {
+    guardOutcome.push("rosterSection=absent")
+    warnOnce("team-section:threw", "the roster prompt section could not be registered (" + errText(error) + ")")
+  }
+  try {
+    installSessionGate(dsh, { presets: ["mpd"], warn: (line) => warn(line) })
+    guardOutcome.push("sessionGate=advisory")
+  } catch (error) {
+    guardOutcome.push("sessionGate=absent")
+    warnOnce("team-gate:threw", "the session-start complexity gate could not be installed (" + errText(error) + ")")
+  }
+  try {
+    console.log("[mpd-roles] team plane: " + guardOutcome.join(" "))
+  } catch { /* logging must never take the roster down */ }
 
   // The apply-time identity line: on the healthy path this is the row's ONLY new
   // output, and it carries the same `adapterIdentity=` field the `mpdRoles` service

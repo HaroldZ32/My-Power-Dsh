@@ -38,7 +38,7 @@ import { HoldRegistry } from "../src/holds"
 import { apply } from "../src/index"
 import { candidateFor, WATCHDOG_DEFAULTS, WatchdogMachine } from "../src/machine"
 import { readHold } from "../src/sidecars"
-import { pluginCtx, sandbox, stubAdapter, testConfig, writeTeam, type Sandbox, type StubAdapter } from "./support"
+import { pluginCtx, sandbox, stubAdapter, testConfig, writeTeam, writeTeamRecord, type Sandbox, type StubAdapter } from "./support"
 
 const HERE = fileURLToPath(new URL(".", import.meta.url))
 const REPO = resolve(HERE, "../../..")
@@ -104,7 +104,10 @@ async function fixture(
 ): Promise<Fixture> {
   const box = sandbox()
   const members = options.members ?? [{ id: MEMBER_ID, name: "Architect", status: "idle" }]
-  const teamFile = writeTeam(box, {
+  // The RETIRED vendored lib (`packages/mpd-agent-teams-plugin/lib`) is what this file mounts, and
+  // IT reads `<stateDir>/<teamId>/team.json` — so the fixture materializes that record as well as
+  // registering the live view the watchdog reads. `writeTeamRecord` is that pair.
+  const teamFile = writeTeamRecord(box, {
     id: TEAM_ID,
     captainSessionId: CAPTAIN_ID,
     createdAt: Date.now() - 60_000,
@@ -536,8 +539,8 @@ describe("T-18 — a .mpd/mpd.jsonc knob edit is applied in the SAME running eng
 
 // ── T-19 — the demotion cannot be undone by a text edit ─────────────────────────────────────
 
-describe("T-19 — the surface names ONE mechanism, and the three tools stay registered", () => {
-  test("the registered descriptions name the hold as the INTERNAL implementation, never as a second mechanism", () => {
+describe("the pause surface names ONE mechanism, and the three tools stay registered", () => {
+  test("the registered descriptions name the hold as the ONLY pause and never a halt that does not exist", () => {
     const box = sandbox()
     try {
       writeTeam(box, { id: TEAM_ID, members: [{ id: "a1", name: "Architect" }], tasks: [{ id: "t1", status: "pending", assignee: "Architect" }] })
@@ -546,11 +549,13 @@ describe("T-19 — the surface names ONE mechanism, and the three tools stay reg
       const names = [...stub.tools.keys()].sort()
       expect(names).toEqual([HOLD_TOOL, RESUME_TOOL, STATUS_TOOL].sort())
       const text = names.map((name) => String((stub.tools.get(name) as { description?: string })?.description ?? "")).join("\n")
-      for (const old of ["NOT agent_teams_halt", "which PAUSE mechanism is active per team", "or `held`"]) {
+      // FALSIFIABLE, both directions: the retired plugin's halt tools are NOT named as the pause
+      // mechanism (they no longer exist), and the surface states the hold is the only one.
+      for (const old of ["NOT agent_teams_halt", "which PAUSE mechanism is active per team", "or `held`", "agent_teams_halt"]) {
         expect(text).not.toContain(old)
       }
-      expect(text).toContain("agent_teams_halt")
-      expect(text).toContain("INTERNAL implementation")
+      expect(text).toContain("the ONLY pause this bundle implements")
+      expect(text).toContain("the official Agent Teams service exposes no halt")
     } finally {
       box.cleanup()
     }

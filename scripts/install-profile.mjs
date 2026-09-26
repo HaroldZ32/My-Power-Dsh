@@ -15,15 +15,13 @@ import { spawnSync } from "node:child_process"
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 
 function parseArgs(argv) {
-  const o = { profile: "mpd", yes: false, dshHome: null, selfTest: false, skipToolchain: false, agentTeams: true, commentChecker: false }
+  const o = { profile: "mpd", yes: false, dshHome: null, selfTest: false, skipToolchain: false, commentChecker: false }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === "--yes") o.yes = true
     else if (a === "--dry-run") o.yes = false
     else if (a === "--self-test") o.selfTest = true
     else if (a === "--skip-toolchain") o.skipToolchain = true
-    else if (a === "--with-agent-teams") o.agentTeams = true
-    else if (a === "--without-agent-teams") o.agentTeams = false
     else if (a === "--with-comment-checker") o.commentChecker = true
     else if (a === "--dsh-home") o.dshHome = argv[++i]
     else if (a === "--profile") o.profile = argv[++i]
@@ -31,24 +29,31 @@ function parseArgs(argv) {
   return o
 }
 
-// Extract the agent-teams row's `profiles:` YAML block from the bundle patch
-// verbatim (starting at the `profiles:` key, ending at the next line indented
-// shallower than the key). The block is later re-indented to the row's config
-// level by renderRow, so both install flows ship byte-identical roster config.
-function extractAgentTeamsProfiles(patchText) {
+// Extract ONE row's YAML block VERBATIM from a bundle patch (from its `- id:` line
+// to the next sibling), with the indentation it was written at. The block is later
+// re-indented to the row's target level by renderRow, so the legacy installer and
+// the bundle patch ship byte-identical row config from ONE source of truth.
+//
+// 0.1.7-rc.2: the `mpd` preset is a ROW now (`preset-mpd` on
+// `@deepseek-ai/dsh-agent-preset`) whose whole composition lives INLINE under
+// `config.plugins` in `presets/mpd.patch.yml`. Transcribing it by hand would drift
+// on every preset edit, and a JSON re-render would destroy the nested group rows
+// and the persona block scalar, so the block is copied — exactly the idiom this
+// file already used for the adopted agent-teams `profiles:` roster.
+function extractRowBlock(patchText, rowId) {
   const lines = patchText.split("\n")
-  const idx = lines.findIndex((l) => /^ {8}profiles:\s*$/.test(l))
-  if (idx < 0) throw new Error("bundle patch agent-teams row has no profiles: block (packages/mpd-bundle/cordis.patch.yml)")
-  const base = 8
+  const pattern = new RegExp("^(\\s*)- id: " + rowId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*$")
+  const start = lines.findIndex((l) => pattern.test(l))
+  if (start < 0) throw new Error("bundle patch has no row `" + rowId + "`")
+  const base = lines[start].match(/^ */)[0].length
   const out = []
-  for (let i = idx; i < lines.length; i++) {
+  for (let i = start; i < lines.length; i++) {
     const l = lines[i]
     if (l.trim() === "") { out.push(""); continue }
-    const ind = l.match(/^ */)[0].length
-    if (ind < base) break
+    if (i > start && l.match(/^ */)[0].length <= base) break
     out.push(l)
   }
-  if (!out.some((l) => l.includes("taskPlanning: captain"))) throw new Error("extracted profiles block missing taskPlanning: captain")
+  if (out.length === 0) throw new Error("extracted row block for `" + rowId + "` is empty")
   return { base, lines: out }
 }
 
@@ -57,7 +62,25 @@ function extractAgentTeamsProfiles(patchText) {
 // duplicated here because the legacy installer renders its OWN patch instead of
 // reading the bundle's, and the two writers must not drift: a drifted guard
 // double-mounts (or disables the only mount) on a legacy install.
-const SIDEBAR_GUARD = "(() => { const say = (decision, reason) => { try { const seen = globalThis.__mpdSidebarGuardSeen || (globalThis.__mpdSidebarGuardSeen = {}); const key = decision + '|' + reason; if (!seen[key]) { seen[key] = 1; console.warn('[mpd-better-sidebar] mount guard: ' + decision + ' - ' + reason) } } catch (e) {} }; try { const fs = process.getBuiltinModule('node:fs'); const path = process.getBuiltinModule('node:path'); const profileDir = path.normalize(decodeURIComponent(new URL('.', baseUrl).pathname)); const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch (e) { return null } }; const readText = (p) => { try { return fs.readFileSync(p, 'utf8') } catch (e) { return null } }; const SQ = String.fromCharCode(39); const DQ = String.fromCharCode(34); const HASH = String.fromCharCode(35); const LF = String.fromCharCode(10); const TAB = String.fromCharCode(9); const stripComments = (text) => { const out = []; for (const line of String(text).split(LF)) { let kept = ''; let quote = ''; for (const ch of line) { if (quote === '') { if (ch === HASH) { break } if (ch === SQ || ch === DQ) { quote = ch } } else if (ch === quote) { quote = '' } kept += ch } out.push(kept) } return out.join(LF) }; const unquote = (raw) => { const t = String(raw).trim(); if (t.length > 1 && (t.charAt(0) === SQ || t.charAt(0) === DQ) && t.charAt(t.length - 1) === t.charAt(0)) { return t.slice(1, -1) } return t }; const indentOf = (line) => { let i = 0; while (i < line.length && (line.charAt(i) === ' ' || line.charAt(i) === TAB)) { i++ } return i }; const keyOf = (line, key) => { let t = line; if (t.charAt(0) === '-' && t.charAt(1) === ' ') { t = t.slice(2) } const trimmed = t.trimStart(); if (!trimmed.startsWith(key + ':')) { return null } return trimmed.slice(key.length + 1).trim() }; const foreignRowMountsSidebar = (text) => { const stripped = stripComments(text); if (stripped.indexOf('dsh-better-sidebar') < 0) { return false } const rows = []; let current = null; for (const line of stripped.split(LF)) { if (line.trim() === '') { continue } const indent = indentOf(line); const body = line.slice(indent); const isItem = body.charAt(0) === '-' && (body.length === 1 || body.charAt(1) === ' '); if (isItem) { current = { indent, lines: [] }; rows.push(current) } if (current !== null && (isItem || indent > current.indent)) { current.lines.push({ indent, body }) } } let named = false; let mounting = false; for (const row of rows) { let nameValue = null; let nameIndent = -1; let disabledValue = null; let disabledIndent = -1; for (const entry of row.lines) { const nv = keyOf(entry.body, 'name'); if (nv !== null && (nameIndent < 0 || entry.indent < nameIndent)) { nameIndent = entry.indent; nameValue = nv } const dv = keyOf(entry.body, 'disabled'); if (dv !== null && (disabledIndent < 0 || entry.indent < disabledIndent)) { disabledIndent = entry.indent; disabledValue = dv } } if (nameValue === null || unquote(nameValue) !== 'dsh-better-sidebar') { continue } named = true; const literallyDisabled = disabledValue !== null && disabledIndent <= nameIndent && unquote(disabledValue).toLowerCase() === 'true'; if (!literallyDisabled) { mounting = true } } if (mounting) { return true } if (!named) { return true } return false }; const ownModules = path.join(profileDir, 'node_modules'); if (!fs.existsSync(path.join(ownModules, 'dsh-better-sidebar'))) { say('DISABLED', 'dsh-better-sidebar is not resolvable from the profile node_modules'); return true } const manifest = readJson(path.join(profileDir, 'package.json')); const bundles = manifest && manifest.dsh && manifest.dsh.profile && Array.isArray(manifest.dsh.profile.bundles) ? manifest.dsh.profile.bundles : []; if (bundles.indexOf('dsh-better-sidebar') >= 0) { say('DISABLED', 'dsh-better-sidebar is itself a declared bundle layer'); return true } for (const bundle of bundles) { const name = String(bundle); for (const dir of [path.join(ownModules, name), path.join(profileDir, '..', 'node_modules', name)]) { const other = readJson(path.join(dir, 'package.json')); if (!other) continue; if (other.name === '@mpd-dsh/mpd') continue; const rel = other.dsh && other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !== 'string') continue; const text = readText(path.join(dir, rel)); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' + name + ' already mounts it in its own patch'); return true } } } const argv = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string' ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') { overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) { overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir, 'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')]; if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '') { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for (const overlay of overlays) { layers.push(path.resolve(overlay)) } for (const layer of layers) { const text = readText(layer); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + ' already mounts it'); return true } } const entries = [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options && e.options.name === '@deepseek-ai/dsh-host-webserver' && (e.options.disabled === undefined || e.options.disabled === false)); if (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver entry in this composition'); return true } say('ENABLED', 'web plane present and no other layer mounts dsh-better-sidebar'); return false } catch (e) { try { console.warn('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' + String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()"
+// The sidebar mount guard is EXTRACTED VERBATIM from the bundle patch's
+// `mpd-better-sidebar` row instead of being duplicated here. The duplication WAS
+// the drift: the two writers must ship byte-identical guards, and a hand-copied
+// expression fell behind the patch (measured 2026-09-27: the patch moved to a
+// `fileURLToPath(baseUrl)` form while this file still carried `new URL(. , baseUrl)`,
+// so the self-test reddened on a guard the bundle had already fixed). One source of
+// truth: whatever the patch says is what a legacy install writes.
+function sidebarGuardFromPatch() {
+  const text = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
+  const block = extractRowBlock(text, "mpd-better-sidebar")
+  const line = block.lines.find((l) => /^\s*disabled:\s*!!js\s/.test(l))
+  if (line === undefined) throw new Error("the bundle patch's mpd-better-sidebar row has no `disabled: !!js` guard")
+  const match = /^\s*disabled:\s*(!!js\s.*)$/.exec(line)
+  if (match === null) throw new Error("the bundle patch's mpd-better-sidebar guard is not a single `!!js` scalar")
+  const guard = match[1].trim()
+  if (!guard.includes("dsh-better-sidebar") || !guard.includes("baseUrl")) throw new Error("the extracted sidebar guard is not the mount guard this file pins: " + guard.slice(0, 80))
+  return guard
+}
+const SIDEBAR_GUARD = sidebarGuardFromPatch()
 
 function buildPlan(o) {
   const dshHome = o.dshHome ?? process.env.DSH_HOME ?? join(homedir(), ".dsh")
@@ -66,9 +89,41 @@ function buildPlan(o) {
   const bundle1 = isHeadless ? "@deepseek-ai/dsh-headless" : "@deepseek-ai/dsh-web-app"
   const p = (r) => join(repoRoot, r)
   const presetsDir = p("presets")
+  const presetPatchPath = join(presetsDir, "mpd.patch.yml")
   const astCli = p(".toolchain/node_modules/.bin/sg")
   const cgCli = p(".toolchain/node_modules/.bin/codegraph")
+  // The mpd composition, extracted VERBATIM from the bundle's own preset patch:
+  // the manifest's `dsh.bundle.patch` array names that file as the second patch
+  // layer, so it is the single source of truth for the preset row.
+  const presetRowBlock = (() => {
+    const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"))
+    const declared = manifest?.dsh?.bundle?.patch
+    const list = Array.isArray(declared) ? declared : typeof declared === "string" ? [declared] : []
+    for (const entry of list) {
+      const file = join(repoRoot, entry)
+      if (!existsSync(file)) continue
+      const text = readFileSync(file, "utf8")
+      let block = null
+      try { block = extractRowBlock(text, "preset-mpd") } catch { block = null }
+      if (block !== null) return block
+    }
+    throw new Error("no declared bundle patch declares a `preset-mpd` row (package.json dsh.bundle.patch)")
+  })()
   const rows = [
+    // ── agent preset plane (0.1.7-rc.2 row model) ───────────────────────────
+    // The registry row is declared by the WEB-APP layer (`@deepseek-ai/dsh-web-app`
+    // inserts `agent-preset-registry` with `default: standard`), so this row is an
+    // ID-TARGET at column 0 — emitting it as an insert would collide on the loader
+    // entry id. It mirrors the bundle patch's own column-0 id-target verbatim.
+    {
+      id: "agent-preset-registry", name: "@deepseek-ai/dsh-agent-preset-registry",
+      config: { default: "mpd" }, alwaysIdTarget: true
+    },
+    // The `mpd` preset itself: a `@deepseek-ai/dsh-agent-preset` ROW whose whole
+    // composition is inline under `config.plugins`. Extracted VERBATIM from
+    // `presets/mpd.patch.yml` (the bundle's single declaration of the mpd
+    // composition) — see extractRowBlock.
+    { id: "preset-mpd", rawRow: presetRowBlock },
     // Web-compat self-row (mirrors the bundle patch's mpd-web-compat): makes an
     // entry named EXACTLY '@mpd-dsh/mpd' (the loader entry name client-modules
     // scans) resolve to the bundle plugin's own no-op main. The name must be the
@@ -89,7 +144,7 @@ function buildPlan(o) {
     // patch's insert set is enforced by scripts/verify-rows-parity.mjs.
     {
       id: "mpd-better-sidebar", name: "dsh-better-sidebar",
-      disabledYaml: "!!js " + JSON.stringify(SIDEBAR_GUARD)
+      disabledYaml: SIDEBAR_GUARD
     },
     // NOTE: no root skill-filesystem row — the mpd-* presets already declare it
     // (agent-plane, tool rows are preset-plane responsibility since 49b1288), and
@@ -201,41 +256,35 @@ function buildPlan(o) {
       id: "mpd-tui", name: p("packages/mpd-tui-plugin/dist/index.js"),
       config: {}
     },
+    // ── Agent Teams: the OFFICIAL plugin set (0.1.7-rc.2) ───────────────────
+    // The adopted vendored plugin (row `agent-teams`,
+    // packages/mpd-agent-teams-plugin) is RETIRED with this wave: the harness now
+    // ships the TeamService + its model-facing tools + its Web UI as first-class
+    // packages, and the bundle mounts them under mpd-owned entry ids with entry
+    // NAMES equal to the official package names. Mirrored verbatim from
+    // packages/mpd-bundle/cordis.patch.yml, order included.
+    {
+      id: "mpd-agent-team", name: "@deepseek-ai/dsh-experimental-agent-team",
+      config: { maxMembers: 16, maxTasks: 256, maxPendingMessagesPerMember: 64, maxMessageBytes: 32768, disposalTimeoutMs: 5000 }
+    },
+    {
+      id: "mpd-tool-agent-team", name: "@deepseek-ai/dsh-experimental-tool-agent-team",
+      config: { freshProvider: "spawn", forkProvider: "fork" }
+    },
+    {
+      id: "mpd-ui-agent-team", name: "@deepseek-ai/dsh-experimental-client-ui-agent-team",
+      config: {}
+    },
     // B9: every row mirrors the bundle patch verbatim (same id, entry and empty
-    // config) and in the same order (packages/mpd-bundle/cordis.patch.yml).
-    // Row-id parity with the patch insert list is enforced by
-    // scripts/verify-rows-parity.mjs.
+    // config) and in the same order (packages/mpd-bundle/cordis.patch.yml plus the
+    // preset patch presets/mpd.patch.yml). Row-id parity with the patch layer is
+    // enforced by scripts/verify-rows-parity.mjs.
   ]
-  // The agent-teams row must register the SAME `profiles.mpd` roster as the
-  // bundle patch (packages/mpd-bundle/cordis.patch.yml) — otherwise
-  // `--profile mpd` for /agent-teams is unresolvable under a legacy install.
-  // The profile YAML block is extracted VERBATIM from the bundle patch (single
-  // source of truth; no transcription drift between the two install flows).
-  const bundlePatch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
-  const profiles = extractAgentTeamsProfiles(bundlePatch)
-  const agentTeamsRow = {
-    id: "agent-teams", name: p("packages/mpd-agent-teams-plugin/lib/index.js"),
-    config: { stateDir: ".mpd/team", memberProvider: "spawn", memberMaxDepth: 1, maxMembers: 16,
-      // CONFIGURATION PLANE: aligned to upstream team_mode (mirrors the bundle
-      // patch; see packages/mpd-agent-teams-plugin/lib/index.js). Absent-safe.
-      maxParallelMembers: 8, maxMessagesPerRun: 10000, maxWallClockMinutes: 120,
-      maxMemberTurns: 500, messagePayloadMaxBytes: 32768, recipientUnreadMaxBytes: 262144,
-      mailboxPollIntervalMs: 3000, enforcement: "enforce", reclaimStaleAfterMs: 3600000,
-      // SESSION-START TEAM GATE: a session starts with NO team; `mode: "off"` is
-      // the default (upstream parity) and `autoRoute: true` is the decoupled
-      // mechanical complexity gate. See lib/session-start.js.
-      sessionTeamPolicy: { mode: "off", autoRoute: true, profile: "mpd", presets: ["mpd"], name: "MPD Default", approval: "required" } },
-    configYaml: profiles
-  }
-  if (o.agentTeams !== false) rows.push(agentTeamsRow)
   return {
-    dshHome, isHeadless, bundle0, bundle1, rows, presetsDir,
+    dshHome, isHeadless, bundle0, bundle1, rows, presetsDir, presetPatchPath,
     profileDir: join(dshHome, "profiles", o.profile),
     homePatch: join(dshHome, "cordis.patch.yml"),
-    userPresets: join(dshHome, ".agent-presets"),
     needsToolchain: !existsSync(astCli) || !existsSync(cgCli),
-    agentTeams: o.agentTeams !== false,
-    agentTeamsRow
   }
 }
 
@@ -254,6 +303,21 @@ function readExistingIds(homePatch) {
 }
 
 function renderRow(r, indent) {
+  // A VERBATIM row block (the `preset-mpd` preset declaration): the whole row —
+  // id, name, config, inline group rows and block scalars — comes from the bundle
+  // patch and is only re-indented here. Re-rendering it from a parsed object would
+  // destroy the nested `cordis:group` rows and the persona block scalar, and
+  // hand-transcribing it would drift on the next preset edit.
+  if (r.rawRow) {
+    const shift = r.rawRow.base - indent.length
+    const lines = r.rawRow.lines.map((raw) => {
+      if (raw.trim() === "") return ""
+      if (shift <= 0) return " ".repeat(-shift) + raw
+      return raw.startsWith(" ".repeat(shift)) ? raw.slice(shift) : raw.replace(/^ +/, "")
+    })
+    if (r.rawRow.lines.length === 0) throw new Error("row `" + r.id + "` has an empty raw block")
+    return lines.join("\n")
+  }
   const body = []
   body.push(indent + "- id: " + r.id)
   body.push(indent + "  name: " + JSON.stringify(r.name))
@@ -276,22 +340,15 @@ function renderRow(r, indent) {
       }
     }
   }
-  // verbatim YAML block (the agent-teams `profiles:` roster from the bundle
-  // patch), re-indented to this row's config-children level
-  if (r.configYaml) {
-    if (!hasConfig) body.push(indent + "  config:")
-    const shift = r.configYaml.base - (indent.length + 4)
-    for (const raw of r.configYaml.lines) {
-      if (raw.trim() === "") { body.push(""); continue }
-      body.push(raw.slice(shift))
-    }
-  }
   return body.join("\n")
 }
 
 function renderPatch(rows, existingIds) {
-  const existing = rows.filter((r) => existingIds.has(r.id))
-  const inserts = rows.filter((r) => !existingIds.has(r.id))
+  // `alwaysIdTarget` rows are emitted as column-0 id-targets unconditionally: their
+  // subject is declared by a LAYER (the web-app bundle), not by the target home
+  // patch, so an insert would collide on the loader entry id on a fresh install.
+  const existing = rows.filter((r) => r.alwaysIdTarget === true || existingIds.has(r.id))
+  const inserts = rows.filter((r) => r.alwaysIdTarget !== true && !existingIds.has(r.id))
   const parts = []
   if (existing.length) parts.push(existing.map((r) => renderRow(r, "")).join("\n"))
   if (inserts.length) parts.push("- insert:\n" + inserts.map((r) => renderRow(r, "  ")).join("\n"))
@@ -299,50 +356,62 @@ function renderPatch(rows, existingIds) {
 }
 
 function selfTest() {
-  const plan = buildPlan({ profile: "mpd", yes: false, dshHome: join(homedir(), ".mpd-not-real"), agentTeams: true })
+  const plan = buildPlan({ profile: "mpd", yes: false, dshHome: join(homedir(), ".mpd-not-real") })
   if (plan.homePatch !== join(plan.dshHome, "cordis.patch.yml")) { console.error("[install-profile self-test] FAIL: path model"); process.exit(1) }
   const rows = plan.rows.map((r) => r.id)
-  if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("agent-teams")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
-  // The sidebar row + its guard: the same row the bundle patch inserts, with the
-  // SAME expression (a drifted guard is the duplicate-mount / missing-sidebar class
-  // this wave exists to close).
+  if (!rows.includes("mcp-astgrep") || !rows.includes("mpd-codegraph") || !rows.includes("mpd-agent-team") || !rows.includes("preset-mpd")) { console.error("[install-profile self-test] FAIL: row set"); process.exit(1) }
+  // The sidebar row + its guard: the guard is EXTRACTED from the bundle patch, so
+  // the assertion is that the extraction really carries the patch's own
+  // `disabled:` scalar (a stale duplicate used to redden here — that is the drift
+  // class this shape closes).
   const sidebarRow = plan.rows.find((r) => r.id === "mpd-better-sidebar")
   const bundlePatchText = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
-  if (!sidebarRow || sidebarRow.name !== "dsh-better-sidebar" || sidebarRow.disabledYaml !== "!!js " + JSON.stringify(SIDEBAR_GUARD)) { console.error("[install-profile self-test] FAIL: sidebar row + guard"); process.exit(1) }
-  if (!bundlePatchText.includes("disabled: !!js " + JSON.stringify(SIDEBAR_GUARD))) { console.error("[install-profile self-test] FAIL: sidebar guard drifted from the bundle patch"); process.exit(1) }
+  if (!sidebarRow || sidebarRow.name !== "dsh-better-sidebar" || sidebarRow.disabledYaml !== SIDEBAR_GUARD) { console.error("[install-profile self-test] FAIL: sidebar row + guard"); process.exit(1) }
+  if (!/^!!js\s/.test(SIDEBAR_GUARD) || !SIDEBAR_GUARD.includes("dsh-better-sidebar")) { console.error("[install-profile self-test] FAIL: the extracted sidebar guard is not the patch's `!!js` mount guard"); process.exit(1) }
+  if (!bundlePatchText.includes("disabled: " + SIDEBAR_GUARD)) { console.error("[install-profile self-test] FAIL: the extracted sidebar guard is not byte-identical to the bundle patch's own `disabled:` scalar"); process.exit(1) }
   if (!rows.includes("mcp-context7") || !rows.includes("mcp-grepapp")) { console.error("[install-profile self-test] FAIL: mcp-context7/mcp-grepapp rows"); process.exit(1) }
   for (const mcp of ["mcp-astgrep", "mcp-gitbash", "mcp-lsp", "mcp-codegraph"]) {
     const r = plan.rows.find((x) => x.id === mcp)
     if (!r || r.config.toolCallTimeoutMs !== 60000) { console.error("[install-profile self-test] FAIL: " + mcp + " toolCallTimeoutMs"); process.exit(1) }
   }
-  if (!rows.includes("agent-teams") || plan.agentTeamsRow.config.stateDir !== ".mpd/team") { console.error("[install-profile self-test] FAIL: agent-teams row/override"); process.exit(1) }
-  // session-start team gate must ship in the agent-teams row config: `mode: "off"`
-  // is the new default (no auto-provision, upstream parity) and `autoRoute: true`
-  // is the decoupled mechanical complexity gate (must be ENABLED by default).
-  const policy = plan.agentTeamsRow.config.sessionTeamPolicy
-  if (!policy || policy.mode !== "off" || policy.autoRoute !== true || policy.profile !== "mpd" || !Array.isArray(policy.presets) || !policy.presets.includes("mpd")) { console.error("[install-profile self-test] FAIL: agent-teams sessionTeamPolicy (want mode 'off' + autoRoute enabled)"); process.exit(1) }
-  // configuration plane: the upstream-aligned keys must ship with the frozen
-  // local defaults (measured against upstream team_mode; see frozen-contract).
-  const plane = plan.agentTeamsRow.config
-  const planeExpected = { maxParallelMembers: 8, maxMessagesPerRun: 10000, maxWallClockMinutes: 120, maxMemberTurns: 500, messagePayloadMaxBytes: 32768, recipientUnreadMaxBytes: 262144, mailboxPollIntervalMs: 3000, enforcement: "enforce", reclaimStaleAfterMs: 3600000, maxMembers: 16, memberMaxDepth: 1 }
-  for (const [key, want] of Object.entries(planeExpected)) {
-    if (plane[key] !== want) { console.error("[install-profile self-test] FAIL: agent-teams configPlane." + key + " (want " + JSON.stringify(want) + ", got " + JSON.stringify(plane[key]) + ")"); process.exit(1) }
+  // ── Agent Teams: the official plugin set (0.1.7-rc.2) ─────────────────────
+  // The vendored `agent-teams` row is retired with this wave; the three official
+  // rows replace it and their entry NAMES are the official package names, so the
+  // config plane pinned here is the plugins' own.
+  for (const [id, name] of [["mpd-agent-team", "@deepseek-ai/dsh-experimental-agent-team"], ["mpd-tool-agent-team", "@deepseek-ai/dsh-experimental-tool-agent-team"], ["mpd-ui-agent-team", "@deepseek-ai/dsh-experimental-client-ui-agent-team"]]) {
+    const row = plan.rows.find((r) => r.id === id)
+    if (!row || row.name !== name) { console.error("[install-profile self-test] FAIL: official agent-team row " + id + " (want " + name + ")"); process.exit(1) }
   }
+  if (rows.includes("agent-teams")) { console.error("[install-profile self-test] FAIL: the retired vendored agent-teams row is still declared"); process.exit(1) }
+  const teamPlane = plan.rows.find((r) => r.id === "mpd-agent-team").config
+  for (const [key, want] of Object.entries({ maxMembers: 16, maxTasks: 256, maxPendingMessagesPerMember: 64, maxMessageBytes: 32768, disposalTimeoutMs: 5000 })) {
+    if (teamPlane[key] !== want) { console.error("[install-profile self-test] FAIL: mpd-agent-team config." + key + " (want " + JSON.stringify(want) + ", got " + JSON.stringify(teamPlane[key]) + ")"); process.exit(1) }
+  }
+  const toolTeamPlane = plan.rows.find((r) => r.id === "mpd-tool-agent-team").config
+  if (toolTeamPlane.freshProvider !== "spawn" || toolTeamPlane.forkProvider !== "fork") { console.error("[install-profile self-test] FAIL: mpd-tool-agent-team providers"); process.exit(1) }
+  // ── the agent preset plane (0.1.7-rc.2 row model) ─────────────────────────
+  // The registry row must be an UNCONDITIONAL column-0 id-target (its subject is
+  // declared by the web-app layer) and the preset row must carry the composition
+  // extracted VERBATIM from the bundle's own preset patch.
+  const registry = plan.rows.find((r) => r.id === "agent-preset-registry")
+  if (!registry || registry.alwaysIdTarget !== true || registry.config?.default !== "mpd") { console.error("[install-profile self-test] FAIL: agent-preset-registry row (want an always-id-target with default: mpd)"); process.exit(1) }
+  const presetRow = plan.rows.find((r) => r.id === "preset-mpd")
+  if (!presetRow || !presetRow.rawRow) { console.error("[install-profile self-test] FAIL: preset-mpd row must carry the verbatim block from the bundle patch"); process.exit(1) }
+  const presetText = presetRow.rawRow.lines.join("\n")
+  if (!/name: '@deepseek-ai\/dsh-agent-preset'$/m.test(presetText) || !/^\s+id: mpd$/m.test(presetText) || !/^\s+plugins:$/m.test(presetText)) {
+    console.error("[install-profile self-test] FAIL: the extracted preset-mpd block is not a '@deepseek-ai/dsh-agent-preset' row with config.id: mpd + plugins"); process.exit(1)
+  }
+  if (!/prefix: >-/.test(presetText)) { console.error("[install-profile self-test] FAIL: the extracted preset-mpd block lost the persona block scalar"); process.exit(1) }
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
   if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap rows"); process.exit(1) }
   // The two rows the parity gate proved were missing: the extension registry (new with
   // the extension interface) and the team-compact row (absent since it landed in the
   // patch). Both are pinned here so a future removal fails the self-test too.
   if (!rows.includes("mpd-ext") || !rows.includes("mpd-team-compact")) { console.error("[install-profile self-test] FAIL: mpd-ext/team-compact rows"); process.exit(1) }
-  // The row name is a native absolute path, so compare it POSIX-spelled: the pinned fragment is the
-  // path the ROW means, not a spelling, and `p()` builds it with `join` (backslashes on Windows).
-  if (!plan.agentTeamsRow.name.split(sep).join("/").includes("packages/mpd-agent-teams-plugin/lib/index.js")) { console.error("[install-profile self-test] FAIL: agent-teams main-code path"); process.exit(1) }
   // web-compat entry name must be exactly the bare bundle specifier (client-modules
   // contract) — never an absolute path
   const webCompat = plan.rows.find((r) => r.id === "mpd-web-compat")
   if (!webCompat || webCompat.name !== "@mpd-dsh/mpd") { console.error("[install-profile self-test] FAIL: web-compat entry name (want '@mpd-dsh/mpd', got " + (webCompat && webCompat.name) + ")"); process.exit(1) }
-  // agent-teams row must carry the bundle's profiles.mpd roster verbatim
-  if (!plan.agentTeamsRow.configYaml || !plan.agentTeamsRow.configYaml.lines.some((l) => l.includes("taskPlanning: captain"))) { console.error("[install-profile self-test] FAIL: agent-teams profiles.mpd missing"); process.exit(1) }
   // id-target contract: rows already present in the target home patch render as
   // id-target overrides (not inserts); fresh rows render under `- insert:`
   // (under .qa-reloc/ — a gitignored scratch root, so failure residue never commits)
@@ -350,16 +419,24 @@ function selfTest() {
   mkdirSync(tmp, { recursive: true })
   writeFileSync(join(tmp, "cordis.patch.yml"), "- id: mcp-astgrep\n  name: old\n- id: mpd-tools\n  name: old\n")
   try {
-    const p2 = buildPlan({ profile: "mpd", yes: false, dshHome: tmp, agentTeams: true })
+    const p2 = buildPlan({ profile: "mpd", yes: false, dshHome: tmp })
     const existing = readExistingIds(p2.homePatch)
     if (!existing.has("mcp-astgrep") || !existing.has("mpd-tools") || existing.has("mpd-ulw")) { console.error("[install-profile self-test] FAIL: existing-id scan"); process.exit(1) }
     const patch = renderPatch(p2.rows, existing)
     if (!/^- id: mcp-astgrep\b/m.test(patch) || !/^- insert:[\s\S]*^ {2}- id: mpd-ulw\b/m.test(patch)) { console.error("[install-profile self-test] FAIL: id-target render (existing rows must not be inserts)"); process.exit(1) }
     if (/- insert:[\s\S]*^ {0,2}- id: mcp-astgrep\b/m.test(patch)) { console.error("[install-profile self-test] FAIL: existing row rendered as insert"); process.exit(1) }
+    // The registry row is an id-target EVEN on a fresh home patch (no existing ids):
+    // its subject lives in the web-app layer, not in the target patch.
+    const fresh = renderPatch(p2.rows, new Set())
+    if (!/^- id: agent-preset-registry\b/m.test(fresh)) { console.error("[install-profile self-test] FAIL: agent-preset-registry must render as a column-0 id-target on a fresh install"); process.exit(1) }
+    if (/- insert:[\s\S]*^ {0,2}- id: agent-preset-registry\b/m.test(fresh)) { console.error("[install-profile self-test] FAIL: agent-preset-registry rendered as an insert (duplicate loader entry id)"); process.exit(1) }
+    // The preset row renders inside the insert list with its nested children intact.
+    if (!/^ {2}- id: preset-mpd\b/m.test(fresh)) { console.error("[install-profile self-test] FAIL: preset-mpd must render as an insert row at indent 2"); process.exit(1) }
+    if (!/^ {8}- id: persona\b/m.test(fresh)) { console.error("[install-profile self-test] FAIL: the preset row's inline child rows must keep their nesting (persona not found at indent 8)"); process.exit(1) }
   } finally {
     try { rmSync(tmp, { recursive: true, force: true }) } catch { /* best-effort cleanup */ }
   }
-  console.log("[install-profile self-test] ok: path model + row set + agent-teams main-code path + profiles.mpd + web-compat entry + id-target render verified")
+  console.log("[install-profile self-test] ok: path model + row set + official agent-team rows + preset row (verbatim) + registry id-target + web-compat entry + id-target render verified")
 }
 
 function main() {
@@ -372,14 +449,14 @@ function main() {
   console.log("[install-profile] dshHome=" + plan.dshHome + " profile=" + o.profile + " write=" + o.yes)
   console.log("[install-profile] profileDir=" + plan.profileDir)
   console.log("[install-profile] homePatch=" + plan.homePatch)
-  console.log("[install-profile] presets -> " + join(plan.userPresets, "mpd-*"))
+  console.log("[install-profile] preset row <- " + plan.presetPatchPath + " (verbatim preset-mpd block; NO $DSH_HOME/.agent-presets copy — the row model has no preset root)")
   console.log("[install-profile] toolchain missing=" + plan.needsToolchain + " (use --skip-toolchain to skip)")
-  console.log("[install-profile] rows about to be written to home patch: " + plan.rows.length + " (id-target=" + plan.rows.filter((r) => existingIds.has(r.id)).length + ", insert=" + plan.rows.filter((r) => !existingIds.has(r.id)).length + ")")
+  const idTargeted = plan.rows.filter((r) => r.alwaysIdTarget === true || existingIds.has(r.id)).length
+  console.log("[install-profile] rows about to be written to home patch: " + plan.rows.length + " (id-target=" + idTargeted + ", insert=" + (plan.rows.length - idTargeted) + ")")
   console.log(patchText)
   if (!o.yes) { console.log("[install-profile] DRY-RUN done (nothing written); add --yes to actually install, and --dsh-home to override the target"); return }
 
   mkdirSync(plan.profileDir, { recursive: true })
-  mkdirSync(plan.userPresets, { recursive: true })
   // profile manifest (bundles use only what ships with DSH; all capabilities go through the home patch)
   writeFileSync(join(plan.profileDir, "package.json"), JSON.stringify({
     name: "dsh-profile-" + o.profile, private: true,
@@ -407,10 +484,12 @@ function main() {
     exports: { ".": "./index.js", "./client": "./client.js", "./package.json": "./package.json" },
     dsh: { client: { inject: [], platform: "web" } }
   }, null, 2) + "\n")
-  // copy presets
-  const ids = readdirSync(plan.presetsDir).filter((d) => d === "mpd" || d.startsWith("mpd-"))
-  for (const id of ids) cpSync(join(plan.presetsDir, id), join(plan.userPresets, id), { recursive: true })
-  console.log("[install-profile] wrote profile/ home patch/ presets(" + ids.length + ") + web-compat shim @mpd-dsh/mpd")
+  // NO preset copy: the 0.1.7-rc.2 preset model has no preset ROOT to scan. The
+  // mpd composition ships as the `preset-mpd` ROW inside the home patch written
+  // above (extracted verbatim from the bundle's own preset patch), and
+  // `agent-preset-registry` is id-targeted to `default: mpd` there. A legacy
+  // `.agent-presets` copy would be dead bytes the harness never reads.
+  console.log("[install-profile] wrote profile/ + home patch (" + plan.rows.length + " rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd")
   // ONE npm install for ALL toolchain packages: separate --no-save installs prune
   // each other (npm deletes packages absent from the single command).
   const toolchainPkgs = ["@ast-grep/cli", "@colbymchenry/codegraph@1.5.0"]

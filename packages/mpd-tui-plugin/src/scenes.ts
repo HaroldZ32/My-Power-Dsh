@@ -34,6 +34,7 @@ import { boardLines, readBoardState, statusLine } from "./state.js"
 import { clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
 import { approvalPhrase, planProjectionLines, readTeamWorkflow, teamWorkflowLines } from "./team-state.js"
+import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 
 /** Unique, kebab-case scene id. */
 export const BOARD_SCENE_ID = "mpd-tui-board"
@@ -58,10 +59,17 @@ export const DISCARD_WINDOW_MS = 10_000
  */
 export const SCENE_ROW_MAX_CELLS = 4000
 
-/** The tool that approves a staged plan (adopted, `lib/tools.js:883`). */
-export const APPROVE_TOOL = "agent_teams_approve"
-/** The tool that archives a team (adopted, `lib/tools.js:2329`) — the Web discard's own outcome. */
-export const DISCARD_TOOL = "agent_teams_delete"
+/**
+ * Why the plan surface cannot mutate anything on this harness (0.1.7).
+ *
+ * The two tools this surface used to call — the retired plugin's `agent_teams_approve` (approve a
+ * STAGED plan) and `agent_teams_delete` (archive a team) — are GONE with the plugin that registered
+ * them, and the OFFICIAL Agent Teams plane has NO equivalent: a team IS its Lead session (there is
+ * nothing separate to approve or archive) and `teamListTasks` publishes no staged plan to approve.
+ * Every refusal therefore states this instead of naming a tool that could be looked up.
+ */
+export const PLAN_MUTATION_UNAVAILABLE =
+  "no plan approval exists on the official Agent Teams plane (0.1.7): a team is its Lead session and its board is live"
 
 /**
  * One mutation outcome. `error` is the tool's OWN text (model-authored content can
@@ -81,7 +89,7 @@ export interface PlanActionOutcome {
  * never resolves a harness service itself (§6.1).
  */
 export interface PlanActions {
-  /** Both adopted tools are registered in this composition. */
+  /** Whether this composition can perform the mutations at all (never true on the 0.1.7 plane). */
   available(): boolean
   approve(input: { teamId: string; confirmation: string; captainSessionId?: string }): Promise<PlanActionOutcome>
   discard(input: { captainSessionId?: string }): Promise<PlanActionOutcome>
@@ -90,8 +98,8 @@ export interface PlanActions {
 /** The honest default: what a composition without the executor gets (never a fake success). */
 export const UNAVAILABLE_PLAN_ACTIONS: PlanActions = {
   available: () => false,
-  approve: async () => ({ ok: false, error: `${APPROVE_TOOL} is not reachable in this composition` }),
-  discard: async () => ({ ok: false, error: `${DISCARD_TOOL} is not reachable in this composition` }),
+  approve: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
+  discard: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
 }
 
 /** Navigation shared by the surfaces (which team, and where Esc returns). */
@@ -152,7 +160,7 @@ function usableKit(React: unknown, ui: any): boolean {
 }
 
 /** Read one workflow, never throwing: on top of `readTeamWorkflow`'s own guard this is the last net. */
-function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[]): TeamWorkflow | undefined {
+function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[], teamViews?: () => readonly DshTeamView[]): TeamWorkflow | undefined {
   try {
     let holdIds: readonly string[] = []
     try {
@@ -160,7 +168,13 @@ function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[
     } catch {
       holdIds = []
     }
-    return readTeamWorkflow(workspaceRoot(), holdIds)
+    let views: readonly DshTeamView[] = []
+    try {
+      views = teamViews?.() ?? []
+    } catch {
+      views = []
+    }
+    return readTeamWorkflow(workspaceRoot(), holdIds, views)
   } catch {
     return undefined
   }
@@ -203,6 +217,7 @@ function createBoardComponent(
   holds: () => readonly string[],
   nav: SceneNav,
   openScene: (id: string) => boolean,
+  teamViews?: () => readonly DshTeamView[],
 ): unknown {
   return function MpdTuiBoard(props: TuiScenePropsLike): unknown {
     const React = props?.React
@@ -216,7 +231,7 @@ function createBoardComponent(
 
     const read = (): string[] => {
       try {
-        return boardLines(readBoardState(workspaceRoot(), home()), holds())
+        return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), holds())
       } catch {
         return ["board state unreadable"]
       }
@@ -314,6 +329,7 @@ function createTeamComponent(
   holds: () => readonly string[],
   nav: SceneNav,
   openScene: (id: string) => boolean,
+  teamViews?: () => readonly DshTeamView[],
 ): unknown {
   return function MpdTuiTeam(props: TuiScenePropsLike): unknown {
     const React = props?.React
@@ -330,7 +346,7 @@ function createTeamComponent(
         root = "?"
       }
       try {
-        workflow = readWorkflow(workspaceRoot, holds)
+        workflow = readWorkflow(workspaceRoot, holds, teamViews)
       } catch {
         workflow = undefined
       }
@@ -477,7 +493,7 @@ function createPlanComponent(
   nav: SceneNav,
   openScene: (id: string) => boolean,
   actions: PlanActions,
-): unknown {
+  teamViews?: () => readonly DshTeamView[],): unknown {
   return function MpdTuiPlan(props: TuiScenePropsLike): unknown {
     const React = props?.React
     const ui = props?.ui
@@ -508,7 +524,7 @@ function createPlanComponent(
     const setScroll = scrollState[1] as (next: number) => void
 
     const refresh = (): void => {
-      setView(readWorkflow(workspaceRoot, holds))
+      setView(readWorkflow(workspaceRoot, holds, teamViews))
       // Barrier 3: the echo is EMPTY on every entry and on every explicit refresh.
       setEcho("")
       setArmedAt(0)
@@ -523,7 +539,7 @@ function createPlanComponent(
         timer = setInterval(() => {
           // The automatic re-read refreshes the FACTS only: the consent echo and the 10 s
           // discard arm are cleared by the explicit `r` key (frozen §4.2 barrier 3 / §4.3).
-          setView(readWorkflow(workspaceRoot, holds))
+          setView(readWorkflow(workspaceRoot, holds, teamViews))
         }, BOARD_REFRESH_MS)
       } catch {
         timer = undefined
@@ -585,7 +601,7 @@ function createPlanComponent(
         return
       }
       if (!actions.available()) {
-        setMessage(`approve failed: ${APPROVE_TOOL} is not registered in this composition`)
+        setMessage(`approve failed: ${PLAN_MUTATION_UNAVAILABLE}`)
         return
       }
       setBusy(true)
@@ -615,7 +631,7 @@ function createPlanComponent(
         // Barrier 5: the record is re-read after the call settles, then keys are live again.
         // The echo is NOT cleared here: §4.5 keeps it on every refused outcome.
         setBusy(false)
-        setView(readWorkflow(workspaceRoot, holds))
+        setView(readWorkflow(workspaceRoot, holds, teamViews))
       }
     }
 
@@ -629,7 +645,7 @@ function createPlanComponent(
       }
       setArmedAt(0)
       if (!actions.available()) {
-        setMessage(`discard failed: ${DISCARD_TOOL} is not registered in this composition`)
+        setMessage(`discard failed: ${PLAN_MUTATION_UNAVAILABLE}`)
         return
       }
       setBusy(true)
@@ -643,7 +659,7 @@ function createPlanComponent(
         setMessage(`discard failed: ${String((error as Error)?.message ?? error)}`)
       } finally {
         setBusy(false)
-        setView(readWorkflow(workspaceRoot, holds))
+        setView(readWorkflow(workspaceRoot, holds, teamViews))
       }
     }
 
@@ -788,6 +804,7 @@ export function registerScene(
   home: () => string,
   holds: () => readonly string[] = () => [],
   planActions: PlanActions = UNAVAILABLE_PLAN_ACTIONS,
+  teamViews?: () => readonly DshTeamView[],
 ): SceneSeam {
   let outcome: SeamOutcome = { state: "absent", detail: "tuiScenes was not injected" }
   let scenes: TuiScenesLike | undefined
@@ -816,9 +833,9 @@ export function registerScene(
     }
     scenes = runtime
     try {
-      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene) }, scoped)
-      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene) }, scoped)
-      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions) }, scoped)
+      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews) }, scoped)
+      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) }, scoped)
+      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, teamViews) }, scoped)
       // `open(unknownId)` is how the host reports an unregistered scene; calling
       // it here would OPEN a scene, so it is never used as a probe. The host
       // exposes no scene read-back, hence `requested`.
@@ -849,9 +866,9 @@ export function registerScene(
 }
 
 /** The status line the `/mpd status` action prints. */
-export function boardSummary(workspaceRoot: () => string, home: () => string): string {
+export function boardSummary(workspaceRoot: () => string, home: () => string, teamViews?: () => readonly DshTeamView[]): string {
   try {
-    return statusLine(readBoardState(workspaceRoot(), home()))
+    return statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []))
   } catch {
     return "mpd: state unreadable"
   }

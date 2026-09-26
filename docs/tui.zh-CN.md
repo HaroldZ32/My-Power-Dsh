@@ -42,7 +42,8 @@ TUI 包刻意不带 `cordis.patch.yml`——第二次挂载会产生重复的 lo
 `Observed`（一次被记录的真实 dsh-TUI 启动，加上宿主自身的 `--dump-config`）。仅有
 `--dump-config` 只能证明组合，不能证明加载——崩溃特征计数来自真实启动。
 
-TUI 会话默认使用 **mpd** 预设，由组合中的 `dsh-tui-agent-presets` 行承载（依据是抓取到的会话
+TUI 会话默认使用 **mpd** 预设，由 id 定向的 `agent-preset-registry` 行（`default: mpd`）与
+`presets/mpd.patch.yml` 中的 `preset-mpd` 行共同承载（依据是抓取到的会话
 记录，而不是 patch 文本）。
 
 任何实机通道的前提：stdout 不是 TTY 时 `dsh-tui` 拒绝启动
@@ -55,13 +56,13 @@ TUI 会话默认使用 **mpd** 预设，由组合中的 `dsh-tui-agent-presets` 
 
 | Web 界面 | TUI 等价物 | 证据级别 |
 |---|---|---|
-| AgentTeams 侧边栏面板 | `tuiScenes` 全屏面板 + `tuiStatus` 状态行 | 已在实机通道中渲染——`evidence/tui/live/20260915T063140Z/result.json`（t8；7 个界面中 6 个） |
+| Agent Teams 面板（会话头部） | `tuiScenes` 全屏面板 + `tuiStatus` 状态行 | 已在实机通道中渲染——`evidence/tui/live/20260915T063140Z/result.json`（t8；7 个界面中 6 个） |
 | Workmate 库标签页 | `tuiCommandTrees`（`/mpd …`）+ `tuiDialogs` | 同上（同一实机通道证据） |
 | — | `tuiStatus` 状态行；`tuiRenderers` 转写行**宿主未投影** | 状态行已渲染；渲染器行**未渲染**——见明确不声明第 10 条 |
 | — | `tuiSettingsSections`（mpd.jsonc 可调项的 `/settings` 区块） | 已渲染——同上；该区块写明与 `<workspace>/.mpd/mpd.jsonc` 的**打通**、重启提示与"绝不丢失"条款（§6.2），通道以 `allPatterns` 断言这段披露文本 |
 | — | `tuiShortcuts` | 已渲染——同上 |
-| AgentTeams 团队工作流面板（id/名称/阶段、计划审阅状态、成员表、带 `failed-dep=` 标记的任务 DAG、邮箱尾部） | `mpd-tui-team` 场景 —— `/mpd team` | 由同一份持久记录渲染；界面契约、完整行清单与每一行的证据层级见一致性台账 `docs/tui-parity.md`（打开方式见下文 §3.2） |
-| AgentTeams 计划批准面板（批准 / 丢弃） | `mpd-tui-plan` 场景 —— `/mpd plan` | 同一台账；批准必须逐字输入短语并按 `Ctrl+X`，绝不接受裸按键（下文 §3.2） |
+| 团队工作流（成员表和成员阶段、共享任务板） | `mpd-tui-team` 场景 —— `/mpd team` | 场景由 TUI 命令树注册（`packages/mpd-tui-plugin/src/command-trees.ts`）；界面契约与每一行的证据层级见一致性台账 `docs/tui-parity.md`（打开方式见下文 §3.2） |
+| — | `mpd-tui-plan` 场景 —— `/mpd plan` | 一个 TUI 场景；它当初围绕的"暂存计划批准"语义属于已退役的内置插件，现已不存在（§3.2） |
 
 13 个接缝在范围内：本波次新建 8 个（settings 区块、场景、对话框、状态、快捷键、渲染器**注册**、
 决策事件尝试、组合行）；已有 5 个由既有 bundle 承载（会话事件、技能打包、主题资源、系统提示区块、
@@ -96,18 +97,24 @@ revision 驱动 scope 写入、拒绝非法草稿、带原因渲染为只读—�
 `mpd` 栏，编辑一项并保存——恰好一个活动会话时，工作区的 `<workspace>/.mpd/mpd.jsonc` 会在保留注释的
 前提下改变；否则打通功能会大声拒绝（`no-live-session` / `ambiguous-multi-root`）并说明取值并未丢失。
 
-### 3.2 团队工作流与计划批准界面（波次 `tui-team-surface`）
+### 3.2 团队工作流与计划界面（波次 `tui-team-surface`）
 
-Web 版为已路由团队渲染的两个界面，现在在 TUI 中有了对应物，并且用有文档记载的命令打开，而不是隐藏手势：
+TUI 命令树暴露 `/mpd team` 与 `/mpd plan`
+（`packages/mpd-tui-plugin/src/command-trees.ts` 就是动作清单：`board`、`team`、`plan`、
+`workmates`、`status`），以及带 key 的状态行与看板场景。
 
-| 你想做什么 | 输入 | 然后 |
-|---|---|---|
-| 查看团队工作流（id/名称/阶段、计划审阅状态、成员表、带 `failed-dep=` 标记的任务 DAG、邮箱尾部） | `/mpd team`，或在面板中按 `a` | `p` 跳到面板；`a` 跳到同一团队的计划界面；`r` 重新读取 |
-| 批准待定计划 | `/mpd plan`，或在团队工作流中按 `a` | 逐字输入 `approve <teamId>`（界面上显示的 id，也就是记录自身的 id），然后按 `Ctrl+X`；`Ctrl+R` 无条件重读 |
-| 丢弃待定计划 | `/mpd plan` | 在 10 秒布置窗口内按两次 `Ctrl+D` |
-| 离开去对话 | `/mpd plan` | `Esc`——它永不产生变更 |
+**本节过去记录的"暂存计划批准"工作流已退役，本页对它不作任何主张。** 它属于内置的
+`agent-teams` 插件 —— 它的批准/删除工具调用、逐字输入的批准短语、`Ctrl+X` / `Ctrl+D` 手势，
+以及它们所依赖的持久 `.mpd/team/team.json` 记录。本 bundle 现在挂载的官方 Agent Teams 插件
+**没有暂存计划，也没有批准步骤**：Lead 用 `spawn_teammate` 创建队友、用 `team_task_create` 开
+通道，共享任务板就是计划（见 `docs/user-guide.zh-CN.md` §6 与
+`docs/plan-0.1.7-adaptation.md` §3）。团队状态保存在 Lead 的会话日志里，因此没有可供 TUI 界面
+批准的团队记录。现在也不再有任何 TUI 按键序列会批准计划。
 
-关于这一对界面，有三点事实是承重的，因此在此明说而不是暗示。**误批准在构造上不可能发生**：回显行初始为空且每次刷新都被清空，只有 `Ctrl+X` 会产生变更，且仅在逐字匹配由记录自身 id 构成的短语时才会变更，非 staged 团队只接受 `Esc`。**TUI 自身永不写入团队状态**：批准与丢弃都是经由适配器发起的工具调用（`agent_teams_approve`、`agent_teams_delete`），包内不含任何写原语。**诚实的限制被记录而不是被隐藏**：一项偏差先实测为未修复、随后在波次内被**关闭**（真实提交后 §4.5 的判定行曾不可见；t8 修复后现已渲染），一项已验证通道的漂移经 captain 的同提交重新固定与一次验证任务重试而被**解决**，而契约的依赖残留限制与一个无法定位的契约行标签仍在 `docs/tui-parity.md` §4–§5 中保持**未修复**——引用本页的状态之前请先读那一页。`alt+t` 是尽力而为的快捷键；`/mpd team` 才是保底入口。
+这一块对 TUI 包仍然成立的事实：它对团队与工作区状态是**只读**的 —— 包内不含任何写原语，任何团队
+变更都是模型经由适配器发起的工具调用。`/mpd team` 是团队场景的保底入口，`alt+t` 是通往它的尽力
+而为快捷键。`tui-team-surface` 波次记录的限制（依赖残留限制与一个无法定位的契约行标签）仍在
+`docs/tui-parity.zh-CN.md` §4–§5 中保持**未修复** —— 引用本页的状态之前请先读那一页。
 
 ## 4. 准入与分发产物
 
@@ -326,9 +333,15 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 
 计数：**usable 22 · inert 2 · web-only 1 · 合计 25**。
 
+**这张历史表在 0.1.7-rc.2 上有一处变化：** 下表 `mpd-agent-teams-plugin` 那一行记录的是
+2026-09-15 的测量，当时内置的 `agent-teams` 主体**确实**被挂载。它现在已**从组合中退役**
+（没有任何 loader 行挂载它；它的团队工具与侧边栏面板都不属于随包会话），本 bundle 改为挂载三个
+**官方** Agent Teams 包（`mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team`）。请把
+那一行读作历史，而不是当前能力。
+
 | 包 | 角色 | 分类 | 实测见证 |
 |---|---|---|---|
-| `mpd-bundle` | 组合层（bundle patch 本身） | usable | 组合配置含 24 行（含 `mpd-tui` 与 `dsh-tui-agent-presets` 覆盖）；真实启动 0 崩溃特征 |
+| `mpd-bundle` | 组合层（bundle patch 本身） | usable | 组合配置含 `mpd-tui` 与 `agent-preset-registry` id-target；真实启动 0 崩溃特征 |
 | `mpd-dsh-adapter-plugin` | 与宿主接缝的唯一接触面 | usable | 应用期日志 `[mpd-dsh-adapter] mpdDsh provided` |
 | `mpd-config-plugin` | mpd.jsonc 运行时配置层 | usable | 工具 `mpd_config_get`、`mpd_config_reload` |
 | `mpd-tools-plugin` | 写入守卫 / 截断 / waterfall | usable | 组合行 `mpd-tools` 及其配置；不拥有工具名 |
@@ -345,7 +358,7 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 | `mpd-team-compact-plugin` | 已结束团队的压缩 | usable | 工具 `mpd_team_compact_run`、`mpd_team_compact_status` |
 | `mpd-bootstrap-plugin` | 提供 bundle 技能语料（不复制到 HOME） | usable | 应用期 `skill corpus served from <bundle>/skills` |
 | `mpd-tui-plugin` | TUI 原生界面包（本版本） | usable | 组合行 `mpd-tui` → `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js` |
-| `mpd-agent-teams-plugin` | 采用的 AgentTeams 插件（工具 + Web 面板） | usable | 17 个 `agent_teams_*` 工具 |
+| `mpd-agent-teams-plugin` | 内置的 AgentTeams 插件（工具 + Web 面板）—— **已于 0.1.7-rc.2 从组合中退役；本行是 2026-09-15 的历史测量** | 当时 usable | 17 个团队工具 |
 | `mpd-mcp-astgrep` | ast-grep MCP 服务器（stdio 启动器） | usable | 3 个 `mcp__ast_grep__*` 工具 |
 | `mpd-mcp-lsp` | LSP MCP 服务器（stdio 启动器） | usable | 8 个 `mcp__lsp__*` 工具 |
 | `mpd-mcp-codegraph` | codegraph MCP 服务器（stdio 启动器） | usable | 服务器在进程内运行；**在该沙箱**中 0 个工具，因为 CodeGraph 策略排除含 `.mpd` 的项目路径（沙箱现象，不是 TUI 限制） |
@@ -388,8 +401,9 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
    任何拦截。
 2. **身份门控服务** —— `storage.local`、`messages.observe` 与受中介的 `registerCommand` 路径需要
    同样的已核实组件身份；因此效果台账目前把我们的界面记为 `undeclared`。
-3. **仅 Web 的界面** —— agent-teams **侧边栏**、workmate 标签页
-   （`dsh.client.platform = web`）在 TUI 中不渲染。§3 的 TUI 等价物不是像素级或功能级对齐声明。
+3. **仅 Web 的界面** —— workmate 标签页
+   （`dsh.client.platform = web`）在 TUI 中不渲染，官方 Agent Teams 面板同样是 Web 客户端界面。
+   §3 的 TUI 等价物不是像素级或功能级对齐声明。
 4. **引擎版本偏差** —— 宿主打印
    `⚠ dsh 引擎为 0.1.5-rc.2，比本界面验证过的 0.1.5-rc.1 新`，并继续运行。我们的验证针对已安装的
    `0.1.5-rc.2` 引擎，而不是界面验证时所用的修订。本页不把任何结论锚定在生态的当前状态上。

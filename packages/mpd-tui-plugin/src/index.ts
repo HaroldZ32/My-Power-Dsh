@@ -52,7 +52,9 @@ import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } f
 import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
-import { boardSummary, APPROVE_TOOL, DISCARD_TOOL, registerScene, type PlanActions } from "./scenes.js"
+import { boardSummary, PLAN_MUTATION_UNAVAILABLE, registerScene, type PlanActions } from "./scenes.js"
+import { liveTeamViews } from "./team-state.js"
+import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerCommandTrees } from "./command-trees.js"
 import { registerShortcuts } from "./shortcuts.js"
 import { createDialogs } from "./dialogs.js"
@@ -226,49 +228,16 @@ export function workspaceResolver(ctx: PluginContextLike, adapter?: ReturnType<t
  * @returns the executor.
  */
 export function createPlanActions(adapter: ReturnType<typeof createDshAdapter>, log: Log): PlanActions {
-  const registered = (toolName: string): boolean => {
-    try {
-      return adapter.hasTool(toolName) === true
-    } catch {
-      return false
-    }
-  }
-  const agentFor = (captainSessionId?: string): unknown => {
-    try {
-      if (typeof captainSessionId === "string" && captainSessionId.length > 0) return adapter.liveAgent(captainSessionId)
-      return adapter.liveAgents()[0]
-    } catch {
-      return undefined
-    }
-  }
-  const errorText = (error: unknown): string => {
-    if (typeof error === "string") return error
-    const message = (error as { message?: unknown } | undefined)?.message
-    return typeof message === "string" && message.length > 0 ? message : "the tool call failed"
-  }
-  const run = async (toolName: string, args: Record<string, unknown>, captainSessionId?: string): Promise<{ ok: boolean; value?: unknown; error?: string }> => {
-    if (!registered(toolName)) return { ok: false, error: `${toolName} is not registered in this composition` }
-    const agent = agentFor(captainSessionId)
-    if (agent === undefined || agent === null) {
-      const id = typeof captainSessionId === "string" ? captainSessionId : ""
-      return {
-        ok: false,
-        error: id === "" ? `no live session is attached in this process, so ${toolName} cannot be called` : `the captain session ${id} is not attached in this process`,
-      }
-    }
-    try {
-      const result = await adapter.executeTool({ name: toolName, arguments: args, agent })
-      if (result.ok !== true) return { ok: false, error: errorText(result.error) }
-      return { ok: true, value: result.value }
-    } catch (error) {
-      log.debug(`${toolName} call failed: ${String((error as Error)?.message ?? error)}`)
-      return { ok: false, error: errorText(error) }
-    }
-  }
+  // 0.1.7: the two tools this executor used to call are RETIRED and the official plane has no
+  // replacement (see `PLAN_MUTATION_UNAVAILABLE`), so the production executor is PERMANENTLY
+  // unavailable and says exactly why. It is deliberately not a fake that "might work": the plan
+  // surface tells the user the truth, and no tool name that no longer exists is looked up.
+  void adapter
+  void log
   return {
-    available: () => registered(APPROVE_TOOL) && registered(DISCARD_TOOL),
-    approve: (input) => run(APPROVE_TOOL, { confirmation: input.confirmation }, input.captainSessionId),
-    discard: (input) => run(DISCARD_TOOL, {}, input.captainSessionId),
+    available: () => false,
+    approve: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
+    discard: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
   }
 }
 
@@ -303,6 +272,11 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   const adapter = resolveAdapter(ctx)
   const workspaceRoot = workspaceResolver(ctx, adapter)
   const home = (): string => homeDir()
+  // The OFFICIAL team readout for the CURRENT workspace, resolved per call through the adapter
+  // (never cached: one host serves many sessions with different workspaces). Every team surface —
+  // the board, the status line, the workflow scene and the plan scene — reads it through this ONE
+  // provider, so a missing seam degrades them together (`[]`) instead of one at a time.
+  const teamViews = (): readonly DshTeamView[] => liveTeamViews(adapter, workspaceRoot())
 
   // Measured once, at apply: an append is only safe when the event type is known
   // to a reachable dsh-session copy (iron rule 2).
@@ -352,13 +326,13 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   const noticeRead = (): string | undefined => composeNotices(bridgeRead(), watchdogFrontDoor.notice())
 
   status = resolved.statusLine
-    ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead)
+    ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews)
     : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }), refresh: () => {} }
   // The two team surfaces (frozen §3): registered on the SAME `tuiScenes` seam as the
   // board. The hold row reads the watchdog's own durable view (never a fabricated "ok"),
   // and the plan surface mutates only through the adapter-backed executor.
   const scene = resolved.scene
-    ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log))
+    ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), teamViews)
     : {
         outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }),
         open: () => false,
@@ -377,7 +351,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openTeam: () => scene.openTeam(),
         refreshStatus: () => status.refresh(),
         pickWorkmate: () => {
-          void pickWorkmate(log, dialogs, workspaceRoot, home, scene)
+          void pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews)
         },
       })
     : { outcome: (): SeamOutcome => ({ state: "absent" as const, detail: "disabled by config" }) }
@@ -387,9 +361,9 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openBoard: () => scene.open(),
         openTeam: () => scene.openTeam(),
         openPlan: () => scene.openPlan(),
-        statusText: () => boardSummary(workspaceRoot, home),
+        statusText: () => boardSummary(workspaceRoot, home, teamViews),
         workmatesText: () => {
-          const state = readBoardState(workspaceRoot(), home())
+          const state = readBoardState(workspaceRoot(), home(), teamViews())
           return state.workmates.count === 0
             ? "mpd workmates: none"
             : `mpd workmates (${state.workmates.count}): ${state.workmates.names.join(", ")}`
@@ -460,8 +434,9 @@ async function pickWorkmate(
   workspaceRoot: () => string,
   home: () => string,
   scene: ReturnType<typeof registerScene>,
+  teamViews: () => readonly DshTeamView[],
 ): Promise<void> {
-  const names = readBoardState(workspaceRoot(), home()).workmates.names
+  const names = readBoardState(workspaceRoot(), home(), teamViews()).workmates.names
   if (!dialogs.available() || names.length === 0) {
     scene.open()
     return

@@ -212,7 +212,8 @@ bun scripts/mpd-ext.mjs --validator                           # 本次运行实�
 之前请先重新打包。
 
 v1 中**不存在**、因此不要围绕它做规划的东西：`mpd_ext_reload`、YAML 流程、MCP resources/prompts、
-图形面板、应用市场或远程下载、由扩展贡献的 agent preset，以及扩展角色成为 agent-teams 队友。
+图形面板、应用市场或远程下载、由扩展贡献的 agent preset，以及扩展角色自己变成队友（只有 Lead 用
+官方 `spawn_teammate` 按名字创建，才存在队友）。
 
 ## 8. 故障排查
 

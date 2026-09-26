@@ -27,11 +27,11 @@ hold 生效的 adopted 派发闸门、以及展示它的 Web/TUI 界面，属于
 ## 状态存放位置
 
 所有内容都位于**当前会话的工作区**之下（每次调用都通过 adapter 解析——绝不缓存，也绝不
-假设是 `process.cwd()`），与 adopted 的团队记录并列。adopted 的 `team.json` 始终只有
-`state.js` 一个写入者；本包只读它。
+假设是 `process.cwd()`）。0.1.7 已让内置的 `agent-teams` 插件及其 `<stateDir>/<teamId>/team.json`
+退役，因此这条路径上**不再有任何团队文件**：花名册与任务板改为通过 adapter
+（`dsh.teamLiveTeams()`，即**官方** Agent Teams 的实时读数）**实时**读取，下面每个文件都只属于本包。
 
 ```
-<workspace>/<stateDir>/<teamId>/team.json                          adopted，本包只读
 <workspace>/<stateDir>/watchdog/heartbeat/<memberKey>.jsonl        每行一条心跳
 <workspace>/<stateDir>/watchdog/scene/<teamId>/<iso>.json          每次事件一个不可变文件
 <workspace>/<stateDir>/watchdog/scene/<teamId>/latest.json         重启后读取的指针
@@ -40,7 +40,7 @@ hold 生效的 adopted 派发闸门、以及展示它的 Web/TUI 界面，属于
 <workspace>/<stateDir>/watchdog/read-watermark.json                每个读取者的确认水位
 ```
 
-`<stateDir>` 默认为 `.mpd/team`（与 adopted 插件相同的默认值），可在本行配置中修改。
+`<stateDir>` 默认为 `.mpd/team`（为延续旧默认值而保留），可在本行配置中修改。`/watchdog/` 命名空间是本包唯一写入的位置。
 
 ## 心跳
 
@@ -153,21 +153,22 @@ OBSERVE（每个 tickIntervalMs）—— 由通道结论决定状态
                          永不升级，永不 hold）
 ```
 
-streak 以 `<taskId>\0<attemptId>` 为键，因此换用新 attempt 的重试从零开始。**静默候选不是
-所有未终结任务**。候选资格是**一个析取**——*该任务曾被交给某人*：
+streak 以 `<teamId>\0<taskId>\0<attemptId>` 为键，其中 `attemptId` 是**世代令牌**：官方任务板单调
+递增的 `revision`（0.1.7 用它取代了旧记录的 attempt id，见 `src/team.ts`），因此重新认领或重新开启任务
+都会从零开始。**静默候选不是所有未终结任务**。候选资格是**一个析取**——*该任务曾被交给某人*：
 
-* **有派发记录**——非空 `attemptId`：被采纳的调度器在派发时写入（`lib/scheduler.js` 的
-  `beginTaskAttempt(task, member)`，在工单到达成员之前），成员自己的 `claim_task` 复用同一个值；或者
+* **该任务已被拥有**——官方任务板恰好在 `team_task_update action=claim` / `reassign` 时写入
+  `ownerName`，投影把这一点报为 `dispatched`；或者
 * **该任务拥有自己的心跳**——任何一代都算，因为被写过心跳的任务确实被开工过。这一半刻意读取**未过滤**
   的团队范围心跳：下面 W11-2 的那一片回答的是“当前这一代是否静默”，而不是“这个任务是否曾被交出去”，
-  因此一个被开工之后 attempt 又被撤销的任务仍然可被观察。而写着**别的团队**的心跳对本任务不构成任何
+  因此一个被开工之后 owner 又变更过的任务仍然可被观察。而写着**别的团队**的心跳对本任务不构成任何
   证据，不能让该任务成为候选。
 
-两者皆无的任务，从未被交给任何人：这正是仍在 Web 面板等待用户批准的 `staged` 计划里每个任务的常态，
-也是被未完成依赖正确阻塞的任务、以及调度器尚未轮到的任务的常态。这类任务**完全不进入观察**——
+两者皆无的任务，从未被交给任何人：它就是 `team_task_create` 产生、尚无人认领的**无主**行，也是被未完成
+依赖正确阻塞的任务的常态。这类任务**完全不进入观察**——
 `never-started` 的定义就是“已认领但 owner 从未写心跳的任务”，而无人拥有的任务也不可能是卡死。
 若没有这条规则，一个 12 任务的 staged 计划会在**每一次宿主启动**时写下 **12** 条 `never-started`
-事件记录并打印 **12** 行日志（实测 2026-09-16）；有了它结果是 0 条，而“已派发却从未写心跳”的任务
+事件记录并打印 **12** 行日志（实测 2026-09-16）；有了它结果是 0 条，而“已被认领却从未写心跳”的任务
 仍会被上报。
 
 **随后由状态机解读候选**：一个 `claimed` 任务若其 owner 本就处于回合之间，它的静默是设计使然，对它
@@ -175,16 +176,17 @@ streak 以 `<taskId>\0<attemptId>` 为键，因此换用新 attempt 的重试从
 **当前这一代**没有任何心跳的任务被报为 `never-started`（这是派发问题的观察，永不升级）；其余情况按
 `warnSilenceMs` 衡量静默。
 
-**T-16 —— 静默切片带**世代**范围。** 早于该团队记录自身 `createdAt`/`approvedAt` 的心跳属于**上一代**
-团队，不能再让任务显得“静默”：该候选改报 `never-started`（只上报，永不 hold）。这修掉的实测泄漏
-（2026-09-16）：hold 曾拿下任务 `t12`，而它唯一的心跳（05:33:35Z）早于记录的 `createdAt`
-（05:51:45Z）——所谓“静默”是用记录诞生之前的心跳量出来的。两处刻意保留的不对称：该上界**只**作用于
-静默/hold 切片——派发前置条件仍把上一代心跳算作“该任务曾被交出去”（r7 固定测试），因为没人看得见的
-任务是谁都不会上报的假阴性；而记录**没有** `createdAt` 时保持宽松，因为无从界定的记录不该让看门狗
-闭嘴。
+**T-16 —— 静默切片带**世代**范围。** 心跳的世代令牌与任务当前 `revision` 不同，即属于该任务的**上一代**，
+不能再让它显得“静默”：该候选改报 `never-started`（只上报，永不 hold）。0.1.7 用官方任务板的 `revision`
+取代了旧记录的 `createdAt`/`approvedAt` 上界：官方读数**完全不含**记录时间戳，因此 `candidateFor` 的上界
+为 `null`（宽松，即文档化的 §0/A3 约定），由 revision 承担“心跳属于哪一代”的判定。两处刻意保留的不对称：
+该上界**只**作用于静默/hold 切片——派发前置条件仍把上一代心跳算作“该任务曾被交出去”（r7 固定测试），
+因为没人看得见的任务是谁都不会上报的假阴性；而**不带**世代令牌的心跳无法与当前世代矛盾，因此保留，
+因为无从断代的心跳不该让看门狗闭嘴。
 
 **T-20 —— 等待依赖的成员是 `PARKED`，不是静默。** 若某成员所有未终结任务都被未终结的依赖阻塞，
-它没有任何可认领的工作：看门狗**仅凭 `team.json`** 推出这一点（投影携带每个任务的 `dependencies`）
+它没有任何可认领的工作：看门狗**仅凭实时读数**推出这一点（投影把每个任务的 `blockedBy` 携带为
+`dependencies`）
 并对它抑制静默规则，报为 `PARKED`。**不**新增任何面向成员的等待工具——该推导本身就是全部机制。
 两处刻意的保守读法：依赖指向记录中不存在的任务时视为未完成（无法证明完成，就不算完成）；没有未终结
 任务的成员不算“被阻塞”（没有可等的东西）。
@@ -233,25 +235,30 @@ hold 同样可以 `session-watchdog-resume` 立即清除（或从 hold sidecar �
 若快照位置不可写，失败是**响亮但非致命**的：一条具名告警带上路径与 errno，hold 仍会被尝试，
 事件记录仍然写入——因为拿不到快照的用户仍然必须知道团队已被 hold。
 
-有两个字段是诚实的投影，而非 adopted 插件自身的状态：
+有三个字段是诚实的投影，而非宿主自身的状态：
 
-* `members[].unread` 镜像 adopted 的未读判定（`state.js:845-855`），因为 adapter 没有暴露
-  对应的接缝。
-* `parkedAttempts` 是**持久化**投影（每个未终结任务的 assignee → attemptId）。adopted 调度器
-  的进程内 `Map` 无法经 adapter 访问，而设计本身也把它视为参考信息。
+* `team.*` 是官方实时读数的投影：`attemptId` 是任务板 `revision`，而 `halted`/`haltedAt` **恒为 `null`**，
+  因为官方服务不提供 halt——任何夹具或调用方都无法让快照声称一个该平面并不存在的暂停。
+* `members[].unread` **恒为 `null`**：持久化的同伴信箱存放在 Lead 会话日志中
+  （`team/message/queued` / `team/message/delivered`），adapter 没有任何接缝报告单个成员的未读数。
+  旧的 `<teamDir>/inbox/*.jsonl` 镜像已随写出它的插件一起消失；旧读取器对缺失文件会**凭空返回 `0`**，
+  而 `null`（“不可观测”）才是诚实的答案。
+* `parkedAttempts` 是**持久化**投影（每个未终结任务的 assignee → 世代令牌）。调度器的
+  进程内 `Map` 无法经 adapter 访问，而设计本身也把它视为参考信息。
 
 ## hold、事件记录与水位
 
 * `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt, ttlMs}`。写入采用
   临时文件 + rename，以 `id` 幂等，并且是一个**保留式** hold：它的存在是为阻止向某一个团队
-  派发**新**工作，绝不用于取消已有工作。它是团队暂停的**内部实现**——唯一的外部暂停是 `agent_teams_halt`（后者会取消所有未终结任务）。
+  派发**新**工作，绝不用于取消已有工作。它是本 bundle 实现的**唯一**暂停机制：0.1.7 已让
+  `agent_teams_halt` 随其所属插件退役，而官方 Agent Teams 服务在本插件可调用的任何接缝上都不提供 halt。
 * **T-17 —— hold 会自行释放，由两个上界触发。** 每个 hold 都携带 `ttlMs`（看门狗自动写下的 hold
   取解析后的 `watchdog.holdTtlMs`；手工调用 `session-watchdog-hold` 可用 `ttl_ms` 覆盖，`0` 表示
   “无 TTL”）。满足**任一**条件即自动释放：`now - since >= ttlMs`（且 `ttlMs > 0`），**或**该团队出现
   任何**晚于 `since`** 的心跳——成员确实干过活，就已证伪这次“卡死”。两条路径都会写下一条持久的
   `hold-auto-released` 事件记录（`cause.kind: "hold-auto-released"`，`cause.release: "ttl" |
-  "activity"`）、打印一行日志，并且**不动 `team.json` 的任何一个字节**：暂停依旧是保留式的，与
-  `session-watchdog-resume` 完全一致。早于该字段存在的 hold 读作 `ttlMs: 0`，因此绝不会为它凭空
+  "activity"`）、打印一行日志，并且**完全不动任何团队状态**——也无从触及：官方任务板存放在 Lead
+  会话日志中，本插件只写自己的文件。暂停依旧是保留式的，与 `session-watchdog-resume` 完全一致。早于该字段存在的 hold 读作 `ttlMs: 0`，因此绝不会为它凭空
   编出一个上界。该过程在每个 tick 开头运行，并读取 hold **文件**（持久真值），所以即使某进程的同步
   读取器从未 hydrate，也仍能释放已到期的暂停。
 * `incidents.jsonl` = 每个 WARN/ESCALATE 一条记录，含原因、task/attempt、所写快照路径，以及
@@ -263,14 +270,14 @@ hold 同样可以 `session-watchdog-resume` 立即清除（或从 hold sidecar �
 
 已被 hold 的团队**不会再写第二个快照、也不会再写第二个 hold**；事件记录仍会写入。
 
-### T-19 —— 同一个暂停面，并指明当前生效的机制
+### 暂停面 —— 只有一种机制，就是本包的 hold
 
-外部暂停只有一种：`agent_teams_halt`（会**取消**所有未终结任务），由 `agent_teams_resume` 清除。
-本包自己的**保留式** hold 是这次暂停的**内部实现**，绝不是供调用方二选一的第二种机制。
-因此状态视图只报告**一种**暂停状态并指明外部机制——`team-a: PAUSED —
-mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation
-active`，或 `team-a: not paused`——既出现在渲染文本中，也以每团队一个 `pause: {paused, mechanism,
-implementation, halted, held}` 对象出现在 JSON 中，其中 `halted`/`held` 只是诊断字段。
+0.1.7 已让 `agent_teams_halt` / `agent_teams_resume` 随所属插件退役，而官方 Agent Teams 服务在本插件
+可调用的任何接缝上都不提供 halt。因此看门狗自己的**保留式** hold 是本 bundle **唯一**的暂停机制。
+状态视图只报告**一种**暂停状态——`team-a: PAUSED — the watchdog's preserving hold (the only pause
+mechanism; the official team service exposes no halt)`，或 `team-a: not paused`——既出现在渲染文本中，
+也以每团队一个 `pause: {paused, mechanism: "watchdog-hold", implementation, halted, held}` 对象出现在
+JSON 中，其中 `halted`/`held` 只是诊断字段（`halted` 恒为 `false`，保留它只是为了不改动消费者的载荷形状）。
 
 ### §7.2/§7.3 —— 旋钮的实时值与**文件**值
 
@@ -286,7 +293,8 @@ implementation, halted, held}` 对象出现在 JSON 中，其中 `halted`/`held`
 **明确选择方案 (b)**（计划 AMENDMENT 2 的 A2-1）：单独的副文件**无法**真正执行暂停，因为
 `state.js` 拥有 `team.json`、所有读取路径都经过 `readTeam`，调度器的三个拒绝闸门对副文件
 完全不可见。因此本包把副文件保留为**持久且权威**的记录，**并通过 `mpdWatchdog` 服务发布一个
-稳定的同步读取器**。方案 (a) 在 adopted 锁定路径上的写入属于 w7 的工作，不属于本包。
+稳定的同步读取器**。0.1.7 已关闭方案 (a)：官方 Agent Teams 服务没有可写的 halt 字段，也没有任何
+adapter 接缝可以凭空发明一个，因此“副文件 + 该读取器”是唯一可行路线，也正是本包实现的路线。
 
 闸门必须使用的确切调用形式：
 
@@ -320,7 +328,7 @@ if (hold?.held) return noteDispatchDecline(/* … */, "held by the team watchdog
 
 ## 插件自己的动作
 
-通过 adapter 的工具接缝注册，因此 w7 可以驱动它们，而本包无需触碰 adopted 插件：
+通过 adapter 的工具接缝注册，因此 w7 可以驱动它们，而本包无需触碰团队服务：
 
 | 动作 | 契约 |
 |---|---|
@@ -342,9 +350,9 @@ tick 在 ESCALATE 时经由 adapter 的内部工具接缝调用 `session-watchdo
 
 ## 未声明项（本包刻意不做的事）
 
-* **不做派发闸门。** 在 adopted 调度器各拒绝点让 hold 生效、以及在 hold 期间拒绝认领的工具
+* **不做派发闸门。** 在调度器各拒绝点让 hold 生效、以及在 hold 期间拒绝认领的工具
   边界守卫，都是 **w7** 的工作。本行只落地 hold、其持久记录，以及使它可被执行的读取器；
-  adopted 树中没有被修改。
+  宿主模块中没有被修改。
 * **不做通知界面。** Web 横幅/活动记录与 TUI 状态行、对话框属于后续任务。这里的“记录即通知”
   就是持久事件记录，供那三个读取者消费。
 * **不检测“卡在工具内部”的卡死。** r6 的在途规则会把长时间调用解释掉；真正卡在工具**内部**的
@@ -356,7 +364,9 @@ tick 在 ESCALATE 时经由 adapter 的内部工具接缝调用 `session-watchdo
   之后恢复过来的成员会发现团队处于 hold、无法推进——这正是预期结果。
 * **这里不做真实卡死验证。** 单元测试用注入时钟与 stub adapter 驱动机器；故障注入与真实卡死
   通道属于其他任务。
-* `parkedAttempts` 与 `unread` 是上文所述的投影。
+* `parkedAttempts` 是上文所述的投影；`unread` 按构造恒为 `null`（官方信箱无法经 adapter 观测）。
+* **按构造不改动团队状态。** 观察名单来自宿主自己的实时读数（`dsh.teamLiveTeams()`），本插件只**读**它；
+  它写下的每个文件都在 `<stateDir>/watchdog/` 之下。
 
 ## 验证
 
@@ -377,8 +387,8 @@ node skills/dsh-qa/scripts/preset-conformance.mjs
 | `src/machine.ts` | 旋钮、WARN→ESCALATE 算术与 §7.2 旋钮读数 |
 | `src/channel.ts` | §1 的四态通道折叠（`session/event`） |
 | `src/store.ts` | 心跳文件、轮转与原子写入 |
-| `src/team.ts` | 对 adopted 团队记录的只读视图 |
-| `src/scene.ts` | 现场文档、原子写入与未读镜像 |
+| `src/team.ts` | 对官方实时读数（`dsh.teamLiveTeams()`）的只读投影 |
+| `src/scene.ts` | 现场文档、原子写入，以及诚实的 `unread: null` |
 | `src/sidecars.ts` | hold、事件日志与读取水位 |
 | `src/actions.ts` | 三个工具动作 |
 | `src/paths.ts` | 所有路径，按调用解析 |

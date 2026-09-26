@@ -20,9 +20,12 @@ An activated ULW run asks the user nothing:
 2. **The same complexity gate** — the run evaluates the session-start predicate: an
    explicit `team:` / `!team` flag OR any matched signal (A explicit flag, B deliverable
    verbs, C enumerated steps, D an existing `.mpd/plans` artifact). Never a second predicate.
-3. **A team when warranted** — a fired gate (or genuinely complex work) means
-   `agent_teams_create(approval="automatic", profile="mpd")` with a captain-designed
-   roster/DAG, run without user confirmation.
+3. **A team when warranted** — a fired gate (or genuinely complex work) means the run stages the
+   team ITSELF with the OFFICIAL Agent Teams tools: `spawn_teammate({name, description, prompt})`
+   per roster member, then `team_task_create({subject, description, blocked_by?, write_scopes?})`
+   for the DAG — a captain-designed roster/DAG, run without user confirmation. The retired
+   `agent_teams_create` / `agent_teams_*` tools do not exist on harness 0.1.7; team state is the
+   Lead session's own.
 4. **Loop to completion** — never stop early to ask; rounds continue until every success
    criterion is clean.
 5. **Fix on sight** — a defect the run finds is fixed in the same turn; never

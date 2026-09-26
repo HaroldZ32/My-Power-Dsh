@@ -43,7 +43,9 @@ describe("heartbeat store", () => {
       expect(stamps[0].kind).toBe("step")
       expect(stamps[0].member).toBe("Architect")
       expect(stamps[0].taskId).toBe("t1")
-      expect(stamps[0].attemptId).toBe("att-1")
+      // 0.1.7: the generation token is the official board REVISION (the projection renders
+      // it as a string), because the official task view carries no attempt id.
+      expect(stamps[0].attemptId).toBe("1")
       expect(stamps[0].teamId).toBe("team-a")
       expect(stamps[0].workspace).toBe(box.workspace)
     } finally {
@@ -68,7 +70,7 @@ describe("heartbeat store", () => {
       expect(stamps.length).toBe(1)
       expect(stamps[0].member).toBe("captain")
       expect(stamps[0].taskId).toBe("t9")
-      expect(stamps[0].attemptId).toBe("att-cap")
+      expect(stamps[0].attemptId).toBe("1")
     } finally {
       box.cleanup()
     }
@@ -179,7 +181,7 @@ describe("heartbeat store", () => {
       for (let step = 0; step < 4; step += 1) {
         engine.stamp("step", agent("a1", box.workspace))
         await new Promise((resolve) => setTimeout(resolve, 3))
-        const newest = newestForTask(readHeartbeats(box.workspace, box.stateDir, "Architect"), "t1", "att-1")
+        const newest = newestForTask(readHeartbeats(box.workspace, box.stateDir, "Architect"), "t1", "1")
         if (newest !== undefined) seen.push(newest.at)
       }
       const distinct = [...new Set(seen)]

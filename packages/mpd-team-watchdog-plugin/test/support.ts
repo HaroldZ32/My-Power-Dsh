@@ -1,14 +1,20 @@
 // Shared test support: a stub adapter (the ONLY harness surface the engine uses)
-// and tiny fixture builders for an adopted team record and its heartbeats.
+// and tiny fixture builders for a live team readout and its heartbeats.
 //
 // The stub is deliberately minimal: it implements exactly the adapter methods the
 // watchdog calls, so a test failure means the WATCHDOG misbehaved rather than the
 // stub being clever.
+//
+// 0.1.7 REBASE: the watchdog no longer reads `<stateDir>/<teamId>/team.json`. Its source is the
+// adapter's `teamLiveTeams()` (the official Agent Teams readout), so a fixture is registered as a
+// LIVE TEAM VIEW on the stub adapter keyed by the fixture's workspace, and `writeTeam()` keeps its
+// old position in every test: it builds the view from the `TeamFixture` shape and installs it.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { DshAdapter, DshToolDef } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import type { DshAdapter, DshTeamTaskView, DshTeamView, DshToolDef } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { EngineConfig } from "../src/engine.js"
+import { projectTeamView, type TeamRecord } from "../src/team.js"
 
 /** A workspace under a fresh temp dir, removed by `cleanup()`. */
 export interface Sandbox {
@@ -28,7 +34,7 @@ export function sandbox(): Sandbox {
   }
 }
 
-/** One adopted team record fixture. */
+/** One live-team fixture, in the RETIRED record's vocabulary (what the tests were written in). */
 export interface TeamFixture {
   id: string
   name?: string
@@ -43,8 +49,89 @@ export interface TeamFixture {
   tasks: Array<{ id: string; status: string; assignee?: string; attempt?: number; attemptId?: string; dependencies?: string[] }>
 }
 
-/** Write a team record into the sandbox's adopted state root. */
-export function writeTeam(box: Sandbox, team: TeamFixture): string {
+/**
+ * One member's `revision` in the fixture's task row.
+ *
+ * The fixture's `attemptId` is a STRING token (the retired record's attempt id), while the
+ * official board's generation counter is the numeric `revision` the projection renders as the
+ * generation token. A fixture that names no revision gets `1`, so a stamp written with
+ * `attemptId: "1"` matches it.
+ */
+function revisionOf(task: TeamFixture["tasks"][number]): number {
+  if (typeof task.attempt === "number" && Number.isFinite(task.attempt)) return task.attempt
+  if (typeof task.attemptId === "string" && /^\d+$/.test(task.attemptId)) return Number(task.attemptId)
+  return 1
+}
+
+/** Project one fixture onto an official team view. */
+export function viewOf(team: TeamFixture): DshTeamView {
+  const lead = {
+    id: team.captainSessionId ?? team.id + "-lead",
+    name: "lead",
+    role: "lead" as const,
+    status: "running" as const,
+    diagnostics: [],
+  }
+  return {
+    teamId: team.id,
+    leadName: lead.name,
+    leadSessionId: lead.id,
+    members: [
+      lead,
+      ...team.members.map((member) => ({
+        id: member.id,
+        name: member.name,
+        role: "teammate" as const,
+        status: (member.status ?? "running") as DshTeamView["members"][number]["status"],
+        diagnostics: [],
+      })),
+    ],
+    tasks: team.tasks.map((task): DshTeamTaskView => ({
+      id: task.id,
+      revision: revisionOf(task),
+      subject: task.id,
+      description: "",
+      status: task.status as DshTeamTaskView["status"],
+      blockedBy: task.dependencies ?? [],
+      writeScopes: [],
+      ...(task.assignee === undefined ? {} : { ownerName: task.assignee === "captain" ? "lead" : task.assignee }),
+      ready: true,
+      writeScopeWarnings: [],
+    })),
+  }
+}
+
+/**
+ * The workspace-keyed fixture registry the stub adapters answer `teamLiveTeams()` from.
+ *
+ * A real host has ONE readout per process; a test suite runs many independent sandboxes, so the
+ * stub keys them by workspace. `writeTeam` is the only writer, which keeps the fixture's
+ * lifecycle exactly where it was (one call per test).
+ */
+const liveTeams = new Map<string, DshTeamView[]>()
+
+/** Register one team fixture for a sandbox's workspace and return an immutable copy of its view. */
+export function writeTeam(box: Sandbox, team: TeamFixture): DshTeamView {
+  const view = viewOf(team)
+  const existing = liveTeams.get(box.workspace) ?? []
+  liveTeams.set(box.workspace, [...existing.filter((entry) => entry.teamId !== view.teamId), view])
+  // The team's scratch directory is kept: a scene/hold/heartbeat writer that wandered into the
+  // team's own directory would still be visible, and the retired record's `inbox/` is gone.
+  mkdirSync(join(box.workspace, box.stateDir, team.id), { recursive: true })
+  return JSON.parse(JSON.stringify(view)) as DshTeamView
+}
+
+/**
+ * Register a fixture team AND materialize the RETIRED record file at its old path.
+ *
+ * Only a test that mounts `packages/mpd-agent-teams-plugin/lib` (the retired, still-retained
+ * vendored plugin) needs the file: that lib owns `<stateDir>/<teamId>/team.json` as ITS state and
+ * reads it back. The watchdog reads the file NOWHERE any more, which is exactly why this is a
+ * separate helper instead of something `writeTeam` does for every fixture.
+ *
+ * @returns the written record path.
+ */
+export function writeTeamRecord(box: Sandbox, team: TeamFixture): string {
   const dir = join(box.workspace, box.stateDir, team.id)
   mkdirSync(join(dir, "inbox"), { recursive: true })
   const record = {
@@ -61,7 +148,81 @@ export function writeTeam(box: Sandbox, team: TeamFixture): string {
   }
   const path = join(dir, "team.json")
   writeFileSync(path, JSON.stringify(record, null, 2))
+  writeTeam(box, team)
   return path
+}
+
+/** The CURRENT views for a workspace, as fresh copies (the byte-identity assertions use this). */
+export function teamViews(box: Sandbox): DshTeamView[] {
+  return JSON.parse(JSON.stringify(liveTeams.get(box.workspace) ?? [])) as DshTeamView[]
+}
+
+/** Forget a workspace's fixtures (a `cleanup()`-independent reset for a lane that reuses a box). */
+export function clearTeams(workspace: string): void {
+  liveTeams.delete(workspace)
+}
+
+/** The projected record of one fixture team (the plugin's own projection, not a second one). */
+export function teamRecordOf(box: Sandbox, teamId: string): TeamRecord | undefined {
+  const view = (liveTeams.get(box.workspace) ?? []).find((entry) => entry.teamId === teamId)
+  return view === undefined ? undefined : projectTeamView(view)
+}
+
+/**
+ * Install the OFFICIAL team service and the live-agent registry on a REAL context.
+ *
+ * A test that mounts the REAL adapter (`createDshAdapter(ctx)`) needs them, because the adapter
+ * reaches the official plane exactly the way production does: `ctx.get("agentTeams")` for the
+ * service and `ctx.get("agents")` for the registry. The services are a faithful MINIMAL fake of
+ * the installed host's (`agentTeams/lib/index.js`): `tryMembership` resolves the Lead by its
+ * Session id and a teammate by its own id, `listMembers` returns the Lead row plus the roster in
+ * creation order, and `listTasks` returns the board. The ADAPTER remains the code under test.
+ *
+ * The registry's agents are synthesised from the fixtures (a Lead per team, one agent per
+ * teammate), so a liveness/projection read answers the same way it would on a live host.
+ */
+export function provideTeamsOn(ctx: unknown, box: Sandbox, agents: unknown[] = []): void {
+  const target = ctx as Record<string, unknown>
+  const views = (): DshTeamView[] => liveTeams.get(box.workspace) ?? []
+  const target0 = (): DshTeamView[] => views()
+  target.agentTeams = {
+    tryMembership: (candidate: { id?: unknown }) => {
+      const id = typeof candidate?.id === "string" ? candidate.id : ""
+      for (const view of target0()) {
+        if (id !== "" && id === view.leadSessionId) return { id: view.teamId, role: "lead", name: view.leadName }
+        const member = view.members.find((entry) => entry.id === id && entry.role === "teammate")
+        if (member !== undefined) return { id: view.teamId, role: "teammate", name: member.name }
+      }
+      return undefined
+    },
+    listMembers: (candidate: { id?: unknown }) => {
+      for (const view of target0()) {
+        if (candidate?.id === view.leadSessionId || view.members.some((entry) => entry.id === candidate?.id)) return view.members
+      }
+      return []
+    },
+    listTasks: (candidate: { id?: unknown }) => {
+      for (const view of target0()) {
+        if (candidate?.id === view.leadSessionId || view.members.some((entry) => entry.id === candidate?.id)) return view.tasks
+      }
+      return []
+    },
+  }
+  const registry = new Map<string, unknown>()
+  for (const view of views()) {
+    registry.set(view.leadSessionId, { id: view.leadSessionId, session: { id: view.leadSessionId, header: { cwd: box.workspace } } })
+    for (const member of view.members) {
+      registry.set(member.id, { id: member.id, session: { id: member.id, header: { cwd: box.workspace } } })
+    }
+  }
+  for (const entry of agents) {
+    const id = (entry as { id?: unknown })?.id
+    if (typeof id === "string") registry.set(id, entry)
+  }
+  target.agents = {
+    list: () => [...registry.values()],
+    get: (id: string) => registry.get(id),
+  }
 }
 
 /** One live-agent stub (`id` + `session.header.cwd` is all the engine reads). */
@@ -73,6 +234,13 @@ export function agent(id: string, workspace: string, sessionId = "session-" + id
 export interface StubOptions {
   workspace: string
   settings?: unknown
+  /**
+   * Whether the stub advertises the live-agent registry via `capabilities().agents`. The engine's
+   * r4 liveness re-check consults it; the default (`true`) mirrors a real host.
+   */
+  agents?: boolean
+  /** The live agents `liveAgents()` answers (defaults to none). */
+  liveAgents?: unknown[]
 }
 
 /** The stub adapter plus the handles a test needs to drive it. */
@@ -86,6 +254,8 @@ export interface StubAdapter {
   /** The tool names executed through `toolRuntime().execute`, in order. */
   toolExecutes: string[]
   setSettings: (value: unknown) => void
+  /** Replace the live-agent list `liveAgents()` answers (the r4 liveness re-check). */
+  setLiveAgents: (agents: unknown[]) => void
   emitSettings: () => void
   /**
    * Dispatch one adapter event (`session/event`, `agent/assistant-stream`, …) to the
@@ -109,7 +279,11 @@ export function stubAdapter(options: StubOptions): StubAdapter {
   const toolExecutes: string[] = []
   const eventListeners = new Map<string, Array<(...args: unknown[]) => unknown>>()
   let settings = options.settings
+  let liveAgents = options.liveAgents ?? []
   const adapter = {
+    // The OFFICIAL team readout: the watchdog's only source of rosters and boards (0.1.7).
+    teamLiveTeams: () => JSON.parse(JSON.stringify(liveTeams.get(options.workspace) ?? [])) as DshTeamView[],
+    liveAgents: () => liveAgents,
     workspaceRoot: (exec?: unknown) => {
       const cwd = (exec as { agent?: { session?: { header?: { cwd?: unknown } } } } | undefined)?.agent?.session?.header?.cwd
       return typeof cwd === "string" && cwd !== "" ? cwd : options.workspace
@@ -159,7 +333,7 @@ export function stubAdapter(options: StubOptions): StubAdapter {
         return await definition.execute(input.arguments ?? {}, {})
       },
     }),
-    capabilities: () => ({}),
+    capabilities: () => ({ agents: options.agents !== false }),
   } as unknown as DshAdapter
   return {
     adapter,
@@ -170,6 +344,9 @@ export function stubAdapter(options: StubOptions): StubAdapter {
     toolExecutes,
     setSettings: (value: unknown) => {
       settings = value
+    },
+    setLiveAgents: (agents: unknown[]) => {
+      liveAgents = agents
     },
     emitSettings: () => {
       for (const listener of settingsListeners) listener(2, "user")

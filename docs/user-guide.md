@@ -20,12 +20,13 @@ and the `exports` map live in its manifest, so this one command installs every p
 `mpd` preset, the whole skill corpus and the extension root. Nothing else to run — no pack step,
 no copy step. Restart `dsh`, then start a session on the **MPD (Main Working Agent)** preset.
 
-The bundle declares one external runtime dependency: **`dsh-better-sidebar`**, the community sidebar
-bundle that hosts the AgentTeams and Workmates tabs (§8). A checkout install reads this repository,
+The bundle declares four runtime dependencies: **`dsh-better-sidebar`**, the community sidebar
+bundle that hosts the Workmates tab (§8), and the three official Agent Teams packages that provide
+team mode. A checkout install reads this repository,
 so materialize the repository's dependencies first:
 
 ```bash
-cd <repo> && bun install          # required once: materializes the declared sidebar dependency
+cd <repo> && bun install          # required once: materializes the declared runtime dependencies
 ```
 
 If `node-gyp` is unavailable (the sidebar's transitive `node-pty` builds with it),
@@ -74,7 +75,8 @@ dsh plugin --profile web add <path-or-name-of-@mpd-dsh/mpd>
 ```
 
 `pack-mpd` exists for DISTRIBUTION: it assembles a self-contained `@mpd-dsh/mpd` (built plugin
-dists + the adopted agent-teams main code + the skill corpus and presets + the scaffold
+dists + the retired (unmounted) agent-teams main code + the skill corpus and the preset patch +
+the scaffold
 `templates/` + the `docs/` set with its EN / `zh-CN` pairs + the on-demand `agent-references/`
 (the troubleshooting table and the adopted-plugin delta registry) + the combined web client + the
 packed-form patch) that does not depend on a checkout. Since the 2026-09-17 packaging change the
@@ -94,11 +96,12 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 ```
 
 The bundle installs as ONE unit and uninstalls as ONE unit, skills included: the plugin rows come
-from the bundle patch, the `mpd` preset is served from `<bundle>/presets` (the patch roots the
-preset roster there) and the skill corpus from `<bundle>/skills` (the `mpd-bootstrap` row
+from the bundle patch, the `mpd` preset is declared by the `preset-mpd` row in
+`presets/mpd.patch.yml` (with `agent-preset-registry` id-targeted to `default: mpd`) and the skill
+corpus from `<bundle>/skills` (the `mpd-bootstrap` row
 registers a `ctx.skills` provider). Nothing is copied into `$DSH_HOME`, so removal takes the
 rows, the preset and the skills with it — the stock preset roster returns and `$DSH_HOME/skills`
-/ `$DSH_HOME/.agent-presets` stay as they were. What deliberately survives is YOUR data: the
+stays as it was. What deliberately survives is YOUR data: the
 workmate library (`~/.mpd/workmate`) and each workspace's `.mpd/` state.
 
 Upgrading from a bundle `<= 0.2.6` (which copied presets + skills into `$DSH_HOME`): the first
@@ -136,7 +139,7 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 | Keep memory | `mpd_memory_write/read/reflect/reflect_complete/status`, `mpd_memory_save/recall` | the VCS-backed store can be git or svn; `mpd_memory_save/recall` is the simple key/value layer |
 | Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` | one-shot subagents; read-only roles are denied write tools |
 | Keep an evolving agent | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | see §5 |
-| Run a team | `agent_teams_*` + the AgentTeams tab | see §6 |
+| Run a team | `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, `team_task_create/list/get/update` + the Web Agent Teams panel | see §6 |
 | Configure the bundle | `.mpd/mpd.jsonc`, `mpd_config_get`, `mpd_config_reload` | see §9 |
 | Extend the bundle | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` | see §10 |
 | Resolve a model route | `mpd_modelchain_resolve` | resolves the provider/model a specialist would use |
@@ -228,60 +231,82 @@ confirm: "<name>" }` — the exact name is required, and without it the call is 
 is removed. There is no in-product restore button: archive-first is deliberately one-way in the
 UI, and recovery is the `mv` above.
 
-**Both mutations are refused while the workmate is in use** — by a team member (a non-archived
-team record under `.mpd/team/` names it) or by an in-flight `mpd_workmate_spawn`. The refusal is
-`409 in-use` and names the blocking team ids and members, so it is actionable: finish or archive
-those teams, then repeat the mutation. The same gate covers the rename *target*, so renaming a
-workmate **to** a roster name in use by a team is refused the same way.
+**Both mutations are refused while the workmate is in use** — by an in-flight
+`mpd_workmate_spawn`, or by a LEGACY team record (a non-archived record under `.mpd/team/` names it;
+a team run on the official plugin keeps no such record). The refusal is
+`409 in-use` and names the blocking team ids and members, so it is actionable: finish the running
+spawn (or clear those legacy records), then repeat the mutation. The same gate covers the rename
+*target*, so renaming a workmate **to** a name that is recorded as in use is refused the same way.
 
 ## 6. Team mode
 
+Team mode runs on the harness's **official Agent Teams plugin**, mounted by this bundle's rows
+`mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` (see
+[`design.md`](design.md) for the row inventory). Your session agent is the **Lead** (the captain): it
+spawns named teammates, opens tasks on a shared board and integrates the results.
+
 ```text
-agent_teams_create { name: <team>, description: <goal>, profile: "mpd", approval: "required" }
-  → stages the normal-named roster as teammates + an empty task DAG
-# while staged: edit members/tasks in the Web plan panel, or with
-agent_teams_add_member / agent_teams_create_task / agent_teams_edit_plan
-agent_teams_approve  # user-approved → spawns the members, scheduler starts
-# leader (you/captain):
-agent_teams_status / agent_teams_send_message / agent_teams_reassign_task
+spawn_teammate { name, description, prompt, context: "fresh" | "fork" }   # Lead only
+team_task_create { subject, description, blocked_by?, write_scopes? }
+team_task_get { task_id } / team_task_list { status?, owner?, ready? }
+team_task_update { task_id, expected_revision, action }                   # compare-and-set
+send_message { target, message } / list_agents { } / wait_agent { timeout_ms }
+interrupt_agent { target }                                                # Lead only
 ```
 
-- `approval: "required"` is the two-phase flow (recommended): nothing runs until you review the
-  plan in the GUI.
-- The `mpd` profile is **captain-planned** (`taskPlanning: captain`): the roster is fixed, and the
-  captain designs the task DAG during the staged plan.
-- Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst)
-  never edit files; workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer)
-  implement and verify.
-- **Workmate-backed members**: if you initialize a workmate (e.g. `alice`) and add a member named
-  `alice`, the member's system prompt automatically carries `alice`'s persona + memory + note, and
-  it reflects back into the workmate after each task. The captain guidance: check
-  `mpd_workmate_match` before delegating; a weak match means initializing a new workmate instead
-  of forcing it.
+- **There is no staged plan and no approval mode.** The old two-phase flow (stage a plan, approve it
+  in the GUI, then spawn) belonged to the retired vendored plugin. Here the captain spawns a member and
+  opens its task; the board *is* the plan, and the work starts when a teammate is spawned.
+- **The board is compare-and-set.** `team_task_update` carries the `expected_revision` you read and
+  answers a stale revision with an error instead of overwriting newer work. Actions: `claim`,
+  `release`, `edit`, `set_dependencies`, `complete`, `reopen`, `reassign`, `delete`.
+- **`write_scopes` are advisory.** Two in-progress tasks that plan to touch overlapping paths raise a
+  warning; the board never blocks a claim and never authorizes a write, and bash/formatters/codegen
+  bypass every check — the Lead coordinates ownership and reviews the final diff.
+- **Messages are durable.** `send_message` answers `accepted` (delivered now) or `queued` (stored and
+  waiting), and a queued message must never be resent. `list_agents` reports each member's `target` and
+  availability (`inactive` means no turn is executing, not that the work is done); `wait_agent` answers
+  `noProgress` immediately when no other member is running or provisioning.
+- **Read-only members stay read-only.** Architect, Researcher, Planner, Explorer, Plan Reviewer and
+  Vision Analyst are denied the seven write tools: on the one-shot path through `toolFilter.deny`, and
+  on the team path through a tool guard in `mpd-roles-plugin` keyed on team membership, because the
+  official `spawn_teammate` cannot take a per-teammate tool filter. Workers (Senior Engineer, Junior
+  Engineer, Deep Worker, Lead, Reviewer) implement and verify.
+- **A teammate runs on the Lead's model route.** The official `TeamService` forwards only the prompt
+  and the parent to the subagent registry, so the `teamModels.slot*` settings apply to the ONE-SHOT
+  consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`) and cannot be injected per teammate. If a
+  member needs another model, say so in its spawn prompt.
+- **Workmate-backed members are a prompt, not an injection.** Nothing carries a workmate's persona
+  into a teammate automatically any more: initialize or pick the workmate
+  (`mpd_workmate_init` / `mpd_workmate_match`), read what it should carry, and put that text into the
+  `spawn_teammate` prompt; record the outcome afterwards with `mpd_workmate_reflect` (§5).
 - **Extension roles are not team members**: an extension can contribute a role usable by
-  `mpd_role_spawn` / `mpd_role_persona`, but the team member list is fixed patch configuration, so
-  extension roles never become teammates (see §10).
+  `mpd_role_spawn` / `mpd_role_persona`, but the teammate roster is the roster the captain spawns by
+  name, so extension roles never become teammates on their own (see §10).
 
 ### The call shapes
 
-The two approval modes are the two ways in, and they differ in exactly one field:
-
 ```text
-# two-phase (recommended): stage the plan, review it, then approve — nothing runs before that
-agent_teams_create { "name": "docs-wave", "description": "README + user-guide overhaul", "profile": "mpd", "approval": "required" }
-agent_teams_approve { "confirmation": "approved — go ahead" }   # only in response to YOUR approval
-# unattended: stage AND spawn in the same call (the default when you omit `approval`)
-agent_teams_create { "name": "quick-fix", "description": "Fix the dead doc links", "profile": "mpd", "approval": "automatic" }
+# create a teammate and its lane
+spawn_teammate { "name": "senior-1", "description": "Owns the README pair", "prompt": "<persona + task>", "context": "fresh" }
+team_task_create { "subject": "Rewrite the install chapter", "description": "…", "blocked_by": [], "write_scopes": ["README.md"] }
+
+# work the board (any member; the Lead may also reassign)
+team_task_list { "ready": true }
+team_task_get { "task_id": "task-3" }
+team_task_update { "task_id": "task-3", "expected_revision": 2, "action": "claim" }
+team_task_update { "task_id": "task-3", "expected_revision": 3, "action": "complete" }
+
+# coordinate
+list_agents { }
+send_message { "target": "senior-1", "message": "Land the README edit before the guide." }
+wait_agent { "timeout_ms": 60000 }
+interrupt_agent { "target": "senior-1" }     # Lead only: stop the turn, keep the inbox
 ```
 
-While a plan is staged, the captain shapes it with `agent_teams_add_member`, `agent_teams_create_task`
-and `agent_teams_edit_plan` (one ordered `operations` batch); once it runs, the leader drives it with
-`agent_teams_status`, `agent_teams_send_message` and `agent_teams_reassign_task`. §13.1 is the literal
-walkthrough — every approval mode, member/task edits, reassignment, rollover and the finish path.
-
-**`agent_teams_halt` is not a tool.** The pause is a mechanism reached through the Web **Stop-team**
-control (the watchdog's `session-watchdog-*` tools are a separate, internal pause layer), and a halted
-team is continued with `agent_teams_resume { "reason": "…" }`.
+§13.1 is the literal walkthrough — creating members and tasks, driving the board, reassigning,
+finishing a wave. The `session-watchdog-*` tools are a separate, internal stall-detection layer (see
+§12 and [`tui.md`](tui.md)).
 
 ## 7. DSH-TUI edition (the terminal UI)
 
@@ -307,7 +332,7 @@ pipe.
 
 | Web surface | TUI equivalent |
 |---|---|
-| AgentTeams sidebar tab | the `tuiScenes` full-screen board plus the keyed `tuiStatus` line |
+| Agent Teams panel (conversation header) | the `tuiScenes` full-screen board plus the keyed `tuiStatus` line |
 | Workmates sidebar tab | the `/mpd` command tree (`tuiCommandTrees`) plus `tuiDialogs` |
 | Settings → MPD section | the `/settings` section (`tuiSettingsSections`) |
 | — | `tuiShortcuts` keyboard shortcuts |
@@ -358,19 +383,20 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 
 ## 8. Web GUI
 
-- **AgentTeams sidebar tab** (the only team surface): the whole team GUI is one tab in
-  **DSH-better-sidebar** (the community sidebar bundle, installed with this bundle; tab id
-  `mpd-agent-teams`). It lists the
-  teams of *this conversation* — live teams first (members and their live activity, task rows with
-  status, the dependency map, the captain context, the stop-team control) and then archived ones —
-  and it hosts the staged-plan approval editor, so a plan is reviewed and edited where it was
-  created. The tab badge shows how many teams are live in this conversation, and `single: true`
-  re-scopes the tab instead of opening a second copy. When a team appears the tab opens once by
-  itself; turn that off with the **Auto-open when a team appears** switch in the sidebar settings
-  page (plugin setting `autoOpenOnTeamActivity`, default ON).
-- **Workmates sidebar tab**: the workmate library is contributed as a second tab to the same
-  sidebar, so it lives where that sidebar's own pages do — tab strip, `+` menu, and the sidebar's
-  own enable/disable switch. The page lists `~/.mpd/workmate/` instances (base, uses, updated,
+- **Agent Teams** (the team surface): the official client plugin
+  `@deepseek-ai/dsh-experimental-client-ui-agent-team`, mounted by this bundle's `mpd-ui-agent-team`
+  row, adds an **Agent Teams** action to the conversation header. It reads the Lead session's
+  `agentTeam` projection from the shared session store, so updates appear while the panel stays open.
+  It lists the roster (durable names and phases: `running`, `inactive`, `provisioning`, `failed`) and
+  the shared task board (task identity, owner, blockers, readiness, advisory write scopes and overlap
+  warnings), and it navigates into a teammate's conversation. It is **read-only**: the panel cannot
+  spawn, rename, delete or interrupt a teammate and offers no task-mutation control — those belong to
+  the tools in §6. Peer messages are not shown; the panel shows roster and tasks only. If the plugin
+  was enabled in an already-open conversation, reload the page once to receive the projection.
+- **Workmates sidebar tab**: the workmate library is contributed as a tab to **DSH-better-sidebar**
+  (the community sidebar bundle, installed with this bundle), so it lives where that sidebar's own
+  pages do — tab strip, `+` menu, and the sidebar's own enable/disable switch. The page lists
+  `~/.mpd/workmate/` instances (base, uses, updated,
   note), filters them, opens one for its persona/memory/note, and initializes a new one from a
   roster-backed **base picker** (no id typing) plus an optional name and note. It also **renames**
   and **deletes** the selected instance — the delete flow is explicit (a confirmation step, then
@@ -379,13 +405,13 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
   `GET /plugins/mpd-workmate/{list,roster,get}` and
   `POST /plugins/mpd-workmate/{init,rename,delete}`. The sidebar **tab-strip label** itself stays
   the English `Workmates` (a documented deferral: the strip label is resolved where no localized
-  translator is in scope, like the AgentTeams tab); the page body follows your language.
-- **Sidebar-only, for both pages**: neither page has a fallback, and the sidebar host itself is
+  translator is in scope); the page body follows your language.
+- **Sidebar-only for the workmate page**: it has no fallback, and the sidebar host itself is
   installed with the bundle — `dsh-better-sidebar` is a declared runtime dependency and the
   `mpd-better-sidebar` patch row mounts it, so the one warning path is a **missing or broken
-  dependency**, not a missing manual install. Without a host each page logs exactly one warning and
-  registers nothing. Team work still runs through the `agent_teams_*` tools and the `.mpd/team`
-  state, and the workmate library is still fully usable through the `mpd_workmate_*` tools.
+  dependency**, not a missing manual install. Without a host the page logs exactly one warning and
+  registers nothing. Team work still runs through the official team tools, and the workmate library
+  is still fully usable through the `mpd_workmate_*` tools.
 
 ## 9. Configuration (`mpd.jsonc`)
 
@@ -404,8 +430,8 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 | `extensions.enable`, `extensions.disable` | mpd-ext | per-id enable/disable lists for extensions (process-level: see §10) |
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | provider/model chains per roster role |
-| `team.stateDir` | agent-teams | where team state lives (defaults to `.mpd/team`) |
-| `teamModels.slot{1,2,3,4}.*` | agent-teams (via mpd-config) | the four **team-model slots**: `{provider, model, reasoningEffort}` per slot, defaulting to `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high` (slot 4: `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high`). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. A slot that cannot be resolved fails team creation **loudly** (the member and the slot are named, nothing is written) and an effort is never silently clamped. Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section; a saved change reaches the file immediately and the plugins after a restart. |
+| `team.stateDir` | the mpd plugins that read legacy team records (watchdog web routes, compaction, the TUI team scene, the workmate in-use check) | where those records live (defaults to `.mpd/team`). The official team plugin does not read it |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (via mpd-config) | the four **team-model slots**: `{provider, model, reasoningEffort}` per slot, defaulting to `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high` (slot 4: `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high`). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. They are resolved by the ONE-SHOT consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass the route explicitly; a teammate created by `spawn_teammate` inherits the Lead's route instead (§6). A slot that cannot be resolved fails the corresponding spawn **loudly** (the member and the slot are named, nothing is written) and an effort is never silently clamped. Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section; a saved change reaches the file immediately and the plugins after a restart. |
 
 `mpd-codegraph` is deliberately absent from this table: it takes `autoInit`, `initTimeoutMs`,
 `cooldownMs` and `binary` from its **bundle-patch row** options (read at apply time), and no plugin
@@ -437,8 +463,8 @@ Two things do not wait for that restart, and both are useful:
 | `boulder.dir` | mpd-boulder | at mount | after a restart |
 | `modelchain.*` | mpd-modelchain | at mount | after a restart |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | when the plugin starts (process-level) | after a restart |
-| `team.stateDir` | the bundle's own web routes, through the live service | per call | right after the service re-reads the file (`mpd_config_reload`, or any settings save). The agent-teams plugin's own state dir is the patch-row option `stateDir: .mpd/team` — changing THAT needs a row edit and a restart |
-| `teamModels.slot{1,2,3,4}.*` | agent-teams, resolved when a team is STAGED | per `agent_teams_create` | the next team you create: a settings save establishes the file watcher and re-reads, so no restart is needed; after a hand edit, call `mpd_config_reload` once (or restart) so the service re-reads before you stage |
+| `team.stateDir` | the mpd plugins that read legacy team records, through the live service | per call | right after the service re-reads the file (`mpd_config_reload`, or any settings save). These are LEGACY records: the official team plugin keeps its roster, mailbox and board in the Lead's session log, not here |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate, resolved at the one-shot consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`) | at spawn | the next one-shot spawn: a settings save establishes the file watcher and re-reads, so no restart is needed; after a hand edit, call `mpd_config_reload` once (or restart) so the resolve reads the new value. A `spawn_teammate` teammate is NOT routed by these slots |
 | `watchdog.*` | mpd-team-watchdog | at mount, on a settings update, and every tick | live — no restart |
 
 `mpd-codegraph`'s knobs are the exception that proves the rule: they are patch-row options
@@ -500,8 +526,8 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # start from a working skel
 - **There is no reload.** Editing an extension's manifest or assets takes effect on the next
   `dsh` start; `mpd_ext_list` has no reload counterpart by design.
 - **Extension roles are not team members.** They are usable through `mpd_role_spawn` /
-  `mpd_role_persona` and as workmate base templates, but the agent-teams member list is static
-  patch configuration.
+  `mpd_role_persona` and as workmate base templates, but the teammate roster is fixed: a teammate
+  exists only when the captain spawns it by name with `spawn_teammate`.
 - **`extensions.*` configuration is process-level**, read when the plugin starts — it is not
   scoped per session.
 - **A fourth-party MCP server is a child process.** It never inherits credential-shaped variables
@@ -513,10 +539,9 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # start from a working skel
   `Deep Worker`, `plan reviewer` — any case/space/hyphen spelling); run `mpd_roles_list`.
 - `mpd_workmate_*` says "mpdRoles service unavailable" → the `mpd-roles` row is not mounted
   (reinstall the bundle).
-- A workmate rename/delete is **refused because it is in use** → a non-archived team record under
-  `.mpd/team/` names it, or an `mpd_workmate_spawn` is still running. The refusal lists the
-  blocking teams; archive (or retire) those teams in the AgentTeams tab and let running spawns
-  finish, then repeat.
+- A workmate rename/delete is **refused because it is in use** → an `mpd_workmate_spawn` is still
+  running, or a LEGACY (pre-0.1.7) non-archived team record under `.mpd/team/` names it. The refusal
+  lists the blocking teams; let running spawns finish (or clear the legacy records) and repeat.
 - A workmate was deleted by accident → its default delete only ARCHIVED it: move
   `~/.mpd/workmate/.archive/<name>-<stamp>` back to `~/.mpd/workmate/<name>`. There is no
   in-product restore, and a `purge` (run with `confirm: <name>`) is unrecoverable.
@@ -536,21 +561,22 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # start from a working skel
 - **A project-level extension's `mcp`/`roles` items were rejected** → expected: only host-wide
   roots (`~/.mpd/extensions/`, `<bundle>/extensions/`) may contribute tools and providers. Move
   the directory, or drop the unsupported kinds from the manifest.
-- AgentTeams tab missing from the sidebar → rebuild the shipped client
+- Workmates tab missing from the sidebar → rebuild the shipped client
   (`node scripts/build-mpd-client.mjs`, then reload) and confirm the profile has the sidebar host.
   The bundle installs it itself (declared dependency + the `mpd-better-sidebar` row); if
   `dsh-better-sidebar` is absent from the profile, the install did not materialize the dependency —
   run `bun install` in the checkout (or
   `bun add dsh-better-sidebar@0.19.0-alpha.1 --ignore-scripts`) and reinstall the bundle. Without the
-  host the team page logs one warning and registers nothing.
+  host the workmate page logs one warning and registers nothing.
+- The Agent Teams panel is missing from the conversation header → its row is
+  `mpd-ui-agent-team` (`@deepseek-ai/dsh-experimental-client-ui-agent-team`, a declared dependency);
+  reinstall the bundle and reload the page once. It appears only when the session really has a Team
+  projection to show.
 - Client surface missing entirely in the GUI → the `mpd-web-compat` self-row must exist and the
   bundle must be reinstalled (`dsh plugin --profile <p> add <repo-or-package>`).
 - `MISSING_CREDENTIAL` → the provider route needs a key in your DSH credentials; keys are never
   configured by this bundle.
 - AGENT.md not injected → the session runs a non-`mpd` preset; switch presets.
-- The sidebar shows `cannot resolve target "…/team-activity"` → an old client opened the AgentTeams
-  tab with a content seed. Update the bundle (`git pull`, then
-  `dsh plugin --profile <p> add <repo>`) and reload the page — the auto-open is seedless now.
 - **No `mpd` session can be created and the error says `agent-preset/invalid … $.prefix missing
   required value`** → the installed harness changed the `dsh-persona` contract (it takes `prefix`,
   not the retired `text`) and refuses to mount the whole preset. Update the bundle (`git pull`,
@@ -570,20 +596,20 @@ bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp   # start from a working skel
 ## 12. Command reference
 
 Every slash command a session can use, with where each one works. The table carries two classes: the
-**six commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
-`mpd-codegraph` registers `/mpd-codegraph`, `mpd-tui` registers `/mpd`, and the adopted `agent-teams`
-plugin registers `/agent-teams` and `/agent-teams-mpd`), and the **two HOST-provided commands the
-bundle only documents** — `/settings`, the host's TUI settings screen (whose MPD section the bundle
-extends), and `/goal`, the host goal command the `mpd` preset mounts. Nothing else exists — in
-particular **there is no `/roster` command**: the roster is reached with the `mpd_roles_list` tool.
+**four commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
+`mpd-codegraph` registers `/mpd-codegraph`, and `mpd-tui` registers `/mpd`), and the **two
+HOST-provided commands the bundle only documents** — `/settings`, the host's TUI settings screen
+(whose MPD section the bundle extends), and `/goal`, the host goal command the `mpd` preset mounts.
+Nothing else exists — in particular **there is no `/roster` command** (the roster is reached with the
+`mpd_roles_list` tool) and **no `/agent-teams` command** (team work is driven by the official
+`spawn_teammate` / `team_task_*` tools; the retired vendored plugin that registered that command is no
+longer mounted).
 
 | Command | What it does | Where |
 |---|---|---|
 | `/ulw <objective>` | starts the ultrawork loop on the objective — the same engine as `mpd_ulw`, at the lighter default tier | Web + TUI |
 | `/ultrawork <objective>` | identical to `/ulw` (both submit the ULW activation directive as your own next turn) | Web + TUI |
 | `/mpd-codegraph` | resolves the codegraph binary and initialises/refreshes the project index under `.codegraph/` | Web + TUI |
-| `/agent-teams` | drives the team surface for this conversation — the same domain the AgentTeams tab shows | Web + TUI |
-| `/agent-teams-mpd` | the same command generated for the `mpd` profile key: stages a captain-planned team | Web + TUI |
 | `/mpd` | the TUI command tree over bundle state: a bare `/mpd` opens the picker, `/mpd <value>` goes direct, `/mpd status` prints the summary | **TUI only** — under Web the registration is refused and nothing is exposed |
 | `/settings` | the host's settings screen; the MPD section edits your `mpd.jsonc` | **TUI only** |
 | `/goal` | the host's goal command, mounted by the `mpd` preset (the Web overlay disables the host's own `tool-goal` / `command-goal` rows, so the preset carries both) | Web + TUI |
@@ -598,38 +624,37 @@ Each block below is literally what you or your agent type; tool arguments are JS
 are stable. This is the "how do I call this" section: when you want a specific behaviour, ask for the
 exact call.
 
-### 13.1 Teams, in every approval mode
+### 13.1 Teams
 
 ```text
-# (a) two-phase — stage the plan, review it in the Web plan panel, then approve
-agent_teams_create { "name": "docs-wave", "description": "README + user-guide overhaul", "profile": "mpd", "approval": "required" }
-agent_teams_add_member { "name": "Senior Engineer", "role": "Senior Engineer" }
-agent_teams_create_task { "subject": "Rewrite the install chapter", "description": "Cover both profiles and the packed package.", "kind": "implementation", "assignee": "Senior Engineer", "objective": "A user can install from a checkout in one command.", "inScope": ["README.md"], "outOfScope": ["docs/**"], "acceptance": ["The install command is literal and copy-pasteable."], "verify": ["bun run verify:docs"] }
-agent_teams_edit_plan { "operations": [ { "action": "update_task", "task_id": "t1", "assignee": "Deep Worker" }, { "action": "add_task", "subject": "Verify the README pair", "kind": "verification" }, { "action": "remove_member", "member_name": "Researcher" } ] }
-agent_teams_approve { "confirmation": "approved — go ahead" }   # only after the user says so
+# (a) creating the team: one spawn per member, one task per lane
+spawn_teammate { "name": "senior-1", "description": "Owns the README pair", "prompt": "<mpd_role_persona text> + Rewrite the install chapter. A user can install from a checkout in one command; verify with bun run verify:docs.", "context": "fresh" }
+team_task_create { "subject": "Rewrite the install chapter", "description": "Cover both profiles and the packed package.", "blocked_by": [], "write_scopes": ["README.md"] }
+team_task_create { "subject": "Verify the README pair", "description": "Run the docs gate and report the raw output.", "blocked_by": ["task-1"], "write_scopes": [] }
 
-# (b) unattended — stages and spawns in the same call (the default when `approval` is omitted)
-agent_teams_create { "name": "quick-fix", "description": "Fix the dead doc links", "profile": "mpd", "approval": "automatic" }
+# (b) working the board (compare-and-set: re-read before every update)
+team_task_list { "ready": true }
+team_task_get { "task_id": "task-1" }                                  // → revision
+team_task_update { "task_id": "task-1", "expected_revision": 1, "action": "claim" }
+team_task_update { "task_id": "task-1", "expected_revision": 2, "action": "complete" }
 
-# (c) driving a team that is running
-agent_teams_status {}
-agent_teams_send_message { "to": "Senior Engineer", "content": "Land the README edit before the guide." }
-agent_teams_reassign_task { "task_id": "t4", "assignee": "Deep Worker", "reason": "Senior Engineer is on the design doc" }
-agent_teams_remove_member { "name": "Junior Engineer" }
-agent_teams_rollover { "wave_label": "w2", "reason": "wave 1 is merged" }
+# (c) driving a running team
+list_agents {}
+send_message { "target": "senior-1", "message": "Land the README edit before the guide." }
+team_task_update { "task_id": "task-1", "expected_revision": 2, "action": "reassign", "owner": "junior-1" }   // Lead only
+wait_agent { "timeout_ms": 60000 }
+interrupt_agent { "target": "senior-1" }                               // Lead only; the inbox is kept
 
-# (d) finishing
-# Stop-team in the AgentTeams tab pauses a live team; `agent_teams_halt` is NOT a callable tool.
-agent_teams_resume { "reason": "the user re-approved the plan" }
-agent_teams_delete {}
+# (d) finishing a wave
+mpd_team_compact_run {}
+mpd_team_compact_status {}
 ```
 
-`kind` is one of `work`, `requirements`, `implementation`, `verification`, `review`, `repair`,
-`integration`. A quality kind needs its contract with it (`objective` + `acceptance`, plus `inScope`
-and `verify` for implementation/repair) or the call is refused; every task needs a non-empty
-`subject`. `agent_teams_edit_plan` takes ONE ordered `operations` batch whose `action` is
-`update_member`, `update_task`, `add_task`, `remove_task` or `remove_member` — update downstream
-dependencies/assignees before removing anything.
+Team names are permanent and are never reused. `write_scopes` are advisory (workspace-relative
+prefixes): overlapping in-progress tasks are warned about, never blocked. A task update based on an
+outdated `revision` is rejected — that rejection is the mechanism that stops a reassigned task from
+accepting a late result. There is no plan-approval step: the board is the plan, and the quality
+discipline is whatever the captain puts in the task description.
 
 ### 13.2 The ULW loop and its gates
 
@@ -675,7 +700,7 @@ mpd_workmate_delete { "name": "docs-reviewer", "purge": true, "confirm": "docs-r
 
 `base` is the functional name; `name` is optional (auto-derived from it). A weak `mpd_workmate_match`
 means initialize a NEW workmate — never force the match. Both mutations are refused while the workmate
-is in use by a team or an in-flight spawn.
+is in use by an in-flight spawn (or by a legacy team record).
 
 ### 13.5 Hash-anchored edits
 
@@ -736,31 +761,30 @@ bun scripts/mpd-ext.mjs list
 bun scripts/mpd-ext.mjs scaffold my-ext --dir /tmp --with-mcp
 ```
 
-### 13.9 The `agent_teams_*` loop (leader and member)
+### 13.9 The team loop (Lead and member)
 
 ```text
-# leader / captain
-agent_teams_status {}
-agent_teams_task_contract { "task_id": "t5" }                    # one id, or "t5,t6,t8" for a batch
-agent_teams_path_owner { "path": "docs/user-guide.md", "open_only": true }
-agent_teams_move_path { "path": "docs/user-guide.md", "to_task": "t5" }
-agent_teams_send_message { "to": "captain", "content": "t5 needs the design-doc link target." }
-agent_teams_mailbox_check { "recipient": "captain", "content": "…" }   # pre-send duplicate check
-agent_teams_mailbox_clear { "watermark": 1758276000000, "agent": "captain" }
-agent_teams_interject_request { "summary": "…", "reason": "…", "location": "docs/user-guide.md:7" }
-agent_teams_interject_decide { "request_id": "<id>", "decision": "approved" }
+# Lead (the session agent)
+team_task_list {}                                                # the active board, with revisions
+team_task_get { "task_id": "task-5" }                            # one task, frozen at its revision
+team_task_update { "task_id": "task-5", "expected_revision": 4, "action": "reassign", "owner": "junior-1" }
+send_message { "target": "junior-1", "message": "task-5 needs the design-doc link target." }
+list_agents {}                                                   # targets + availability
+wait_agent { "timeout_ms": 60000 }                               # next roster/message/task edge
+interrupt_agent { "target": "junior-1" }                         # stop the current turn, keep the inbox
 
 # member
-agent_teams_claim_task { "task_id": "t5" }                       # returns the attempt id
-agent_teams_update_task { "task_id": "t5", "status": "in_progress", "attempt_id": "<attempt id>" }
-agent_teams_update_task { "task_id": "t5", "status": "completed", "attempt_id": "<attempt id>", "changedPaths": ["docs/user-guide.md"], "acceptanceResults": [ { "criterion": "…", "status": "passed", "evidence": "…" } ], "commandsRun": [ { "command": "bun run verify:docs", "status": "passed", "exitCode": 0 } ] }
+team_task_update { "task_id": "task-5", "expected_revision": 4, "action": "claim" }
+team_task_update { "task_id": "task-5", "expected_revision": 5, "action": "edit", "description": "…progress + evidence…" }
+team_task_update { "task_id": "task-5", "expected_revision": 6, "action": "complete" }
+send_message { "target": "lead", "message": "task-5 done: `bun run verify:docs` passes." }
 ```
 
-Every update carries the `attempt_id` returned by `agent_teams_claim_task`; a stale one is refused
-after the task is reassigned. A work result claims the paths it changed (`changedPaths`) and, for a
-quality kind, submits `acceptanceResults` and `commandsRun` in contract order — a review task
-completes only with `verdict: "pass"`. `agent_teams_claim_task` is for members; a captain assigns with
-`agent_teams_reassign_task`.
+Every mutation carries the `expected_revision` the caller read; a stale one is refused with a typed
+error, so a reassigned task cannot silently accept a late result. `write_scopes` warn about overlap
+and never authorize a write, so report what you changed in the task description (or a message) rather
+than relying on the scope list. A result is not accepted because a teammate says so: the Lead waits
+for the team (`wait_agent`, then re-read) and verifies the diff before answering.
 
 ## 14. Where these capabilities come from
 
@@ -770,17 +794,19 @@ other people's. The authoritative record, with the full licence texts, is
 
 | What you use | Where it comes from | Licence / version | Recorded in |
 |---|---|---|---|
-| Team mode — `agent_teams_*`, the scheduler, the AgentTeams tab | **dsh-agent-teams** by 程序员阿江 (Relakkes) — adopted outright as first-class main code | MIT; adopted package version `0.1.16-rc.3-mpd` (a `0.1.14` body with the audited `0.1.16-rc.3` deltas backported) | `LICENSE-NOTICES.md`; licence text at `packages/mpd-agent-teams-plugin/LICENSE`; row `agent-teams` |
+| Team mode — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, the `team_task_*` board and the Web panel | the **official** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` packages, mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows | MIT (harness package set); declared in `package.json` `dependencies` | `packages/mpd-bundle/cordis.patch.yml`; `README.md` (*What the install mounts*) |
+| The retired vendored `agent-teams` body (kept, not mounted) | **dsh-agent-teams** by 程序员阿江 (Relakkes) — adopted outright as first-class main code | MIT; adopted package version `0.1.16-rc.3-mpd` (a `0.1.14` body with the audited `0.1.16-rc.3` deltas backported); NO row mounts it since 0.1.7-rc.2 | `LICENSE-NOTICES.md`; licence text at `packages/mpd-agent-teams-plugin/LICENSE` |
 | The 11-specialist roster, the model-chain vocabulary, the teammate / workmate BASE templates | **oh-my-openagent** by code-yeongyu, pinned at commit `8c57e46` (v5.0.0-beta.20) | SUL-1.0 — the licence this repository inherits | `LICENSE-NOTICES.md` §1; `VENDOR_LOCK.json` |
 | The served skill corpus (18 skills, 326 fingerprinted files) | vendored from upstream oh-my-openagent | SUL-1.0 | `VENDOR_LOCK.json` `assets.skills` |
 | `mcp__ast_grep__*` | **ast-grep** — the optional dependency `@ast-grep/cli` | MIT; `0.45.2`; resolved at runtime, not redistributed | `package.json` `optionalDependencies`; `MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` and the `mpd-codegraph` row | **codegraph** by Yeongyu Kim — the optional dependency `@colbymchenry/codegraph` | MIT; `1.5.0`; the prebuilt server is vendored and sha256-pinned | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`; `VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker** by code-yeongyu (`@code-yeongyu/comment-checker`) | MIT; `0.8.0`; **not** redistributed — installed on demand into `.toolchain` (`--with-comment-checker`) | `LICENSE-NOTICES.md`; `MPD_DSH_COMMENT_CHECKER_BIN` |
 | The plugin system, the tool / skill / preset / agent seams, the model providers, the Web shell | DeepSeek Harness — the **`@deepseek-ai/*`** packages | MIT; referenced as dependencies only | `LICENSE-NOTICES.md` |
-| The AgentTeams and Workmates sidebar tabs | hosted by the community bundle **`dsh-better-sidebar`**, a declared runtime dependency of this bundle (installed and mounted with it) | — | §8 above; `package.json` `dependencies`; patch row `mpd-better-sidebar` |
+| The Agent Teams Web panel | the official `@deepseek-ai/dsh-experimental-client-ui-agent-team` client plugin | MIT (harness package set) | §8 above; patch row `mpd-ui-agent-team` |
+| The Workmates sidebar tab | hosted by the community bundle **`dsh-better-sidebar`**, a declared runtime dependency of this bundle (installed and mounted with it) | — | §8 above; `package.json` `dependencies`; patch row `mpd-better-sidebar` |
 | The DSH plumbing (adapter, runtime plugins, `mpd` preset, combined web client), the TUI edition, the QA suite, the documentation, the extension interface | written here | SUL-1.0 | `README.md` (Acknowledgements); `LICENSE.md` |
 
 Two consequences worth carrying away: a component keeps its **own** licence even inside this bundle
-(the adopted `agent-teams` main code is MIT while the repository is SUL-1.0), and nothing here
+(the retained `agent-teams` main code is MIT while the repository is SUL-1.0), and nothing here
 configures your provider credentials — a `MISSING_CREDENTIAL` error belongs to your DSH credential
 store, not to these docs.

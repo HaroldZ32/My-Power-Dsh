@@ -6,6 +6,12 @@
 // Wrapped seams (each feature-detected, never assumed):
 //   tools.register / tools.guard / tools.get / tools.execute / tools/pre-execute / tools/post-execute
 //   subagents.start (spawn)                       -> spawnAgent
+//   subagents.getProvider / list / registerProvider / startContinuable / interrupt
+//   agentTeams.* (the official team service)       -> teamService / teamMembership /
+//                                                     teamListMembers / teamListTasks / teamCreateTask /
+//                                                     teamGetTask / teamUpdateTask / teamSendMessage /
+//                                                     teamSpawnTeammate / teamInterrupt /
+//                                                     teamWaitForChange / teamLiveTeams
 //   skills.registerProvider / skills.list / skills.get
 //   agentPresets.resolve
 //   agents.list (session cwds)                    -> workspaceRoot / workspaceRootsAll
@@ -29,6 +35,8 @@ export const inject: string[] = []
 /** Object-rooted JSON Schema used whenever a caller omits one. */
 const OBJECT_SCHEMA: Record<string, unknown> = { type: "object", properties: {} }
 const DEFAULT_TOOL_TIMEOUT_MS = 120_000
+/** The four Agent Teams seams a USABLE shared task board needs (see `capabilities().teamTasks`). */
+const TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"] as const
 
 export type DshTextBlock = { type: "text"; text: string }
 
@@ -187,6 +195,164 @@ export interface DshSpawnResult {
   stopReason: string | null
 }
 
+// ── the official Agent Teams plane ──────────────────────────────────────────
+// The shapes below are the INSTALLED harness's own public team types
+// (`@deepseek-ai/dsh-experimental-agent-team/lib/types/{roster,types}.d.ts`),
+// re-declared HERE rather than imported: the package is not resolvable by bare
+// specifier from this repository, and AGENTS.md §6 makes this file the ONE place
+// a harness rename or reshape is absorbed, so the mpd-facing contract must not
+// depend on the host's module layout. Field names mirror the host exactly, so a
+// consumer never has to guess and a projection below never invents a key.
+
+/** One Agent's Team identity, as `tryMembership(agent)` resolves it (`TeamMembership`). */
+export interface DshTeamMembership {
+  /** The implicit team's identity (the Lead Session id, branded `TeamId` on the host). */
+  teamId: string
+  role: "lead" | "teammate"
+  /** The model-facing member name. */
+  name: string
+}
+
+/** One runtime-enriched roster row (`TeamMemberView`). */
+export interface DshTeamMemberView {
+  id: string
+  name: string
+  role: "lead" | "teammate"
+  status: "running" | "inactive" | "provisioning" | "failed"
+  description?: string
+  provider?: string
+  context?: "fresh" | "fork"
+  model?: string
+  /** Always an array (`[]` when the host declares none), so a consumer can iterate. */
+  diagnostics: string[]
+}
+
+/** Durable task lifecycle (`TeamTaskStatus`). */
+export type DshTeamTaskStatus = "pending" | "in_progress" | "completed" | "deleted"
+
+/** One runtime-enriched shared-task row (`TeamTaskView`). */
+export interface DshTeamTaskView {
+  id: string
+  revision: number
+  subject: string
+  description: string
+  status: DshTeamTaskStatus
+  blockedBy: string[]
+  writeScopes: string[]
+  ownerName?: string
+  ready: boolean
+  writeScopeWarnings: string[]
+}
+
+/** Input for one new shared task (`CreateTeamTaskRequest`). */
+export interface DshTeamCreateTaskRequest {
+  subject: string
+  description?: string
+  blockedBy?: readonly string[]
+  writeScopes?: readonly string[]
+}
+
+/** The eight supported task transitions (`TeamTaskAction`). */
+export type DshTeamTaskAction =
+  | "claim" | "release" | "edit" | "set_dependencies" | "complete" | "reopen" | "reassign" | "delete"
+
+/** One compare-and-set task mutation (`UpdateTeamTaskRequest`). */
+export interface DshTeamUpdateTaskRequest {
+  taskId: string
+  expectedRevision: number
+  action: DshTeamTaskAction
+  subject?: string
+  description?: string
+  blockedBy?: readonly string[]
+  writeScopes?: readonly string[]
+  owner?: string
+}
+
+/** Input for one durable peer message (`SendTeamMessageRequest`). */
+export interface DshTeamSendMessageRequest {
+  target: string
+  content: unknown
+  signal?: AbortSignal
+}
+
+/** Result after a peer message enters the durable mailbox (`SendTeamMessageResult`). */
+export interface DshTeamSendMessageResult {
+  messageId: string
+  status: "accepted" | "queued"
+}
+
+/** Input for one durable teammate (`SpawnTeammateRequest`). */
+export interface DshTeamSpawnTeammateRequest {
+  name: string
+  description: string
+  prompt: unknown
+  context?: "fresh" | "fork"
+  provider?: string
+  signal?: AbortSignal
+}
+
+/** Result after one teammate reaches a durable active or failed edge. */
+export interface DshTeamSpawnTeammateResult {
+  member: DshTeamMemberView
+}
+
+/** The target status sampled before a teammate interrupt. */
+export interface DshTeamInterruptResult {
+  previousStatus: "running" | "inactive"
+}
+
+/** Result of waiting for Team activity (`TeamWaitResult`). */
+export interface DshTeamWaitResult {
+  timedOut: boolean
+}
+
+/**
+ * One LIVE Team, folded from the agent registry (see {@link DshAdapter.teamLiveTeams}).
+ *
+ * There is no durable `.mpd/team` record any more (the harness keeps team state in the
+ * Lead Session log and publishes it as the `agentTeam` Session projection), so a live
+ * Lead Agent is the only handle from which a roster and a board can be read.
+ */
+export interface DshTeamView {
+  /** The implicit team identity (the Lead Session id on the host). */
+  teamId: string
+  leadName: string
+  leadSessionId: string
+  members: DshTeamMemberView[]
+  tasks: DshTeamTaskView[]
+}
+
+/**
+ * The `agent/pre-step` payload, as much of it as an mpd listener depends on.
+ *
+ * MEASURED against the installed harness (`dsh-agent-loop/lib/index.js`
+ * `preStep()`): the waterfall is dispatched with `{messages: claimed, turn, step,
+ * agent?, signal}` and its default decision is `{kind:'enter', messages}` — the
+ * SAME payload `dsh-agent-instructions` and `dsh-compaction-basic` read. `messages`
+ * are the step's claimed inbox items, which is where the user-role turn lives.
+ */
+export interface DshAgentPreStep {
+  agent?: unknown
+  messages?: readonly unknown[]
+  turn?: number
+  step?: number
+  signal?: AbortSignal
+  [key: string]: unknown
+}
+
+/**
+ * The `agent/pre-step` decision the harness consumes: `{kind:'enter', messages}`
+ * carrying the messages the step will run with, or `{kind:'reject'}` to refuse it.
+ *
+ * A listener may replace `messages` (that is how a user-role advisory notice is
+ * injected) — see {@link DshAdapter.onAgentPreStep}.
+ */
+export interface DshPreStepDecision {
+  kind?: string
+  messages?: readonly unknown[]
+  [key: string]: unknown
+}
+
 export interface DshToolCallResult {
   ok: boolean
   isError: boolean
@@ -343,6 +509,52 @@ export interface DshCapabilities {
    * forwards to.
    */
   agentTurnInject: boolean
+  /**
+   * A live agent's OWN scope exposes `systemPrompt.section`, i.e.
+   * {@link DshAdapter.agentPromptSection} can register a section for THAT agent
+   * (and not for every session of the process).
+   *
+   * A LIVE-REGISTRY probe like {@link DshCapabilities.agentScope}: a composition with
+   * no live session reports false although the surface exists, and the per-call
+   * return/throw stays authoritative.
+   */
+  agentPromptSection: boolean
+  /**
+   * The `agent/pre-step` waterfall is reachable (`ctx.on`), i.e.
+   * {@link DshAdapter.onAgentPreStep} can observe and amend a step's decision.
+   * Same probe as {@link DshCapabilities.events}; reported apart because the two
+   * methods carry different contracts (a raw forwarded listener vs. one whose
+   * decision replaces the downstream one).
+   */
+  agentPreStep: boolean
+  /**
+   * The official Agent Teams service (`ctx.get("agentTeams")`) exposes the IDENTITY +
+   * ROSTER read surface (`tryMembership` and `listMembers`), i.e.
+   * {@link DshAdapter.teamMembership} and {@link DshAdapter.teamListMembers} can run.
+   *
+   * This is the service-level flag of the team plane: `teamSpawnTeammate`,
+   * `teamInterrupt` and `teamWaitForChange` are gated by it too, while the two finer
+   * families report their own flags below.
+   */
+  team: boolean
+  /**
+   * The shared task board is usable: `createTask`, `getTask`, `listTasks` and
+   * `updateTask` are ALL callable, so {@link DshAdapter.teamCreateTask} /
+   * `teamGetTask` / `teamUpdateTask` / `teamListTasks` can run.
+   */
+  teamTasks: boolean
+  /**
+   * The peer-mailbox surface is usable: `sendMessage` AND `waitForChange` are callable,
+   * so {@link DshAdapter.teamSendMessage} and {@link DshAdapter.teamWaitForChange} can run.
+   */
+  teamMessages: boolean
+  /**
+   * `ctx.subagents.registerProvider` — the seam
+   * {@link DshAdapter.registerSubagentProvider} needs (the existing
+   * {@link DshCapabilities.subagentsProvider} flag covers the READ half, `getProvider`
+   * + `list`; the two are reported apart because the methods carry different contracts).
+   */
+  subagentsProviderRegister: boolean
 }
 
 /**
@@ -651,6 +863,28 @@ export interface DshAdapter {
   onPostToolExecute(
     listener: (exec: DshToolExec, result: DshPostResult, downstream: DshPostDecision) => DshPostDecision | undefined | Promise<DshPostDecision | undefined>,
   ): () => void
+  /**
+   * Observe and AMEND one agent step BEFORE it runs — the `agent/pre-step` waterfall.
+   *
+   * The adapter owns `next()` exactly like {@link DshAdapter.onPostToolExecute} does:
+   * it awaits the downstream decision, hands the listener `(payload, downstream)` and
+   * returns the listener's decision when it returns one, else the downstream decision
+   * UNCHANGED. That is what makes an advisory injection possible — a listener replaces
+   * `messages` (the harness runs the step with the decision's message list) — while a
+   * listener that returns nothing is bit-identical to a composition without this hook.
+   *
+   * A listener that THROWS is contained: the downstream decision is returned, so a
+   * broken observer can never break a step (a missing optional seam must never take a
+   * boot down). A harness build with no event bus makes this a no-op (`() => {}`),
+   * never a boot failure; `capabilities().agentPreStep` reports it.
+   *
+   * @param listener - `(payload, decision)`; the payload carries `agent`, the claimed
+   *   `messages`, `turn`, `step` and `signal` (see {@link DshAgentPreStep}).
+   * @returns a disposer (a no-op when the seam does not exist).
+   */
+  onAgentPreStep(
+    listener: (payload: DshAgentPreStep, decision: DshPreStepDecision) => DshPreStepDecision | undefined | Promise<DshPreStepDecision | undefined>,
+  ): () => void
   hasTool(name: string): boolean
   /**
    * Structural view of the tool runtime for internal tool calls.
@@ -719,6 +953,141 @@ export interface DshAdapter {
    * by `capabilities().subagentsInterrupt`.
    */
   interruptAgent(targetSessionId: string, authority: unknown): void
+  /**
+   * The mounted Agent Teams service itself (`ctx.get("agentTeams")`), or `undefined`
+   * when this composition has no team row.
+   *
+   * The RAW service is handed out deliberately for the same reason
+   * {@link DshAdapter.subagentRuntime} is: a consumer may need a surface this adapter
+   * does not model yet, and re-declaring it here would be a second seam to keep in
+   * sync. Every mpd consumer is expected to prefer the typed methods below and to read
+   * this one only as an escape hatch (it is also what the team plane's own probes use).
+   * It is contained: a `ctx` that cannot answer is `undefined`, never a throw.
+   */
+  teamService(): unknown | undefined
+  /**
+   * One Agent's Team identity (`agentTeams.tryMembership(agent)`), projected onto
+   * {@link DshTeamMembership}.
+   *
+   * **NEVER throws**: a missing service, a service lacking `tryMembership`, a non-Team
+   * subagent, a stale identity, a host rejection or a membership whose `role` is not one
+   * of the two declared values all answer `undefined`. This is the FILTER method — a
+   * caller decides "is this agent on a team?" with it, so an exception would turn a
+   * normal negative answer into a failure.
+   */
+  teamMembership(agent: unknown): DshTeamMembership | undefined
+  /**
+   * The runtime-enriched roster visible to one Team member
+   * (`agentTeams.listMembers(agent)`), each row projected onto {@link DshTeamMemberView}.
+   *
+   * Degrade: THROWS when the service (or its `listMembers`) is absent — `[]` would
+   * conflate "this team has no members" with "no team service is mounted", which is
+   * exactly the kind of silent lie this adapter exists to prevent. A caller degrades on
+   * `capabilities().team`. A non-array host answer is `[]`.
+   */
+  teamListMembers(agent: unknown): DshTeamMemberView[]
+  /**
+   * The current non-deleted board visible to one Team member
+   * (`agentTeams.listTasks(agent)`), each row projected onto {@link DshTeamTaskView}.
+   *
+   * Degrade: THROWS when the service (or its `listTasks`) is absent, for the reason
+   * {@link DshAdapter.teamListMembers} names. Reported by `capabilities().teamTasks`.
+   */
+  teamListTasks(agent: unknown): DshTeamTaskView[]
+  /**
+   * Create one unowned pending task on the caller's board
+   * (`agentTeams.createTask(caller, request)`).
+   *
+   * `caller` is the exact live Agent used as the authority credential and `request` is
+   * forwarded **by identity** (no copy, no key rewrite), so a host field this adapter
+   * does not model still reaches the service. The promise is forwarded untouched —
+   * the host's own rejections stay rejections — and only a FULFILLED answer is
+   * projected onto {@link DshTeamTaskView}.
+   *
+   * Degrade: THROWS when the service or `createTask` is absent. Reported by
+   * `capabilities().teamTasks`.
+   */
+  teamCreateTask(caller: unknown, request: DshTeamCreateTaskRequest): Promise<DshTeamTaskView>
+  /**
+   * One task by id, including a deleted tombstone (`agentTeams.getTask(caller, id)`).
+   *
+   * Degrade: THROWS when the service or `getTask` is absent, and the host's OWN throw
+   * for an unknown id propagates verbatim (this adapter never invents a task view).
+   * Reported by `capabilities().teamTasks`.
+   */
+  teamGetTask(caller: unknown, id: string): DshTeamTaskView
+  /**
+   * One compare-and-set task transition (`agentTeams.updateTask(caller, request)`);
+   * `caller` and `request` are forwarded by identity and the promise untouched, exactly
+   * like {@link DshAdapter.teamCreateTask}.
+   *
+   * Degrade: THROWS when the service or `updateTask` is absent. Reported by
+   * `capabilities().teamTasks`.
+   */
+  teamUpdateTask(caller: unknown, request: DshTeamUpdateTaskRequest): Promise<DshTeamTaskView>
+  /**
+   * Queue one durable peer message (`agentTeams.sendMessage(caller, request)`), the
+   * request forwarded by identity and the promise untouched.
+   *
+   * Degrade: THROWS when the service or `sendMessage` is absent. Reported by
+   * `capabilities().teamMessages`.
+   */
+  teamSendMessage(caller: unknown, request: DshTeamSendMessageRequest): Promise<DshTeamSendMessageResult>
+  /**
+   * Create one named continuable teammate (`agentTeams.spawnTeammate(caller, request)`),
+   * the request forwarded by identity and the promise untouched.
+   *
+   * NOTE (AGENTS.md §3 of the adaptation plan): this is the path on which per-member
+   * model routing CANNOT be applied mechanically — the official
+   * `SubagentStartRequest` carries no `agentOptions`/`persona`/`toolFilter`, so the
+   * teammate inherits the Lead's route. A caller that needs a roster slot's route
+   * states it in the spawn prompt.
+   *
+   * Degrade: THROWS when the service or `spawnTeammate` is absent (reported by the
+   * service-level `capabilities().team`).
+   */
+  teamSpawnTeammate(caller: unknown, request: DshTeamSpawnTeammateRequest): Promise<DshTeamSpawnTeammateResult>
+  /**
+   * Interrupt one live teammate turn without clearing its inbox
+   * (`agentTeams.interrupt(caller, targetName)`), answering the status sampled BEFORE
+   * cancellation.
+   *
+   * Degrade: THROWS when the service or `interrupt` is absent (reported by
+   * `capabilities().team`).
+   */
+  teamInterrupt(caller: unknown, targetName: string): DshTeamInterruptResult
+  /**
+   * Wait for the next Team-domain or member-status change
+   * (`agentTeams.waitForChange(caller, timeoutMs, signal)`), both arguments forwarded
+   * verbatim (`signal` is the caller's cancellation for the WAIT only).
+   *
+   * Degrade: THROWS when the service or `waitForChange` is absent. Reported by
+   * `capabilities().teamMessages`.
+   */
+  teamWaitForChange(caller: unknown, timeoutMs: number, signal?: AbortSignal): Promise<DshTeamWaitResult>
+  /**
+   * Every LIVE Team in this process, folded over {@link DshAdapter.liveAgents}: for each
+   * live Agent whose `tryMembership` answers `role: "lead"`, its roster and board.
+   *
+   * `[]` when the team service is absent, when the agent registry is absent, and when
+   * NO live agent is a Lead — the three cases are indistinguishable here on purpose,
+   * because each of them means "there is nothing to report" to a web route or a TUI
+   * scene. Per-agent reads are CONTAINED: a service that lacks `listMembers`/
+   * `listTasks`, or a call that throws, yields `[]` for that entry instead of taking
+   * either the fold or the caller down (this is a readout, not a command path).
+   */
+  teamLiveTeams(): DshTeamView[]
+  /**
+   * Register one subagent provider (`ctx.subagents.registerProvider(provider)`), the
+   * provider forwarded VERBATIM and the registry's disposer passed back.
+   *
+   * Degrade: THROWS when the subagents service (or its `registerProvider`) is absent —
+   * parity with {@link DshAdapter.registerSkillProvider}, a registration that silently
+   * vanished would leave a caller believing its provider is served. A non-callable
+   * registry answer degrades to a no-op disposer rather than leaking. Reported by
+   * `capabilities().subagentsProviderRegister`.
+   */
+  registerSubagentProvider(provider: unknown): () => void
   registerSkillProvider(provider: unknown): () => void
   listSkills(options?: { cwd?: string }): Promise<DshSkillSummary[]>
   loadSkill(skillName: string, options?: { cwd?: string }): Promise<unknown>
@@ -761,6 +1130,31 @@ export interface DshAdapter {
    * Reported by `capabilities().agentScope` (a live-registry probe).
    */
   agentScope(agent: unknown): DshAgentScope | undefined
+  /**
+   * Contribute ONE section to ONE agent's OWN system prompt
+   * (`agent.ctx.systemPrompt.section(section)`), the section forwarded VERBATIM and
+   * the registry's disposer passed back.
+   *
+   * WHY THIS EXISTS BESIDE {@link DshAdapter.registerPromptSection}: the host-plane call
+   * adds the section to EVERY session's prompt, which is wrong for a contribution that
+   * belongs to one preset's sessions (the roster is advertised to an mpd Lead, not to
+   * every session this process serves). The official Agent Teams tool plugin registers
+   * its `team:policy` section exactly this way — `const scoped = agent.ctx;
+   * scoped.systemPrompt.section({name, order, text})` — which is the measured shape this
+   * seam mirrors.
+   *
+   * Degrade: THROWS at the call when the agent (or its scoped context) exposes no
+   * `systemPrompt.section` — a silently dropped section would be a WRONG prompt rather
+   * than a missing feature, and the caller reports it as a warning. The host-side name
+   * uniqueness rule applies per scope: a duplicate name throws INSIDE the registry and is
+   * deliberately NOT swallowed. Reported by `capabilities().agentPromptSection` (a
+   * live-registry probe).
+   *
+   * @param agent - a live Agent whose `ctx` is the target scope.
+   * @param section - `{name, order, text}`; forwarded untouched.
+   * @returns the registry's effect disposer (a no-op when it returned none).
+   */
+  agentPromptSection(agent: unknown, section: DshPromptSection): () => void
   /**
    * Start an agent's next turn: `agent.followup(message)`, receiver-bound, forwarded
    * THROWING.
@@ -963,6 +1357,110 @@ function scopeOfAgentContext(agent: unknown): DshAgentScope | undefined {
     tools: { restrict: (filter) => (restrict as (filter: unknown) => () => void).call(tools, filter) },
     on: (event, handler) => (on as (event: string, handler: (...args: unknown[]) => unknown) => () => void).call(context, event, handler),
     effect: (fn, label) => (effect as (fn: () => unknown, label?: string) => () => void).call(context, fn, label),
+  }
+}
+
+// ── the team plane's projections ────────────────────────────────────────────
+// The host's `TeamMemberView` / `TeamTaskView` rows are runtime-enriched values rebuilt
+// on every read, so projecting them onto the mpd-facing types costs nothing and buys the
+// guarantee the adapter exists for: a harness that renames or drops an OPTIONAL field is
+// absorbed here, and a declared `diagnostics: string[]` is never `undefined` at a
+// consumer. The REQUIRED host fields are normalized rather than defaulted away — an
+// unreadable `id` stays the empty string, never an invented one.
+
+/** `'fresh' | 'fork'` when the host declares one, else `undefined`. */
+function teamContextOf(raw: unknown): "fresh" | "fork" | undefined {
+  return raw === "fresh" || raw === "fork" ? raw : undefined
+}
+
+/** One of the four roster statuses; anything else degrades to `inactive` (the host always declares one). */
+function teamStatusOf(raw: unknown): DshTeamMemberView["status"] {
+  return raw === "running" || raw === "provisioning" || raw === "failed" ? raw : "inactive"
+}
+
+/** One of the four task statuses; anything else degrades to `pending` (the safe non-terminal value). */
+function teamTaskStatusOf(raw: unknown): DshTeamTaskStatus {
+  return raw === "in_progress" || raw === "completed" || raw === "deleted" ? raw : "pending"
+}
+
+/** The string members of an unknown array, dropping non-strings instead of leaking them. */
+function teamStrings(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.filter((entry): entry is string => typeof entry === "string") : []
+}
+
+/** One roster row projected onto {@link DshTeamMemberView} (see the section header). */
+function teamMemberView(raw: unknown): DshTeamMemberView {
+  const row = (raw ?? {}) as Record<string, unknown>
+  const context = teamContextOf(row.context)
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    role: row.role === "lead" ? "lead" : "teammate",
+    status: teamStatusOf(row.status),
+    ...(typeof row.description === "string" ? { description: row.description } : {}),
+    ...(typeof row.provider === "string" ? { provider: row.provider } : {}),
+    ...(context === undefined ? {} : { context }),
+    ...(typeof row.model === "string" ? { model: row.model } : {}),
+    diagnostics: teamStrings(row.diagnostics),
+  }
+}
+
+/** One task row projected onto {@link DshTeamTaskView} (see the section header). */
+function teamTaskView(raw: unknown): DshTeamTaskView {
+  const row = (raw ?? {}) as Record<string, unknown>
+  return {
+    id: String(row.id ?? ""),
+    revision: typeof row.revision === "number" ? row.revision : 0,
+    subject: String(row.subject ?? ""),
+    description: String(row.description ?? ""),
+    status: teamTaskStatusOf(row.status),
+    blockedBy: teamStrings(row.blockedBy),
+    writeScopes: teamStrings(row.writeScopes),
+    ...(typeof row.ownerName === "string" ? { ownerName: row.ownerName } : {}),
+    ready: row.ready === true,
+    writeScopeWarnings: teamStrings(row.writeScopeWarnings),
+  }
+}
+
+/**
+ * One CONTAINED roster/board read for {@link DshAdapter.teamLiveTeams}: a service without
+ * the method, a throwing call or a non-array answer all degrade to `[]`, because a fold
+ * over live teams must never be taken down by one member's failing read.
+ */
+function teamRows<T>(teams: any, method: string, agent: unknown, project: (raw: unknown) => T): T[] {
+  const reader = teams?.[method]
+  if (typeof reader !== "function") return []
+  try {
+    const rows = reader.call(teams, agent)
+    return Array.isArray(rows) ? rows.map(project) : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * One agent's OWN scoped `systemPrompt` service, or `undefined` when that scope does
+ * not expose it.
+ *
+ * The probe is contained for the same reason {@link scopeOfAgentContext} is: an
+ * agent-scoped cordis context is a proxy that THROWS on a service it was not injected
+ * with, so an unguarded property read would turn a feature-detectable absence into a
+ * crash. Returning the SERVICE (not a boolean) keeps `capabilities()` and
+ * `agentPromptSection` on one probe, so the flag can never disagree with the method.
+ */
+function agentSystemPromptOf(agent: unknown): any {
+  let context: unknown
+  try {
+    context = (agent as { ctx?: unknown } | undefined)?.ctx
+  } catch {
+    return undefined
+  }
+  if (context === undefined || context === null) return undefined
+  try {
+    const systemPrompt = (context as { systemPrompt?: unknown }).systemPrompt
+    return typeof (systemPrompt as { section?: unknown } | undefined)?.section === "function" ? systemPrompt : undefined
+  } catch {
+    return undefined
   }
 }
 
@@ -1181,6 +1679,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const compaction = service("compaction")
       const llmService = service("llm")
       const systemPrompt = service("systemPrompt")
+      const agentTeams = service("agentTeams")
       const sample = liveAgents()[0]
       const sampleScoped = sample?.ctx
       let scopedCompaction = false
@@ -1233,6 +1732,21 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         agentTurnCancel: liveAgents().some((candidate) => typeof (candidate as { cancel?: unknown } | undefined)?.cancel === "function"),
         agentTurnSteer: liveAgents().some((candidate) => typeof (candidate as { steer?: unknown } | undefined)?.steer === "function"),
         agentTurnInject: liveAgents().some((candidate) => typeof (candidate as { inject?: unknown } | undefined)?.inject === "function"),
+        // A live agent's own scope carries the prompt registry (the official team tool
+        // plugin registers its `team:policy` section there). LIVE probe, like agentScope.
+        agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
+        // The pre-step waterfall rides the same event bus as every other hook.
+        agentPreStep: typeof ctx?.on === "function",
+        // ── the official Agent Teams plane (D6: reachable ONLY through here) ─────
+        // Each flag faces a method FAMILY, because the families degrade differently:
+        // `team` is the service-level identity + roster read (`teamMembership`,
+        // `teamListMembers`, and the gate for `teamSpawnTeammate`/`teamInterrupt`),
+        // `teamTasks` the shared board (all FOUR task methods, so a half-present
+        // service reads false), `teamMessages` the peer mailbox plus the wait seam.
+        team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
+        teamTasks: TEAM_TASK_METHODS.every((method) => typeof (agentTeams as any)?.[method] === "function"),
+        teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function",
       }
     },
 
@@ -1384,6 +1898,29 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       })
     },
 
+    onAgentPreStep(
+      listener: (payload: DshAgentPreStep, decision: DshPreStepDecision) => DshPreStepDecision | undefined | Promise<DshPreStepDecision | undefined>,
+    ): () => void {
+      if (typeof ctx?.on !== "function") return noop
+      // `agent/pre-step` is a WATERFALL whose returned decision the loop runs with
+      // (`dsh-agent-loop` `preStep()`: the default is `{kind:'enter', messages}`). The
+      // adapter owns `next()` — the same discipline as `onPostToolExecute` — and returns
+      // the listener's decision when it produces one, else the downstream object VERBATIM,
+      // so a listener that returns nothing (or throws) is bit-identical to a composition
+      // without this hook.
+      return ctx.on("agent/pre-step", async (payload: DshAgentPreStep, next: () => Promise<DshPreStepDecision>) => {
+        const fallback: DshPreStepDecision = { kind: "enter", messages: payload?.messages ?? [] }
+        const downstream: DshPreStepDecision = typeof next === "function" ? (await next()) ?? fallback : fallback
+        try {
+          const decided = await listener(payload ?? {}, downstream)
+          return decided ?? downstream
+        } catch {
+          // A broken observer must never break a step: the harness's own decision stands.
+          return downstream
+        }
+      })
+    },
+
     hasTool(toolName: string): boolean {
       const tools = service("tools")
       if (typeof tools?.get !== "function") return false
@@ -1497,10 +2034,159 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       return subagents.startContinuable.call(subagents, spec)
     },
 
+    registerSubagentProvider(provider: unknown): () => void {
+      // THROW, not a no-op (parity with `registerSkillProvider`): a registration that
+      // silently vanished would leave its caller believing the provider is served, and
+      // `capabilities().subagentsProviderRegister` is the pre-flight check.
+      const subagents = requireService("subagents", "cannot register a subagent provider")
+      if (typeof subagents.registerProvider !== "function") throw new Error("mpd-dsh-adapter: the harness subagents service exposes no registerProvider()")
+      // VERBATIM provider, receiver-bound; only a non-callable answer degrades to a
+      // disposer that does nothing (a stub registry can return anything).
+      const registered = subagents.registerProvider(provider)
+      return typeof registered === "function" ? registered : noop
+    },
+
     interruptAgent(targetSessionId: string, authority: unknown): void {
       const subagents = requireService("subagents", "cannot interrupt subagent session \"" + String(targetSessionId) + "\"")
       if (typeof subagents.interrupt !== "function") throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()")
       subagents.interrupt.call(subagents, targetSessionId, authority)
+    },
+
+    // ── the official Agent Teams plane (D6: the ONLY route to the team service) ──
+    // The `caller` Agent and every request object are forwarded BY IDENTITY, receiver
+    // bound: the host validates its own request shape (and rejects it loudly), so a copy
+    // or a key rewrite here could only lose a field this adapter does not model — the
+    // same discipline `registerHostTool` follows. Replies are PROJECTED (see the
+    // module-level projections), so a consumer's declared types are truthful.
+    teamService(): unknown | undefined {
+      // The contained probe (never a throw): `undefined` is the whole degrade contract,
+      // and `capabilities().team` is the pre-flight check a consumer reads.
+      const teams = service("agentTeams")
+      return teams === undefined || teams === null ? undefined : teams
+    },
+
+    teamMembership(agent: unknown): DshTeamMembership | undefined {
+      const teams = service("agentTeams")
+      const tryMembership = teams?.tryMembership
+      // NEVER throws (the frozen contract of this method): a missing seam is a miss.
+      if (typeof tryMembership !== "function") return undefined
+      let membership: any
+      try {
+        membership = tryMembership.call(teams, agent)
+      } catch {
+        // A stale identity, a non-Team subagent or a host that rejects the handle is a
+        // normal negative answer here — this method is used as a FILTER, so an exception
+        // would turn "not on a team" into a failure.
+        return undefined
+      }
+      if (membership === undefined || membership === null) return undefined
+      const role = membership.role
+      // Anything that is not one of the two declared roles is a MISS: the frozen return
+      // type has no third value to report, and inventing `teammate` would lie.
+      if (role !== "lead" && role !== "teammate") return undefined
+      // `root` (the Lead Agent the host carries on the membership) is deliberately NOT
+      // projected: a consumer resolves the Lead through `liveAgent`/`liveAgents`, which
+      // is the registry of record — never a handle captured in a stale row.
+      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") }
+    },
+
+    teamListMembers(agent: unknown): DshTeamMemberView[] {
+      const teams = requireService("agentTeams", "cannot list the team roster of an agent")
+      if (typeof teams.listMembers !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listMembers()")
+      const rows = teams.listMembers.call(teams, agent)
+      return Array.isArray(rows) ? rows.map(teamMemberView) : []
+    },
+
+    teamListTasks(agent: unknown): DshTeamTaskView[] {
+      const teams = requireService("agentTeams", "cannot list the shared task board of an agent")
+      if (typeof teams.listTasks !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()")
+      const rows = teams.listTasks.call(teams, agent)
+      return Array.isArray(rows) ? rows.map(teamTaskView) : []
+    },
+
+    async teamCreateTask(caller: unknown, request: DshTeamCreateTaskRequest): Promise<DshTeamTaskView> {
+      const teams = requireService("agentTeams", "cannot create team task \"" + String(request?.subject) + "\"")
+      if (typeof teams.createTask !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()")
+      return teamTaskView(await teams.createTask.call(teams, caller, request))
+    },
+
+    teamGetTask(caller: unknown, id: string): DshTeamTaskView {
+      const teams = requireService("agentTeams", "cannot read team task \"" + String(id) + "\"")
+      if (typeof teams.getTask !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()")
+      // A host throw (an unknown id, a revoked authority) propagates VERBATIM: this
+      // adapter never invents a task view and never masks a real rejection.
+      return teamTaskView(teams.getTask.call(teams, caller, id))
+    },
+
+    async teamUpdateTask(caller: unknown, request: DshTeamUpdateTaskRequest): Promise<DshTeamTaskView> {
+      const teams = requireService("agentTeams", "cannot update team task \"" + String(request?.taskId) + "\"")
+      if (typeof teams.updateTask !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()")
+      return teamTaskView(await teams.updateTask.call(teams, caller, request))
+    },
+
+    async teamSendMessage(caller: unknown, request: DshTeamSendMessageRequest): Promise<DshTeamSendMessageResult> {
+      const teams = requireService("agentTeams", "cannot send a team message to \"" + String(request?.target) + "\"")
+      if (typeof teams.sendMessage !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no sendMessage()")
+      const result: any = await teams.sendMessage.call(teams, caller, request)
+      return {
+        messageId: String(result?.messageId ?? ""),
+        // The host declares exactly these two; anything else is read as the conservative
+        // `accepted` (the message WAS queued durably — `queued` only says immediate
+        // delivery did not happen).
+        status: result?.status === "queued" ? "queued" : "accepted",
+      }
+    },
+
+    async teamSpawnTeammate(caller: unknown, request: DshTeamSpawnTeammateRequest): Promise<DshTeamSpawnTeammateResult> {
+      const teams = requireService("agentTeams", "cannot spawn team member \"" + String(request?.name) + "\"")
+      if (typeof teams.spawnTeammate !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no spawnTeammate()")
+      const result: any = await teams.spawnTeammate.call(teams, caller, request)
+      return { member: teamMemberView(result?.member) }
+    },
+
+    teamInterrupt(caller: unknown, targetName: string): DshTeamInterruptResult {
+      const teams = requireService("agentTeams", "cannot interrupt team member \"" + String(targetName) + "\"")
+      if (typeof teams.interrupt !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no interrupt()")
+      const result: any = teams.interrupt.call(teams, caller, targetName)
+      // The host answers the status sampled BEFORE cancellation; `inactive` is the
+      // conservative reading of anything it does not declare.
+      return { previousStatus: result?.previousStatus === "running" ? "running" : "inactive" }
+    },
+
+    async teamWaitForChange(caller: unknown, timeoutMs: number, signal?: AbortSignal): Promise<DshTeamWaitResult> {
+      const teams = requireService("agentTeams", "cannot wait for team activity")
+      if (typeof teams.waitForChange !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no waitForChange()")
+      // Both arguments verbatim (the host validates its own 10s..1h bound and rejects
+      // outside it); the promise is forwarded untouched.
+      const result: any = await teams.waitForChange.call(teams, caller, timeoutMs, signal)
+      return { timedOut: result?.timedOut === true }
+    },
+
+    teamLiveTeams(): DshTeamView[] {
+      const teams = service("agentTeams")
+      // [] when the team service or the agent registry is absent: a readout has nothing
+      // to report, and a route must not be taken down by a missing optional seam.
+      if (teams === undefined || teams === null || typeof teams.tryMembership !== "function") return []
+      if (typeof service("agents")?.list !== "function") return []
+      const views: DshTeamView[] = []
+      for (const agent of liveAgents()) {
+        let membership: any
+        try {
+          membership = teams.tryMembership.call(teams, agent)
+        } catch {
+          // One unreadable identity never hides the other teams.
+          continue
+        }
+        if (membership?.role !== "lead") continue
+        views.push({
+          teamId: String(membership.id ?? ""),
+          leadName: String(membership.name ?? ""),
+          leadSessionId: String((agent as { id?: unknown })?.id ?? ""),
+          members: teamRows(teams, "listMembers", agent, teamMemberView),
+          tasks: teamRows(teams, "listTasks", agent, teamTaskView),
+        })
+      }
+      return views
     },
 
     // ── skill plane ─────────────────────────────────────────────────────────
@@ -1525,7 +2211,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     // ── preset plane ────────────────────────────────────────────────────────
     async resolvePreset(presetId: string): Promise<DshPresetInfo> {
       const presets = requireService("agentPresets", "cannot resolve preset \"" + presetId + "\"")
-      if (typeof presets.resolve !== "function") throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()")
+      if (typeof presets.resolve !== "function") throw new Error("mpd-dsh-adapter: the harness agentPresets service exposes no resolve()")
       const preset = await presets.resolve(presetId)
       return {
         id: String(preset?.id ?? presetId),
@@ -1692,6 +2378,19 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       // The ONE spelling of `agent.ctx.<seam>`: the all-or-nothing probe below keeps a
       // partial context from producing a scope that throws later.
       return scopeOfAgentContext(agent)
+    },
+
+    agentPromptSection(agent: unknown, section: DshPromptSection): () => void {
+      // THROW, not a no-op: a section that silently vanished leaves the Lead with a
+      // prompt that promises nothing — the same reasoning as `registerPromptSection`.
+      const systemPrompt = agentSystemPromptOf(agent)
+      if (systemPrompt === undefined) {
+        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section \"" + String(section?.name) + "\" for it")
+      }
+      // VERBATIM section, receiver-bound. A duplicate name throws INSIDE the registry
+      // (per scope) and is deliberately not swallowed; only a non-callable answer degrades.
+      const registered = systemPrompt.section(section)
+      return typeof registered === "function" ? registered : noop
     },
 
     startAgentTurn(agent: unknown, message: unknown): void {

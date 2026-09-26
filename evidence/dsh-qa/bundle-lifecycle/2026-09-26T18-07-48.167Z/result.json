@@ -1,0 +1,70 @@
+{
+  "ok": false,
+  "sandbox": "/home/haroldzhao/dshProj/my-power-dsh/.qa-reloc/bundle-lifecycle-2026-09-26T18-07-48.167Z",
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0,
+      "dependency": "link:/home/haroldzhao/dshProj/my-power-dsh",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "oneCommand": "dsh plugin --profile w add <repo root>"
+    },
+    "composed": {
+      "ok": true,
+      "exit": 0
+    },
+    "boot": {
+      "ok": false,
+      "checks": {
+        "http": true,
+        "adapterProvided": true,
+        "adapterSeams": true,
+        "adapterToolCall": true,
+        "corpusFromBundle": true,
+        "noPresetRefusal": true,
+        "probePass": false,
+        "presetProbeOk": false
+      },
+      "failed": [
+        "probePass",
+        "presetProbeOk"
+      ],
+      "probeVerdict": null,
+      "presetProbeLine": "fail:Unknown",
+      "http": true,
+      "corpus": "/home/haroldzhao/dshProj/my-power-dsh/skills",
+      "presetPath": null,
+      "bundleReal": "/home/haroldzhao/dshProj/my-power-dsh",
+      "adapterSeams": "tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,team,teamTasks,teamMessages,subagentsProviderRegister"
+    },
+    "noHomeCopy": {
+      "ok": true,
+      "skills": [],
+      "presets": []
+    },
+    "layerDurability": {
+      "ok": true,
+      "exit": 0,
+      "dependency": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ]
+    },
+    "uninstall": {
+      "ok": true,
+      "exit": 0,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app"
+      ],
+      "residue": [],
+      "mpdState": []
+    }
+  }
+}

@@ -44,8 +44,9 @@ failed to load`, `failed to apply loader entry`, `Error:`); no duplicate loader 
 **Backed at:** `Observed` (a recorded live dsh-TUI boot plus the host's own `--dump-config`).
 `--dump-config` alone proves composition only — the crash-signature count comes from the live boot.
 
-A TUI session defaults to the **mpd** preset, carried by the `dsh-tui-agent-presets` row in the
-composition (measured from a captured session record, not from the patch text).
+A TUI session defaults to the **mpd** preset, carried by the id-targeted `agent-preset-registry` row
+(`default: mpd`) together with the `preset-mpd` row in `presets/mpd.patch.yml` (measured from a
+captured session record, not from the patch text).
 
 Requirement for any live lane: `dsh-tui` refuses to boot when stdout is not a TTY
 (`dsh-tui requires an interactive terminal (stdout must be a TTY)`), so the QA lanes must drive the
@@ -58,13 +59,13 @@ The bundle's former web-only faces have TUI **equivalents**, not parity:
 
 | Web surface | TUI equivalent | Backed at |
 |---|---|---|
-| AgentTeams sidebar panel | `tuiScenes` full-screen board + `tuiStatus` keyed status line | Rendered in the live lane — `evidence/tui/live/20260915T063140Z/result.json` (t8; 6 of 7 surfaces) |
+| Agent Teams panel (conversation header) | `tuiScenes` full-screen board + `tuiStatus` keyed status line | Rendered in the live lane — `evidence/tui/live/20260915T063140Z/result.json` (t8; 6 of 7 surfaces) |
 | Workmate library tab | `tuiCommandTrees` (`/mpd …`) + `tuiDialogs` | same lane evidence |
 | — | `tuiStatus` status line; the `tuiRenderers` transcript row is **not projected by the host** | status line rendered; renderer row **does not render** — see NOT-CLAIMED #10 |
 | — | `tuiSettingsSections` (`/settings` section for the mpd.jsonc knobs) | rendered — same lane evidence; the section states the **bridge** to `<workspace>/.mpd/mpd.jsonc`, its restart caveat and the never-lost clause (§6.2), and the lane asserts that disclosure text (`allPatterns`) |
 | — | `tuiShortcuts` | rendered — same lane evidence |
-| AgentTeams team-workflow panel (id/name/phase, plan-review state, roster, task DAG with `failed-dep=` marking, mailbox tail) | `mpd-tui-team` scene — `/mpd team` | rendered from the same durable record; the surface contract, the full row list and the evidence level of every row are in the parity ledger `docs/tui-parity.md` (§3.2 below for the openers) |
-| AgentTeams plan-approval panel (approve / discard) | `mpd-tui-plan` scene — `/mpd plan` | same ledger; approval needs the exact phrase typed and `Ctrl+X`, never a bare key (§3.2 below) |
+| Team workflow (roster with member phases, shared task board) | `mpd-tui-team` scene — `/mpd team` | the scene is registered by the TUI command tree (`packages/mpd-tui-plugin/src/command-trees.ts`); the surface contract and the evidence level of every row are in the parity ledger `docs/tui-parity.md` (§3.2 below for the openers) |
+| — | `mpd-tui-plan` scene — `/mpd plan` | a TUI scene; the staged-plan APPROVAL semantics it was built around belonged to the retired vendored plugin and no longer exist (§3.2) |
 
 Thirteen seams were in scope. Eight are built by this wave (settings sections, scenes, dialogs,
 status, shortcuts, the renderer **registration**, the decision-event attempt, and the composition
@@ -109,30 +110,28 @@ one and Save — with exactly one live
 session the workspace's `<workspace>/.mpd/mpd.jsonc` changes with comments intact; otherwise the bridge
 refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the value is not lost.
 
-### 3.2 The team-workflow and plan-approval surfaces (wave `tui-team-surface`)
+### 3.2 The team-workflow and plan surfaces (wave `tui-team-surface`)
 
-The two surfaces the Web edition renders for a routed team now have TUI counterparts, and they are
-opened by the documented command rather than a hidden gesture:
+The TUI command tree exposes `/mpd team` and `/mpd plan`
+(`packages/mpd-tui-plugin/src/command-trees.ts` is the action list: `board`, `team`, `plan`,
+`workmates`, `status`), alongside the keyed status line and the board scene.
 
-| What you want | Type this | Then |
-|---|---|---|
-| See the team workflow (id/name/phase, plan-review state, roster, task DAG with `failed-dep=` marking, mailbox tail) | `/mpd team`, or `a` while the board is open | `p` hops to the board; `a` hops to the plan surface for the same team; `r` re-reads |
-| Approve a staged plan | `/mpd plan`, or `a` inside the team workflow | type `approve <teamId>` EXACTLY (the id shown on the surface, which is the record's own id), then press `Ctrl+X`; `Ctrl+R` re-reads unconditionally |
-| Discard a staged plan | `/mpd plan` | `Ctrl+D` twice inside the 10-second arm window |
-| Leave for chat | `/mpd plan` | `Esc` — it never mutates |
+**The staged-plan approval workflow this section used to document is RETIRED, and nothing here claims
+it.** It belonged to the vendored `agent-teams` plugin — its approve/delete tool calls, its typed
+approval phrase and its `Ctrl+X` / `Ctrl+D` gestures, all
+driven from a durable `.mpd/team/team.json` record. The official Agent Teams plugin this bundle now
+mounts has **no staged plan and no approval step**: the Lead spawns a teammate with `spawn_teammate`
+and opens its lane with `team_task_create`, and the shared board is the plan (see
+`docs/user-guide.md` §6 and `docs/plan-0.1.7-adaptation.md` §3). Team state lives in the Lead's
+session log, so there is no team record for a TUI surface to approve. No TUI key sequence approves a
+plan any more.
 
-Three facts about this pair are load-bearing and are stated here rather than implied. **An
-accidental approval is impossible by construction**: the echo line starts empty and is cleared on
-every refresh, only `Ctrl+X` mutates, it mutates only on an exact phrase built from the record's own
-id, and a non-staged team accepts only `Esc`. **The TUI never writes team state itself**: approve and
-discard are tool calls (`agent_teams_approve`, `agent_teams_delete`) made through the adapter, and
-the package contains no write primitive. **The limits are recorded, not hidden**: one deviation was
-measured open and then CLOSED inside the wave (the §4.5 verdict line was invisible after a real
-commit; the t8 repair now renders it), one verified-lane drift was RESOLVED by the captain's
-same-commit re-pin plus a retry of the verification task, and the contract's dependency-residual
-limit together with one unlocatable contract row label stay OPEN in `docs/tui-parity.md` §4–§5 —
-read that page before quoting a status from this one. `alt+t` is a
-best-effort shortcut; `/mpd team` is the guaranteed entry point.
+What is still true of the TUI package in this area: it is **read-only over team and workspace state**
+— the package contains no write primitive, and any team mutation is a tool call the model makes
+through the adapter. `/mpd team` is the guaranteed entry point to the team scene, and `alt+t` is a
+best-effort shortcut to it. The limits the `tui-team-surface` wave recorded (the dependency-residual
+limit and one unlocatable contract row label) stay OPEN in `docs/tui-parity.md` §4–§5 — read that
+page before quoting a status from this one.
 
 ## 4. Admission and distribution artifacts
 
@@ -385,9 +384,16 @@ classifications below are that measurement, reproduced verbatim; they are not re
 
 Counts: **usable 22 · inert 2 · web-only 1 · total 25**.
 
+**A 0.1.7-rc.2 delta on this historical table:** the `mpd-agent-teams-plugin` row below records the
+2026-09-15 measurement, when the vendored `agent-teams` body WAS mounted. It is now **retired from
+the composition** (no loader row mounts it; its team tools and its sidebar panel are not
+part of a shipped session), and the bundle mounts the three OFFICIAL Agent Teams packages instead
+(`mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team`). Read that one row as history, not
+as a current capability.
+
 | Package | Role | Class | Live witness |
 |---|---|---|---|
-| `mpd-bundle` | composition layer (the bundle patch itself) | usable | composed config: 24 rows incl. `mpd-tui` and the `dsh-tui-agent-presets` override; live boot with 0 crash signatures |
+| `mpd-bundle` | composition layer (the bundle patch itself) | usable | composed config rows incl. `mpd-tui` and the `agent-preset-registry` id-target; live boot with 0 crash signatures |
 | `mpd-dsh-adapter-plugin` | single contact surface with the harness seams | usable | apply-time log line `[mpd-dsh-adapter] mpdDsh provided` |
 | `mpd-config-plugin` | mpd.jsonc runtime config layer | usable | tools `mpd_config_get`, `mpd_config_reload` |
 | `mpd-tools-plugin` | write guard / truncation / waterfall | usable | composed row `mpd-tools` with its config; owns no tool name |
@@ -404,7 +410,7 @@ Counts: **usable 22 · inert 2 · web-only 1 · total 25**.
 | `mpd-team-compact-plugin` | finished-team compaction | usable | tools `mpd_team_compact_run`, `mpd_team_compact_status` |
 | `mpd-bootstrap-plugin` | serves the bundle's skills corpus (no home copy) | usable | apply-time `skill corpus served from <bundle>/skills` |
 | `mpd-tui-plugin` | the TUI-native surface package (this edition) | usable | composed row `mpd-tui` → `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js` |
-| `mpd-agent-teams-plugin` | adopted AgentTeams plugin (tools + Web panel) | usable | 17 `agent_teams_*` tools |
+| `mpd-agent-teams-plugin` | the vendored AgentTeams plugin (tools + Web panel) — **RETIRED from the composition in 0.1.7-rc.2; this row is the historical 2026-09-15 measurement** | usable then | 17 team tools |
 | `mpd-mcp-astgrep` | ast-grep MCP server (stdio launcher) | usable | 3 `mcp__ast_grep__*` tools |
 | `mpd-mcp-lsp` | LSP MCP server (stdio launcher) | usable | 8 `mcp__lsp__*` tools |
 | `mpd-mcp-codegraph` | codegraph MCP server (stdio launcher) | usable | server alive in-process; 0 tools **in that sandbox** because the CodeGraph policy excludes a project path containing `.mpd` (a sandbox artifact, not a TUI limitation) |
@@ -455,8 +461,9 @@ Nothing in this section is a working feature.
 2. **Identity-gated services** — `storage.local`, `messages.observe` and the mediated
    `registerCommand` path need the same verified Component identity; the effect ledger therefore
    attributes our surface as `undeclared` today.
-3. **web-only faces** — the agent-teams **sidebar** and the workmate tab
-   (`dsh.client.platform = web`) do not render in the TUI. The TUI-native equivalents (§3) are
+3. **web-only faces** — the workmate tab
+   (`dsh.client.platform = web`) does not render in the TUI, and the official Agent Teams panel is a
+   Web client surface as well. The TUI-native equivalents (§3) are
    not a pixel or feature-parity claim.
 4. **Engine version skew** — the host prints
    `⚠ The dsh engine (0.1.5-rc.2) is newer than the 0.1.5-rc.1 this UI is validated against` and

@@ -4,9 +4,9 @@
 //   * heartbeat every model step AND every tool call, for members AND the captain;
 //   * silence > 90 s (configurable) ⇒ WARN + a snapshot;
 //   * the same task WARNing three consecutive times ⇒ ESCALATE;
-//   * stop NEW dispatch into the affected TEAM only, preserve the scene (T-19, wave 2: this
-//     preserving hold is the INTERNAL implementation; the external pause mechanism a user
-//     operates is `agent_teams_halt`, cleared by `agent_teams_resume`).
+//   * stop NEW dispatch into the affected TEAM only, preserving the scene (0.1.7: the official
+//     Agent Teams service exposes no halt, so this preserving hold is the ONLY pause mechanism
+//     this bundle implements; the retired plugin's `agent_teams_halt` is gone with its row).
 //
 // What this row owns (design of record: `evidence/team-watchdog/design/DESIGN.md`):
 //   * the heartbeat store (`<stateDir>/watchdog/heartbeat/<key>.jsonl`), written on
@@ -17,12 +17,11 @@
 //     workspace's `.mpd/mpd.jsonc` is a LIVE layer too — when that file is the layer that moved,
 //     its values are applied in-process with no restart);
 //   * the atomic, restorable scene snapshot;
-//   * the durable `watchdogHold` + incident/read-watermark sidecars beside `team.json`;
-//   * the plugin's OWN `session-watchdog-hold`/`-resume` actions — the INTERNAL implementation of
-//     the team pause, never a second external mechanism (T-19: `agent_teams_halt` is the one).
+//   * the durable hold + incident/read-watermark sidecars under `<stateDir>/watchdog/`;
+//   * the plugin's OWN `session-watchdog-hold`/`-resume` actions — the pause implementation.
 //
 // What this row deliberately does NOT do (other waves own it):
-//   * wire the adopted dispatch gates / tool guards that honour the hold (w7);
+//   * wire the dispatch gates / tool guards that honour the hold (w7);
 //   * render a Web banner, a TUI status row or a dialog (w7/w9);
 //   * declare the knobs in `mpd-config`'s schema or the Web card's FIELDS list —
 //     those are other packages' files. Because schemastery KEEPS unknown keys, the
@@ -70,15 +69,15 @@ export type Config = {
   warnStreakToEscalate?: number
   /** `pause` persists the watchdog's internal preserving hold; `warn-only` only records. */
   actionOnEscalate?: string
-  /** The adopted team state directory (default `.mpd/team`, relative to the workspace). */
+  /** This plugin's state directory (default `.mpd/team`, relative to the workspace). */
   stateDir?: string
-  /** How long a parsed team record stays cached between reads (0 disables). */
+  /** How long the live team readout stays cached between reads (0 disables). */
   teamCacheMs?: number
   /** How many heartbeat generations to keep per member file. */
   keepGenerations?: number
   /**
-   * Dead-team fallback bound (r4): how long a team record may go untouched before a tick skips it
-   * when the live-agent registry cannot answer. 0 disables the bound (tick everything).
+   * Dead-team fallback bound (r4): how long a team readout may go untouched before a tick skips
+   * it when the live-agent registry cannot answer. 0 disables the bound (tick everything).
    */
   deadTeamGraceMs?: number
   /**

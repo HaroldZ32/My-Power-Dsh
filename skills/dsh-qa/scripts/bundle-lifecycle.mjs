@@ -38,17 +38,39 @@ function selfTest() {
   // or required by this case.
   const rootManifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"))
   if (rootManifest.name !== PKG) fail("self-test: repo root package must be named " + PKG + " (got " + String(rootManifest.name) + ")")
-  if (rootManifest.dsh?.bundle?.patch !== "./packages/mpd-bundle/cordis.patch.yml") fail("self-test: repo root must declare dsh.bundle.patch")
+  // 0.1.7-rc.2: `dsh.bundle.patch` is an ARRAY (the shipped-preset shape) — the
+  // main bundle patch plus the preset patch that declares the `preset-mpd` row.
+  const declaredPatches = rootManifest.dsh?.bundle?.patch
+  if (!Array.isArray(declaredPatches) || declaredPatches.length < 2) {
+    fail("self-test: repo root dsh.bundle.patch must be an ARRAY of the main patch AND the preset patch (got " + JSON.stringify(declaredPatches) + ")")
+  }
+  for (const entry of declaredPatches) {
+    if (typeof entry !== "string" || !existsSync(join(repoRoot, entry))) fail("self-test: declared bundle patch missing on disk: " + String(entry))
+  }
   if (rootManifest.dsh?.client?.platform !== "web") fail("self-test: repo root must declare dsh.client (web)")
   for (const key of [".", "./packages/*", "./skills/*", "./presets/*", "./client"]) {
     if (rootManifest.exports?.[key] === undefined) fail("self-test: repo root exports missing " + key)
   }
   const patch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
-  if (!/^- id: agent-presets$/m.test(patch) || !patch.includes("default: mpd")) fail("self-test: bundle-served preset row missing from the patch")
-  if (!patch.includes('"/node_modules/@mpd-dsh/mpd/presets"')) fail("self-test: preset root expression missing from the patch")
+  // The registry row is ID-TARGETED at column 0 (it is declared by the web-app
+  // layer); the retired `@deepseek-ai/dsh-agent-presets` row must not come back.
+  if (!/^- id: agent-preset-registry$/m.test(patch) || !/^\s+default: mpd$/m.test(patch)) fail("self-test: the agent-preset-registry id-target (default: mpd) is missing from the bundle patch")
+  if (/^\s*name: '@deepseek-ai\/dsh-agent-presets'\s*$/m.test(patch)) fail("self-test: the bundle patch still declares a row on the retired @deepseek-ai/dsh-agent-presets package")
   if (!patch.includes("id: mpd-bootstrap")) fail("self-test: mpd-bootstrap row missing from the patch")
   if (!patch.includes("id: mpd-dsh-adapter")) fail("self-test: mpd-dsh-adapter row missing from the patch")
-  if (!existsSync(join(repoRoot, "presets", "mpd", "agent.cordis.yml"))) fail("self-test: repo-root presets/mpd missing")
+  // The official Agent Teams rows (mpd-owned ids, official package names).
+  for (const row of ["mpd-agent-team", "mpd-tool-agent-team", "mpd-ui-agent-team"]) {
+    if (!patch.includes("id: " + row)) fail("self-test: official agent-team row missing from the patch: " + row)
+  }
+  // The preset patch: the mpd composition is a ROW now, so it must declare a real
+  // `@deepseek-ai/dsh-agent-preset` declaration carrying `config.id: mpd`.
+  const presetPatchEntry = declaredPatches.find((entry) => entry !== "./packages/mpd-bundle/cordis.patch.yml")
+  const presetPatch = readFileSync(join(repoRoot, presetPatchEntry), "utf8")
+  if (!/id: preset-mpd$/m.test(presetPatch) || !/name: '@deepseek-ai\/dsh-agent-preset'$/m.test(presetPatch) || !/^\s+id: mpd$/m.test(presetPatch)) {
+    fail("self-test: the preset patch must declare a `preset-mpd` row on '@deepseek-ai/dsh-agent-preset' with config.id: mpd (" + presetPatchEntry + ")")
+  }
+  if (!/^\s+plugins:$/m.test(presetPatch)) fail("self-test: the preset patch declares no inline `plugins:` child list")
+  if (!existsSync(join(repoRoot, "presets", "mpd.patch.yml"))) fail("self-test: repo-root presets/mpd.patch.yml missing")
   if (!existsSync(join(repoRoot, "skills", "svn-master", "SKILL.md"))) fail("self-test: repo-root skills corpus missing")
   const adapterDist = readFileSync(join(repoRoot, "packages", "mpd-dsh-adapter-plugin", "dist", "index.js"), "utf8")
   if (!adapterDist.includes("createDshAdapter") || !adapterDist.includes("registerTool")) fail("self-test: adapter dist missing its tool-plane surface")
@@ -57,7 +79,7 @@ function selfTest() {
   if (!existsSync(PROBE)) fail("self-test: roles probe dist missing (bun build first)")
   const pnpmProbe = spawnSpec("pnpm", ["--version"])
   if (spawnSync(pnpmProbe.command, pnpmProbe.args, { encoding: "utf8" }).status !== 0) fail("self-test: pnpm is required for the official install flow")
-  console.log("[bundle-lifecycle self-test] ok: repo root IS the bundle + bundle-served preset row + provider wiring + probe + pnpm")
+  console.log("[bundle-lifecycle self-test] ok: repo root IS the bundle + array dsh.bundle.patch (" + declaredPatches.length + " patch files) + preset-mpd row + agent-preset-registry id-target + provider wiring + probe + pnpm")
 }
 
 function runSync(cmd, args, env, opts = {}) {
@@ -124,9 +146,11 @@ async function runReal() {
   const composed = dumpJsonText(dumpAfterInstall.stdout)
   steps.composed = {
     ok: dumpAfterInstall.status === 0
-      && ["mpd-dsh-adapter", "mpd-bootstrap", "mpd-web-compat", "mpd-tools", "mpd-roles", "mpd-workmate", "agent-teams", "mcp-astgrep"].every((id) => composed.includes("id: " + id))
-      && composed.includes("id: agent-presets") && composed.includes("default: mpd")
-      && composed.includes('"/node_modules/@mpd-dsh/mpd/presets"'),
+      && ["mpd-dsh-adapter", "mpd-bootstrap", "mpd-web-compat", "mpd-tools", "mpd-roles", "mpd-workmate", "mpd-agent-team", "mpd-tool-agent-team", "mpd-ui-agent-team", "mcp-astgrep"].every((id) => composed.includes("id: " + id))
+      // 0.1.7-rc.2 preset model: the registry id-target AND the preset ROW itself
+      // must both be composed — the row is the whole mpd composition now.
+      && composed.includes("id: agent-preset-registry") && composed.includes("default: mpd")
+      && composed.includes("id: preset-mpd") && composed.includes("@deepseek-ai/dsh-agent-preset"),
     exit: dumpAfterInstall.status,
   }
 
@@ -160,24 +184,47 @@ async function runReal() {
   await new Promise((resolve) => setTimeout(resolve, 500))
   const boot = readFileSync(bootLog, "utf8")
   // The installed package is a pnpm link, so the plugin's own location resolves to
-  // the real package dir while the preset roster keeps the node_modules path —
-  // both must point INTO the installed bundle.
+  // the real package dir; the skill corpus is the asset that still has a PATH (the
+  // preset is a ROW now).
+  //
+  // The preset's MOUNT proof is `preset-conformance` (a real `session/create` on
+  // the preset — AGENTS.md §4 assigns it there). What THIS case reads from the QA
+  // probe is its registration instrumentation: the adapter seam set, the internal
+  // tool call, and the probe's own verdict. The sub-assertions are reported
+  // SEPARATELY so a red step names its subject instead of showing one opaque
+  // `ok: false` (measured 2026-09-27: the probe answered `PRESET_MPD=fail:Unknown`
+  // while every other boot assertion — corpus path, seams, internal tool call, no
+  // `agent-preset/invalid` — was green, and the single boolean hid which half was
+  // red).
   const bundleReal = realpathSync(installedBundle)
   const served = /\[mpd-bootstrap\] skill corpus served from ([^\s]+) \(provider mpd-bundle/.exec(boot)
-  const presetPath = /PRESET_PATH=([^\s]+) trust=(\w+)/.exec(boot)
   const corpusPath = String(served?.[1] ?? "")
-  const presetFile = String(presetPath?.[1] ?? "")
+  const presetPath = /PRESET_PATH=([^\s]+) trust=(\w+)/.exec(boot)
+  const probeVerdict = /roles-probe\] (PASS|FAIL)/.exec(boot)?.[1] ?? null
+  const presetProbeLine = /roles-probe\] PRESET_MPD=(\S+)/.exec(boot)?.[1] ?? null
   const seams = /ADAPTER_SEAMS=([^\s]+)/.exec(boot)?.[1] ?? ""
+  const checks = {
+    http: up,
+    adapterProvided: /\[mpd-dsh-adapter\] mpdDsh provided/.test(boot),
+    adapterSeams: seams.includes("toolsRegister") && seams.includes("subagentsSpawn") && seams.includes("skillsProvider"),
+    adapterToolCall: /ADAPTER_TOOL_CALL=ok/.test(boot),
+    corpusFromBundle: corpusPath.startsWith(bundleReal),
+    // The preset ROWS must really MOUNT: an inactive child row makes the preset
+    // registry refuse the whole preset (`agent-preset/invalid`).
+    noPresetRefusal: !/agent-preset\/invalid/.test(boot) && !/did not activate/.test(boot),
+    // The QA probe's OWN verdict — the half that depends on the adapter's preset
+    // seam answering for the new row model.
+    probePass: probeVerdict === "PASS",
+    presetProbeOk: presetProbeLine === "ok",
+  }
   steps.boot = {
-    ok: up && /roles-probe\] PASS/.test(boot) && /PRESET_MPD=ok/.test(boot)
-      && /\[mpd-dsh-adapter\] mpdDsh provided/.test(boot)
-      && seams.includes("toolsRegister") && seams.includes("subagentsSpawn") && seams.includes("skillsProvider")
-      && /ADAPTER_TOOL_CALL=ok/.test(boot)
-      && corpusPath.startsWith(bundleReal)
-      && (presetFile.startsWith(bundleReal) || presetFile.includes(join("node_modules", "@mpd-dsh", "mpd", "presets")))
-      && presetPath?.[2] === "system",
-    http: up, corpus: served?.[1] ?? null, preset: presetPath?.[1] ?? null, trust: presetPath?.[2] ?? null, bundleReal,
-    adapterSeams: seams || null,
+    ok: Object.values(checks).every(Boolean),
+    checks,
+    failed: Object.entries(checks).filter(([, value]) => !value).map(([name]) => name),
+    probeVerdict, presetProbeLine,
+    http: up, corpus: served?.[1] ?? null,
+    presetPath: presetPath?.[1] ?? null,
+    bundleReal, adapterSeams: seams || null,
   }
   const homeSkills = join(home, "skills")
   const homePresets = join(home, ".agent-presets")
@@ -201,8 +248,8 @@ async function runReal() {
       && manifestAfterPlain.dependencies?.[PKG] !== undefined
       && (manifestAfterPlain.dsh?.profile?.bundles ?? []).includes(PKG)
       && dumpAfterPlainText.includes("id: mpd-dsh-adapter")
-      && dumpAfterPlainText.includes("id: agent-presets")
-      && dumpAfterPlainText.includes('"/node_modules/@mpd-dsh/mpd/presets"'),
+      && dumpAfterPlainText.includes("id: agent-preset-registry")
+      && dumpAfterPlainText.includes("id: preset-mpd"),
     exit: plainInstall.status,
     dependency: typeof manifestAfterPlain.dependencies?.[PKG] === "string",
     bundles: manifestAfterPlain.dsh?.profile?.bundles ?? [],
@@ -226,6 +273,10 @@ async function runReal() {
       && !dumpAfterText.includes("id: mpd-bootstrap")
       && !dumpAfterText.includes("id: mpd-dsh-adapter")
       && !dumpAfterText.includes("id: mpd-web-compat")
+      // The preset patch is the SECOND declared bundle patch: its row must leave
+      // with the bundle, and the web-app layer's own `default: standard` return.
+      && !dumpAfterText.includes("id: preset-mpd")
+      && !dumpAfterText.includes("id: mpd-agent-team")
       && /default: standard/.test(dumpAfterText)
       && residue.length === 0
       && mpdStateEntries.length === 0,

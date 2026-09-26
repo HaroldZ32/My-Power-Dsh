@@ -1,14 +1,29 @@
-# mpd-dsh bundle plugin layer (Plan D): ADDITIVE-ONLY patch, plus TWO id-targets
-# (the two preset-roster rows below: `agent-presets` on the web/base plane and
-# `dsh-tui-agent-presets` on the dsh-tui plane — each exists in exactly ONE
-# composition, so neither target can ever duplicate the other's loader entry id).
+# mpd-dsh bundle plugin layer (Plan D): ADDITIVE-ONLY patch, plus ONE id-target
+# (the preset-selection registry below).
 # Policy: never id-target rows owned by the stock DSH templates (llm-deepseek /
 # agent-default-model / skill-filesystem / llm-pi-ai) — id-target replaces the
 # WHOLE stock config and would wipe the stock model list / provider defaults.
 # DeepSeek official provider ships with dsh-base as-is; this bundle adds only:
-# MCP servers, the mpd-* plugins, the adopted agent-teams plugin, and the
-# bundle-served preset root (the skill corpus is served by the mpd-bootstrap
-# row's ctx.skills provider — nothing is copied into $DSH_HOME any more).
+# MCP servers, the mpd-* plugins, the OFFICIAL Agent Teams rows, and the
+# agent-preset row that declares the `mpd` preset (the skill corpus is served by
+# the mpd-bootstrap row's ctx.skills provider — nothing is copied into $DSH_HOME).
+#
+# ── HARNESS 0.1.7-rc.2: THE PRESET MODEL WAS REPLACED ───────────────────────
+# `@deepseek-ai/dsh-agent-presets` — the directory/preset-root service this file
+# used to id-target TWICE (the web plane row `agent-presets` and the dsh-tui plane
+# row `dsh-tui-agent-presets`) — NO LONGER EXISTS in the installed harness. The
+# role is split in two:
+#   · `@deepseek-ai/dsh-agent-preset-registry` holds the deployment `default`;
+#   · `@deepseek-ai/dsh-agent-preset` is ONE ROW PER PRESET, carrying that
+#     preset's child entry list inline under `config.plugins`.
+# The shipped presets follow exactly that shape: `@deepseek-ai/dsh-web-app`
+# declares `presets/{standard,ptc,minimal,cordis}.patch.yml` and lists them as an
+# ARRAY in its own `dsh.bundle.patch`. This bundle mirrors it: `package.json`'s
+# `dsh.bundle.patch` is the array
+#   [ "./packages/mpd-bundle/cordis.patch.yml", "./presets/mpd.patch.yml" ]
+# and the second file inserts the `preset-mpd` row. The retired directory form
+# (`presets/mpd/{preset.yml,agent.cordis.yml}`) is gone; its content lives in
+# `presets/mpd.patch.yml` verbatim, comments included.
 #
 # FILE-URL -> PATH (win32). `baseUrl` is a file URL and every path below is derived from it with
 # plain string ops (a `!!js` expression has no imports). The win32 spelling is `file://` + `/` +
@@ -20,93 +35,23 @@
 # not, and a Windows short name carries a tilde (`.../ZHAO%7E1.YIN/...`), so the raw form named a
 # directory that does not exist (measured 2026-09-22, second boot).
 
-# ── preset roster: serve the bundle's own presets (no $DSH_HOME copy) ───────
-# The bundle ships its presets at <bundle>/presets and serves them from there by
-# adding a `system`-trust root, so ONE `dsh plugin add` makes the mpd preset
-# selectable and ONE `dsh plugin remove` takes it away with the bundle — no
-# $DSH_HOME/.agent-presets copy, no stale-copy refresh dance.
-#
-# This is an id-target (replace), not an insert: dsh-web-app's own patch already
-# inserts this row with `default: standard`, and a second insert would be a
-# duplicate loader entry id (fatal at boot). The stock row's whole config is
-# exactly `default` — its own comment says "This row only names the default and
-# any deployment-added roots" — so restating it here is complete, and both keys
-# are required to keep the roster working.
-#
-# Profiles WITHOUT the row (headless) log "patch: entry agent-presets not found"
-# and skip it: headless never had a preset roster, so nothing regresses.
-- id: agent-presets
-  name: '@deepseek-ai/dsh-agent-presets'
+# ── preset selection: the deployment default is the mpd preset ──────────────
+# An id-target (replace), not an insert: dsh-web-app's own patch inserts this row
+# with `{ default: standard }`, and a second insert would be a duplicate loader
+# entry id (fatal at boot: cordis-plugin-loader src/config/group.ts). Loader
+# semantics that make the replace safe and COMPLETE: an id-target assigns only the
+# keys this file carries and skips `id`, so the host row's own `disabled`
+# expression survives; a missing id-target is a WARN (`patch: entry ... not
+# found`), never an error, which is what keeps this row harmless in a composition
+# that has no registry row at all. The installed registry declares exactly ONE
+# config key — `default` — so restating it is complete; the retired
+# `roots`/`modeSelectionEnabled` keys the old `@deepseek-ai/dsh-agent-presets` row
+# accepted are NOT fields of this package and schemastery would silently drop
+# them, so they are deliberately absent.
+- id: agent-preset-registry
+  name: '@deepseek-ai/dsh-agent-preset-registry'
   config:
     default: mpd
-    roots:
-      - path: !!js '(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"'
-        trust: system
-
-# ── preset roster, dsh-tui plane: the same default, for the TUI composition ──
-# MEASURED (2026-09-15, dsh-tui@0.10.1 + engine 0.1.5-rc.2, isolated sandbox):
-# the id-target above is SKIPPED in a dsh-tui profile, because no layer of that
-# composition inserts an `agent-presets` row — dsh-web-app owns it, and dsh-tui
-# does not use that layer. The TUI's own roster row carries the scoped id
-# `dsh-tui-agent-presets` (name `@deepseek-ai/dsh-agent-presets`, config
-# `{ default: 'standard' }`, `disabled: <an enabled `agent-presets` entry
-# exists>`), so a live session recorded `agentPreset: "standard"` — user
-# decision D10 ("TUI sessions must default to the mpd preset") was NOT satisfied
-# by the web-plane row alone.
-#
-# This id-target replaces that row's WHOLE config (loader semantics), so the
-# stock config is restated: `default: mpd` plus the bundle's own preset root —
-# exactly the same two keys the web-plane row above declares. The stock
-# expression's other branch (a fallback root for legacy packages that ship NO
-# bundled `presets/` directory) is deliberately NOT restated: the validated pin
-# `@deepseek-ai/dsh-agent-presets@0.1.5-rc.2` ships `presets/{standard,ptc,
-# cordis,minimal}`, so that branch is dead here, and re-adding the dsh CLI's own
-# preset directory as a second root would shadow preset ids the package already
-# serves. Its `disabled` expression is left untouched (no override), so the row
-# stays enabled in a dsh-tui composition.
-#
-# Safety of the pair: each row exists in exactly one composition (the TUI row is
-# minted by dsh-tui's own patch, the plain row by dsh-web-app's), so the other
-# profile only logs `patch: entry <id> not found` and applies nothing — no
-# duplicate loader entry id is possible in either. Loader semantics that make the
-# pair safe and this id-target complete: an id-target is a per-key shallow
-# override (cordis-plugin-include src/index.ts:120-124 assigns only the keys this
-# file carries and skips `id`), so the host row's own `disabled` expression
-# survives; a missing id-target is a WARN (same file, :112), never an error; a
-# duplicate entry id is fatal (cordis-plugin-loader src/config/group.ts:64).
-#
-# Evidence, split by claim — every citation names an artifact that exists AND says
-# what it proves (a `--dump-config` file proves COMPOSITION only, never a load):
-#  • D10 (a TUI session really ran the mpd preset) — SESSION RECORDS, shipped as
-#    durable byte-identical copies inside this bundle's own evidence dir (sha256
-#    asserted equal to the sandbox original; every record, relied-upon or not, is
-#    indexed in evidence/tui/composition/20260915T053445Z/raw/session-records-index.json):
-#      · evidence/tui/composition/20260915T053445Z/raw/sessions/--root-dshProj-my-power-dsh--/
-#        683c0f89-d2ea-4bf1-817e-3593eb765441/session.v3.jsonl.zstd
-#        sha256 d78ddb81aafad905ba8085db6f86d64807f5043ddadb884f39337c9f9e147689 — agentPreset "mpd"
-#        (concatenated-zstd frames, header line `{"type":"session",…,"agentPreset":"mpd"}`)
-#      · the same directory holds a9eea0a3-aa4e-45e2-8d4d-3856b0b606d1
-#        (sha256 225152d4eb4bb04c037b9d455562d8af03c136a898ea287d37fb9f5c958c8763) and
-#        c7f6db60-5246-4223-9b2c-ad38ac87eea6
-#        (sha256 4471a31dab863c1fda8733de49bb29e3edaa2ec61e0366e08077780409671f03), each "mpd".
-#    The CONTRAST ships beside them: the same-shaped records from BEFORE this id-target
-#    existed, each recording `agentPreset: "standard"` — the measured "before" this fix
-#    answers (de5fde53-…/sha256 0e67008c…, 1a5d7e6f-…/ff7954b5…, e11887f7-…/6f3e02ec…,
-#    all three in the index).
-#  • The web profile is unchanged — a COMPOSITION check only:
-#    evidence/tui/composition/20260915T053445Z/raw/web-dump-config.err (its sole
-#    warning is `patch: entry "dsh-tui-agent-presets" not found`) and
-#    …/raw/web-dump-config.txt (exactly ONE @deepseek-ai/dsh-agent-presets row).
-#    The BOOT proof for that profile is the bundle-lifecycle mounting boot (R6,
-#    `bun skills/dsh-qa/scripts/bundle-lifecycle.mjs`), which really mounts the web
-#    profile — never a `--dump-config` result, which only composes rows (AGENTS.md §4).
-- id: dsh-tui-agent-presets
-  name: '@deepseek-ai/dsh-agent-presets'
-  config:
-    default: mpd
-    roots:
-      - path: !!js '(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/presets"'
-        trust: system
 
 # ── runtime plugin dependency: the sidebar HOST the bundle's GUI needs ──────
 # MEASURED DEFECT (evidence/install-deps/red-baseline/20260920T030832Z/result.json):
@@ -429,169 +374,60 @@
     - id: mpd-tui
       name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
 
-# ── Remote MCP rows (public services; network required, optional per use) ──
+# ── OFFICIAL Agent Teams rows (harness 0.1.7-rc.2) ──────────────────────────
+# The bundle's team capability is the OFFICIAL plugin set, not a vendored body:
+#   @deepseek-ai/dsh-experimental-agent-team          -> ctx.agentTeams (TeamService:
+#       implicit-root roster, durable peer mailbox, shared task DAG)
+#   @deepseek-ai/dsh-experimental-tool-agent-team     -> the scoped model-facing tools
+#       spawn_teammate / send_message / list_agents / wait_agent / interrupt_agent /
+#       team_task_create|list|get|update + the `team:policy` prompt section
+#   @deepseek-ai/dsh-experimental-client-ui-agent-team -> the Web roster, task board
+#       and teammate navigation
+# All three are declared in this package's `dependencies`, so
+# `@deepseek-ai/dsh-app-boot#healProfileModuleFallback` materializes them into
+# `<profile>/node_modules` before the loader runs and the rows always resolve (the
+# `dsh-better-sidebar` pattern: the declaration alone mounts nothing, and a row
+# alone would be boot-fatal when the module is unresolvable).
+#
+# ENTRY IDS ARE mpd-OWNED ON PURPOSE. `@deepseek-ai/dsh-experimental-agent-team-profile`
+# mounts the same three packages under the ids `agent-team` / `tool-agent-team` /
+# `ui-agent-team`, and a duplicate loader entry id is FATAL even when one side is
+# disabled. mpd-prefixed ids keep the two layers installable side by side.
+#
+# `freshProvider`/`forkProvider` are the harness defaults (`spawn` / `fork`) and
+# the official defaults. They are restated so a reader sees the resolution: the
+# official TeamService forwards ONLY `{ prompt, parent }` to
+# `ctx.subagents.startContinuable`, so a subagent provider cannot inject a
+# per-teammate model route, persona or tool filter for a continuable teammate.
+# That reduction is recorded in `docs/plan-0.1.7-adaptation.md` §3; the roster's
+# model slots survive on the one-shot consult path, and its read-only discipline
+# is re-implemented as a tool guard by mpd-roles.
+#
+# The official profile bundle ALSO disables `tool-subagent`,
+# `tool-subagent-control`, `tool-subagent-list-agents` and `tool-subagent-fork`.
+# This bundle deliberately does NOT: the mpd preset mounts direct delegation as
+# well, exactly as it did before, so a session keeps both the one-shot `subagent`
+# path and the durable team path.
 - insert:
-    # The adopted team plugin is FIRST-CLASS MAIN CODE at
-    # packages/mpd-agent-teams-plugin (MIT provenance; upstream
-    # @nanmicoder/dsh-agent-teams 0.1.16-rc.3-mpd) and loads through the bundle exports map:
-    # pnpm-driven `dsh plugin add` never links a bundle's transitive dependencies
-    # into the profile root, so a plain package-name row would silently self-disable.
-    # Its server runtime closure is vendored at packages/mpd-agent-teams-plugin/_deps
-    # (see scripts/vendor-agent-teams.mjs), so the row always resolves — no guard.
-    - id: agent-teams
-      name: '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js'
+    - id: mpd-agent-team
+      name: '@deepseek-ai/dsh-experimental-agent-team'
       config:
-        stateDir: .mpd/team
-        memberProvider: spawn
-        memberMaxDepth: 1
         maxMembers: 16
-        # CONFIGURATION PLANE (goal 4): aligned to upstream team_mode
-        # (packages/team-core/src/config.ts:6-14) with the user's decision that
-        # OUR ceilings stay the more permissive local values. `enforcement`
-        # mirrors upstream ('enforce' blocks over-limit sends, 'observe' logs
-        # only; default enforce). Every key is absent-safe: a profile without
-        # them still boots on these defaults.
-        maxParallelMembers: 8
-        maxMessagesPerRun: 10000
-        maxWallClockMinutes: 120
-        maxMemberTurns: 500
-        messagePayloadMaxBytes: 32768
-        recipientUnreadMaxBytes: 262144
-        mailboxPollIntervalMs: 3000
-        enforcement: enforce
-        # R3: empty staged teams older than this are ARCHIVED at the next session
-        # start (never deleted), excluding the running session's own team.
-        reclaimStaleAfterMs: 3600000
-        # SESSION-START TEAM GATE (binding): a session starts with NO team — a
-        # team is NOT a precondition. mode=off is the default (upstream parity:
-        # team_mode.enabled defaults to false) and means "no auto-provision, no
-        # unconditional notice". The DECOUPLED mechanical gate is `autoRoute`
-        # (default enabled): at the session's first pre-step it evaluates the
-        # frozen complexity gate, whose predicate is
-        #   trigger = explicit flag OR (matchedSignals >= 1)
-        # with signals A (a `team:` prefix or `!team`, the marker is consumed),
-        # B (>=4 distinct deliverable verbs), C (>=3 enumerated lines / action
-        # verbs / clauses) and D (a `.mpd/plans/*.md` artifact exists).
-        # A triggered SOFT signal is ADVISORY: NOTHING is staged (no team state
-        # is created) — the plugin injects ONE advisory notice that names the
-        # fired signals, states that no team was staged, and tells the captain to
-        # stage one on demand with agent_teams_create(approval="required",
-        # profile="mpd") at the moment the work actually warrants a team
-        # (otherwise continue solo and say so). An explicit `team:` / `!team`
-        # request still PROVISIONS the staged default team (profile `mpd`,
-        # approval=required — nothing spawns until the user approves the Web
-        # plan), and mode=auto keeps the legacy unconditional provisioning as an
-        # explicit opt-in; mode=instruct keeps the legacy instruction notice.
-        # presets: [mpd] scopes the gate to mpd-preset sessions (sessions without
-        # any preset, e.g. headless direct runs, are covered too), and
-        # subagent/member sessions (they carry parentSession) never qualify. The
-        # gate runs on the PRE-STEP, before any sizing doctrine, so it can
-        # actually prevent a team.
-        sessionTeamPolicy:
-          mode: off
-          autoRoute: true
-          profile: mpd
-          presets:
-            - mpd
-          name: MPD Default
-          approval: required
-        # The specialists become teammate instantiation templates for the
-        # adopted dsh-agent-teams plugin (reusing its architecture + Web GUI).
-        # One named profile `mpd` holds the full normal-named roster and
-        # `taskPlanning: captain` means only the roster is fixed: the captain
-        # designs the task DAG after a staged plan the user reviews in the panel.
-        # /agent-teams --profile mpd <goal> instantiates the roster explicitly.
-        profiles:
-          mpd:
-            description: "The specialist roster surfaced as normal-named teammate templates — captain-planned (roster only; the captain designs the DAG during the staged plan)."
-            protocol: "Read-only members (Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst) take requirements/review/analysis tasks only and never edit files. Workers (Senior Engineer, Junior Engineer, Deep Worker, Lead, Reviewer) take implementation/verification/integration. The captain leads, designs the DAG, and integrates results. Workmate reuse: before delegating a role task, consult mpd_workmate_list / mpd_workmate_match(task); if a workmate note matches well, delegate to that workmate (member name = workmate name, so its persona/memory are injected), otherwise initialize a fresh workmate with mpd_workmate_init — never force a weak note match."
-            taskPlanning: captain
-            # fallback.provider is ALWAYS deepseek-official (never the bare
-            # "deepseek" compat-track provider): the original layered design
-            # intended dsh-llm-pi-ai ("deepseek") as the degradation tier, but
-            # that row is OFF by default (install-profile --with-compat-track is
-            # gone) and the harness only registers deepseek-official
-            # (dsh-llm-deepseek), so a "deepseek" fallback would fail with
-            # NO_ADAPTER exactly when the fallback is needed.
-            # MEMBER ROUTES COME FROM THE SETTINGS SLOTS, not from literals: `tier: N` starts the
-            # member on mpd.teamModels.slot<N> (provider + model + reasoning effort, editable in the
-            # TUI /settings section and in the Web settings card). The frozen class mapping is
-            # tier 1 = Architect/Planner/Reviewer/Lead/Senior Engineer, tier 2 = the analysts
-            # (Researcher/Explorer/Plan Reviewer), tier 3 = the executors (Deep Worker/Junior
-            # Engineer), tier 4 = the vision member (Vision Analyst). Slot 4's DEFAULT is Vision
-            # Analyst's own vision route (deepseek-v4-flash-vision-exp at `high`), so routing it
-            # through the slot is behaviour-preserving while making its model configurable. A slot
-            # edit applies at the next dsh boot, like every other mpd knob.
-            members:
-              - name: Architect
-                tier: 1
-                role: architecture review / deep debugging / self-review
-                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
-                executionPrompt: "Read-only architecture advisor. You advise, others execute — never edit files. Favor simplicity and existing patterns; give one clear recommendation with concise rationale and evidence."
-                # Read-only members are MECHANICALLY restricted, not just instructed: these
-                # names are the same seven the one-shot roster path denies
-                # (mpd-roles-plugin / mpd-workmate-plugin READONLY_DENY), carried as profile
-                # data because the adopted plugin cannot import across packages. Without
-                # them a "read-only" member in a team kept write/edit/bash (measured
-                # 2026-09-14: a member's own session ran `pwd` for real).
+        maxTasks: 256
+        maxPendingMessagesPerMember: 64
+        maxMessageBytes: 32768
+        disposalTimeoutMs: 5000
 
-                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
-              - name: Researcher
-                tier: 2
-                role: code / open-source evidence search
-                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
-                executionPrompt: "Read-only researcher. Gather evidence from the codebase, AST/LSP and web sources; cite file:line and URLs; never edit files or invent findings."
-                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
-              - name: Planner
-                tier: 1
-                role: planning / task decomposition
-                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
-                executionPrompt: "Read-only planner. Produce decision-complete, step-ordered plans with a checklist; never implement."
-                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
-              - name: Explorer
-                tier: 2
-                role: read-only codebase exploration
-                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
-                executionPrompt: "Read-only explorer. Answer with evidence and absolute file paths; never edit files."
-                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
-              - name: Reviewer
-                tier: 1
-                role: correctness / risk review
-                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
-                executionPrompt: "Deep reviewer. Produce correctness/risk findings with evidence; recommend fixes but do not apply them."
-              - name: Plan Reviewer
-                tier: 2
-                role: work-plan QA review / UI-UX critique
-                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
-                executionPrompt: "Read-only plan reviewer. Verify plans are executable and references valid; reject only true blockers; UI/UX critique only when explicitly asked; never edit files."
-                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
-              - name: Vision Analyst
-                tier: 4
-                role: image / diagram analysis
-                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
-                executionPrompt: "Read-only vision analyst. Describe screenshots/diagrams precisely; never edit files or load anything by path."
-                toolDeny: [write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename]
-              - name: Lead
-                tier: 1
-                role: orchestration / integration
-                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
-                executionPrompt: "Orchestrator. Plan the macro structure, delegate independent units in parallel, integrate and verify results."
-              - name: Deep Worker
-                tier: 3
-                role: autonomous goal-driven implementation
-                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
-                executionPrompt: "Autonomous deep worker. Receive goals, execute them end-to-end with tools, verify every change, report evidence-first."
-              - name: Senior Engineer
-                tier: 1
-                role: primary implementation
-                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
-                executionPrompt: "Primary engineer. Plan small, execute with tools, keep diffs minimal, verify every change, report honestly."
-              - name: Junior Engineer
-                tier: 3
-                role: small mechanical changes
-                fallback: { provider: deepseek-official, model: deepseek-v4-flash }
-                executionPrompt: "Fast executor. Small, well-scoped mechanical changes with quick verification; keep diffs tiny."
+    - id: mpd-tool-agent-team
+      name: '@deepseek-ai/dsh-experimental-tool-agent-team'
+      config:
+        freshProvider: spawn
+        forkProvider: fork
 
+    - id: mpd-ui-agent-team
+      name: '@deepseek-ai/dsh-experimental-client-ui-agent-team'
+
+# ── Remote MCP rows (public services; network required, optional per use) ──
 - insert:
     - id: mcp-context7
       name: '@deepseek-ai/dsh-mcp-client'

@@ -1,220 +1,110 @@
 #!/usr/bin/env node
-// Case agent-teams-adopt (Plan C / C1): adopt @nanmicoder/dsh-agent-teams into an
-// isolated DSH_HOME through scripts/install-profile.mjs, then prove end-to-end:
-//   1) installer writes the bundle dependency + stateDir override (.mpd/team);
-//   2) composed config actually contains the agent-teams row with the override;
-//   3) a real headless AgentTeams run creates team state (team.json + inbox/*.jsonl),
-//      drives tasks with a dependency, and archives the team on delete;
-//   4) the web profile serves the /plugins/dsh-agent-teams/state snapshot route.
-// --self-test is the offline self-test. Never touches the real ~/.dsh.
-import { spawnSync, spawn } from "node:child_process"
-import { cpSync, existsSync, mkdtempSync, mkdirSync, openSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
-import { tmpdir, homedir } from "node:os"
+// Case agent-teams-adopt — RETIRED to a PROVENANCE case (2026-09-27, decision D5).
+//
+// WHAT THIS CASE USED TO PROVE, AND WHY IT CANNOT ANY MORE: it adopted
+// `@nanmicoder/dsh-agent-teams` into an isolated home through `scripts/install-profile.mjs`
+// and then proved end-to-end that (1) the installer wrote the bundle dependency + the
+// `stateDir` override, (2) the composed config contained the `agent-teams` row, (3) a real
+// headless run created `.mpd/team` state with a task DAG and archived the team on delete,
+// and (4) the web profile served `/plugins/dsh-agent-teams/state`.
+//
+// The vendored body is RETIRED from the composition (AGENTS.md §1): NO loader row mounts
+// it, so every one of those four claims is about a plugin that no shipped session reaches.
+// They are DROPPED, and they are named here rather than deleted silently:
+//   * the `agent-teams` row + its `stateDir` override — the row is gone from the bundle
+//     patch AND from the legacy installer;
+//   * the composed `agent-teams` row — nothing composes it;
+//   * the live headless team run / `.mpd/team` team.json / archive-on-delete — team state
+//     now lives in the LEAD'S SESSION LOG, owned by the official
+//     `@deepseek-ai/dsh-experimental-agent-team` plugin, and NOTHING in this repository
+//     asserts that live path;
+//   * the `/plugins/dsh-agent-teams/state` snapshot route — it retired with the plugin's
+//     server half; the official `mpd-ui-agent-team` row owns the roster/board UI.
+//
+// WHAT IT STILL PROVES, AND WHY THAT IS WORTH KEEPING: the adopted code is RETAINED on
+// disk (not deleted — AGENTS.md §1 keeps it so the D6 adapter gate and the delta registry
+// stay meaningful), and retained third-party code carries a LICENCE/ATTRIBUTION obligation
+// that must not rot while the code sits there. `LICENSE-NOTICES.md` is the authoritative
+// record (§1), and the naming exception it rests on is a manual sentence (§1). This case is
+// the ONLY executable check of that pair, so it is rebased rather than removed:
+//   * the MIT notice block, its copyright line and the adopted `LICENSE` copy exist;
+//   * the adopted package still carries its pinned version and its `_deps` closure;
+//   * `AGENTS.md` still states the naming exception the attribution depends on;
+//   * and the body is REALLY unmounted — the bundle patch declares no `agent-teams` row —
+//     so a reader can never mistake retained code for shipped code.
+//
+// Offline by construction: provenance is a fact about files, so there is nothing to boot.
+// The default (no-argument) run performs the SAME audit, so the lane stays runnable in
+// `bun run test:qa:all`; `--self-test` adds a negative control that must redden.
+// Never touches the real ~/.dsh.
+import { existsSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
-import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.mjs"
 
-const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+const ADOPTED = join("packages", "mpd-agent-teams-plugin")
 const NOTICE_LINE = "Copyright (c) 2026 程序员阿江(Relakkes)"
+const MIT_MARKER = "dsh-agent-teams (MIT)"
 const AGENTS_EXCEPTION = "Adopted plugins keep their plugin ids and tool names"
-const PROMPT = "Use AgentTeams for a tiny end-to-end verification: create team 'c1qa' (description 'C1 adoption QA'); add two members, oracle and librarian; create task t1 'Summarize the QA goal in one line' assigned to librarian; create task t2 'Approve or reject the summary' assigned to oracle with dependency on t1; let the scheduler run the tasks; call agent_teams_status before finishing; then archive the team with agent_teams_delete. End with the team_id and what the archive path is."
-
-const LOG = []
+const PINNED_VERSION = "0.1.16-rc.3-mpd"
 
 function fail(msg) { console.error("[agent-teams-adopt] FAIL: " + msg); process.exit(1) }
 
-function teamRoot(ws) { return join(ws, ".mpd", "team") }
-
-function loadTeam(path) { try { return JSON.parse(readFileSync(path, "utf8")) } catch { return null } }
-
-function assessTeamState(ws) {
-  const root = teamRoot(ws)
-  const activeIds = (existsSync(root) ? readdirSync(root) : []).filter((d) => d !== "archive" && d !== "retired-members.json" && existsSync(join(root, d, "team.json")))
-  const archiveIds = (existsSync(join(root, "archive")) ? readdirSync(join(root, "archive")) : []).filter((d) => existsSync(join(root, "archive", d, "team.json")))
-  const ids = activeIds.length > 0 ? activeIds : archiveIds
-  const teamJson = ids.map((id) => loadTeam(join(activeIds.length > 0 ? root : join(root, "archive"), id, "team.json")))
-  const inbox = ids.map((id) => {
-    const base = activeIds.length > 0 ? root : join(root, "archive")
-    const p = join(base, id, "inbox")
-    return existsSync(p) ? readdirSync(p).filter((f) => f.endsWith(".jsonl")) : []
-  })
-  const ok = ids.length > 0 && teamJson.every(Boolean) && teamJson.some((t) => (t.members ?? []).length >= 2) && inbox.some((arr) => arr.length > 0)
-  return { ok, teamIds: ids, inbox, teamJson }
-}
-
-function assessArchive(ws) {
-  const root = join(teamRoot(ws), "archive")
-  const ids = existsSync(root) ? readdirSync(root).filter((d) => existsSync(join(root, d, "team.json"))) : []
-  return { ok: ids.length > 0, archiveIds: ids }
-}
-
-function assessTaskTerminal(ws) {
-  const st = assessTeamState(ws)
-  let taskTerminal = false
-  let tasks = 0
-  for (const t of st.teamJson) {
-    if (t && Array.isArray(t.tasks)) { tasks += t.tasks.length; taskTerminal = taskTerminal || t.tasks.some((x) => ["completed", "failed", "cancelled"].includes(x.status)) }
+/** Every input the audit reads, so the negative control can drive ONE seam. */
+function readSources() {
+  return {
+    notices: readFileSync(join(repoRoot, "LICENSE-NOTICES.md"), "utf8"),
+    agents: readFileSync(join(repoRoot, "AGENTS.md"), "utf8"),
+    patch: readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8"),
+    licenseExists: existsSync(join(repoRoot, ADOPTED, "LICENSE")),
+    depsExist: existsSync(join(repoRoot, ADOPTED, "_deps", "schemastery", "lib", "index.mjs")),
+    version: (() => {
+      try { return JSON.parse(readFileSync(join(repoRoot, ADOPTED, "package.json"), "utf8")).version } catch { return null }
+    })(),
   }
-  return { ok: tasks >= 1 && taskTerminal, tasks, taskTerminal }
 }
 
-function selfTest() {
-  const notices = readFileSync(join(repoRoot, "LICENSE-NOTICES.md"), "utf8")
-  if (!notices.includes("dsh-agent-teams (MIT)") || !notices.includes(NOTICE_LINE)) fail("MIT notice block missing")
-  if (!notices.includes("程序员阿江(Relakkes)")) fail("copyright line missing")
-  if (!existsSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "LICENSE"))) fail("adopted LICENSE copy missing")
-  const vendorPkg = JSON.parse(readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "package.json"), "utf8"))
-  if (vendorPkg.version !== "0.1.16-rc.3-mpd") fail("adopted package version is not 0.1.16-rc.3-mpd: " + vendorPkg.version)
-  if (!existsSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "_deps", "schemastery", "lib", "index.mjs"))) fail("adopted _deps/schemastery missing")
-  const ag = readFileSync(join(repoRoot, "AGENTS.md"), "utf8")
-  if (!ag.includes(AGENTS_EXCEPTION)) fail("AGENTS.md naming exception missing")
-  const st = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--self-test"], { encoding: "utf8" })
-  if (st.status !== 0) fail("installer --self-test failed: " + st.stderr)
-  console.log("[agent-teams-adopt self-test] ok: notice + adopted LICENSE + 0.1.16-rc.3-mpd + _deps + AGENTS.md + installer self-test verified")
+/**
+ * The provenance + retirement audit. Pure over `sources`, so `--self-test` drives a
+ * MUTATED copy through this same function and proves the audit can fail.
+ * @returns {string[]} problems (empty = conforms)
+ */
+export function auditProvenance(sources) {
+  const problems = []
+  if (!sources.notices.includes(MIT_MARKER)) problems.push("LICENSE-NOTICES.md no longer carries the `" + MIT_MARKER + "` attribution block for the retained adopted body")
+  if (!sources.notices.includes(NOTICE_LINE)) problems.push("LICENSE-NOTICES.md lost the copyright line " + JSON.stringify(NOTICE_LINE))
+  if (!sources.licenseExists) problems.push("the adopted " + ADOPTED + "/LICENSE copy is missing — the retained code ships without its licence")
+  if (!sources.depsExist) problems.push("the adopted " + ADOPTED + "/_deps closure is missing — the retained body cannot resolve its runtime deps")
+  if (sources.version !== PINNED_VERSION) problems.push("the adopted package version is not the pinned " + PINNED_VERSION + " (got " + JSON.stringify(sources.version) + ")")
+  if (!sources.agents.includes(AGENTS_EXCEPTION)) problems.push("AGENTS.md no longer states the naming exception the attribution rests on: " + JSON.stringify(AGENTS_EXCEPTION))
+  // The RETIREMENT half: retained must not read as shipped.
+  if (/^\s*-?\s*id:\s*agent-teams\s*$/m.test(sources.patch)) problems.push("the bundle patch declares an `agent-teams` row again — the retirement (D5) was reverted")
+  return problems
 }
 
-async function runReal() {
-  const creds = join(homedir(), ".dsh", ".credentials.yaml")
-  if (!existsSync(creds)) fail("missing credentials at " + creds)
-  const ts = new Date().toISOString().replaceAll(":", "-")
-  const outDir = join(repoRoot, "evidence", "plan-c", "c1-team", ts)
-  mkdirSync(outDir, { recursive: true })
-  const sandbox = mkdtempSync(join(tmpdir(), "mpd-c1-"))
-  seedSandboxCredentials(sandbox, { credentialsFile: creds })
-  // The live provider chain lives in settings.yaml (llm-pi-ai providers +
-  // agent-default-model). Without it the sandbox falls back to the base
-  // deepseek-official route and dies MISSING_CREDENTIAL on homes whose keys
-  // come from gateway providers (opencode-go/scnet). Copy the user's live
-  // settings so the headless run uses their actual provider chain.
-  const settings = join(homedir(), ".dsh", "settings.yaml")
-  if (existsSync(settings)) cpSync(settings, join(sandbox, "settings.yaml"))
-  const ws = join(sandbox, "ws")
-  mkdirSync(ws, { recursive: true })
-  // QA isolation discipline (AGENTS.md §7): HOME must be the sandbox, not the real
-  // home — plugins resolving ~/.mpd (e.g. mpd-codegraph) must never touch /root.
-  const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: sandbox  })
-  if (env.DSH_HOME !== sandbox || env.HOME !== sandbox) fail("isolation assertion failed")
-  const steps = {}
-  let failed = false
-
-  function runSync(cmd, args, opts = {}) {
-    const spec = cmd === "dsh" ? dshCommand(args, env) : { command: cmd, args }
-    const r = spec === null ? { status: null, stdout: "", stderr: DSH_MISSING } : spawnSync(spec.command, spec.args, { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: opts.timeout ?? 900000, cwd: opts.cwd ?? repoRoot, stdio: ["ignore", "pipe", "pipe"] })
-    const out = (r.stdout || "") + (r.stderr || "")
-    LOG.push("$ " + cmd + " " + args.join(" ") + "\\n[[exit=" + r.status + "]]\\n" + out.slice(0, 20000))
-    return { status: r.status, out, stdout: r.stdout || "" }
-  }
-
-  // 1) install into the isolated home (headless profile)
-  const inst = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { timeout: 600000 })
-  steps.installer = { ok: inst.status === 0, exit: inst.status }
-
-  // 2) manifest + home-patch asserts (agent-teams is now a main-code path row in the
-  //    home patch — no profile bundle entry anymore)
-  const manifest = JSON.parse(readFileSync(join(sandbox, "profiles", "mpd-headless", "package.json"), "utf8"))
-  steps.bundleRow = { ok: !(manifest.dsh?.profile?.bundles ?? []).includes("@nanmicoder/dsh-agent-teams"), bundles: manifest.dsh?.profile?.bundles }
-  const homePatch = readFileSync(join(sandbox, "cordis.patch.yml"), "utf8")
-  steps.override = { ok: /id:\s*agent-teams/.test(homePatch) && homePatch.includes(".mpd/team") && homePatch.includes("packages/mpd-agent-teams-plugin/lib/index.js"), hasPatch: homePatch.includes("agent-teams") }
-
-  // 3) composed config
-  // T-69: the wrapper composes; the composed tree is read from the --json child output.
-  const dump = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.mjs"), "--profile", "mpd-headless", "--json"], { timeout: 120000 })
-  const composedText = dumpJsonText(dump.stdout)
-  const composed = composedText.includes("agent-teams") && composedText.includes(".mpd/team")
-  steps.compose = { ok: dump.status === 0 && composed, exit: dump.status }
-
-  // 4) live headless AgentTeams run
-  const live = runSync("dsh", ["--profile", "mpd-headless", PROMPT], { timeout: 900000, cwd: ws })
-  const liveOut = live.out
-  steps.live = { ok: live.status === 0, exit: live.status }
-  steps.teamState = assessTeamState(ws)
-  steps.archive = assessArchive(ws)
-  steps.taskTerminal = assessTaskTerminal(ws)
-
-  // 5) web snapshot route — install the web (mpd) profile into its OWN fresh
-  //    isolated home, mirroring the real single-profile install flow
-  //    (`dsh plugin add dist/mpd-package`), not a mixed headless+web home.
-  const webHome = mkdtempSync(join(tmpdir(), "mpd-c1-web-"))
-  seedSandboxCredentials(webHome, { credentialsFile: creds })
-  if (existsSync(settings)) cpSync(settings, join(webHome, "settings.yaml"))
-  const webWs = join(webHome, "ws")
-  mkdirSync(webWs, { recursive: true })
-  const webEnv = { ...process.env, DSH_HOME: webHome, HOME: webHome }
-  const instWeb = runSync(process.execPath, [join(repoRoot, "scripts", "install-profile.mjs"), "--yes", "--dsh-home", webHome, "--profile", "mpd", "--skip-toolchain"], { timeout: 600000 })
-  steps.webInstaller = { ok: instWeb.status === 0, exit: instWeb.status }
-  const port = 3199
-  const webLog = join(outDir, "web.log")
-  const webFd = openSyncSafe(webLog)
-  const webSpec = dshCommand(["--profile", "mpd", "--port", String(port), "--no-open"], webEnv)
-  if (webSpec === null) throw new Error(DSH_MISSING)
-  const web = spawn(webSpec.command, webSpec.args, { env: webEnv, cwd: webWs, detached: false, stdio: ["ignore", webFd, webFd] })
-  let routeOk = false
-  let routeStatus = null
-  let routeBody = ""
-  let routeArm = null
-  let sessionCookie = null
-  const routeUrl = "http://127.0.0.1:" + port + "/plugins/dsh-agent-teams/state"
-  const t0 = Date.now()
-  while (Date.now() - t0 < 120000) {
-    await new Promise((r) => setTimeout(r, 2000))
-    try {
-      // The route is wrapped in the host's browser-auth fence (trusted Host/Origin, then a
-      // session cookie), so a plain server-side probe is REFUSED BY DESIGN — asserting a 200 here
-      // could never hold. Two arms, both falsifiable:
-      //   (a) if the index exchange hands out a session cookie, assert the real payload (200);
-      //   (b) otherwise assert the FENCE contract: the route is MOUNTED and refuses the
-      //       unauthenticated call with 401/403. A 404 (route missing) or 503 (assembly failure,
-      //       e.g. the credential store failing its owner-only check) is a FAILURE, never a pass.
-      if (sessionCookie === null) {
-        const index = await fetch("http://127.0.0.1:" + port + "/", { signal: AbortSignal.timeout(4000) })
-        const setCookie = index.headers.get("set-cookie")
-        if (setCookie) sessionCookie = setCookie.split(";")[0]
-      }
-      const res = await fetch(routeUrl, { headers: sessionCookie ? { cookie: sessionCookie } : {}, signal: AbortSignal.timeout(4000) })
-      routeStatus = res.status
-      routeBody = (await res.text()).slice(0, 2000)
-      if (res.status === 200) { routeOk = true; routeArm = "authenticated-payload"; break }
-      if (sessionCookie === null && (res.status === 401 || res.status === 403)) { routeOk = true; routeArm = "fence-refusal"; break }
-    } catch { /* not up yet */ }
-  }
-  web.kill("SIGTERM")
-  try { await new Promise((r) => setTimeout(r, 1500)) } catch {}
-  steps.webRoute = { ok: routeOk, arm: routeArm, status: routeStatus, body: routeBody, webLog: webLog }
-
-  const allOk = Object.values(steps).every((s) => (typeof s === "object" && "ok" in s) ? s.ok : true)
-  if (!allOk) failed = true
-  writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: !failed, sandbox, steps, totalSteps: Object.keys(steps).length }, null, 2))
-  writeFileSync(join(outDir, "output.log"), LOG.join("\n\n---\n\n"))
-  console.log("[agent-teams-adopt] ok=" + !failed + " -> " + outDir)
-  for (const [k, v] of Object.entries(steps)) console.log("  " + k + ": " + JSON.stringify(v).slice(0, 300))
-  if (failed) process.exit(1)
-  console.log("[agent-teams-adopt] PASS")
-}
-
-function openSyncSafe(p) { return openSync(p, "w") }
-
-function reparse() {
-  const ev = join(repoRoot, "evidence", "plan-c", "c1-team")
-  const tsArgIdx = process.argv.indexOf("--reparse")
-  const ts = process.argv[tsArgIdx + 1] ?? (existsSync(ev) ? readdirSync(ev).sort().pop() : null)
-  if (!ts) fail("no evidence dir to reparse")
-  const dir = join(ev, ts)
-  const result = JSON.parse(readFileSync(join(dir, "result.json"), "utf8"))
-  const ws = join(result.sandbox, "ws")
-  result.steps.teamState = assessTeamState(ws)
-  result.steps.archive = assessArchive(ws)
-  result.steps.taskTerminal = assessTaskTerminal(ws)
-  result.ok = Object.values(result.steps).every((s) => (typeof s === "object" && "ok" in s) ? s.ok : true)
-  writeFileSync(join(dir, "result.json"), JSON.stringify(result, null, 2))
-  console.log("[agent-teams-adopt] reparse ts=" + ts + " ok=" + result.ok + " -> " + dir)
-  for (const [k, v] of Object.entries(result.steps)) console.log("  " + k + ": " + JSON.stringify(v).slice(0, 220))
-  if (!result.ok) process.exit(1)
-  console.log("[agent-teams-adopt] PASS (reparsed)")
+function report(problems) {
+  if (problems.length === 0) return
+  for (const problem of problems) console.error("  - " + problem)
+  fail("the retained adopted body's provenance/retirement contract is violated (" + problems.length + " problem(s))")
 }
 
 const argv = process.argv.slice(2)
-if (argv.includes("--self-test")) selfTest()
-else if (argv.includes("--reparse")) reparse()
-else runReal()
+const sources = readSources()
+if (argv.includes("--self-test")) {
+  report(auditProvenance(sources))
+  // NEGATIVE CONTROL: dropping the attribution block must REDDEN the same audit, and so
+  // must a re-declared `agent-teams` row — a provenance case that cannot fail is a
+  // paragraph, not an instrument.
+  const controlLicence = auditProvenance({ ...sources, notices: sources.notices.split(MIT_MARKER).join("SOMETHING ELSE") })
+  if (controlLicence.length === 0) fail("negative control: the audit passed with the MIT attribution block removed")
+  const controlRow = auditProvenance({ ...sources, patch: sources.patch + "\n- insert:\n    - id: agent-teams\n      name: '@mpd-dsh/mpd/packages/mpd-agent-teams-plugin/lib/index.js'\n" })
+  if (controlRow.length === 0) fail("negative control: the audit passed with an `agent-teams` row re-declared")
+  console.log("[agent-teams-adopt self-test] ok: retained adopted body — MIT notice + copyright + LICENSE + pinned " + PINNED_VERSION
+    + " + _deps closure + AGENTS.md naming exception, and NO `agent-teams` row in the bundle patch"
+    + "; negative controls reddened (attribution removed " + controlLicence.length + ", row re-declared " + controlRow.length + " problem(s))")
+} else {
+  // The lane's real run: the audit IS the deliverable (provenance is a fact about files).
+  report(auditProvenance(sources))
+  console.log("[agent-teams-adopt] ok=true (offline provenance audit — the four live adoption guarantees retired with the plugin; see this file's header)")
+  console.log("[agent-teams-adopt] PASS")
+}

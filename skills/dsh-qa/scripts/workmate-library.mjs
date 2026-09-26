@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url"
 import { credentialEnv, seedSandboxCredentials } from "./lib/credentials.mjs"
 import { findToolCall, readSessionEvents, recordedToolNames } from "./lib/session-evidence.mjs"
 import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
+import { readMpdPresetSource } from "./lib/preset-source.mjs"
 
 const dumpJsonText = (text) => { try { return JSON.parse(text).stdout ?? "" } catch { return String(text ?? "") } }
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -35,11 +36,23 @@ function selfTest() {
   checks.push(["workmate dist built", existsSync(dist)])
   const patch = readFileSync(join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml"), "utf8")
   checks.push(["bundle patch row mpd-workmate", patch.includes("id: mpd-workmate") && patch.includes("@mpd-dsh/mpd/packages/mpd-workmate-plugin/dist/index.js")])
-  checks.push(["bundle profile protocol workmate guidance", patch.includes("mpd_workmate_match") && patch.includes("never force a weak note match")])
+  // RETIREMENT (2026-09-27): the workmate guidance used to live in the adopted
+  // vendored plugin's roster block inside the bundle patch. That row is GONE, so
+  // the guidance moved to where the agent actually reads it — the mpd preset. Both
+  // halves are asserted: the retired sentence must not linger in the patch, and
+  // the PRESET must carry the consult/anti-weak-match rule.
+  checks.push(["bundle patch no longer carries the retired roster workmate guidance", !patch.includes("never force a weak note match")])
   const members = readFileSync(join(repoRoot, "packages", "mpd-agent-teams-plugin", "lib", "members.js"), "utf8")
   checks.push(["memberPersona workmate injection", members.includes("function workmateBacking") && members.includes("mpd_workmate_reflect") && members.includes("Durable workmate backing")])
-  const preset = readFileSync(join(repoRoot, "presets", "mpd", "agent.cordis.yml"), "utf8")
+  // 0.1.7-rc.2 ROW MODEL: the mpd composition is an inline `config.plugins` list in
+  // the `preset-mpd` row of the manifest's second bundle patch — there is no
+  // `presets/mpd/` directory any more. Read the DECLARED source, never a path.
+  const preset = readMpdPresetSource(repoRoot)
   checks.push(["mpd preset WORKMATE guidance", preset.includes("WORKMATE LIBRARY") && preset.includes("mpd_workmate_init")])
+  // The anti-weak-match rule, read from its NEW home (the retired roster block is
+  // gone from the bundle patch, so asserting it there would be an assertion about
+  // deleted text).
+  checks.push(["mpd preset forbids forcing a weak workmate match", preset.includes("mpd_workmate_match") && /forcing a weak match/.test(preset)])
   const pkg = JSON.parse(readFileSync(join(repoRoot, "packages", "mpd-workmate-plugin", "package.json"), "utf8"))
   checks.push(["package name @mpd-dsh/workmate", pkg.name === "@mpd-dsh/workmate"])
   const pack = readFileSync(join(repoRoot, "scripts", "pack-mpd.mjs"), "utf8")

@@ -74,7 +74,7 @@ export const REQUIRED_COMMANDS = ["ulw", "ultrawork"]
 export const CLAUSE_PROBES = [
   { id: "triage", label: "C3.1 triage first (before gate/team/loop)", re: /TRIAGE FIRST/ },
   { id: "gate", label: "C3.2 the SAME complexity predicate (flag OR any signal A-D)", re: /GATE:[\s\S]{0,120}complexity predicate[\s\S]{0,160}signal A-D/ },
-  { id: "team", label: "C3.3 auto-approved team when warranted", re: /TEAM WHEN WARRANTED[\s\S]{0,240}agent_teams_create\(approval="automatic", profile="mpd"\)/ },
+  { id: "team", label: "C3.3 auto-approved team when warranted (OFFICIAL team tools)", re: /TEAM WHEN WARRANTED[\s\S]{0,400}spawn_teammate[\s\S]{0,400}team_task_create/ },
   { id: "loop", label: "C3.4 loop to completion without asking", re: /LOOP TO COMPLETION[\s\S]{0,120}never stop early to ask the user/ },
   { id: "fixOnSight", label: "C3.4b fix on sight", re: /FIX ON SIGHT/ },
   { id: "closeOut", label: "C3.5 close out on proof", re: /CLOSE OUT ON PROOF/ },

@@ -30,4 +30,6 @@ DSH bundle 聚合包：`cordis.patch.yml` 挂载每一个 mpd-dsh plugin row —
 ## TUI 组合
 
 同一个 patch 也组合 TUI 版本：`mpd-tui` 行挂载
-`@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js`（该包自身不带 patch，因此这一行是唯一挂载点，任何组合都无法重复该 loader 条目 id）；`dsh-tui-agent-presets` 行则在该 profile 实际组合的平面上给出同样的默认值（`mpd`）——web 平面的 `agent-presets` id-target 在那里会被跳过。对 web 安装没有其他影响。
+`@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js`（该包自身不带 patch，因此这一行是唯一挂载点，任何组合都无法重复该 loader 条目 id）。
+
+预设选择的 id-target 是 `agent-preset-registry`（`@deepseek-ai/dsh-agent-preset-registry`，`config.default: mpd`）。Harness 0.1.7-rc.2 移除了本文件过去针对的那两个「按平面分设的预设根」行（`agent-presets` / `dsh-tui-agent-presets`，二者都挂在已删除的 `@deepseek-ai/dsh-agent-presets` 包上），所以现在只有一个目标，就是该注册表。不携带该行的组合——headless profile，或 `dsh-tui` 平面上另铸了不同名字的注册表行——只会记录 `patch: entry agent-preset-registry not found` 并保留自己的默认值；`mpd` 预设本身由第二个 patch 文件声明（`presets/mpd.patch.yml`，行 `preset-mpd`），任何组合都不需要再单独选择它。

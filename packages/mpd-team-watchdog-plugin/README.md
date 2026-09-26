@@ -34,12 +34,13 @@ per-agent heartbeat is the only witness that survives that shape.
 ## Where the state lives
 
 Everything is under the **calling session's workspace** (resolved per call through the
-adapter — never cached, never `process.cwd()` by assumption), beside the adopted team
-record. The adopted `team.json` keeps its single writer (`state.js`); this package only
-ever reads it.
+adapter — never cached, never `process.cwd()` by assumption). 0.1.7 retired the vendored
+`agent-teams` plugin and its `<stateDir>/<teamId>/team.json`, so there is NO team file on this
+path any more: the roster and the board are read LIVE through the adapter
+(`dsh.teamLiveTeams()`, the OFFICIAL Agent Teams readout), and every file below belongs to this
+package alone.
 
 ```
-<workspace>/<stateDir>/<teamId>/team.json                          adopted, READ-ONLY here
 <workspace>/<stateDir>/watchdog/heartbeat/<memberKey>.jsonl        one stamp per line
 <workspace>/<stateDir>/watchdog/scene/<teamId>/<iso>.json          one immutable file per incident
 <workspace>/<stateDir>/watchdog/scene/<teamId>/latest.json         the pointer a restart reads
@@ -48,8 +49,8 @@ ever reads it.
 <workspace>/<stateDir>/watchdog/read-watermark.json                per-reader acknowledgement
 ```
 
-`<stateDir>` defaults to `.mpd/team` (the same default the adopted plugin uses) and is
-configurable on the row.
+`<stateDir>` defaults to `.mpd/team` (kept for continuity with the retired default) and is
+configurable on the row. The `/watchdog/` namespace is the only thing this package writes.
 
 ## The heartbeat
 
@@ -179,27 +180,28 @@ OBSERVE (every tickIntervalMs) — the channel verdict decides the state
                          never an escalate, never a hold)
 ```
 
-The streak is keyed `<taskId>\0<attemptId>`, so a retry with a fresh attempt starts
-clean. **A silence candidate is not every non-terminal task.** Candidacy is ONE
-disjunction — *the task was handed to somebody at some point*:
+The streak is keyed `<teamId>\0<taskId>\0<attemptId>`, where `attemptId` is the generation
+token: the OFFICIAL board's monotonic `revision` (0.1.7 replaced the retired record's attempt id
+with it — see `src/team.ts`), so a re-claim or a re-open starts clean. **A silence candidate is
+not every non-terminal task.** Candidacy is ONE disjunction — *the task was handed to somebody at
+some point*:
 
-* **a dispatch is on record** — a non-empty `attemptId`, written by the adopted scheduler at
-  dispatch (`beginTaskAttempt(task, member)` in `lib/scheduler.js`, before the ticket reaches
-  the member) and reused by the member's own `claim_task`; or
+* **the task is OWNED** — the official board sets `ownerName` exactly at
+  `team_task_update action=claim` / `reassign`, and the projection reports that as `dispatched`;
+  or
 * **the task carries a stamp of its own**, of ANY generation, because a stamped task WAS
   worked on. This half reads the team-scoped stamps *unfiltered* on purpose: the W11-2 slice
   described below answers "is the CURRENT generation silent", not "was this task ever handed
-  out", so a task whose attempt was revoked after it had been worked on stays observable. A
+  out", so a task whose owner changed after it had been worked on stays observable. A
   stamp naming ANOTHER team says nothing about this task and cannot make it a candidate.
 
-A task with neither was never handed to anybody: the normal state of a plan still `staged` and
-awaiting the user's approval in the Web panel, of a task correctly blocked on unfinished
-dependencies, and of one the scheduler has not reached yet. It is not observed at all —
-`never-started` is DEFINED as a *claimed* task whose owner never stamped, and a task nobody
-owns cannot be a wedge either. Without this rule a 12-task staged plan wrote **12**
-`never-started` incidents and printed **12** console lines on EVERY host start (measured
-2026-09-16); with it, zero, while a dispatched task whose owner never stamped is still
-reported.
+A task with neither was never handed to anybody: it is an UNOWNED row, exactly what
+`team_task_create` produces before anybody claims it, and also the normal state of a task
+correctly blocked on unfinished dependencies. It is not observed at all — `never-started` is
+DEFINED as a *claimed* task whose owner never stamped, and a task nobody owns cannot be a wedge
+either. Without this rule a 12-task plan wrote **12** `never-started` incidents and printed
+**12** console lines on EVERY host start (measured 2026-09-16); with it, zero, while a claimed
+task whose owner never stamped is still reported.
 
 **The machine then reads the candidate**: a `claimed` task whose owner is legitimately between
 turns is silent by design, and three WARNs against it would escalate a healthy team, so the
@@ -207,20 +209,22 @@ newest stamp decides — a `turn-end` newest stamp withholds the observation, no
 CURRENT generation is reported `never-started` (a dispatch observation that never escalates),
 and anything else is measured against `warnSilenceMs`.
 
-**T-16 — the silence slice is GENERATION-SCOPED.** A stamp older than the record's own
-`createdAt`/`approvedAt` belongs to a previous generation of that team and can no longer make a
-task silent: the candidate is reported `never-started` instead (a report that never holds). The
-measured leak this closes (2026-09-16): a hold took task `t12` whose only stamp (05:33:35Z)
-predated the record's `createdAt` (05:51:45Z), so "silence" was measured against a stamp from
-before the record existed. Two deliberate asymmetries stay: the bound applies to the
+**T-16 — the silence slice is GENERATION-SCOPED.** A stamp whose generation token names a
+DIFFERENT revision than the task's current one belongs to a previous generation of that task and
+can no longer make it silent: the candidate is reported `never-started` instead (a report that
+never holds). 0.1.7 replaced the retired record's `createdAt`/`approvedAt` floor with the official
+board `revision`: the official readout carries NO record timestamps at all, so `candidateFor`'s
+floor is `null` (PERMISSIVE, the documented §0/A3 convention) and the revision is what scopes a
+stamp to a generation. Two deliberate asymmetries stay: the bound applies to the
 **silence/hold slice only** — the dispatch precondition still counts an earlier-generation stamp
 as "this task was handed out" (the r7 pin), because a task nobody can see is a false negative
-that no lane would ever report — and a record that states **no** `createdAt` stays permissive,
-since an unbounded record must not turn the watchdog silent.
+that no lane would ever report — and a stamp that carries NO generation token cannot contradict
+the current one and is kept, since an undateable stamp must not turn the watchdog silent.
 
 **T-20 — a member waiting on a dependency is PARKED, not silent.** A member whose only open
 tasks are blocked by dependencies that are not terminal has nothing claimable: the watchdog
-derives that from `team.json` alone (the projection carries each task's `dependencies`) and
+derives that from the live readout alone (the projection carries each task's `blockedBy` as
+`dependencies`) and
 suppresses the silence rule for it, reporting `PARKED`. No new member-facing wait tool exists —
 the derivation is the whole mechanism. Two readings are deliberately conservative: a dependency
 naming a task that is not in the record counts as unfinished (a task that cannot be shown
@@ -279,28 +283,33 @@ warning carries the path and the errno, the hold is still attempted, and the inc
 still recorded — because a user who cannot get the scene must still learn that the team
 is held.
 
-Two fields are honest projections rather than the adopted plugin's own state:
+Three fields are honest projections rather than the harness's own state:
 
-* `members[].unread` mirrors the adopted unread predicate (`state.js:845-855`) because no
-  adapter seam exposes it.
-* `parkedAttempts` is the **durable** projection (assignee → attemptId of every
-  non-terminal task). The adopted scheduler's in-process `Map` is not reachable through
+* `members[].unread` is ALWAYS `null`: the durable peer mailbox lives in the Lead Session log
+  (`team/message/queued` / `team/message/delivered`) and no adapter seam reports a per-member
+  unread count. The retired `<teamDir>/inbox/*.jsonl` mirror is gone with the plugin that wrote
+  it, and `null` — "not observable" — is the honest answer where the old reader fabricated `0`
+  for a missing file.
+* `parkedAttempts` is the **durable** projection (assignee → generation token of every
+  non-terminal task). The scheduler's in-process `Map` is not reachable through
   the adapter, and the design already treats this field as advisory.
 
 ## The hold, the incidents and the watermark
 
 * `hold/<teamId>.json` = `{id, teamId, since, cause, taskId, attemptId, sceneAt, ttlMs}`. It
   is written temp+rename, idempotent by `id`, and it is a **preserving** hold: it exists to
-  stop NEW dispatch into one team, never to cancel work. It is the **INTERNAL implementation**
-  of a team pause — the ONE external pause is `agent_teams_halt` (which cancels every non-terminal task).
+  stop NEW dispatch into one team, never to cancel work. It is the ONLY pause this bundle
+  implements: 0.1.7 retired `agent_teams_halt` with the plugin that owned it, and the official
+  Agent Teams service exposes no halt on any seam this plugin may call.
 * **T-17 — a hold releases itself, on two bounds.** Every hold carries `ttlMs` (the resolved
   `watchdog.holdTtlMs` for a hold the watchdog raises; a manual `session-watchdog-hold` may
   override it with `ttl_ms`, and `0` means "no TTL"). A hold is auto-released when EITHER
   `now - since >= ttlMs` (`ttlMs > 0`) OR **any heartbeat stamp for that team is newer than
   `since`** — a member that demonstrably worked has disproved the wedge. Both paths write one
   durable `hold-auto-released` incident (`cause.kind: "hold-auto-released"`, `cause.release:
-  "ttl" | "activity"`), log one line, and touch **not one byte of `team.json`**: the pause
-  stays preserving, exactly like `session-watchdog-resume`. A hold written before this field
+  "ttl" | "activity"`), log one line, and touch **no team state at all** — none is reachable:
+  the official board lives in the Lead Session log and this plugin writes only its own files. The
+  pause stays preserving, exactly like `session-watchdog-resume`. A hold written before this field
   existed reads as `ttlMs: 0`, so no bound is ever invented for it. The pass runs at the head
   of every tick and reads the hold **files** (the durable truth), so a process whose
   synchronous reader was never hydrated still releases an expired pause.
@@ -316,15 +325,16 @@ Two fields are honest projections rather than the adopted plugin's own state:
 A team that is already held gets **no second scene and no second hold**; the incident is
 still recorded.
 
-### T-19 — one pause surface, naming the ACTIVE mechanism
+### The pause surface — one mechanism, and it is this package's hold
 
-There is ONE external pause: `agent_teams_halt` (which CANCELS every non-terminal task),
-cleared by `agent_teams_resume`. This package's own **preserving** hold is that pause's
-**INTERNAL implementation**, never a second mechanism a caller picks between. The status view
-therefore reports ONE pause state and names the external mechanism — `team-a: PAUSED —
-mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation
-active` vs `team-a: not paused` — in the rendered text AND as a `pause: {paused, mechanism,
-implementation, halted, held}` object per team in the JSON, whose `halted`/`held` stay diagnostics.
+0.1.7 retired `agent_teams_halt` / `agent_teams_resume` with the vendored plugin that owned them,
+and the official Agent Teams service exposes no halt on any seam this plugin may call. The
+watchdog's own **preserving** hold is therefore the ONLY pause mechanism the bundle has. The
+status view reports ONE pause state — `team-a: PAUSED — the watchdog's preserving hold (the only
+pause mechanism; the official team service exposes no halt)` vs `team-a: not paused` — in the
+rendered text AND as a `pause: {paused, mechanism: "watchdog-hold", implementation, halted, held}`
+object per team in the JSON, whose `halted`/`held` stay diagnostics (`halted` is always `false`,
+kept so a consumer's payload shape is unchanged).
 
 ### §7.2/§7.3 — the knobs' live value vs the FILE's
 
@@ -343,8 +353,9 @@ only ever suppress a divergence report, never invent one.
 enforce the pause, because `state.js` owns `team.json` and every reader path goes through
 `readTeam`, so the scheduler's three decline gates are blind to a sidecar. This package
 therefore keeps the sidecar as the **durable, authoritative** record **and publishes a
-stable synchronous reader** as the `mpdWatchdog` service. The adopted locked-path write of
-option (a) is w7's business, not this package's.
+stable synchronous reader** as the `mpdWatchdog` service. 0.1.7 CLOSED option (a): the official
+Agent Teams service has no halt field to write and no adapter seam may invent one, so the
+sidecar plus this reader is the only route, and it is the one implemented here.
 
 The exact call shape a gate must use:
 
@@ -383,7 +394,7 @@ Three properties a gate can rely on, each stated rather than implied:
 ## The plugin's own actions
 
 Registered through the adapter's tool seam, so w7 can drive them and this package never
-touches the adopted plugin:
+touches the team service:
 
 | Action | Contract |
 |---|---|
@@ -407,10 +418,10 @@ unreachable).
 
 ## NOT-CLAIMED (what this package deliberately does not do)
 
-* **No dispatch gate.** Honouring the hold in the adopted scheduler's decline sites, and
-  the tool-boundary guard that denies a claim while a team is held, are **w7's** work. This
-  row lands the hold, its durable record and the reader that makes it enforceable; nothing in
-  the adopted tree is edited.
+* **No dispatch gate.** Honouring the hold in the scheduler's decline sites, and the
+  tool-boundary guard that denies a claim while a team is held, are **w7's** work. This row
+  lands the hold, its durable record and the reader that makes it enforceable; no harness module
+  is edited.
 * **No notification surface.** The Web banner/activity record and the TUI status row and
   dialog are later tasks. The notice-of-record here is the durable incident record, which
   those three readers consume.
@@ -426,7 +437,11 @@ unreachable).
   and cannot advance it — which is the intended outcome.
 * **No real-wedge verification here.** The unit suite drives the machine with an injected
   clock and a stub adapter; the fault-injection and live-wedge lanes are other tasks.
-* `parkedAttempts` and `unread` are the projections described above.
+* `parkedAttempts` is the projection described above, and `unread` is `null` by construction
+  (the official mailbox is not observable through the adapter).
+* **No team mutation, by construction.** The watch list is the harness's own live readout
+  (`dsh.teamLiveTeams()`), which this plugin only READS; every file it writes lives under
+  `<stateDir>/watchdog/`.
 
 ## Verify
 
@@ -447,8 +462,8 @@ node skills/dsh-qa/scripts/preset-conformance.mjs
 | `src/machine.ts` | the knobs, the WARN→ESCALATE arithmetic and the §7.2 knob readings |
 | `src/channel.ts` | the §1 four-state channel fold (`session/event`) |
 | `src/store.ts` | the heartbeat files, their rotation and atomic writes |
-| `src/team.ts` | the READ-ONLY view over the adopted team record |
-| `src/scene.ts` | the scene document, its atomic write and the unread mirror |
+| `src/team.ts` | the READ-ONLY projection of the official live readout (`dsh.teamLiveTeams()`) |
+| `src/scene.ts` | the scene document, its atomic write, and the honest `unread: null` |
 | `src/sidecars.ts` | the hold, the incident log and the read watermark |
 | `src/actions.ts` | the three tool actions |
 | `src/config-file.ts` | the §7.2/§7.3 file layer of `.mpd/mpd.jsonc` (tolerant JSONC) |

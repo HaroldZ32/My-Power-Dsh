@@ -49,6 +49,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { seedSandboxCredentials } from "./lib/credentials.mjs"
 import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.mjs"
+import { readMpdPresetSource } from "./lib/preset-source.mjs"
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 const SLUG = "readonly-deny"
@@ -130,7 +131,13 @@ function selfTest() {
   // tools the AGENT PLANE composes, and `tool-str-replace-editor` — though its package ships in the
   // runtime closure — is absent from every preset, so `str_replace_editor` never registers. The other
   // name has no package at all. Both conclusions are checked here so the reasoning is executable.
-  const presets = ["agent.cordis.yml", "preset.yml"].map((f) => join(repoRoot, "presets", "mpd", f)).filter(existsSync).map((f) => readFileSync(f, "utf8")).join("\n")
+  // 0.1.7-rc.2 ROW MODEL: the mpd composition is an inline `config.plugins` list
+  // inside the `preset-mpd` row, declared by the manifest's second bundle patch —
+  // there is no `presets/mpd/` directory any more. Read the DECLARED source
+  // (lib/preset-source.mjs) rather than a path: a moved preset must redden this
+  // case, not silently assert over an empty string.
+  const presets = readMpdPresetSource(repoRoot)
+  if (presets === "") fail("self-test: no declared bundle patch declares the `preset-mpd` row — the composition audit has no subject")
   checks.push(["the agent plane does not compose tool-str-replace-editor", !presets.includes("str-replace-editor")])
   checks.push(["the agent plane does not compose any apply-patch tool", !presets.includes("apply-patch") && !presets.includes("apply_patch")])
   // Path-independent: the harness closure may live in the workspace or in the global install that

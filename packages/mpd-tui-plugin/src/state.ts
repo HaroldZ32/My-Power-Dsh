@@ -11,6 +11,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
+import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { scalarText } from "./sanitize.js"
 
 /** Bounded caps so one pathological state directory cannot stall a render. */
@@ -73,47 +74,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : []
 }
-
-/** `.mpd/team/<teamId>/team.json` — the newest team record wins. */
-function readTeam(root: string, problems: string[]): TeamSummary | undefined {
-  const teamsDir = join(root, ".mpd", "team")
-  let entries: string[]
-  try {
-    entries = readdirSync(teamsDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .slice(0, MAX_TEAMS)
-  } catch {
-    return undefined
-  }
-  let best: { record: Record<string, unknown>; sortKey: string } | undefined
-  for (const name of entries) {
-    const path = join(teamsDir, name, "team.json")
-    let size: number
-    try {
-      size = statSync(path).size
-    } catch {
-      problems.push(`team ${name}: unreadable`)
-      continue
-    }
-    let record: unknown
-    try {
-      record = readJson(path)
-    } catch {
-      problems.push(`team ${name}: invalid JSON`)
-      continue
-    }
-    if (!isRecord(record)) continue
-    // Newest first: a later record timestamp wins; ties fall back to file size,
-    // so the fully-frozen team record beats a half-written one.
-    const stamp = String(record.approvedAt ?? record.createdAt ?? "")
-    const sortKey = `${stamp}\u0000${String(size).padStart(12, "0")}`
-    if (best === undefined || sortKey > best.sortKey) best = { record, sortKey }
+/**
+ * The live team summary, projected from the OFFICIAL readout.
+ *
+ * 0.1.7: `.mpd/team/<teamId>/team.json` is gone with the plugin that owned it, so the summary comes
+ * from the views the caller resolved through the adapter (`liveTeamViews`). There are no record
+ * timestamps to order by, so the team with a BOARD wins (ties keep the readout's own order), and
+ * `phase` is DERIVED from the roster: a teammate running/provisioning means `active`.
+ *
+ * `description` and `planReviewState` have no official source and stay absent — a status row that
+ * invented a review state would be claiming a staged plan the plane cannot have.
+ */
+function readTeam(views: readonly DshTeamView[], problems: string[]): TeamSummary | undefined {
+  let best: DshTeamView | undefined
+  for (const view of views.slice(0, MAX_TEAMS)) {
+    const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0
+    if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0)) best = view
   }
   if (best === undefined) return undefined
-  const record = best.record
+  const rows = Array.isArray(best.members) ? best.members : []
+  if (rows.length === 0 && (Array.isArray(best.tasks) ? best.tasks.length : 0) === 0) return undefined
   const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, failed: 0, claimed: 0, cancelled: 0, other: 0 }
-  for (const task of asArray(record.tasks).slice(0, MAX_TASKS)) {
+  for (const task of (Array.isArray(best.tasks) ? best.tasks : []).slice(0, MAX_TASKS)) {
     if (!isRecord(task)) continue
     counts.total += 1
     switch (String(task.status ?? "pending")) {
@@ -139,15 +121,14 @@ function readTeam(root: string, problems: string[]): TeamSummary | undefined {
         counts.other += 1
     }
   }
-  const phase = scalarText(record.phase, 40) ?? "unknown"
-  const planReviewState = scalarText(record.planReviewState, 40) ?? (phase === "staged" ? "awaiting_review" : undefined)
+  const teammates = rows.filter((member) => isRecord(member) && member.role !== "lead")
+  const active = teammates.some((member) => member.status === "running" || member.status === "provisioning")
+  if (views.length > MAX_TEAMS) problems.push(`team readout truncated to ${MAX_TEAMS} entries`)
   return {
-    id: scalarText(record.id, 60) ?? "?",
-    name: scalarText(record.name, 80) ?? "?",
-    phase,
-    description: scalarText(record.description, 160),
-    ...(planReviewState === undefined ? {} : { planReviewState }),
-    members: asArray(record.members).length,
+    id: scalarText(best.teamId, 60) ?? "?",
+    name: scalarText(best.leadName, 80) ?? "?",
+    phase: active ? "active" : "idle",
+    members: teammates.length,
     tasks: counts,
   }
 }
@@ -224,7 +205,7 @@ function readWorkmates(home: string): { count: number; names: string[] } {
  * @param home - the home directory holding the workmate library.
  * @returns the projection; never throws.
  */
-export function readBoardState(workspace: string, home: string = homedir()): BoardState {
+export function readBoardState(workspace: string, home: string = homedir(), views: readonly DshTeamView[] = []): BoardState {
   const problems: string[] = []
   const state: BoardState = {
     workspace,
@@ -234,7 +215,7 @@ export function readBoardState(workspace: string, home: string = homedir()): Boa
     problems,
   }
   try {
-    state.team = readTeam(workspace, problems)
+    state.team = readTeam(views, problems)
   } catch {
     problems.push("team state unreadable")
   }

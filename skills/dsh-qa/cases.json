@@ -42,27 +42,11 @@
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
     },
     {
-      "case": "agent-teams-dispatch",
-      "script": "skills/dsh-qa/scripts/agent-teams-dispatch.mjs",
-      "suites": [
-        "all"
-      ],
-      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
-    },
-    {
       "case": "agent-teams-messaging",
       "script": "skills/dsh-qa/scripts/agent-teams-messaging.mjs",
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
       "outsideSuites": "live fix lane (R1 message channel): plants real team records and re-runs a RED arm against a pre-fix tools.js, so it is heavier than the standing sweep — run it explicitly: node scripts/run-qa-lanes.mjs --only=agent-teams-messaging"
-    },
-    {
-      "case": "agent-teams-sidebar",
-      "script": "skills/dsh-qa/scripts/agent-teams-sidebar.mjs",
-      "suites": [
-        "all"
-      ],
-      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
     },
     {
       "case": "bundle-lifecycle",
@@ -87,13 +71,6 @@
         "all"
       ],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
-    },
-    {
-      "case": "explicit-team-trigger",
-      "script": "skills/dsh-qa/scripts/explicit-team-trigger.mjs",
-      "suites": [],
-      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
-      "outsideSuites": "live fix lane (R4 explicit entry): boots the entry surface end to end — run it explicitly: node scripts/run-qa-lanes.mjs --only=explicit-team-trigger"
     },
     {
       "case": "extension-isolation",
@@ -247,17 +224,6 @@
         "all"
       ],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
-    },
-    {
-      "case": "team-route-rewire",
-      "script": "skills/dsh-qa/scripts/team-route-rewire.mjs",
-      "suites": [
-        "all"
-      ],
-      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
-      "prereq": [
-        "absent-staged-pack"
-      ]
     },
     {
       "case": "team-watchdog-boot",

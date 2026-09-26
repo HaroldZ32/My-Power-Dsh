@@ -1,18 +1,16 @@
 // The watchdog's OWN actions, registered through the adapter's tool seam.
 //
-// T-19 (wave 2, user ruling): `agent_teams_halt` is the SOLE EXTERNAL pause mechanism; the
-// watchdog's PRESERVING hold is DEMOTED to its INTERNAL implementation — the durable record of
-// the dispatch-side stop the watchdog raises for itself. The hold is not a second pause a caller
-// chooses between: `session-watchdog-hold` / `-resume` stay REGISTERED as the implementation's
-// own bookkeeping surface (removing a registered tool would be a tool-schema change), and every
-// public surface names ONE mechanism and the hold only as its implementation.
+// 0.1.7 REBASE: the retired plugin's `agent_teams_halt` / `agent_teams_resume` tools are GONE —
+// the official Agent Teams service exposes no halt on its board — so the watchdog's PRESERVING
+// hold is no longer "the internal implementation of somebody else's pause": it is the ONLY pause
+// this bundle implements, and the status surface says so instead of naming a mechanism that does
+// not exist.
 //
-//   session-watchdog-hold    persist the internal preserving hold for ONE team (implementation)
+//   session-watchdog-hold    persist the preserving hold for ONE team (stops NEW dispatch)
 //   session-watchdog-resume  clear it (a no-op for a team that is not held)
 //   session-watchdog-status  READ-ONLY diagnostics over the whole watchdog store
 //
-// w7 drives the first two from the adopted dispatch gates; this package lands
-// them and their contract only.
+// w7 drives the first two from the dispatch gates; this package lands them and their contract only.
 import { randomUUID } from "node:crypto"
 import { join } from "node:path"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
@@ -157,7 +155,7 @@ export function registerWatchdogActions(
   dsh.registerTool({
     name: HOLD_TOOL,
     description:
-      "Persist the team watchdog's PRESERVING hold for one team. This is the INTERNAL implementation of a team pause, not a second pause mechanism: the external pause a user operates is `agent_teams_halt` (the web Stop-team route), cleared by `agent_teams_resume`. The hold stops NEW dispatch into that team without cancelling anything: every non-terminal task keeps its status, assignee and attemptId. Returns applied:false (never a throw) when the hold could not be written, so a caller must not report a pause that did not land.",
+      "Persist the team watchdog's PRESERVING hold for one team. It is the ONLY pause this bundle implements (the official Agent Teams service exposes no halt), and it stops NEW dispatch into that team without cancelling anything: every non-terminal task keeps its status, owner and revision. Returns applied:false (never a throw) when the hold could not be written, so a caller must not report a pause that did not land.",
     parameters: {
       type: "object",
       properties: {
@@ -199,7 +197,7 @@ export function registerWatchdogActions(
   dsh.registerTool({
     name: RESUME_TOOL,
     description:
-      "Clear the team watchdog's internal hold for one team (the implementation record only — the team pause itself is operated through `agent_teams_halt` / `agent_teams_resume`). A team that is not held is a no-op (resumed:false, reason:'not-held'), never an error; a second resume is likewise a no-op. Clearing the hold is the watchdog-side release only — the adopted dispatch gates that honour it are wired by w7.",
+      "Clear the team watchdog's preserving hold for one team. A team that is not held is a no-op (resumed:false, reason:'not-held'), never an error; a second resume is likewise a no-op. Clearing the hold is the watchdog-side release only — the dispatch gates that honour it are wired by w7.",
     parameters: {
       type: "object",
       properties: { team_id: { type: "string", description: "The team whose internal watchdog hold to clear." } },
@@ -224,7 +222,7 @@ export function registerWatchdogActions(
   dsh.registerTool({
     name: STATUS_TOOL,
     description:
-      "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and (T-19) the ONE pause state per team: the external mechanism is `agent_teams_halt` and the watchdog's preserving hold is reported only as its INTERNAL implementation. Use it to inspect what a lane or a restarting process would read from disk.",
+      "READ-ONLY: show the team watchdog's durable store for this workspace — the hold per team, the heartbeat tails, the incident log, the per-reader watermark, (contract §4) which PREDICATE is running (`channel` = the session/event four-state fold, `heartbeat` = the report-only degradation which can never hold or escalate), (§7.2) the per-knob LIVE vs FILE value with a restartRequired flag (T-18: a `.mpd/mpd.jsonc` edit is applied LIVE once this process has observed it), and the ONE pause state per team: the watchdog's preserving hold, which is the only pause mechanism this bundle has (the official Agent Teams service exposes no halt). Team rows come from the live OFFICIAL readout (`dsh.teamLiveTeams()`), so a team appears here exactly while one of its sessions is live. Use it to inspect what a lane or a restarting process would read from disk.",
     parameters: {
       type: "object",
       properties: { team_id: { type: "string", description: "Limit to one team." } },
@@ -270,22 +268,21 @@ export function registerWatchdogActions(
               (knobs.restartRequired ? "  ⟵ a .mpd/mpd.jsonc edit is waiting for the next dsh boot" : ""),
           )
         }
-        // T-19 (wave 2, user ruling): ONE pause state and ONE external mechanism. The watchdog's
-        // preserving hold is named ONLY as that pause's internal implementation — never as a
-        // second mechanism a caller picks between.
+        // 0.1.7: the official service has no halt, so the pause state is the watchdog's hold and
+        // nothing else. `halted` is reported as `false` (the field kept so a consumer's shape does
+        // not change) and the renderer no longer names an external mechanism that does not exist.
         for (const team of value.teams) {
           const pause = team.pause
           if (pause?.paused === true) {
-            lines.push(team.teamId + ": PAUSED — mechanism: " + pause.mechanism + " (external) · watchdog preserving hold: internal implementation " + (pause.implementation === "watchdog-hold" ? "active" : "none"))
+            lines.push(team.teamId + ": PAUSED — the watchdog's preserving hold (the only pause mechanism; the official team service exposes no halt)")
           } else lines.push(team.teamId + ": not paused")
-          if (team.halt?.halted === true) lines.push("  halted since " + String(team.halt.haltedAt ?? "(unknown)"))
         }
         return [{ type: "text", text: lines.join("\n") }]
       },
     },
     execute: (args: { team_id?: string }, exec: unknown) => {
       const workspace = dsh.workspaceRoot(exec as never)
-      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(workspace, stateDir) : [args.team_id]
+      const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh) : [args.team_id]
       return {
         workspace,
         // §4: the status view NAMES the active predicate source.
@@ -300,18 +297,16 @@ export function registerWatchdogActions(
         },
         teams: ids.map((teamId) => {
           const hold = readHold(workspace, stateDir, teamId)
-          const team = readTeam(workspace, stateDir, teamId)
-          // T-19 (wave 2, user ruling): ONE pause state, ONE external mechanism. `halted` comes
-          // from the adopted record (`agent_teams_halt`), `held` from this plugin's own hold
-          // sidecar, and the hold is reported ONLY as the pause's internal implementation — the
-          // two booleans stay as diagnostics, never as two selectable mechanisms.
-          const halted = team?.halted === true
+          const team = readTeam(dsh, teamId)
+          // 0.1.7: ONE pause state, and the watchdog's own preserving hold IS it — the official
+          // service exposes no halt on any seam this plugin may call, so `halted` is always false
+          // and the field survives only so a consumer's payload shape is unchanged.
           const held = hold !== undefined
           const pause = {
-            paused: halted || held,
-            mechanism: "agent_teams_halt",
+            paused: held,
+            mechanism: "watchdog-hold",
             implementation: held ? "watchdog-hold" : "none",
-            halted,
+            halted: false,
             held,
           }
           return {
@@ -319,8 +314,8 @@ export function registerWatchdogActions(
             held: hold !== undefined,
             hold: hold ?? null,
             phase: team?.phase ?? null,
-            halted: team?.halted ?? null,
-            halt: { halted, haltedAt: team?.haltedAt ?? null },
+            halted: false,
+            halt: { halted: false, haltedAt: null },
             pause,
             heartbeatKeys: listHeartbeatKeys(workspace, stateDir),
             heartbeatTails: Object.fromEntries(

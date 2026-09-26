@@ -12,24 +12,25 @@
 //     parkedAttempts:{<memberId>:<attemptId>},
 //     incidents:[{id,kind,at,taskId,attemptId,scene}] }
 //
-// Two honest projections are documented in the package README:
-//   * `members[].unread` mirrors the adopted unread predicate (`state.js:845-855`)
-//     because no adapter seam exposes it; the mirror is one function with the
-//     citation, and a drift in the adopted predicate would make this count stale,
-//     never wrong in a load-bearing way.
-//   * `parkedAttempts` is the DURABLE projection (assignee -> attemptId of every
-//     non-terminal task), not the adopted scheduler's in-process `Map`, which no
-//     adapter seam exposes. The design already calls it advisory (§3.2).
+// Three honest projections are documented in the package README:
+//   * `team.*` is the PROJECTED official readout (`src/team.ts`): `attemptId` is the official
+//     board revision and `halted`/`activityAt` have no official source, which is why the engine
+//     passes `null` for them.
+//   * `members[].unread` is always `null`: the official peer mailbox is durable in the LEAD
+//     SESSION LOG (`team/message/queued` / `team/message/delivered`) and NO adapter seam exposes
+//     a per-member unread count. The retired record's `<teamDir>/inbox/*.jsonl` mirror is gone
+//     with the plugin that wrote it, and `null` ("not observable") is the honest answer — a
+//     fabricated 0 would claim the mailbox was read.
+//   * `parkedAttempts` is the DURABLE projection (assignee -> generation token of every
+//     non-terminal task), not an in-process scheduler map, which no adapter seam exposes. The
+//     design already calls it advisory (§3.2).
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { safeSegment, sceneDir, teamDir } from "./paths.js"
+import { safeSegment, sceneDir } from "./paths.js"
 import { message, readHeartbeats, writeFileAtomic } from "./store.js"
 import type { HeartbeatStamp } from "./store.js"
 import { TERMINAL_STATUSES, type TeamRecord, type TeamTask } from "./team.js"
 import type { HoldRecord, IncidentKind } from "./sidecars.js"
-
-/** The mailbox delivery lease the adopted plugin uses (`state.js` MAILBOX_DELIVERY_LEASE_MS). */
-export const MAILBOX_DELIVERY_LEASE_MS = 60_000
 
 /** The scene's frozen schema version. */
 export const SCENE_SCHEMA_VERSION = 1
@@ -107,13 +108,18 @@ export interface SceneInput {
   at: number
   silenceMs: number
   hold: HoldRecord | null
+  /** Survivor: the watchdog's OWN read watermark per reader (never the team mailbox). */
   mailbox: Record<string, number>
   incidents: SceneIncident[]
   /** Streak counts by `taskId\0attemptId`. */
   streaks: Record<string, number>
   /** Heartbeat stamps per member key. */
   heartbeat: (memberKey: string) => readonly HeartbeatStamp[]
-  /** Read-only unread count for one member key. */
+  /**
+   * Read-only unread count for one member key. The engine supplies
+   * {@link mailboxUnreadObservable} (`null`) because the official mailbox is unobservable; the
+   * seam stays injectable so the scene schema keeps one shape.
+   */
   unread: (memberKey: string) => number | null
 }
 
@@ -278,45 +284,19 @@ export function readScene(path: string): Scene | undefined {
 }
 
 /**
- * Count a member's UNREAD mail, mirroring the adopted predicate
- * (`packages/mpd-agent-teams-plugin/lib/state.js:845-855`): a record is unread
- * when it is not a tombstone, has no `readAt`, and either has no
- * `deliveryClaimedAt` or its claim lease has expired.
+ * The member-unread count the OFFICIAL team plane can expose: none.
  *
- * @returns the count, or null when the mailbox cannot be read.
+ * The durable peer mailbox lives in the Lead Session log (`team/message/queued` /
+ * `team/message/delivered`) and no adapter seam reports a per-member unread count, so a scene
+ * written against the official plugin answers `null` — "not observable" — for every member. The
+ * reader mirror that used to live here read the RETIRED plugin's
+ * `<teamDir>/inbox/<member>.jsonl`, a file nothing writes any more, where a missing file read as
+ * `0` (a fabricated "everything is read"); `null` is the honest replacement.
+ *
+ * @returns always `null`: the count is not observable through the adapter.
  */
-export function mailboxUnread(
-  workspace: string,
-  stateDir: string,
-  teamId: string,
-  agentKey: string,
-  now: number,
-  leaseMs: number = MAILBOX_DELIVERY_LEASE_MS,
-): number | null {
-  const file = join(teamDir(workspace, stateDir, teamId), "inbox", safeSegment(agentKey) + ".jsonl")
-  let text: string
-  try {
-    text = readFileSync(file, "utf8")
-  } catch {
-    return 0
-  }
-  let count = 0
-  for (const raw of text.split("\n")) {
-    const line = raw.replace(/^\uFEFF/, "").trim()
-    if (line === "") continue
-    try {
-      const value = JSON.parse(line) as Record<string, unknown>
-      if (value === null || typeof value !== "object") continue
-      if (value.tombstone === true) continue
-      if (value.readAt !== undefined) continue
-      const claimed = value.deliveryClaimedAt
-      if (typeof claimed === "number" && now - claimed < leaseMs) continue
-      count += 1
-    } catch {
-      // malformed line: the adopted reader skips it too
-    }
-  }
-  return count
+export function mailboxUnreadObservable(): null {
+  return null
 }
 
 /** Re-export so callers can report a scene write failure consistently. */

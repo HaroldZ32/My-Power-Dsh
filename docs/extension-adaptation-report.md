@@ -95,10 +95,10 @@ Basis: code-read (t2, t4, and this report's own re-reads).
 - **Shipped reference extension** (`extensions/mpd-ext-example/`, disabled by default): all four
   kinds, including a dependency-free stdio MCP server whose one raw tool becomes
   `mcp__lint-mcp__describe_extension`.
-- **Declared v1 limits**: no reload (a restart is the reload, `docs/extensions.md:524`); stdio MCP
+- **Declared v1 limits**: no reload (a restart is the reload, `docs/extensions.md`); stdio MCP
   only; JSON flows only; no MCP resources/prompts; no GUI panel, marketplace, remote download or
   version solving; an extension cannot contribute an agent preset, and extension roles never become
-  agent-teams teammates.
+  teammates on their own (see `docs/extensions.md`).
 
 ## 4. Runtime behaviour and isolation posture
 

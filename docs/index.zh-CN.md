@@ -32,7 +32,7 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
 
 `packages/<name>/` 下的每个包都带有双语 `README.md` + `README.zh-CN.md`，但有两处已明确说明的
 例外：**`mpd-mcp-shared`**（由各 MCP 服务器共享的辅助模块）只提供源码与测试 —— 它的 README 配对
-是已记录的后续项；而被采纳的 **`mpd-agent-teams-plugin`** 原样保留上游 `README.md` 作为出处
+是已记录的后续项；而已**退役**的 **`mpd-agent-teams-plugin`** 原样保留上游 `README.md` 作为出处
 （provenance），双语规则对其豁免。
 
 - **宿主插件** —— `mpd-dsh-adapter-plugin`（所有插件行共同调用的唯一 harness 接缝适配器）、
@@ -40,7 +40,7 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
   `mpd-ext-plugin`（扩展接口）、`mpd-ulw-plugin`、`mpd-hashline-plugin`、`mpd-boulder-plugin`、
   `mpd-comment-checker-plugin`、`mpd-memory-plugin`、`mpd-codegraph-plugin`、
   `mpd-workmate-plugin`、`mpd-bootstrap-plugin`、`mpd-team-compact-plugin`、
-  `mpd-agent-teams-plugin`（采纳）、`mpd-bundle-plugin`（bundle web 兼容 + 合并后的 web 客户端）、
+  `mpd-agent-teams-plugin`（保留的来源记录 —— **没有任何行挂载它**）、`mpd-bundle-plugin`（bundle web 兼容 + 合并后的 web 客户端）、
   `mpd-qa-roles-probe`（仅 QA）。
 - **MCP 服务器** —— `mpd-mcp-astgrep`、`mpd-mcp-gitbash`、`mpd-mcp-lsp`、`mpd-mcp-codegraph`。
 - **MCP 共享辅助模块** —— `mpd-mcp-shared`（四个服务器包装器所启动的二进制解析与 stdio 核心）。

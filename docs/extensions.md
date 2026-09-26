@@ -369,9 +369,10 @@ row applied after the roster). It then behaves like a base specialist:
   a workmate BASE template;
 - `provider` + `model` (supplied together) become its route; both absent means the roster's default.
 
-**A role never becomes an agent-teams teammate.** The adopted agent-teams `mpd` profile member list
-is static patch configuration (`packages/mpd-bundle/cordis.patch.yml`) and cannot be extended from a
-plugin at runtime. Spawn it one-shot or as a workmate base.
+**A role never becomes a teammate on its own.** The teammate roster is what the Lead creates by name
+with the official `spawn_teammate` tool, which is a model-facing tool call rather than a registration
+surface, so an extension cannot add a member to it from a plugin. Spawn an extension role
+one-shot or as a workmate base.
 
 ## 6. Failure and collision policy
 
@@ -519,8 +520,8 @@ Stated plainly, so nobody discovers them from a failure:
   state machine.
 - **No extension-contributed agent presets** — the preset plane is deliberately out of scope (no
   clean runtime seam).
-- **Extension roles never become agent-teams teammates** — that member list is static patch
-  configuration.
+- **Extension roles never become teammates by themselves** — a teammate exists only when the Lead
+  spawns it by name with the official `spawn_teammate` tool.
 - **No reload** — restart dsh; a failed MCP server is retried on the next boot.
 - **`extensions.*` config is process-level, not per session** (§4.3), because `mpdConfig` is an
   apply-time process-level snapshot.

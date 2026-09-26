@@ -2,6 +2,7 @@ var __create = Object.create;
 var __getProtoOf = Object.getPrototypeOf;
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 function __accessProp(key) {
   return this[key];
@@ -17,7 +18,7 @@ var __toESM = (mod, isNodeMode, target) => {
       return cached;
   }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
-  const to = isNodeMode || !mod || !mod.__esModule || !__hasOwnProp.call(mod, "default") ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
+  const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
   if (mod && typeof mod === "object" || typeof mod === "function") {
     for (let key of __getOwnPropNames(mod))
       if (!__hasOwnProp.call(to, key))
@@ -30,22 +31,85 @@ var __toESM = (mod, isNodeMode, target) => {
     cache.set(mod, to);
   return to;
 };
-var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
-var __esm = (fn, res, err) => () => {
-  if (fn)
-    try {
-      res = fn(fn = 0);
-    } catch (e) {
-      err = [e];
-    }
-  if (err)
-    throw err[0];
-  return res;
+var __toCommonJS = (from) => {
+  var entry = (__moduleCache ??= new WeakMap).get(from), desc;
+  if (entry)
+    return entry;
+  entry = __defProp({}, "__esModule", { value: true });
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (var key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(entry, key))
+        __defProp(entry, key, {
+          get: __accessProp.bind(from, key),
+          enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+        });
+  }
+  __moduleCache.set(from, entry);
+  return entry;
 };
+var __moduleCache;
+var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
+var __returnValue = (v) => v;
+function __exportSetter(name, newValue) {
+  this[name] = __returnValue.bind(null, newValue);
+}
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, {
+      get: all[name],
+      enumerable: true,
+      configurable: true,
+      set: __exportSetter.bind(all, name)
+    });
+};
+var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
 
 // packages/mpd-agent-teams-plugin/_deps/cosmokit/lib/index.js
+var exports_lib = {};
+__export(exports_lib, {
+  Binary: () => Binary,
+  Time: () => Time,
+  arrayBufferToBase64: () => arrayBufferToBase64,
+  arrayBufferToHex: () => arrayBufferToHex,
+  base64ToArrayBuffer: () => base64ToArrayBuffer,
+  camelCase: () => camelCase,
+  camelize: () => camelize,
+  capitalize: () => capitalize,
+  clone: () => clone,
+  contain: () => contain,
+  deduplicate: () => deduplicate,
+  deepEqual: () => deepEqual,
+  defineProperty: () => defineProperty,
+  difference: () => difference,
+  filterKeys: () => filterKeys,
+  formatProperty: () => formatProperty,
+  hexToArrayBuffer: () => hexToArrayBuffer,
+  hyphenate: () => hyphenate,
+  intersection: () => intersection,
+  is: () => is,
+  isNonNullable: () => isNonNullable,
+  isNullable: () => isNullable,
+  isPlainObject: () => isPlainObject,
+  makeArray: () => makeArray,
+  mapValues: () => mapValues,
+  noop: () => noop,
+  omit: () => omit,
+  paramCase: () => paramCase,
+  pick: () => pick,
+  remove: () => remove,
+  sanitize: () => sanitize,
+  snakeCase: () => snakeCase,
+  trimSlash: () => trimSlash,
+  uncapitalize: () => uncapitalize,
+  union: () => union,
+  valueMap: () => mapValues
+});
+function noop() {}
 function isNullable(value) {
   return value === null || value === undefined;
+}
+function isNonNullable(value) {
+  return !isNullable(value);
 }
 function isPlainObject(data) {
   return data && typeof data === "object" && !Array.isArray(data);
@@ -65,9 +129,50 @@ function pick(source, keys, forced) {
       result[key] = source[key];
   return result;
 }
+function omit(source, keys) {
+  if (!keys)
+    return { ...source };
+  const result = { ...source };
+  for (const key of keys)
+    Reflect.deleteProperty(result, key);
+  return result;
+}
+function defineProperty(object, key, value) {
+  return Object.defineProperty(object, key, {
+    writable: true,
+    value,
+    enumerable: false
+  });
+}
+function contain(array1, array2) {
+  return array2.every((item) => array1.includes(item));
+}
+function intersection(array1, array2) {
+  return array1.filter((item) => array2.includes(item));
+}
+function difference(array1, array2) {
+  return array1.filter((item) => !array2.includes(item));
+}
+function union(array1, array2) {
+  return Array.from(new Set([...array1, ...array2]));
+}
+function deduplicate(array) {
+  return [...new Set(array)];
+}
+function remove(list, item) {
+  const index = list?.indexOf(item);
+  if (index >= 0) {
+    list.splice(index, 1);
+    return true;
+  } else
+    return false;
+}
+function makeArray(source) {
+  return Array.isArray(source) ? source : isNullable(source) ? [] : [source];
+}
 function is(type, value) {
   if (arguments.length === 1)
-    return (value) => is(type, value);
+    return (value2) => is(type, value2);
   return type in globalThis && value instanceof globalThis[type] || Object.prototype.toString.call(value).slice(8, -1) === type;
 }
 function isArrayBufferLike(value) {
@@ -91,12 +196,12 @@ function clone(source, refs = /* @__PURE__ */ new Map) {
   if (cached)
     return cached;
   if (Array.isArray(source)) {
-    const result = [];
-    refs.set(source, result);
+    const result2 = [];
+    refs.set(source, result2);
     source.forEach((value, index) => {
-      result[index] = Reflect.apply(clone, null, [value, refs]);
+      result2[index] = Reflect.apply(clone, null, [value, refs]);
     });
-    return result;
+    return result2;
   }
   const result = Object.create(Object.getPrototypeOf(source));
   refs.set(source, result);
@@ -122,11 +227,11 @@ function deepEqual(a, b, strict) {
   function check(test, then) {
     return test(a) ? test(b) ? then(a, b) : false : test(b) ? false : undefined;
   }
-  return check(Array.isArray, (a, b) => a.length === b.length && a.every((item, index) => deepEqual(item, b[index]))) ?? check(is("Date"), (a, b) => a.valueOf() === b.valueOf()) ?? check(is("RegExp"), (a, b) => a.source === b.source && a.flags === b.flags) ?? check(isArrayBufferLike, (a, b) => {
-    if (a.byteLength !== b.byteLength)
+  return check(Array.isArray, (a2, b2) => a2.length === b2.length && a2.every((item, index) => deepEqual(item, b2[index]))) ?? check(is("Date"), (a2, b2) => a2.valueOf() === b2.valueOf()) ?? check(is("RegExp"), (a2, b2) => a2.source === b2.source && a2.flags === b2.flags) ?? check(isArrayBufferLike, (a2, b2) => {
+    if (a2.byteLength !== b2.byteLength)
       return false;
-    const viewA = new Uint8Array(a);
-    const viewB = new Uint8Array(b);
+    const viewA = new Uint8Array(a2);
+    const viewB = new Uint8Array(b2);
     for (let i = 0;i < viewA.length; i++)
       if (viewA[i] !== viewB[i])
         return false;
@@ -136,18 +241,75 @@ function deepEqual(a, b, strict) {
     ...b
   }).every((key) => deepEqual(a[key], b[key], strict));
 }
-var Binary, base64ToArrayBuffer, arrayBufferToBase64, hexToArrayBuffer, arrayBufferToHex, Time;
+function capitalize(source) {
+  return source.charAt(0).toUpperCase() + source.slice(1);
+}
+function uncapitalize(source) {
+  return source.charAt(0).toLowerCase() + source.slice(1);
+}
+function camelCase(source) {
+  return source.replace(/[_-][a-z]/g, (str) => str.slice(1).toUpperCase());
+}
+function tokenize(source, delimiters, delimiter) {
+  const output = [];
+  let state = 0;
+  for (let i = 0;i < source.length; i++) {
+    const code = source.charCodeAt(i);
+    if (code >= 65 && code <= 90) {
+      if (state === 1) {
+        const next = source.charCodeAt(i + 1);
+        if (next >= 97 && next <= 122)
+          output.push(delimiter);
+        output.push(code + 32);
+      } else {
+        if (state !== 0)
+          output.push(delimiter);
+        output.push(code + 32);
+      }
+      state = 1;
+    } else if (code >= 97 && code <= 122) {
+      output.push(code);
+      state = 2;
+    } else if (delimiters.includes(code)) {
+      if (state !== 0)
+        output.push(delimiter);
+      state = 0;
+    } else
+      output.push(code);
+  }
+  return String.fromCharCode(...output);
+}
+function paramCase(source) {
+  return tokenize(source, [45, 95], 45);
+}
+function snakeCase(source) {
+  return tokenize(source, [45, 95], 95);
+}
+function formatProperty(key) {
+  if (typeof key !== "string")
+    return `[${key.toString()}]`;
+  return /^[a-z_$][\w$]*$/i.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`;
+}
+function trimSlash(source) {
+  return source.replace(/\/$/, "");
+}
+function sanitize(source) {
+  if (!source.startsWith("/"))
+    source = "/" + source;
+  return trimSlash(source);
+}
+var Binary, base64ToArrayBuffer, arrayBufferToBase64, hexToArrayBuffer, arrayBufferToHex, camelize, hyphenate, Time;
 var init_lib = __esm(() => {
-  (function(Binary) {
-    Binary.is = isArrayBufferLike;
-    Binary.isSource = isArrayBufferSource;
+  (function(Binary2) {
+    Binary2.is = isArrayBufferLike;
+    Binary2.isSource = isArrayBufferSource;
     function fromSource(source) {
       if (ArrayBuffer.isView(source))
         return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
       else
         return source;
     }
-    Binary.fromSource = fromSource;
+    Binary2.fromSource = fromSource;
     function toBase64(source) {
       source = fromSource(source);
       if (typeof Buffer !== "undefined")
@@ -158,20 +320,20 @@ var init_lib = __esm(() => {
         binary += String.fromCharCode(bytes[i]);
       return btoa(binary);
     }
-    Binary.toBase64 = toBase64;
+    Binary2.toBase64 = toBase64;
     function fromBase64(source) {
       if (typeof Buffer !== "undefined")
         return fromSource(Buffer.from(source, "base64"));
       return Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
     }
-    Binary.fromBase64 = fromBase64;
+    Binary2.fromBase64 = fromBase64;
     function toHex(source) {
       source = fromSource(source);
       if (typeof Buffer !== "undefined")
         return Buffer.from(source).toString("hex");
       return Array.from(new Uint8Array(source), (byte) => byte.toString(16).padStart(2, "0")).join("");
     }
-    Binary.toHex = toHex;
+    Binary2.toHex = toHex;
     function fromHex(source) {
       if (typeof Buffer !== "undefined")
         return fromSource(Buffer.from(source, "hex"));
@@ -181,43 +343,45 @@ var init_lib = __esm(() => {
         buffer.push(parseInt(`${hex[i]}${hex[i + 1]}`, 16));
       return Uint8Array.from(buffer).buffer;
     }
-    Binary.fromHex = fromHex;
+    Binary2.fromHex = fromHex;
   })(Binary || (Binary = {}));
   base64ToArrayBuffer = Binary.fromBase64;
   arrayBufferToBase64 = Binary.toBase64;
   hexToArrayBuffer = Binary.fromHex;
   arrayBufferToHex = Binary.toHex;
-  (function(Time) {
-    Time.millisecond = 1;
-    Time.second = 1000;
-    Time.minute = Time.second * 60;
-    Time.hour = Time.minute * 60;
-    Time.day = Time.hour * 24;
-    Time.week = Time.day * 7;
+  camelize = camelCase;
+  hyphenate = paramCase;
+  (function(Time2) {
+    Time2.millisecond = 1;
+    Time2.second = 1000;
+    Time2.minute = Time2.second * 60;
+    Time2.hour = Time2.minute * 60;
+    Time2.day = Time2.hour * 24;
+    Time2.week = Time2.day * 7;
     let timezoneOffset = (/* @__PURE__ */ new Date()).getTimezoneOffset();
     function setTimezoneOffset(offset) {
       timezoneOffset = offset;
     }
-    Time.setTimezoneOffset = setTimezoneOffset;
+    Time2.setTimezoneOffset = setTimezoneOffset;
     function getTimezoneOffset() {
       return timezoneOffset;
     }
-    Time.getTimezoneOffset = getTimezoneOffset;
+    Time2.getTimezoneOffset = getTimezoneOffset;
     function getDateNumber(date = /* @__PURE__ */ new Date, offset) {
       if (typeof date === "number")
         date = new Date(date);
       if (offset === undefined)
         offset = timezoneOffset;
-      return Math.floor((date.valueOf() / Time.minute - offset) / 1440);
+      return Math.floor((date.valueOf() / Time2.minute - offset) / 1440);
     }
-    Time.getDateNumber = getDateNumber;
+    Time2.getDateNumber = getDateNumber;
     function fromDateNumber(value, offset) {
-      const date = new Date(value * Time.day);
+      const date = new Date(value * Time2.day);
       if (offset === undefined)
         offset = timezoneOffset;
-      return new Date(+date + offset * Time.minute);
+      return new Date(+date + offset * Time2.minute);
     }
-    Time.fromDateNumber = fromDateNumber;
+    Time2.fromDateNumber = fromDateNumber;
     const numeric = /\d+(?:\.\d+)?/.source;
     const timeRegExp = new RegExp(`^${[
       "w(?:eek(?:s)?)?",
@@ -230,9 +394,9 @@ var init_lib = __esm(() => {
       const capture = timeRegExp.exec(source);
       if (!capture)
         return 0;
-      return (parseFloat(capture[1]) * Time.week || 0) + (parseFloat(capture[2]) * Time.day || 0) + (parseFloat(capture[3]) * Time.hour || 0) + (parseFloat(capture[4]) * Time.minute || 0) + (parseFloat(capture[5]) * Time.second || 0);
+      return (parseFloat(capture[1]) * Time2.week || 0) + (parseFloat(capture[2]) * Time2.day || 0) + (parseFloat(capture[3]) * Time2.hour || 0) + (parseFloat(capture[4]) * Time2.minute || 0) + (parseFloat(capture[5]) * Time2.second || 0);
     }
-    Time.parseTime = parseTime;
+    Time2.parseTime = parseTime;
     function parseDate(date) {
       const parsed = parseTime(date);
       if (parsed)
@@ -243,34 +407,34 @@ var init_lib = __esm(() => {
         date = `${(/* @__PURE__ */ new Date()).getFullYear()}-${date}`;
       return date ? new Date(date) : /* @__PURE__ */ new Date;
     }
-    Time.parseDate = parseDate;
+    Time2.parseDate = parseDate;
     function format(ms) {
       const abs = Math.abs(ms);
-      if (abs >= Time.day - Time.hour / 2)
-        return Math.round(ms / Time.day) + "d";
-      else if (abs >= Time.hour - Time.minute / 2)
-        return Math.round(ms / Time.hour) + "h";
-      else if (abs >= Time.minute - Time.second / 2)
-        return Math.round(ms / Time.minute) + "m";
-      else if (abs >= Time.second)
-        return Math.round(ms / Time.second) + "s";
+      if (abs >= Time2.day - Time2.hour / 2)
+        return Math.round(ms / Time2.day) + "d";
+      else if (abs >= Time2.hour - Time2.minute / 2)
+        return Math.round(ms / Time2.hour) + "h";
+      else if (abs >= Time2.minute - Time2.second / 2)
+        return Math.round(ms / Time2.minute) + "m";
+      else if (abs >= Time2.second)
+        return Math.round(ms / Time2.second) + "s";
       return ms + "ms";
     }
-    Time.format = format;
+    Time2.format = format;
     function toDigits(source, length = 2) {
       return source.toString().padStart(length, "0");
     }
-    Time.toDigits = toDigits;
-    function template(template, time = /* @__PURE__ */ new Date) {
-      return template.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
+    Time2.toDigits = toDigits;
+    function template(template2, time = /* @__PURE__ */ new Date) {
+      return template2.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
     }
-    Time.template = template;
+    Time2.template = template;
   })(Time || (Time = {}));
 });
 
 // packages/mpd-agent-teams-plugin/_deps/schemastery/lib/index.cjs
 var require_lib = __commonJS(function(exports, module) {
-  var _deepseek_ai_cosmokit = (init_lib(), {});
+  var _deepseek_ai_cosmokit = (init_lib(), __toCommonJS(exports_lib));
   var kSchema = Symbol.for("schemastery");
   var kValidationError = Symbol.for("ValidationError");
   globalThis.__schemastery_index__ ??= 0;
@@ -298,18 +462,18 @@ var require_lib = __commonJS(function(exports, module) {
   };
   Object.defineProperty(ValidationError.prototype, kValidationError, { value: true });
   var Schema = function(options) {
-    const schema = function(data, options = {}) {
-      return Schema.resolve(data, schema, options)[0];
+    const schema = function(data, options2 = {}) {
+      return Schema.resolve(data, schema, options2)[0];
     };
     if (options.refs) {
-      const refs = (0, mapValues)(options.refs, (options) => new Schema(options));
+      const refs = (0, _deepseek_ai_cosmokit.valueMap)(options.refs, (options2) => new Schema(options2));
       const getRef = (uid) => refs[uid];
       for (const key in refs) {
-        const options = refs[key];
-        options.sKey = getRef(options.sKey);
-        options.inner = getRef(options.inner);
-        options.list = options.list && options.list.map(getRef);
-        options.dict = options.dict && (0, mapValues)(options.dict, getRef);
+        const options2 = refs[key];
+        options2.sKey = getRef(options2.sKey);
+        options2.inner = getRef(options2.inner);
+        options2.list = options2.list && options2.list.map(getRef);
+        options2.dict = options2.dict && (0, _deepseek_ai_cosmokit.valueMap)(options2.dict, getRef);
       }
       return refs[options.uid];
     }
@@ -382,7 +546,7 @@ var require_lib = __commonJS(function(exports, module) {
     return value?.$value ?? value?.$inner;
   }
   function extractKeys(data) {
-    return (0, filterKeys)(data ?? {}, (key) => !key.startsWith("$"));
+    return (0, _deepseek_ai_cosmokit.filterKeys)(data ?? {}, (key) => !key.startsWith("$"));
   }
   Schema.prototype.i18n = function i18n(messages) {
     const schema = Schema(this);
@@ -390,12 +554,12 @@ var require_lib = __commonJS(function(exports, module) {
     if (Object.keys(desc).length)
       schema.meta.description = desc;
     if (schema.dict)
-      schema.dict = (0, mapValues)(schema.dict, (inner, key) => {
-        return inner.i18n((0, mapValues)(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
+      schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(schema.dict, (inner, key) => {
+        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => getInner(data)?.[key] ?? data?.[key]));
       });
     if (schema.list)
       schema.list = schema.list.map((inner, index) => {
-        return inner.i18n((0, mapValues)(messages, (data = {}) => {
+        return inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data = {}) => {
           if (Array.isArray(getInner(data)))
             return getInner(data)[index];
           if (Array.isArray(data))
@@ -404,13 +568,13 @@ var require_lib = __commonJS(function(exports, module) {
         }));
       });
     if (schema.inner)
-      schema.inner = schema.inner.i18n((0, mapValues)(messages, (data) => {
+      schema.inner = schema.inner.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => {
         if (getInner(data))
           return getInner(data);
         return extractKeys(data);
       }));
     if (schema.sKey)
-      schema.sKey = schema.sKey.i18n((0, mapValues)(messages, (data) => data?.$key));
+      schema.sKey = schema.sKey.i18n((0, _deepseek_ai_cosmokit.valueMap)(messages, (data) => data?.$key));
     return schema;
   };
   Schema.prototype.extra = function extra(key, value) {
@@ -456,33 +620,33 @@ var require_lib = __commonJS(function(exports, module) {
   };
   Schema.prototype.pattern = function pattern(regexp) {
     const schema = Schema(this);
-    const pattern = (0, pick)(regexp, ["source", "flags"]);
+    const pattern2 = (0, _deepseek_ai_cosmokit.pick)(regexp, ["source", "flags"]);
     schema.meta = {
       ...schema.meta,
-      pattern
+      pattern: pattern2
     };
     return schema;
   };
   Schema.prototype.simplify = function simplify(value) {
-    if ((0, deepEqual)(value, this.meta.default, this.type === "dict"))
+    if ((0, _deepseek_ai_cosmokit.deepEqual)(value, this.meta.default, this.type === "dict"))
       return null;
-    if ((0, isNullable)(value))
+    if ((0, _deepseek_ai_cosmokit.isNullable)(value))
       return value;
     if (this.type === "object" || this.type === "dict") {
       const result = {};
       for (const key in value) {
         const item = (this.type === "object" ? this.dict[key] : this.inner)?.simplify(value[key]);
-        if (this.type === "dict" || !(0, isNullable)(item))
+        if (this.type === "dict" || !(0, _deepseek_ai_cosmokit.isNullable)(item))
           result[key] = item;
       }
-      if ((0, deepEqual)(result, this.meta.default, this.type === "dict"))
+      if ((0, _deepseek_ai_cosmokit.deepEqual)(result, this.meta.default, this.type === "dict"))
         return null;
       return result;
     } else if (this.type === "array" || this.type === "tuple") {
       const result = [];
-      value.forEach((value, index) => {
+      value.forEach((value2, index) => {
         const schema = this.type === "array" ? this.inner : this.list[index];
-        const item = schema ? schema.simplify(value) : value;
+        const item = schema ? schema.simplify(value2) : value2;
         result.push(item);
       });
       return result;
@@ -537,18 +701,18 @@ var require_lib = __commonJS(function(exports, module) {
       return [data];
     if (options.ignore?.(data, schema))
       return [data];
-    if ((0, isNullable)(data) && schema.type !== "lazy") {
+    if ((0, _deepseek_ai_cosmokit.isNullable)(data) && schema.type !== "lazy") {
       if (schema.meta.required)
         throw new ValidationError(`missing required value`, options);
       let current = schema;
       let fallback = schema.meta.default;
-      while (current?.type === "intersect" && (0, isNullable)(fallback)) {
+      while (current?.type === "intersect" && (0, _deepseek_ai_cosmokit.isNullable)(fallback)) {
         current = current.list[0];
         fallback = current?.meta.default;
       }
-      if ((0, isNullable)(fallback))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(fallback))
         return [data];
-      data = (0, clone)(fallback);
+      data = (0, _deepseek_ai_cosmokit.clone)(fallback);
     }
     const callback = resolvers[schema.type];
     if (!callback)
@@ -562,7 +726,7 @@ var require_lib = __commonJS(function(exports, module) {
     }
   };
   Schema.from = function from(source) {
-    if ((0, isNullable)(source))
+    if ((0, _deepseek_ai_cosmokit.isNullable)(source))
       return Schema.any();
     else if ([
       "string",
@@ -614,10 +778,10 @@ var require_lib = __commonJS(function(exports, module) {
   };
   Schema.date = function date() {
     return Schema.union([Schema.is(Date), Schema.transform(Schema.string().role("datetime"), (value, options) => {
-      const date = new Date(value);
-      if (isNaN(+date))
+      const date2 = new Date(value);
+      if (isNaN(+date2))
         throw new ValidationError(`invalid date "${value}"`, options);
-      return date;
+      return date2;
     }, true)]);
   };
   Schema.regExp = function regExp(flag = "") {
@@ -634,13 +798,13 @@ var require_lib = __commonJS(function(exports, module) {
       Schema.is(ArrayBuffer),
       Schema.is(SharedArrayBuffer),
       Schema.transform(Schema.any(), (value, options) => {
-        if (Binary.isSource(value))
-          return Binary.fromSource(value);
+        if (_deepseek_ai_cosmokit.Binary.isSource(value))
+          return _deepseek_ai_cosmokit.Binary.fromSource(value);
         throw new ValidationError(`expected ArrayBufferSource but got ${value}`, options);
       }, true),
       ...encoding ? [Schema.transform(Schema.string(), (value, options) => {
         try {
-          return encoding === "base64" ? Binary.fromBase64(value) : Binary.fromHex(value);
+          return encoding === "base64" ? _deepseek_ai_cosmokit.Binary.fromBase64(value) : _deepseek_ai_cosmokit.Binary.fromHex(value);
         } catch (e) {
           throw new ValidationError(e.message, options);
         }
@@ -664,7 +828,7 @@ var require_lib = __commonJS(function(exports, module) {
     throw new ValidationError(`expected nullable but got ${data}`, options);
   });
   Schema.extend("const", (data, { value }, options) => {
-    if ((0, deepEqual)(data, value))
+    if ((0, _deepseek_ai_cosmokit.deepEqual)(data, value))
       return [value];
     throw new ValidationError(`expected ${value} but got ${data}`, options);
   });
@@ -753,7 +917,7 @@ var require_lib = __commonJS(function(exports, module) {
         return [data];
       throw new ValidationError(`expected ${constructor.name} but got ${data}`, options);
     } else {
-      if ((0, isNullable)(data))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(data))
         throw new ValidationError(`expected ${constructor} but got ${data}`, options);
       let prototype = Object.getPrototypeOf(data);
       while (prototype) {
@@ -783,11 +947,11 @@ var require_lib = __commonJS(function(exports, module) {
   Schema.extend("array", (data, { inner, meta }, options) => {
     if (!Array.isArray(data))
       throw new ValidationError(`expected array but got ${data}`, options);
-    checkWithinRange(data.length, meta, "array length", options, !(0, isNullable)(inner.meta.default));
+    checkWithinRange(data.length, meta, "array length", options, !(0, _deepseek_ai_cosmokit.isNullable)(inner.meta.default));
     return [data.map((_, index) => property(data, index, inner, options))];
   });
   Schema.extend("dict", (data, { inner, sKey }, options, strict) => {
-    if (!(0, isPlainObject)(data))
+    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
       throw new ValidationError(`expected object but got ${data}`, options);
     const result = {};
     for (const key in data) {
@@ -823,12 +987,12 @@ var require_lib = __commonJS(function(exports, module) {
     }
   }
   Schema.extend("object", (data, { dict }, options, strict) => {
-    if (!(0, isPlainObject)(data))
+    if (!(0, _deepseek_ai_cosmokit.isPlainObject)(data))
       throw new ValidationError(`expected object but got ${data}`, options);
     const result = {};
     for (const key in dict) {
       const value = property(data, key, dict[key], options);
-      if (!(0, isNullable)(value) || key in data)
+      if (!(0, _deepseek_ai_cosmokit.isNullable)(value) || key in data)
         result[key] = value;
     }
     if (!strict)
@@ -851,9 +1015,9 @@ var require_lib = __commonJS(function(exports, module) {
     let result;
     for (const inner of list) {
       const value = Schema.resolve(data, inner, options, true)[0];
-      if ((0, isNullable)(value))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(value))
         continue;
-      if ((0, isNullable)(result))
+      if ((0, _deepseek_ai_cosmokit.isNullable)(result))
         result = value;
       else if (typeof result !== typeof value)
         throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
@@ -862,7 +1026,7 @@ var require_lib = __commonJS(function(exports, module) {
       else if (result !== value)
         throw new ValidationError(`expected ${toString()} but got ${JSON.stringify(data)}`, options);
     }
-    if (!strict && (0, isPlainObject)(data))
+    if (!strict && (0, _deepseek_ai_cosmokit.isPlainObject)(data))
       merge(result, data);
     return [result];
   });
@@ -890,14 +1054,14 @@ var require_lib = __commonJS(function(exports, module) {
             schema.list = args[index].map(Schema.from);
             break;
           case "dict":
-            schema.dict = (0, mapValues)(args[index], Schema.from);
+            schema.dict = (0, _deepseek_ai_cosmokit.valueMap)(args[index], Schema.from);
             break;
           case "bits":
             schema.bits = {};
-            for (const key in args[index]) {
-              if (typeof args[index][key] !== "number")
+            for (const key2 in args[index]) {
+              if (typeof args[index][key2] !== "number")
                 continue;
-              schema.bits[key] = args[index][key];
+              schema.bits[key2] = args[index][key2];
             }
             break;
           case "callback": {
@@ -972,6 +1136,7 @@ import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
+var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -1023,7 +1188,7 @@ function workspaceRootsOf(agents) {
     return [];
   }
 }
-function noop() {}
+function noop2() {}
 function scopeOfAgentContext(agent) {
   let context;
   try {
@@ -1056,6 +1221,75 @@ function scopeOfAgentContext(agent) {
     on: (event, handler) => on.call(context, event, handler),
     effect: (fn, label) => effect.call(context, fn, label)
   };
+}
+function teamContextOf(raw) {
+  return raw === "fresh" || raw === "fork" ? raw : undefined;
+}
+function teamStatusOf(raw) {
+  return raw === "running" || raw === "provisioning" || raw === "failed" ? raw : "inactive";
+}
+function teamTaskStatusOf(raw) {
+  return raw === "in_progress" || raw === "completed" || raw === "deleted" ? raw : "pending";
+}
+function teamStrings(raw) {
+  return Array.isArray(raw) ? raw.filter((entry) => typeof entry === "string") : [];
+}
+function teamMemberView(raw) {
+  const row = raw ?? {};
+  const context = teamContextOf(row.context);
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    role: row.role === "lead" ? "lead" : "teammate",
+    status: teamStatusOf(row.status),
+    ...typeof row.description === "string" ? { description: row.description } : {},
+    ...typeof row.provider === "string" ? { provider: row.provider } : {},
+    ...context === undefined ? {} : { context },
+    ...typeof row.model === "string" ? { model: row.model } : {},
+    diagnostics: teamStrings(row.diagnostics)
+  };
+}
+function teamTaskView(raw) {
+  const row = raw ?? {};
+  return {
+    id: String(row.id ?? ""),
+    revision: typeof row.revision === "number" ? row.revision : 0,
+    subject: String(row.subject ?? ""),
+    description: String(row.description ?? ""),
+    status: teamTaskStatusOf(row.status),
+    blockedBy: teamStrings(row.blockedBy),
+    writeScopes: teamStrings(row.writeScopes),
+    ...typeof row.ownerName === "string" ? { ownerName: row.ownerName } : {},
+    ready: row.ready === true,
+    writeScopeWarnings: teamStrings(row.writeScopeWarnings)
+  };
+}
+function teamRows(teams, method, agent, project) {
+  const reader = teams?.[method];
+  if (typeof reader !== "function")
+    return [];
+  try {
+    const rows = reader.call(teams, agent);
+    return Array.isArray(rows) ? rows.map(project) : [];
+  } catch {
+    return [];
+  }
+}
+function agentSystemPromptOf(agent) {
+  let context;
+  try {
+    context = agent?.ctx;
+  } catch {
+    return;
+  }
+  if (context === undefined || context === null)
+    return;
+  try {
+    const systemPrompt = context.systemPrompt;
+    return typeof systemPrompt?.section === "function" ? systemPrompt : undefined;
+  } catch {
+    return;
+  }
 }
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
@@ -1249,6 +1483,7 @@ function createDshAdapter(ctx, config = {}) {
       const compaction = service("compaction");
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
+      const agentTeams = service("agentTeams");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -1289,7 +1524,13 @@ function createDshAdapter(ctx, config = {}) {
         agentTurnStart: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
         agentTurnCancel: liveAgents().some((candidate) => typeof candidate?.cancel === "function"),
         agentTurnSteer: liveAgents().some((candidate) => typeof candidate?.steer === "function"),
-        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function")
+        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function"),
+        agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
+        agentPreStep: typeof ctx?.on === "function",
+        team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
+        teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
+        teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
       };
     },
     workspaceRoot,
@@ -1305,18 +1546,18 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config, signal) {
+    llmResolveCallConfig(config2, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config, signal);
+      return llm.resolveCallConfig.call(llm, config2, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
       if (typeof tools.register !== "function")
         throw new Error("mpd-dsh-adapter: the harness tools service exposes no register()");
       const registered = tools.register(definition);
-      return typeof registered === "function" ? registered : noop;
+      return typeof registered === "function" ? registered : noop2;
     },
     registerTool(definition) {
       const tools = requireService("tools", 'cannot register tool "' + String(definition?.name) + '"');
@@ -1344,7 +1585,7 @@ function createDshAdapter(ctx, config = {}) {
     registerCommand(definition) {
       const commands = service("commands");
       if (commands === undefined || commands === null || typeof commands.register !== "function")
-        return noop;
+        return noop2;
       const registered = commands.register({
         name: definition?.name,
         description: definition?.description,
@@ -1353,18 +1594,18 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message) => adapter.submitUserTurn(host.agent, message)
+            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
           });
         }
       });
-      return typeof registered === "function" ? registered : noop;
+      return typeof registered === "function" ? registered : noop2;
     },
     registerPromptSection(section) {
       const systemPrompt = requireService("systemPrompt", 'cannot register prompt section "' + String(section?.name) + '"');
       if (typeof systemPrompt.section !== "function")
         throw new Error("mpd-dsh-adapter: the harness systemPrompt service exposes no section()");
       const registered = systemPrompt.section(section);
-      return typeof registered === "function" ? registered : noop;
+      return typeof registered === "function" ? registered : noop2;
     },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
@@ -1374,7 +1615,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     onPreToolExecute(listener) {
       if (typeof ctx?.on !== "function")
-        return noop;
+        return noop2;
       return ctx.on("tools/pre-execute", async (exec, next) => {
         const downstream = typeof next === "function" ? await next() : undefined;
         try {
@@ -1385,11 +1626,25 @@ function createDshAdapter(ctx, config = {}) {
     },
     onPostToolExecute(listener) {
       if (typeof ctx?.on !== "function")
-        return noop;
+        return noop2;
       return ctx.on("tools/post-execute", async (exec, result, next) => {
         const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
         const decided = await listener(exec ?? {}, result ?? {}, downstream);
         return decided ?? downstream;
+      });
+    },
+    onAgentPreStep(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop2;
+      return ctx.on("agent/pre-step", async (payload, next) => {
+        const fallback = { kind: "enter", messages: payload?.messages ?? [] };
+        const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
+        try {
+          const decided = await listener(payload ?? {}, downstream);
+          return decided ?? downstream;
+        } catch {
+          return downstream;
+        }
       });
     },
     hasTool(toolName) {
@@ -1485,11 +1740,129 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()");
       return subagents.startContinuable.call(subagents, spec);
     },
+    registerSubagentProvider(provider) {
+      const subagents = requireService("subagents", "cannot register a subagent provider");
+      if (typeof subagents.registerProvider !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no registerProvider()");
+      const registered = subagents.registerProvider(provider);
+      return typeof registered === "function" ? registered : noop2;
+    },
     interruptAgent(targetSessionId, authority) {
       const subagents = requireService("subagents", 'cannot interrupt subagent session "' + String(targetSessionId) + '"');
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamService() {
+      const teams = service("agentTeams");
+      return teams === undefined || teams === null ? undefined : teams;
+    },
+    teamMembership(agent) {
+      const teams = service("agentTeams");
+      const tryMembership = teams?.tryMembership;
+      if (typeof tryMembership !== "function")
+        return;
+      let membership;
+      try {
+        membership = tryMembership.call(teams, agent);
+      } catch {
+        return;
+      }
+      if (membership === undefined || membership === null)
+        return;
+      const role = membership.role;
+      if (role !== "lead" && role !== "teammate")
+        return;
+      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+    },
+    teamListMembers(agent) {
+      const teams = requireService("agentTeams", "cannot list the team roster of an agent");
+      if (typeof teams.listMembers !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listMembers()");
+      const rows = teams.listMembers.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamMemberView) : [];
+    },
+    teamListTasks(agent) {
+      const teams = requireService("agentTeams", "cannot list the shared task board of an agent");
+      if (typeof teams.listTasks !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()");
+      const rows = teams.listTasks.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamTaskView) : [];
+    },
+    async teamCreateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot create team task "' + String(request?.subject) + '"');
+      if (typeof teams.createTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()");
+      return teamTaskView(await teams.createTask.call(teams, caller, request));
+    },
+    teamGetTask(caller, id) {
+      const teams = requireService("agentTeams", 'cannot read team task "' + String(id) + '"');
+      if (typeof teams.getTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()");
+      return teamTaskView(teams.getTask.call(teams, caller, id));
+    },
+    async teamUpdateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot update team task "' + String(request?.taskId) + '"');
+      if (typeof teams.updateTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()");
+      return teamTaskView(await teams.updateTask.call(teams, caller, request));
+    },
+    async teamSendMessage(caller, request) {
+      const teams = requireService("agentTeams", 'cannot send a team message to "' + String(request?.target) + '"');
+      if (typeof teams.sendMessage !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no sendMessage()");
+      const result = await teams.sendMessage.call(teams, caller, request);
+      return {
+        messageId: String(result?.messageId ?? ""),
+        status: result?.status === "queued" ? "queued" : "accepted"
+      };
+    },
+    async teamSpawnTeammate(caller, request) {
+      const teams = requireService("agentTeams", 'cannot spawn team member "' + String(request?.name) + '"');
+      if (typeof teams.spawnTeammate !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no spawnTeammate()");
+      const result = await teams.spawnTeammate.call(teams, caller, request);
+      return { member: teamMemberView(result?.member) };
+    },
+    teamInterrupt(caller, targetName) {
+      const teams = requireService("agentTeams", 'cannot interrupt team member "' + String(targetName) + '"');
+      if (typeof teams.interrupt !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no interrupt()");
+      const result = teams.interrupt.call(teams, caller, targetName);
+      return { previousStatus: result?.previousStatus === "running" ? "running" : "inactive" };
+    },
+    async teamWaitForChange(caller, timeoutMs, signal) {
+      const teams = requireService("agentTeams", "cannot wait for team activity");
+      if (typeof teams.waitForChange !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no waitForChange()");
+      const result = await teams.waitForChange.call(teams, caller, timeoutMs, signal);
+      return { timedOut: result?.timedOut === true };
+    },
+    teamLiveTeams() {
+      const teams = service("agentTeams");
+      if (teams === undefined || teams === null || typeof teams.tryMembership !== "function")
+        return [];
+      if (typeof service("agents")?.list !== "function")
+        return [];
+      const views = [];
+      for (const agent of liveAgents()) {
+        let membership;
+        try {
+          membership = teams.tryMembership.call(teams, agent);
+        } catch {
+          continue;
+        }
+        if (membership?.role !== "lead")
+          continue;
+        views.push({
+          teamId: String(membership.id ?? ""),
+          leadName: String(membership.name ?? ""),
+          leadSessionId: String(agent?.id ?? ""),
+          members: teamRows(teams, "listMembers", agent, teamMemberView),
+          tasks: teamRows(teams, "listTasks", agent, teamTaskView)
+        });
+      }
+      return views;
     },
     registerSkillProvider(provider) {
       const skills = requireService("skills", "cannot register a skill provider");
@@ -1512,7 +1885,7 @@ function createDshAdapter(ctx, config = {}) {
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
+        throw new Error("mpd-dsh-adapter: the harness agentPresets service exposes no resolve()");
       const preset = await presets.resolve(presetId);
       return {
         id: String(preset?.id ?? presetId),
@@ -1646,11 +2019,19 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message) {
+    agentPromptSection(agent, section) {
+      const systemPrompt = agentSystemPromptOf(agent);
+      if (systemPrompt === undefined) {
+        throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
+      }
+      const registered = systemPrompt.section(section);
+      return typeof registered === "function" ? registered : noop2;
+    },
+    startAgentTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message);
+      followup.call(agent, message2);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -1658,24 +2039,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message) {
+    steerAgentTurn(agent, message2) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message);
+      steer.call(agent, message2);
     },
-    injectAgentMessage(agent, message) {
+    injectAgentMessage(agent, message2) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message);
+      inject.call(agent, message2);
     },
-    submitUserTurn(agent, message) {
+    submitUserTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message);
+        followup.call(agent, message2);
         return true;
       } catch {
         return false;
@@ -1687,8 +2068,8 @@ function createDshAdapter(ctx, config = {}) {
 
 // packages/mpd-tui-plugin/src/log.ts
 function createLog(logger, prefix, env = process.env) {
-  const emit = (level, message) => {
-    const text = `[${prefix}] ${message}`;
+  const emit = (level, message2) => {
+    const text = `[${prefix}] ${message2}`;
     try {
       const sink = logger?.[level];
       if (typeof sink === "function") {
@@ -1704,9 +2085,9 @@ function createLog(logger, prefix, env = process.env) {
     } catch {}
   };
   return {
-    info: (message) => emit("info", message),
-    warn: (message) => emit("warn", message),
-    debug: (message) => emit("debug", message)
+    info: (message2) => emit("info", message2),
+    warn: (message2) => emit("warn", message2),
+    debug: (message2) => emit("debug", message2)
   };
 }
 
@@ -1764,7 +2145,7 @@ function describeOutcome(id, outcome) {
 }
 
 // packages/mpd-tui-plugin/src/state.ts
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -1832,43 +2213,20 @@ function isRecord(value) {
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
-function readTeam(root, problems) {
-  const teamsDir = join(root, ".mpd", "team");
-  let entries;
-  try {
-    entries = readdirSync(teamsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).slice(0, MAX_TEAMS);
-  } catch {
-    return;
-  }
+function readTeam(views, problems) {
   let best;
-  for (const name of entries) {
-    const path = join(teamsDir, name, "team.json");
-    let size;
-    try {
-      size = statSync(path).size;
-    } catch {
-      problems.push(`team ${name}: unreadable`);
-      continue;
-    }
-    let record;
-    try {
-      record = readJson(path);
-    } catch {
-      problems.push(`team ${name}: invalid JSON`);
-      continue;
-    }
-    if (!isRecord(record))
-      continue;
-    const stamp = String(record.approvedAt ?? record.createdAt ?? "");
-    const sortKey = `${stamp}\x00${String(size).padStart(12, "0")}`;
-    if (best === undefined || sortKey > best.sortKey)
-      best = { record, sortKey };
+  for (const view of views.slice(0, MAX_TEAMS)) {
+    const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0;
+    if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0))
+      best = view;
   }
   if (best === undefined)
     return;
-  const record = best.record;
+  const rows = Array.isArray(best.members) ? best.members : [];
+  if (rows.length === 0 && (Array.isArray(best.tasks) ? best.tasks.length : 0) === 0)
+    return;
   const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, failed: 0, claimed: 0, cancelled: 0, other: 0 };
-  for (const task of asArray(record.tasks).slice(0, MAX_TASKS)) {
+  for (const task of (Array.isArray(best.tasks) ? best.tasks : []).slice(0, MAX_TASKS)) {
     if (!isRecord(task))
       continue;
     counts.total += 1;
@@ -1895,15 +2253,15 @@ function readTeam(root, problems) {
         counts.other += 1;
     }
   }
-  const phase = scalarText(record.phase, 40) ?? "unknown";
-  const planReviewState = scalarText(record.planReviewState, 40) ?? (phase === "staged" ? "awaiting_review" : undefined);
+  const teammates = rows.filter((member) => isRecord(member) && member.role !== "lead");
+  const active = teammates.some((member) => member.status === "running" || member.status === "provisioning");
+  if (views.length > MAX_TEAMS)
+    problems.push(`team readout truncated to ${MAX_TEAMS} entries`);
   return {
-    id: scalarText(record.id, 60) ?? "?",
-    name: scalarText(record.name, 80) ?? "?",
-    phase,
-    description: scalarText(record.description, 160),
-    ...planReviewState === undefined ? {} : { planReviewState },
-    members: asArray(record.members).length,
+    id: scalarText(best.teamId, 60) ?? "?",
+    name: scalarText(best.leadName, 80) ?? "?",
+    phase: active ? "active" : "idle",
+    members: teammates.length,
     tasks: counts
   };
 }
@@ -1968,7 +2326,7 @@ function readWorkmates(home) {
     return { count: 0, names: [] };
   }
 }
-function readBoardState(workspace, home = homedir()) {
+function readBoardState(workspace, home = homedir(), views = []) {
   const problems = [];
   const state = {
     workspace,
@@ -1978,7 +2336,7 @@ function readBoardState(workspace, home = homedir()) {
     problems
   };
   try {
-    state.team = readTeam(workspace, problems);
+    state.team = readTeam(views, problems);
   } catch {
     problems.push("team state unreadable");
   }
@@ -2050,7 +2408,7 @@ function boardLines(state, holds = []) {
 
 // packages/mpd-tui-plugin/src/status.ts
 var STATUS_KEY = "mpd-tui";
-function registerStatus(ctx, log, workspaceRoot, home, intervalMs, bridgeNotice) {
+function registerStatus(ctx, log, workspaceRoot, home, intervalMs, bridgeNotice, teamViews) {
   let outcome = { state: "absent", detail: "tuiStatus was not injected" };
   let refresh = () => {};
   onService(ctx, "tuiStatus", (scoped, service) => {
@@ -2064,7 +2422,7 @@ function registerStatus(ctx, log, workspaceRoot, home, intervalMs, bridgeNotice)
     let published;
     const publish = () => {
       try {
-        const text = statusLine(readBoardState(workspaceRoot(), home()), bridgeNotice?.());
+        const text = statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), bridgeNotice?.());
         if (text === published)
           return;
         published = text;
@@ -2469,11 +2827,11 @@ function teamModelOptionLists(catalog) {
     }
   }
   const live = { provider: dedupeOptions(providers), model: dedupeOptions(models), reasoningEffort: dedupeOptions(efforts) };
-  const pick = (leaf) => live[leaf].length > 0 ? live[leaf] : declaredOptions(leaf);
+  const pick2 = (leaf) => live[leaf].length > 0 ? live[leaf] : declaredOptions(leaf);
   return {
-    provider: pick("provider"),
-    model: pick("model"),
-    reasoningEffort: pick("reasoningEffort"),
+    provider: pick2("provider"),
+    model: pick2("model"),
+    reasoningEffort: pick2("reasoningEffort"),
     source: {
       provider: live.provider.length > 0 ? "live" : "declared",
       model: live.model.length > 0 ? "live" : "declared",
@@ -2522,8 +2880,8 @@ var SETTINGS_FIELDS = SETTINGS_KNOBS.map(declaredField);
 function settingsFields(lists) {
   return SETTINGS_KNOBS.map((knob) => {
     const leaf = slotLeafOf(knob.path);
-    const field = declaredField(knob);
-    return leaf === undefined ? field : { ...field, options: lists[leaf] };
+    const field2 = declaredField(knob);
+    return leaf === undefined ? field2 : { ...field2, options: lists[leaf] };
   });
 }
 var SETTINGS_SECTION = {
@@ -2618,101 +2976,17 @@ function registerSettingsSection(ctx, log, adapterOverride) {
 }
 
 // packages/mpd-tui-plugin/src/team-state.ts
-import { readFileSync as readFileSync2, readdirSync as readdirSync3, statSync as statSync2 } from "node:fs";
-import { join as join3 } from "node:path";
 var MAX_TEAMS2 = 20;
 var MAX_TASKS2 = 5000;
 var MAX_PROBLEMS2 = 5;
-var MAX_INBOX_TAIL = 5;
-var MAILBOX_LEASE_MS = 60000;
-var CAPTAIN_KEY = "captain";
-var MAILBOX_KEY_MAX = 48;
-function isRecord2(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function asArray2(value) {
-  return Array.isArray(value) ? value : [];
-}
 function asString(value) {
   return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-function asNumber(value) {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 function asText(value, maxCells) {
   return scalarText(value, maxCells);
 }
 function optional(key, value) {
   return value === undefined ? {} : { [key]: value };
-}
-function mailboxKey(name) {
-  const cleaned = name.normalize("NFC").trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/gu, "");
-  if (cleaned === "")
-    return "";
-  const points = [...cleaned];
-  return points.length > MAILBOX_KEY_MAX ? points.slice(0, MAILBOX_KEY_MAX).join("") : cleaned;
-}
-function unreadCount(file) {
-  let raw;
-  try {
-    raw = readFileSync2(file, "utf8");
-  } catch {
-    return 0;
-  }
-  const now = Date.now();
-  let unread = 0;
-  for (const rawLine of raw.split(`
-`)) {
-    const line = rawLine.replace(/^\uFEFF/u, "");
-    if (line.trim() === "")
-      continue;
-    let value;
-    try {
-      value = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (!isRecord2(value))
-      continue;
-    if (value.tombstone === true)
-      continue;
-    if (value.readAt !== undefined)
-      continue;
-    const claimed = asNumber(value.deliveryClaimedAt);
-    if (claimed !== undefined && now - claimed < MAILBOX_LEASE_MS)
-      continue;
-    unread += 1;
-  }
-  return unread;
-}
-function captainInboxTail(file) {
-  let raw;
-  try {
-    raw = readFileSync2(file, "utf8");
-  } catch {
-    return [];
-  }
-  const tail = [];
-  for (const rawLine of raw.split(`
-`)) {
-    const line = rawLine.replace(/^\uFEFF/u, "");
-    if (line.trim() === "")
-      continue;
-    let value;
-    try {
-      value = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (!isRecord2(value) || value.tombstone === true)
-      continue;
-    const from = scalarText(value.from, 40) ?? "?";
-    const content = scalarText(value.content, 200) ?? "";
-    if (content === "")
-      continue;
-    tail.push({ from, content });
-  }
-  return tail.slice(-MAX_INBOX_TAIL);
 }
 function blockingDependencies(tasks, dependencies) {
   const byId = new Map(tasks.map((task) => [task.id, task]));
@@ -2801,94 +3075,81 @@ function currentTaskOf(memberName, tasks) {
   }
   return;
 }
-function newestRecordPath(teamsDir, problems) {
-  let entries;
-  try {
-    entries = readdirSync3(teamsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).slice(0, MAX_TEAMS2);
-  } catch {
-    return;
-  }
-  let best;
-  for (const name of entries) {
-    const path = join3(teamsDir, name, "team.json");
-    let size;
-    try {
-      size = statSync2(path).size;
-    } catch {
-      problems.push(`team ${name}: unreadable`);
-      continue;
-    }
-    let record;
-    try {
-      record = JSON.parse(readFileSync2(path, "utf8"));
-    } catch {
-      problems.push(`team ${name}: invalid JSON`);
-      continue;
-    }
-    if (!isRecord2(record)) {
-      problems.push(`team ${name}: not an object`);
-      continue;
-    }
-    const stamp = String(record.approvedAt ?? record.createdAt ?? "");
-    const sortKey = `${stamp}\x00${String(size).padStart(12, "0")}`;
-    if (best === undefined || sortKey > best.sortKey)
-      best = { path, record, sortKey };
-  }
-  return best?.path;
-}
 function emptyWorkflow(workspace, problems, holds) {
   return {
     workspace,
     members: [],
     tasks: [],
     counts: { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 },
-    mail: { unread: 0, captainInbox: [] },
+    mail: { unread: null, captainInbox: [] },
     holds,
     problems
   };
 }
-function readTeamWorkflow(workspace, holds = []) {
+function liveTeamViews(dsh, workspace) {
+  let views;
+  try {
+    views = dsh.teamLiveTeams() ?? [];
+  } catch {
+    return [];
+  }
+  let agents = [];
+  try {
+    agents = dsh.liveAgents() ?? [];
+  } catch {
+    agents = [];
+  }
+  if (agents.length === 0 || workspace === "")
+    return views.slice(0, MAX_TEAMS2);
+  const cwdOf = new Map;
+  for (const entry of agents) {
+    const agent = entry;
+    const id = typeof agent?.id === "string" ? agent.id : "";
+    const cwd = agent?.session?.header?.cwd;
+    if (id !== "" && typeof cwd === "string")
+      cwdOf.set(id, cwd);
+  }
+  const own = views.filter((view) => cwdOf.get(String(view.leadSessionId ?? "")) === workspace);
+  return (own.length > 0 ? own : views).slice(0, MAX_TEAMS2);
+}
+function memberStatus(view, index) {
+  const rows = Array.isArray(view.members) ? view.members : [];
+  const row = rows[index];
+  return typeof row?.status === "string" ? row.status : "unknown";
+}
+function teamActive(view) {
+  const rows = Array.isArray(view.members) ? view.members : [];
+  return rows.some((member) => member.role === "teammate" && (member.status === "running" || member.status === "provisioning"));
+}
+function principalView(views) {
+  let best;
+  for (const view of views) {
+    const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0;
+    if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0))
+      best = view;
+  }
+  return best;
+}
+function readTeamWorkflow(workspace, holds = [], views = []) {
   const problems = [];
-  const teamsDir = join3(workspace, ".mpd", "team");
-  let path;
-  try {
-    path = newestRecordPath(teamsDir, problems);
-  } catch {
-    problems.push("team state unreadable");
-  }
-  if (path === undefined) {
-    if (problems.length === 0)
-      return emptyWorkflow(workspace, problems, holds);
-    return emptyWorkflow(workspace, problems.slice(0, MAX_PROBLEMS2), holds);
-  }
-  let record;
-  try {
-    const parsed = JSON.parse(readFileSync2(path, "utf8"));
-    if (!isRecord2(parsed))
-      throw new Error("not an object");
-    record = parsed;
-  } catch {
-    problems.push("team record unreadable");
-    return emptyWorkflow(workspace, problems.slice(0, MAX_PROBLEMS2), holds);
-  }
+  const view = principalView(views.slice(0, MAX_TEAMS2));
+  if (view === undefined)
+    return emptyWorkflow(workspace, problems, holds);
+  const rawTasks = Array.isArray(view.tasks) ? view.tasks.slice(0, MAX_TASKS2) : [];
   const tasks = [];
-  for (const raw of asArray2(record.tasks).slice(0, MAX_TASKS2)) {
-    if (!isRecord2(raw))
+  for (const raw of rawTasks) {
+    if (raw === null || typeof raw !== "object")
       continue;
     const id = asText(raw.id, 40);
     if (id === undefined)
       continue;
-    const dependencies = asArray2(raw.dependencies).map((entry) => asText(entry, 40)).filter((entry) => entry !== undefined);
+    const dependencies = (Array.isArray(raw.blockedBy) ? raw.blockedBy : []).map((entry) => asText(entry, 40)).filter((entry) => entry !== undefined);
     tasks.push({
       id,
       subject: asText(raw.subject, 160) ?? "",
-      ...optional("kind", asText(raw.kind, 40)),
       status: asText(raw.status, 40) ?? "pending",
       visual: "open",
-      ...optional("assignee", asText(raw.assignee, 80)),
-      ...asNumber(raw.attempt) === undefined ? {} : { attempt: asNumber(raw.attempt) },
-      ...asNumber(raw.round) === undefined ? {} : { round: asNumber(raw.round) },
-      ...optional("verdict", asText(raw.verdict, 40)),
+      ...optional("assignee", asText(raw.ownerName, 80)),
       dependencies,
       failedDependencies: [],
       depth: 0
@@ -2931,65 +3192,52 @@ function readTeamWorkflow(workspace, holds = []) {
         counts.other += 1;
     }
   }
-  const teamId = asText(record.id, 60) ?? "?";
-  const inboxDir = join3(workspace, ".mpd", "team", asString(record.id) ?? "", "inbox");
+  const memberRows = Array.isArray(view.members) ? view.members : [];
   const members = [];
-  let unreadTotal = 0;
-  for (const raw of asArray2(record.members)) {
-    if (!isRecord2(raw))
-      continue;
-    const status = asText(raw.status, 40) ?? "unknown";
-    if (status === "removed")
-      continue;
+  memberRows.forEach((raw, index) => {
+    if (raw === null || typeof raw !== "object")
+      return;
+    if (raw.role === "lead")
+      return;
+    if (raw.status === "removed")
+      return;
     const name = asText(raw.name, 80) ?? "?";
+    const status = memberStatus(view, index);
     const provider = asString(raw.provider)?.trim() ?? "";
     const model = asString(raw.model)?.trim() ?? "";
     const route = provider !== "" && model !== "" ? `${provider}/${model}` : model !== "" ? model : undefined;
     const owned = tasks.filter((task) => task.assignee === name);
     const done = owned.filter((task) => task.status === "completed").length;
-    const key = mailboxKey(name);
-    const unread = key === "" ? 0 : unreadCount(join3(inboxDir, `${key}.jsonl`));
-    unreadTotal += unread;
-    const currentTask = currentTaskOf(name, tasks);
     members.push({
       name,
-      ...optional("role", asText(raw.role, 120)),
+      ...optional("role", asText(raw.description, 120)),
       ...optional("route", route),
       status,
       done,
       total: owned.length,
       progress: owned.length === 0 ? 0 : Math.round(done / owned.length * 100),
-      ...optional("currentTask", currentTask),
-      unread
+      ...optional("currentTask", currentTaskOf(name, tasks)),
+      unread: null
     });
-  }
-  const captainKey = mailboxKey(CAPTAIN_KEY);
-  const captainFile = join3(inboxDir, `${captainKey}.jsonl`);
-  const captainUnread = unreadCount(captainFile);
-  const inboxTail = captainInboxTail(captainFile);
-  const phase = asText(record.phase, 40) ?? "running";
-  const staged = phase === "staged";
-  const planReviewState = asText(record.planReviewState, 40) ?? (staged ? "awaiting_review" : undefined);
-  const stagedAt = asText(record.approvedAt ?? record.createdAt, 40);
+  });
+  const phase = teamActive(view) ? "active" : "idle";
   const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0);
+  const runnable = members.length > 0 && tasks.length > 0;
   return {
     workspace,
     team: {
-      id: teamId,
-      name: asText(record.name, 80) ?? "?",
+      id: asText(view.teamId, 60) ?? "?",
+      name: asText(view.leadName, 80) ?? "?",
       phase,
-      ...optional("description", asText(record.description, 160)),
-      ...optional("captainSessionId", asText(record.captainSessionId, 80)),
-      ...optional("planReviewState", planReviewState),
-      ...optional("stagedAt", stagedAt),
-      staged,
-      runnable: members.length > 0 && tasks.length > 0,
+      ...optional("captainSessionId", asText(view.leadSessionId, 80)),
+      staged: false,
+      runnable,
       links
     },
     members,
     tasks,
     counts,
-    mail: { unread: unreadTotal + captainUnread, captainInbox: inboxTail },
+    mail: { unread: null, captainInbox: [] },
     holds,
     problems: problems.slice(0, MAX_PROBLEMS2)
   };
@@ -3027,7 +3275,7 @@ function teamWorkflowLines(workflow) {
     row += ` · ${member.done}/${member.total}`;
     if (member.currentTask !== undefined)
       row += ` · ${member.currentTask}`;
-    if (member.unread > 0)
+    if (member.unread !== null && member.unread > 0)
       row += ` · ${member.unread} unread`;
     lines.push(row);
   }
@@ -3057,9 +3305,9 @@ function teamWorkflowLines(workflow) {
   lines.push("");
   const tasks = workflow.counts;
   lines.push(`tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`);
-  lines.push(`mail       ${workflow.mail.unread} unread`);
-  for (const message of workflow.mail.captainInbox)
-    lines.push(`  ${message.from}: ${message.content}`);
+  lines.push(workflow.mail.unread === null ? "mail       (not observable on the official team plane)" : `mail       ${workflow.mail.unread} unread`);
+  for (const message2 of workflow.mail.captainInbox)
+    lines.push(`  ${message2.from}: ${message2.content}`);
   if (workflow.problems.length > 0) {
     lines.push("");
     for (const problem of workflow.problems)
@@ -3114,12 +3362,11 @@ var PLAN_SCENE_ID = "mpd-tui-plan";
 var BOARD_REFRESH_MS = 2000;
 var DISCARD_WINDOW_MS = 1e4;
 var SCENE_ROW_MAX_CELLS = 4000;
-var APPROVE_TOOL = "agent_teams_approve";
-var DISCARD_TOOL = "agent_teams_delete";
+var PLAN_MUTATION_UNAVAILABLE = "no plan approval exists on the official Agent Teams plane (0.1.7): a team is its Lead session and its board is live";
 var UNAVAILABLE_PLAN_ACTIONS = {
   available: () => false,
-  approve: async () => ({ ok: false, error: `${APPROVE_TOOL} is not reachable in this composition` }),
-  discard: async () => ({ ok: false, error: `${DISCARD_TOOL} is not reachable in this composition` })
+  approve: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
+  discard: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE })
 };
 function noopSubscribe() {
   return () => {};
@@ -3135,7 +3382,7 @@ function usableKit(React, ui) {
     return false;
   return typeof ui.Box === "function" && typeof ui.Text === "function";
 }
-function readWorkflow(workspaceRoot, holds) {
+function readWorkflow(workspaceRoot, holds, teamViews) {
   try {
     let holdIds = [];
     try {
@@ -3143,7 +3390,13 @@ function readWorkflow(workspaceRoot, holds) {
     } catch {
       holdIds = [];
     }
-    return readTeamWorkflow(workspaceRoot(), holdIds);
+    let views = [];
+    try {
+      views = teamViews?.() ?? [];
+    } catch {
+      views = [];
+    }
+    return readTeamWorkflow(workspaceRoot(), holdIds, views);
   } catch {
     return;
   }
@@ -3162,7 +3415,7 @@ function measureTerminal(ui) {
   const size = `${String(columns)}x${String(rows)}`;
   return { size, window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20 };
 }
-function createBoardComponent(workspaceRoot, home, holds, nav, openScene) {
+function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews) {
   return function MpdTuiBoard(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -3172,7 +3425,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene) {
     }
     const read = () => {
       try {
-        return boardLines(readBoardState(workspaceRoot(), home()), holds());
+        return boardLines(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []), holds());
       } catch {
         return ["board state unreadable"];
       }
@@ -3234,7 +3487,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene) {
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function createTeamComponent(workspaceRoot, holds, nav, openScene) {
+function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) {
   return function MpdTuiTeam(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -3250,16 +3503,16 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene) {
         root = "?";
       }
       try {
-        workflow = readWorkflow(workspaceRoot, holds);
+        workflow = readWorkflow(workspaceRoot, holds, teamViews);
       } catch {
         workflow = undefined;
       }
       if (workflow === undefined)
         return { rows: [`team state unreadable — ${root}/.mpd/team`], subject: "MPD team — (unreadable)", staged: false };
-      const subject = workflow.team === undefined ? "MPD team — (none)" : `MPD team — ${workflow.team.name}`;
+      const subject2 = workflow.team === undefined ? "MPD team — (none)" : `MPD team — ${workflow.team.name}`;
       return {
         rows: teamWorkflowLines(workflow),
-        subject,
+        subject: subject2,
         staged: workflow.team?.staged === true,
         ...workflow.team?.id === undefined ? {} : { teamId: workflow.team.id }
       };
@@ -3344,7 +3597,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene) {
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function planActionLines(workflow, echo, armed, message) {
+function planActionLines(workflow, echo, armed, message2) {
   const team = workflow?.team;
   const phrase = team === undefined ? "" : approvalPhrase(team.id);
   const rows = [];
@@ -3355,14 +3608,14 @@ function planActionLines(workflow, echo, armed, message) {
   rows.push(`runnable   ${team?.runnable === true ? "yes" : "no"}`);
   if (armed)
     rows.push("DISCARD ARMED — press Ctrl+D again within 10s to archive this staged plan");
-  if (message !== "")
-    rows.push(message);
+  if (message2 !== "")
+    rows.push(message2);
   rows.push("");
   rows.push("to change this plan: press Esc and tell the captain what to change in the chat");
   rows.push("Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back");
   return rows;
 }
-function createPlanComponent(workspaceRoot, holds, nav, openScene, actions) {
+function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, teamViews) {
   return function MpdTuiPlan(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -3381,7 +3634,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions) {
     const busy = busyState[0];
     const setBusy = busyState[1];
     const messageState = React.useState("");
-    const message = messageState[0];
+    const message2 = messageState[0];
     const setMessage = messageState[1];
     const armedState = React.useState(0);
     const armedAt = armedState[0];
@@ -3390,7 +3643,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions) {
     const scroll = scrollState[0];
     const setScroll = scrollState[1];
     const refresh = () => {
-      setView(readWorkflow(workspaceRoot, holds));
+      setView(readWorkflow(workspaceRoot, holds, teamViews));
       setEcho("");
       setArmedAt(0);
       setScroll(0);
@@ -3400,7 +3653,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions) {
       let timer;
       try {
         timer = setInterval(() => {
-          setView(readWorkflow(workspaceRoot, holds));
+          setView(readWorkflow(workspaceRoot, holds, teamViews));
         }, BOARD_REFRESH_MS);
       } catch {
         timer = undefined;
@@ -3451,7 +3704,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions) {
         return;
       }
       if (!actions.available()) {
-        setMessage(`approve failed: ${APPROVE_TOOL} is not registered in this composition`);
+        setMessage(`approve failed: ${PLAN_MUTATION_UNAVAILABLE}`);
         return;
       }
       setBusy(true);
@@ -3477,7 +3730,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions) {
         setMessage(`approve failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds));
+        setView(readWorkflow(workspaceRoot, holds, teamViews));
       }
     };
     const runDiscard = async () => {
@@ -3489,7 +3742,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions) {
       }
       setArmedAt(0);
       if (!actions.available()) {
-        setMessage(`discard failed: ${DISCARD_TOOL} is not registered in this composition`);
+        setMessage(`discard failed: ${PLAN_MUTATION_UNAVAILABLE}`);
         return;
       }
       setBusy(true);
@@ -3503,7 +3756,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions) {
         setMessage(`discard failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds));
+        setView(readWorkflow(workspaceRoot, holds, teamViews));
       }
     };
     if (typeof ui.useInput === "function") {
@@ -3560,18 +3813,18 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions) {
       body.push(`note       team ${target.teamId} is not the newest record — showing ${team.id}`);
     }
     if (usable)
-      for (const row of planActionLines(view, echo, armedAt !== 0, message))
+      for (const row of planActionLines(view, echo, armedAt !== 0, message2))
         body.push(row);
     const measured = measureTerminal(ui);
     const visible = body.slice(scroll, scroll + measured.window);
     const size = measured.size;
-    const settled = message !== "";
+    const settled = message2 !== "";
     const verdict = !usable && settled;
     const title = !usable ? verdict ? `MPD plan approval — ${team?.name ?? "(none)"}` : `MPD plan approval — ${team === undefined ? "(none)" : `no staged plan for team ${team.id} (phase ${team.phase})`}` : `MPD plan approval — ${team.name}${busy ? " · working…" : ""}`;
     const children = [React.createElement(ui.Text, { key: "title", bold: true }, safeLine(`${title}${size === "" ? "" : ` · ${size}`}`))];
     if (!usable) {
       if (verdict) {
-        children.push(React.createElement(ui.Text, { key: "verdict", bold: true }, safeLine(message)));
+        children.push(React.createElement(ui.Text, { key: "verdict", bold: true }, safeLine(message2)));
         children.push(React.createElement(ui.Text, { key: "context", dimColor: true }, safeLine(team === undefined ? "the staged plan is no longer current" : `team ${team.id} · phase ${team.phase}`)));
       } else {
         const detail = team === undefined ? "no staged plan for team (none)" : `no staged plan for team ${team.id} (phase ${team.phase})`;
@@ -3588,7 +3841,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions) {
     return React.createElement(ui.Box, { flexDirection: "column", width: "100%", flexGrow: 1, paddingX: 1 }, children);
   };
 }
-function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS) {
+function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, teamViews) {
   let outcome = { state: "absent", detail: "tuiScenes was not injected" };
   let scenes;
   const nav = { planFromTeam: false };
@@ -3615,9 +3868,9 @@ function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActi
     }
     scenes = runtime;
     try {
-      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene) }, scoped);
-      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene) }, scoped);
-      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions) }, scoped);
+      runtime.register({ id: BOARD_SCENE_ID, title: "MPD board", component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews) }, scoped);
+      runtime.register({ id: TEAM_SCENE_ID, title: "MPD team", component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews) }, scoped);
+      runtime.register({ id: PLAN_SCENE_ID, title: "MPD plan approval", component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, teamViews) }, scoped);
       outcome = { state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID} requested (no host read-back)` };
     } catch (error) {
       outcome = { state: "refused", detail: String(error?.message ?? error) };
@@ -3641,9 +3894,9 @@ function registerScene(ctx, log, workspaceRoot, home, holds = () => [], planActi
     }
   };
 }
-function boardSummary(workspaceRoot, home) {
+function boardSummary(workspaceRoot, home, teamViews) {
   try {
-    return statusLine(readBoardState(workspaceRoot(), home()));
+    return statusLine(readBoardState(workspaceRoot(), home(), teamViews?.() ?? []));
   } catch {
     return "mpd: state unreadable";
   }
@@ -3769,11 +4022,11 @@ function createDialogs(ctx, log, defaultTimeoutMs = 30000) {
       return;
     }
   };
-  const confirm = async (title, message, timeoutMs = defaultTimeoutMs) => {
+  const confirm = async (title, message2, timeoutMs = defaultTimeoutMs) => {
     if (dialogs === undefined)
       return;
     try {
-      return await dialogs.confirm({ title, message, timeoutMs });
+      return await dialogs.confirm({ title, message: message2, timeoutMs });
     } catch (error) {
       log.debug(`dialog confirm failed: ${String(error?.message ?? error)}`);
       return;
@@ -3963,8 +4216,8 @@ function attemptDecisionEvents(ctx, log) {
   return { outcome: () => outcome, attempts: () => attempts };
 }
 function shortReason(error) {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.replace(/\s+/gu, " ").trim().slice(0, 160);
+  const message2 = error instanceof Error ? error.message : String(error);
+  return message2.replace(/\s+/gu, " ").trim().slice(0, 160);
 }
 
 // packages/mpd-tui-plugin/src/commands.ts
@@ -4102,53 +4355,10 @@ function workspaceResolver(ctx, adapter) {
   };
 }
 function createPlanActions(adapter, log) {
-  const registered = (toolName) => {
-    try {
-      return adapter.hasTool(toolName) === true;
-    } catch {
-      return false;
-    }
-  };
-  const agentFor = (captainSessionId) => {
-    try {
-      if (typeof captainSessionId === "string" && captainSessionId.length > 0)
-        return adapter.liveAgent(captainSessionId);
-      return adapter.liveAgents()[0];
-    } catch {
-      return;
-    }
-  };
-  const errorText = (error) => {
-    if (typeof error === "string")
-      return error;
-    const message = error?.message;
-    return typeof message === "string" && message.length > 0 ? message : "the tool call failed";
-  };
-  const run = async (toolName, args, captainSessionId) => {
-    if (!registered(toolName))
-      return { ok: false, error: `${toolName} is not registered in this composition` };
-    const agent = agentFor(captainSessionId);
-    if (agent === undefined || agent === null) {
-      const id = typeof captainSessionId === "string" ? captainSessionId : "";
-      return {
-        ok: false,
-        error: id === "" ? `no live session is attached in this process, so ${toolName} cannot be called` : `the captain session ${id} is not attached in this process`
-      };
-    }
-    try {
-      const result = await adapter.executeTool({ name: toolName, arguments: args, agent });
-      if (result.ok !== true)
-        return { ok: false, error: errorText(result.error) };
-      return { ok: true, value: result.value };
-    } catch (error) {
-      log.debug(`${toolName} call failed: ${String(error?.message ?? error)}`);
-      return { ok: false, error: errorText(error) };
-    }
-  };
   return {
-    available: () => registered(APPROVE_TOOL) && registered(DISCARD_TOOL),
-    approve: (input) => run(APPROVE_TOOL, { confirmation: input.confirmation }, input.captainSessionId),
-    discard: (input) => run(DISCARD_TOOL, {}, input.captainSessionId)
+    available: () => false,
+    approve: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE }),
+    discard: async () => ({ ok: false, error: PLAN_MUTATION_UNAVAILABLE })
   };
 }
 function homeDir() {
@@ -4167,6 +4377,7 @@ function apply(ctx, config = {}) {
   const adapter = resolveAdapter(ctx);
   const workspaceRoot = workspaceResolver(ctx, adapter);
   const home = () => homeDir();
+  const teamViews = () => liveTeamViews(adapter, workspaceRoot());
   const sessionEventTypeKnown = resolved.sessionEvents ? registerLogOnlyEventType(BOARD_OPENED_EVENT, log) : false;
   const outcomes = [];
   const record = (id, outcome) => {
@@ -4199,8 +4410,8 @@ function apply(ctx, config = {}) {
     onAcknowledged: () => status.refresh()
   });
   const noticeRead = () => composeNotices(bridgeRead(), watchdogFrontDoor.notice());
-  status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
-  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log)) : {
+  status = resolved.statusLine ? registerStatus(ctx, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews) : { outcome: () => ({ state: "absent", detail: "disabled by config" }), refresh: () => {} };
+  const scene = resolved.scene ? registerScene(ctx, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), teamViews) : {
     outcome: () => ({ state: "absent", detail: "disabled by config" }),
     open: () => false,
     openScene: () => false,
@@ -4215,16 +4426,16 @@ function apply(ctx, config = {}) {
     openTeam: () => scene.openTeam(),
     refreshStatus: () => status.refresh(),
     pickWorkmate: () => {
-      pickWorkmate(log, dialogs, workspaceRoot, home, scene);
+      pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews);
     }
   }) : { outcome: () => ({ state: "absent", detail: "disabled by config" }) };
   const commands = resolved.commands ? registerCommands(ctx, log, {
     openBoard: () => scene.open(),
     openTeam: () => scene.openTeam(),
     openPlan: () => scene.openPlan(),
-    statusText: () => boardSummary(workspaceRoot, home),
+    statusText: () => boardSummary(workspaceRoot, home, teamViews),
     workmatesText: () => {
-      const state = readBoardState(workspaceRoot(), home());
+      const state = readBoardState(workspaceRoot(), home(), teamViews());
       return state.workmates.count === 0 ? "mpd workmates: none" : `mpd workmates (${state.workmates.count}): ${state.workmates.names.join(", ")}`;
     },
     pickAction: () => pickAction(log, dialogs),
@@ -4267,8 +4478,8 @@ async function pickAction(log, dialogs) {
     log.debug(`/mpd picker chose ${scalarText(choice, 40) ?? "?"}`);
   return choice;
 }
-async function pickWorkmate(log, dialogs, workspaceRoot, home, scene) {
-  const names = readBoardState(workspaceRoot(), home()).workmates.names;
+async function pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews) {
+  const names = readBoardState(workspaceRoot(), home(), teamViews()).workmates.names;
   if (!dialogs.available() || names.length === 0) {
     scene.open();
     return;

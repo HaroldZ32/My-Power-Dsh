@@ -1,6 +1,6 @@
 // packages/mpd-roles-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve as resolve2 } from "node:path";
+import { dirname, join as join2, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // packages/mpd-roles-plugin/src/roles.data.ts
@@ -130,11 +130,324 @@ var ROLES = [
 ];
 var ROLE_BY_ID = Object.fromEntries(ROLES.map((r) => [r.id, r]));
 
+// packages/mpd-roles-plugin/src/team-guard.ts
+function normalizeTeamMemberKey(name) {
+  return String(name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function readonlyMemberKeys(members) {
+  const keys = new Map;
+  for (const member of members) {
+    if (member?.readonly !== true)
+      continue;
+    const key = normalizeTeamMemberKey(member.name);
+    if (key !== "")
+      keys.set(key, member.name);
+  }
+  return keys;
+}
+function readonlyMemberForTeamName(name, readonlyKeys) {
+  const key = normalizeTeamMemberKey(name);
+  if (key === "")
+    return;
+  const exact = readonlyKeys.get(key);
+  if (exact !== undefined)
+    return exact;
+  const withoutSuffix = key.replace(/-\d+$/, "");
+  if (withoutSuffix === key || withoutSuffix === "")
+    return;
+  return readonlyKeys.get(withoutSuffix);
+}
+function readonlyGuardDecision(exec, options) {
+  try {
+    const toolName = String(exec?.name ?? "");
+    if (!options.deny.has(toolName))
+      return;
+    const membership = options.membershipOf(exec?.agent);
+    if (membership === undefined || membership === null || membership.role !== "teammate")
+      return;
+    const member = readonlyMemberForTeamName(String(membership.name ?? ""), options.readonlyKeys);
+    if (member === undefined)
+      return;
+    return 'roster read-only discipline: teammate "' + String(membership.name) + '" is the READ-ONLY roster member ' + member + ", so `" + toolName + "` is denied. Read-only members never modify the tree: return the finding, " + "or ask the Lead (or a worker member — Deep Worker, Senior Engineer, Junior Engineer, Reviewer) to make the change.";
+  } catch {
+    return;
+  }
+}
+function installReadonlyGuard(dsh, options) {
+  const readonlyKeys = readonlyMemberKeys(options.members);
+  if (readonlyKeys.size === 0) {
+    options.warn("no read-only roster member is declared — the team-path read-only guard is NOT installed");
+    return { installed: false, reason: "no-readonly-members" };
+  }
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the team-path read-only guard is NOT installed " + "(read-only teammates would keep write access; the one-shot path is unaffected)");
+      return { installed: false, reason: "no-guard-seam" };
+    }
+    const deny = new Set(options.deny);
+    const dispose = dsh.guardTool((exec) => readonlyGuardDecision(exec, {
+      deny,
+      readonlyKeys,
+      membershipOf: (agent) => dsh.teamMembership(agent)
+    }));
+    return { installed: true, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the team-path read-only guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, reason: "install-failed" };
+  }
+}
+
+// packages/mpd-roles-plugin/src/session-gate.ts
+import { readdir as readdirFs } from "node:fs/promises";
+import { join } from "node:path";
+var STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule";
+var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|对齐|重构|迁移|审计|移植|梳理|全量)/giu;
+var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量/giu;
+var ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
+var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.]/u;
+var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|设计|实现|验证|改造|补充|对齐|重构|迁移|审计|移植|梳理|全量)/iu;
+var DELIVERABLE_VERB_MIN = 4;
+var ENUMERATED_LINE_MIN = 3;
+var ACTION_VERB_MIN = 3;
+var C_SUBSIGNAL_MIN = 2;
+var PLANS_DIR = [".mpd", "plans"];
+var DEFAULT_GATE_PRESETS = ["mpd"];
+function distinctMatches(text, pattern) {
+  const seen = new Set;
+  for (const match of text.matchAll(pattern))
+    seen.add(match[0].toLowerCase());
+  return seen.size;
+}
+function enumeratedLineCount(text) {
+  let count = 0;
+  for (const line of text.split(`
+`))
+    if (ENUMERATED_LINE_PATTERN.test(line))
+      count += 1;
+  return count;
+}
+function clauseStepCount(text) {
+  let count = 0;
+  for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN))
+    if (CLAUSE_ACTION_PATTERN.test(clause))
+      count += 1;
+  return count;
+}
+function consumeExplicitFlag(text) {
+  const source = String(text ?? "");
+  const trimmed = source.trimStart();
+  const prefix = /^team:\s*/iu.exec(trimmed);
+  if (prefix !== null)
+    return { flagged: true, text: trimmed.slice(prefix[0].length) };
+  if (/!team/iu.test(source))
+    return { flagged: true, text: source.replace(/!team\s*/giu, "") };
+  return { flagged: false, text: source };
+}
+function evaluateComplexityGate(text, input = {}) {
+  const source = String(text ?? "");
+  const signals = [];
+  if (input.explicitFlag === true)
+    signals.push("A");
+  if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
+    signals.push("B");
+  const cSubSignals = [
+    enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
+    distinctMatches(source, ACTION_VERB_PATTERN) >= ACTION_VERB_MIN,
+    clauseStepCount(source) >= ENUMERATED_LINE_MIN
+  ].filter(Boolean).length;
+  if (cSubSignals >= C_SUBSIGNAL_MIN)
+    signals.push("C");
+  if (input.planArtifact === true)
+    signals.push("D");
+  return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
+}
+async function hasPlanArtifact(workspace, readdirFn) {
+  try {
+    const read = readdirFn ?? readdirFs;
+    const entries = await read(join(String(workspace ?? ""), ...PLANS_DIR));
+    return Array.isArray(entries) && entries.some((entry) => String(entry).endsWith(".md"));
+  } catch {
+    return false;
+  }
+}
+function messageText(message) {
+  const content = message?.content;
+  if (!Array.isArray(content))
+    return;
+  const parts = content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text);
+  return parts.length === 0 ? undefined : parts.join(`
+`);
+}
+function latestUserMessage(candidates) {
+  for (let index = candidates.length - 1;index >= 0; index -= 1) {
+    const message = candidates[index];
+    if (message?.role !== "user")
+      continue;
+    const text = messageText(message);
+    if (text !== undefined)
+      return { message, text };
+  }
+  return;
+}
+function consumeFlagFromMessage(message, source) {
+  if (!consumeExplicitFlag(source).flagged)
+    return message;
+  let changed = false;
+  const content = (message?.content ?? []).map((block) => {
+    const text = block?.text;
+    if (block?.type !== "text" || typeof text !== "string")
+      return block;
+    const next = consumeExplicitFlag(text);
+    if (next.text === text)
+      return block;
+    changed = true;
+    return { ...block, text: next.text };
+  });
+  return changed ? { ...message, content } : message;
+}
+function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS) {
+  const header = agent?.session?.header;
+  if (header === undefined || header === null)
+    return false;
+  if (header.parentSession !== undefined)
+    return false;
+  const preset = header.agentPreset;
+  if (preset === undefined)
+    return true;
+  return presets.includes(String(preset));
+}
+function advisoryNoticeText(signals, explicit) {
+  const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/");
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and NO team was staged — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself at the moment the work actually warrants one: `spawn_teammate` creates each roster teammate" + " (its prompt text comes from `mpd_role_persona`) and `team_task_create` opens its lane on the shared board; then tell" + " the user the Web plan is ready for review." + `
+- If the work does not warrant a team (a short or single-threaded task), continue solo — and say so in one line.` + `
+- A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
+}
+function installSessionGate(dsh, options) {
+  const presets = options.presets ?? DEFAULT_GATE_PRESETS;
+  const settled = new Set;
+  const dispose = dsh.onAgentPreStep(async (payload, decision) => {
+    try {
+      if (decision?.kind === "reject")
+        return;
+      const agent = payload?.agent;
+      if (agent === undefined || agent === null)
+        return;
+      if (!sessionQualifies(agent, presets))
+        return;
+      const agentId = String(agent.id ?? "");
+      if (agentId !== "" && settled.has(agentId))
+        return;
+      const claimed = Array.isArray(decision?.messages) ? decision.messages : payload?.messages ?? [];
+      const user = latestUserMessage(claimed);
+      if (user === undefined)
+        return;
+      if (agentId !== "")
+        settled.add(agentId);
+      const workspace = dsh.workspaceRoot({ agent });
+      const consumed = consumeExplicitFlag(user.text);
+      const planArtifact = await hasPlanArtifact(workspace, options.readdir);
+      const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, planArtifact });
+      if (verdict.trigger !== true)
+        return;
+      const notice = dsh.userMessage({
+        text: advisoryNoticeText(verdict.signals, consumed.flagged),
+        source: { kind: "plugin", plugin: "mpd-roles", reason: "session-start-advisory" }
+      });
+      const messages = (Array.isArray(decision?.messages) ? [...decision.messages] : [...payload?.messages ?? []]).map((message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);
+      let lastClaimed = -1;
+      for (let at2 = 0;at2 < messages.length; at2 += 1)
+        if (claimed.includes(messages[at2]))
+          lastClaimed = at2;
+      const at = lastClaimed < 0 ? messages.length : lastClaimed + 1;
+      const amended = [...messages.slice(0, at), notice, ...messages.slice(at)];
+      return { ...decision, kind: decision?.kind ?? "enter", messages: amended };
+    } catch (error) {
+      options.warn("session-start gate failed (" + (error instanceof Error ? error.message : String(error)) + ") — the step runs unchanged");
+      return;
+    }
+  });
+  return { installed: typeof dispose === "function", settled };
+}
+
+// packages/mpd-roles-plugin/src/roster-section.ts
+var ROSTER_SECTION_NAME = "mpd:roster";
+var ROSTER_SECTION_ORDER = 605;
+function functionOf(description) {
+  const text = String(description ?? "");
+  const afterColon = text.includes(": ") ? text.slice(text.indexOf(": ") + 2) : text;
+  return afterColon.replace(/\s*\(([^()]*)\)/g, ", $1").replace(/\.+\s*$/, "").replace(/,\s*,/g, ",").trim();
+}
+function rosterSectionText(members) {
+  const lines = members.map((member) => "- " + member.name + (member.readonly ? " [read-only]" : " [writes]") + " — " + functionOf(member.description));
+  return [
+    "## MPD specialist roster",
+    "The specialists this deployment stages as teammates, addressed by NAME:",
+    ...lines,
+    "Create one with `spawn_teammate` (name = the member name, description = its responsibility, prompt = the persona text from `mpd_role_persona`); `team_task_create` opens its lane on the shared board. A teammate inherits YOUR model route and cannot take a model or tool filter, so the `teamModels` slots apply to the one-shot `mpd_role_spawn` only; a read-only member's write tools are denied by the roster guard."
+  ].join(`
+`);
+}
+function installRosterSection(dsh, options) {
+  const presets = options.presets ?? ["mpd"];
+  const disposers = new Map;
+  const text = rosterSectionText(options.members);
+  const report = (line) => {
+    try {
+      options.log?.(line);
+    } catch {}
+  };
+  const register = (agent) => {
+    try {
+      if (agent === undefined || agent === null || disposers.has(agent))
+        return;
+      if (!sessionQualifies(agent, presets))
+        return;
+      const section = { name: ROSTER_SECTION_NAME, order: ROSTER_SECTION_ORDER, text };
+      const dispose = dsh.agentPromptSection(agent, section);
+      disposers.set(agent, typeof dispose === "function" ? dispose : () => {});
+      const preset = agent?.session?.header?.agentPreset;
+      report('roster section registered for agent "' + String(agent?.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)) + " — " + ROSTER_SECTION_NAME + " order=" + ROSTER_SECTION_ORDER);
+    } catch (error) {
+      options.warn('roster section not registered for agent "' + String(agent?.id ?? "?") + '" (' + (error instanceof Error ? error.message : String(error)) + ")");
+    }
+  };
+  const release = (agent) => {
+    const dispose = disposers.get(agent);
+    if (dispose === undefined)
+      return;
+    disposers.delete(agent);
+    try {
+      dispose();
+    } catch {}
+  };
+  for (const agent of dsh.liveAgents())
+    register(agent);
+  const subscribe = (event, handler) => {
+    try {
+      if (options.onEvent !== undefined) {
+        options.onEvent(event, handler);
+        return;
+      }
+      dsh.onEvent(event, handler);
+    } catch {}
+  };
+  subscribe("agent/created", (payload) => {
+    register(payload?.agent ?? payload);
+    return;
+  });
+  subscribe("agent/disposed", (payload) => {
+    release(payload?.agent ?? payload);
+    return;
+  });
+  return { installed: true, registered: disposers.size, disposers };
+}
+
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
+var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -219,6 +532,75 @@ function scopeOfAgentContext(agent) {
     on: (event, handler) => on.call(context, event, handler),
     effect: (fn, label) => effect.call(context, fn, label)
   };
+}
+function teamContextOf(raw) {
+  return raw === "fresh" || raw === "fork" ? raw : undefined;
+}
+function teamStatusOf(raw) {
+  return raw === "running" || raw === "provisioning" || raw === "failed" ? raw : "inactive";
+}
+function teamTaskStatusOf(raw) {
+  return raw === "in_progress" || raw === "completed" || raw === "deleted" ? raw : "pending";
+}
+function teamStrings(raw) {
+  return Array.isArray(raw) ? raw.filter((entry) => typeof entry === "string") : [];
+}
+function teamMemberView(raw) {
+  const row = raw ?? {};
+  const context = teamContextOf(row.context);
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    role: row.role === "lead" ? "lead" : "teammate",
+    status: teamStatusOf(row.status),
+    ...typeof row.description === "string" ? { description: row.description } : {},
+    ...typeof row.provider === "string" ? { provider: row.provider } : {},
+    ...context === undefined ? {} : { context },
+    ...typeof row.model === "string" ? { model: row.model } : {},
+    diagnostics: teamStrings(row.diagnostics)
+  };
+}
+function teamTaskView(raw) {
+  const row = raw ?? {};
+  return {
+    id: String(row.id ?? ""),
+    revision: typeof row.revision === "number" ? row.revision : 0,
+    subject: String(row.subject ?? ""),
+    description: String(row.description ?? ""),
+    status: teamTaskStatusOf(row.status),
+    blockedBy: teamStrings(row.blockedBy),
+    writeScopes: teamStrings(row.writeScopes),
+    ...typeof row.ownerName === "string" ? { ownerName: row.ownerName } : {},
+    ready: row.ready === true,
+    writeScopeWarnings: teamStrings(row.writeScopeWarnings)
+  };
+}
+function teamRows(teams, method, agent, project) {
+  const reader = teams?.[method];
+  if (typeof reader !== "function")
+    return [];
+  try {
+    const rows = reader.call(teams, agent);
+    return Array.isArray(rows) ? rows.map(project) : [];
+  } catch {
+    return [];
+  }
+}
+function agentSystemPromptOf(agent) {
+  let context;
+  try {
+    context = agent?.ctx;
+  } catch {
+    return;
+  }
+  if (context === undefined || context === null)
+    return;
+  try {
+    const systemPrompt = context.systemPrompt;
+    return typeof systemPrompt?.section === "function" ? systemPrompt : undefined;
+  } catch {
+    return;
+  }
 }
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
@@ -412,6 +794,7 @@ function createDshAdapter(ctx, config = {}) {
       const compaction = service("compaction");
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
+      const agentTeams = service("agentTeams");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -452,7 +835,13 @@ function createDshAdapter(ctx, config = {}) {
         agentTurnStart: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
         agentTurnCancel: liveAgents().some((candidate) => typeof candidate?.cancel === "function"),
         agentTurnSteer: liveAgents().some((candidate) => typeof candidate?.steer === "function"),
-        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function")
+        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function"),
+        agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
+        agentPreStep: typeof ctx?.on === "function",
+        team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
+        teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
+        teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
       };
     },
     workspaceRoot,
@@ -468,11 +857,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config, signal) {
+    llmResolveCallConfig(config2, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config, signal);
+      return llm.resolveCallConfig.call(llm, config2, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -516,7 +905,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message) => adapter.submitUserTurn(host.agent, message)
+            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
           });
         }
       });
@@ -553,6 +942,20 @@ function createDshAdapter(ctx, config = {}) {
         const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
         const decided = await listener(exec ?? {}, result ?? {}, downstream);
         return decided ?? downstream;
+      });
+    },
+    onAgentPreStep(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("agent/pre-step", async (payload, next) => {
+        const fallback = { kind: "enter", messages: payload?.messages ?? [] };
+        const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
+        try {
+          const decided = await listener(payload ?? {}, downstream);
+          return decided ?? downstream;
+        } catch {
+          return downstream;
+        }
       });
     },
     hasTool(toolName) {
@@ -648,11 +1051,129 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()");
       return subagents.startContinuable.call(subagents, spec);
     },
+    registerSubagentProvider(provider) {
+      const subagents = requireService("subagents", "cannot register a subagent provider");
+      if (typeof subagents.registerProvider !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no registerProvider()");
+      const registered = subagents.registerProvider(provider);
+      return typeof registered === "function" ? registered : noop;
+    },
     interruptAgent(targetSessionId, authority) {
       const subagents = requireService("subagents", 'cannot interrupt subagent session "' + String(targetSessionId) + '"');
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamService() {
+      const teams = service("agentTeams");
+      return teams === undefined || teams === null ? undefined : teams;
+    },
+    teamMembership(agent) {
+      const teams = service("agentTeams");
+      const tryMembership = teams?.tryMembership;
+      if (typeof tryMembership !== "function")
+        return;
+      let membership;
+      try {
+        membership = tryMembership.call(teams, agent);
+      } catch {
+        return;
+      }
+      if (membership === undefined || membership === null)
+        return;
+      const role = membership.role;
+      if (role !== "lead" && role !== "teammate")
+        return;
+      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+    },
+    teamListMembers(agent) {
+      const teams = requireService("agentTeams", "cannot list the team roster of an agent");
+      if (typeof teams.listMembers !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listMembers()");
+      const rows = teams.listMembers.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamMemberView) : [];
+    },
+    teamListTasks(agent) {
+      const teams = requireService("agentTeams", "cannot list the shared task board of an agent");
+      if (typeof teams.listTasks !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()");
+      const rows = teams.listTasks.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamTaskView) : [];
+    },
+    async teamCreateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot create team task "' + String(request?.subject) + '"');
+      if (typeof teams.createTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()");
+      return teamTaskView(await teams.createTask.call(teams, caller, request));
+    },
+    teamGetTask(caller, id) {
+      const teams = requireService("agentTeams", 'cannot read team task "' + String(id) + '"');
+      if (typeof teams.getTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()");
+      return teamTaskView(teams.getTask.call(teams, caller, id));
+    },
+    async teamUpdateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot update team task "' + String(request?.taskId) + '"');
+      if (typeof teams.updateTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()");
+      return teamTaskView(await teams.updateTask.call(teams, caller, request));
+    },
+    async teamSendMessage(caller, request) {
+      const teams = requireService("agentTeams", 'cannot send a team message to "' + String(request?.target) + '"');
+      if (typeof teams.sendMessage !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no sendMessage()");
+      const result = await teams.sendMessage.call(teams, caller, request);
+      return {
+        messageId: String(result?.messageId ?? ""),
+        status: result?.status === "queued" ? "queued" : "accepted"
+      };
+    },
+    async teamSpawnTeammate(caller, request) {
+      const teams = requireService("agentTeams", 'cannot spawn team member "' + String(request?.name) + '"');
+      if (typeof teams.spawnTeammate !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no spawnTeammate()");
+      const result = await teams.spawnTeammate.call(teams, caller, request);
+      return { member: teamMemberView(result?.member) };
+    },
+    teamInterrupt(caller, targetName) {
+      const teams = requireService("agentTeams", 'cannot interrupt team member "' + String(targetName) + '"');
+      if (typeof teams.interrupt !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no interrupt()");
+      const result = teams.interrupt.call(teams, caller, targetName);
+      return { previousStatus: result?.previousStatus === "running" ? "running" : "inactive" };
+    },
+    async teamWaitForChange(caller, timeoutMs, signal) {
+      const teams = requireService("agentTeams", "cannot wait for team activity");
+      if (typeof teams.waitForChange !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no waitForChange()");
+      const result = await teams.waitForChange.call(teams, caller, timeoutMs, signal);
+      return { timedOut: result?.timedOut === true };
+    },
+    teamLiveTeams() {
+      const teams = service("agentTeams");
+      if (teams === undefined || teams === null || typeof teams.tryMembership !== "function")
+        return [];
+      if (typeof service("agents")?.list !== "function")
+        return [];
+      const views = [];
+      for (const agent of liveAgents()) {
+        let membership;
+        try {
+          membership = teams.tryMembership.call(teams, agent);
+        } catch {
+          continue;
+        }
+        if (membership?.role !== "lead")
+          continue;
+        views.push({
+          teamId: String(membership.id ?? ""),
+          leadName: String(membership.name ?? ""),
+          leadSessionId: String(agent?.id ?? ""),
+          members: teamRows(teams, "listMembers", agent, teamMemberView),
+          tasks: teamRows(teams, "listTasks", agent, teamTaskView)
+        });
+      }
+      return views;
     },
     registerSkillProvider(provider) {
       const skills = requireService("skills", "cannot register a skill provider");
@@ -675,7 +1196,7 @@ function createDshAdapter(ctx, config = {}) {
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
+        throw new Error("mpd-dsh-adapter: the harness agentPresets service exposes no resolve()");
       const preset = await presets.resolve(presetId);
       return {
         id: String(preset?.id ?? presetId),
@@ -809,11 +1330,19 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message) {
+    agentPromptSection(agent, section) {
+      const systemPrompt = agentSystemPromptOf(agent);
+      if (systemPrompt === undefined) {
+        throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
+      }
+      const registered = systemPrompt.section(section);
+      return typeof registered === "function" ? registered : noop;
+    },
+    startAgentTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message);
+      followup.call(agent, message2);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -821,24 +1350,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message) {
+    steerAgentTurn(agent, message2) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message);
+      steer.call(agent, message2);
     },
-    injectAgentMessage(agent, message) {
+    injectAgentMessage(agent, message2) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message);
+      inject.call(agent, message2);
     },
-    submitUserTurn(agent, message) {
+    submitUserTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message);
+        followup.call(agent, message2);
         return true;
       } catch {
         return false;
@@ -879,7 +1408,7 @@ function createLazyDshAdapter(ctx, options) {
   let temporary;
   let warnedPending = false;
   let warnedMissing = false;
-  const resolve = () => {
+  const resolve2 = () => {
     if (mounted !== undefined)
       return mounted;
     const active = probeMpdDsh(ctx, true);
@@ -903,12 +1432,12 @@ function createLazyDshAdapter(ctx, options) {
   };
   return new Proxy({}, {
     get(_target, property) {
-      const impl = resolve();
+      const impl = resolve2();
       const value = impl[property];
       return typeof value === "function" ? value.bind(impl) : value;
     },
     has(_target, property) {
-      return property in resolve();
+      return property in resolve2();
     }
   });
 }
@@ -943,17 +1472,17 @@ function textBlock2(text) {
 function pkgRoot() {
   return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
 }
-function normalizeRoleNameKey(name) {
-  return String(name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+function normalizeRoleNameKey(name2) {
+  return String(name2 ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 var ROLE_ID_BY_NAME_KEY = Object.fromEntries(ROLES.map((r) => [normalizeRoleNameKey(r.name), r.id]));
 function rosterNameList() {
   return ROLES.map((r) => r.name).join(", ");
 }
 function rosterFunctionList() {
-  return ROLES.map((r) => r.name + " (" + functionOf(r.description) + ")").join(", ");
+  return ROLES.map((r) => r.name + " (" + functionOf2(r.description) + ")").join(", ");
 }
-function functionOf(description) {
+function functionOf2(description) {
   const afterColon = description.includes(": ") ? description.slice(description.indexOf(": ") + 2) : description;
   return afterColon.replace(/\s*\(([^()]*)\)/g, ", $1").replace(/\.+\s*$/, "").replace(/,\s*,/g, ",").trim();
 }
@@ -972,7 +1501,7 @@ function normalizeRoleKey(key) {
   return ROLE_ID_BY_NAME_KEY[normalizeRoleNameKey(k)] ?? null;
 }
 function personaPath(config, spec) {
-  return config.personasDir ? join(resolve2(config.personasDir), spec.id + ".md") : join(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
+  return config.personasDir ? join2(resolve2(config.personasDir), spec.id + ".md") : join2(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
 }
 function readPersona(config, spec) {
   const p = personaPath(config, spec);
@@ -994,8 +1523,8 @@ function text(value) {
 function errText(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function extensionRoleId(extensionId, name) {
-  const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+function extensionRoleId(extensionId, name2) {
+  const slug = String(name2).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   return "ext-" + extensionId + "-" + (slug || "role");
 }
 function readExtensionPersona(root, file) {
@@ -1045,29 +1574,29 @@ function extensionRoles(ctx, exec, warn) {
       continue;
     if (view?.plane === PROJECT_ONLY_PLANE) {
       for (const item of declared) {
-        const name = text(item?.name).trim();
-        if (name === "")
+        const name2 = text(item?.name).trim();
+        if (name2 === "")
           continue;
-        refused.push({ extension: extensionId, name, reason: PROJECT_ROLES_REASON });
+        refused.push({ extension: extensionId, name: name2, reason: PROJECT_ROLES_REASON });
       }
       continue;
     }
     const root = text(view?.root);
     declared.forEach((item, index) => {
-      const name = text(item?.name).trim();
-      if (name === "")
+      const name2 = text(item?.name).trim();
+      if (name2 === "")
         return;
       const refuse = (reason) => {
-        refused.push({ extension: extensionId, name, reason });
+        refused.push({ extension: extensionId, name: name2, reason });
       };
       const itemLabel = "contributes.roles[" + index + "]";
-      const key = normalizeRoleNameKey(name);
+      const key = normalizeRoleNameKey(name2);
       const takenBy = owner.get(key);
       if (takenBy !== undefined) {
-        refuse('role name "' + name + '" (' + itemLabel + ' of extension "' + extensionId + '") is already taken by ' + takenBy + " — this extension role is not exposed");
+        refuse('role name "' + name2 + '" (' + itemLabel + ' of extension "' + extensionId + '") is already taken by ' + takenBy + " — this extension role is not exposed");
         return;
       }
-      const id = extensionRoleId(extensionId, name);
+      const id = extensionRoleId(extensionId, name2);
       if (ROLE_BY_ID[id] !== undefined) {
         refuse('role id "' + id + '" collides with the base roster — this extension role is not exposed');
         return;
@@ -1082,7 +1611,7 @@ function extensionRoles(ctx, exec, warn) {
       owner.set(key, 'extension "' + extensionId + '"');
       roles.push({
         id,
-        name,
+        name: name2,
         description: text(item?.description),
         readonly: item?.readonly === true,
         chain,
@@ -1096,20 +1625,20 @@ function extensionRoles(ctx, exec, warn) {
 }
 function apply(ctx, config = {}) {
   const warn = (line) => {
-    const message = "[mpd-roles] " + line;
+    const message2 = "[mpd-roles] " + line;
     try {
       if (ctx?.logger && typeof ctx.logger.warn === "function")
-        ctx.logger.warn(message);
+        ctx.logger.warn(message2);
       else
-        console.log(message);
+        console.log(message2);
     } catch {}
   };
   const adapterWarn = (line) => {
-    const message = "[mpd-roles] " + line;
+    const message2 = "[mpd-roles] " + line;
     try {
-      console.log(message);
+      console.log(message2);
       if (ctx?.logger && typeof ctx.logger.warn === "function")
-        ctx.logger.warn(message);
+        ctx.logger.warn(message2);
     } catch {}
   };
   const dsh = createLazyDshAdapter(ctx, { label: "mpd-roles", warn: adapterWarn });
@@ -1164,7 +1693,7 @@ function apply(ctx, config = {}) {
   });
   dsh.registerTool({
     name: "mpd_roles_list",
-    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work call agent_teams_create profile=mpd instead of repeated one-shot spawns.",
+    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with spawn_teammate + team_task_create (persona text from mpd_role_persona) instead of repeated one-shot spawns.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a, v) => textBlock2("roster (" + v.count + `):
 ` + v.roles.map((r) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + (r.extension ? " extension:" + r.extension : "") + "] — " + r.description).join(`
@@ -1180,7 +1709,7 @@ refused (` + v.refused.length + `):
   });
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Spawn one specialist as a one-shot subagent, carrying its persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The subagent is labelled with that name. For multi-member team work prefer the adopted dsh-agent-teams protocol (agent_teams_create + agent_teams_add_member), not repeated one-shot spawns.",
+    description: "Spawn one specialist as a one-shot subagent, carrying its persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The subagent is labelled with that name. For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated one-shot spawns: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
     parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock2("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
@@ -1225,7 +1754,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
   });
   dsh.registerTool({
     name: "mpd_role_persona",
-    description: 'Return the full persona text of one roster role, addressed by its name ("Architect", "Deep Worker", "Plan Reviewer"). Use it when a spawn surface takes the persona as TEXT — e.g. an agent_teams_add_member member whose name is that same name — so the member gets the real role instructions instead of a bare label.',
+    description: 'Return the full persona text of one roster role, addressed by its name ("Architect", "Deep Worker", "Plan Reviewer"). Use it when a spawn surface takes the persona as TEXT — e.g. the prompt of a spawn_teammate teammate whose name is that same name — so the member gets the real role instructions instead of a bare label.',
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a, v) => textBlock2("persona " + v.role + " (" + v.chars + ` chars):
 ` + v.persona) },
@@ -1237,6 +1766,41 @@ Work with the tools your role requires (read-only roles must never modify anythi
       return { role: spec.name, persona: spec.persona, chars: spec.persona.length };
     }
   });
+  const teamMembers = () => ROLES.map((role) => ({ name: role.name, description: role.description, readonly: role.readonly }));
+  const guardOutcome = [];
+  try {
+    const guard = installReadonlyGuard(dsh, {
+      deny: READONLY_DENY,
+      members: teamMembers(),
+      warn: (line) => warnOnce("team-guard:" + line, line)
+    });
+    guardOutcome.push(guard.installed ? "readOnlyGuard=installed deny=" + READONLY_DENY.length : "readOnlyGuard=absent reason=" + String(guard.reason));
+  } catch (error) {
+    guardOutcome.push("readOnlyGuard=absent reason=threw");
+    warnOnce("team-guard:threw", "the team-path read-only guard could not be installed (" + errText(error) + ")");
+  }
+  try {
+    installRosterSection(dsh, {
+      members: teamMembers(),
+      presets: ["mpd"],
+      warn: (line) => warnOnce("team-section:" + line, line),
+      log: (line) => console.log("[mpd-roles] " + line)
+    });
+    guardOutcome.push("rosterSection=agent-scoped order=605");
+  } catch (error) {
+    guardOutcome.push("rosterSection=absent");
+    warnOnce("team-section:threw", "the roster prompt section could not be registered (" + errText(error) + ")");
+  }
+  try {
+    installSessionGate(dsh, { presets: ["mpd"], warn: (line) => warn(line) });
+    guardOutcome.push("sessionGate=advisory");
+  } catch (error) {
+    guardOutcome.push("sessionGate=absent");
+    warnOnce("team-gate:threw", "the session-start complexity gate could not be installed (" + errText(error) + ")");
+  }
+  try {
+    console.log("[mpd-roles] team plane: " + guardOutcome.join(" "));
+  } catch {}
   try {
     console.log("[mpd-roles] mpdRoles provided (base roles: " + ROLES.length + ") | adapterIdentity=" + dshAdapterIdentity(ctx));
   } catch {}

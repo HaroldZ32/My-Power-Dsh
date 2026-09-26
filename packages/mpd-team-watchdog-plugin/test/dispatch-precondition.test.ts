@@ -1,20 +1,22 @@
 // THE DISPATCH PRECONDITION: which tasks are observed at all.
 //
-// Reproduced from a real host start (2026-09-16): a plan the complexity gate had STAGED
-// (`phase: "staged"`, `planReviewState: "awaiting_review"`), whose 12 tasks each carried an
-// assignee and NO attempt, made the watchdog write one `never-started` incident AND print
-// one console line PER TASK on every process start — for a plan nobody had approved, so
-// nothing had been dispatched and nothing SHOULD have been:
+// Reproduced from a real host start (2026-09-16): a plan the complexity gate had STAGED, whose
+// 12 tasks each carried an assignee and NO attempt, made the watchdog write one `never-started`
+// incident AND print one console line PER TASK on every process start — for a plan nobody had
+// approved, so nothing had been dispatched and nothing SHOULD have been:
 //
 //   [mpd-team-watchdog] NEVER-STARTED mpd-default task=t1 member=Planner attempt=(none) …
 //
-// The adopted scheduler writes the attempt id AT DISPATCH (`beginTaskAttempt(task, member)`
-// in lib/scheduler.js, before the ticket is delivered), so a non-empty `attemptId` IS the
-// record that a member was handed the task. A task with neither an attempt nor a stamp was
-// never given to anybody — a staged plan awaiting review, a task correctly blocked on
-// unfinished dependencies, or one the scheduler has not reached yet. None of those is a
-// dispatch problem, and `never-started` (a CLAIMED task whose owner never stamped) must not
-// be spent on them.
+// 0.1.7 REBASE — the SIGNAL changed, the RULE did not. The official board has NO assignee at
+// create time: `team_task_create` produces an UNOWNED task and only `claim`/`reassign` sets
+// `ownerName`. So "a plan nothing has been dispatched into" is literally a board of unowned tasks
+// (they are not even candidates: an unowned task cannot be wedged), and "somebody was handed this"
+// is an OWNED row — which is what the projection reports as `dispatched`. The retired record's
+// `attemptId`-at-dispatch signal has no replacement and is not needed: ownership IS the dispatch
+// record on the official plane.
+//
+// `never-started` (a CLAIMED task whose owner never stamped) must therefore still be spent only on
+// an OWNED task, and a board of unowned tasks must stay completely silent.
 import { describe, expect, test } from "bun:test"
 import { WatchdogEngine } from "../src/engine"
 import { candidateFor } from "../src/machine"
@@ -26,13 +28,15 @@ import { pluginCtx, sandbox, testConfig, writeTeam, type TeamFixture } from "./s
 const STAGED_TASK_IDS = ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12"]
 
 /**
- * The staged plan's record shape, taken from the real `team.json`.
+ * The plan's official shape: `claimed` names the tasks SOMEBODY HAS BEEN HANDED (an owned row),
+ * `revisions` overrides a task's board revision (the generation token), and every other task is
+ * an UNOWNED row exactly as `team_task_create` leaves it.
  *
- * @param dispatched - whether the scheduler has handed each task to its member (the
- *   `attemptId` it writes at dispatch), which is the only difference between the staged
- *   plan and a running one.
+ * @param claimed - the task ids that carry an owner (claim/reassign happened for them).
+ * @param revisions - per-task board revision; default 1.
  */
-function planFixture(dispatched: boolean): TeamFixture {
+function planFixture(claimed: string[], revisions: Record<string, number> = {}): TeamFixture {
+  const owned = new Set(claimed)
   return {
     id: "mpd-default",
     name: "MPD Default",
@@ -46,8 +50,7 @@ function planFixture(dispatched: boolean): TeamFixture {
     tasks: STAGED_TASK_IDS.map((id) => ({
       id,
       status: "pending",
-      assignee: "Planner",
-      ...(dispatched ? { attempt: 1, attemptId: "att-" + id } : {}),
+      ...(owned.has(id) ? { assignee: "Planner", attempt: revisions[id] ?? 1 } : {}),
     })),
   }
 }
@@ -89,10 +92,10 @@ async function tick(
 }
 
 describe("a staged plan is never a dispatch problem", () => {
-  test("12 pending assigned tasks, no attempt and no stamp: NO record, NO console line, NO hold", async () => {
+  test("12 UNOWNED pending tasks (a plan nothing was dispatched into): NO record, NO console line, NO hold", async () => {
     const box = sandbox()
     try {
-      const observed = await tick(box, planFixture(false), 1_789_530_153_225)
+      const observed = await tick(box, planFixture([]), 1_789_530_153_225)
       expect(observed.incidents).toEqual([])
       expect(observed.lines).toEqual([])
       expect(observed.result.decisions).toEqual([])
@@ -103,16 +106,17 @@ describe("a staged plan is never a dispatch problem", () => {
     }
   })
 
-  test("CONTROL: the same record WITH dispatch attempts still reports every never-started task", async () => {
+  test("CONTROL: the same 12 tasks once CLAIMED still report every never-started task", async () => {
     const box = sandbox()
     try {
-      const observed = await tick(box, planFixture(true), 1_789_530_153_225)
+      const observed = await tick(box, planFixture(STAGED_TASK_IDS), 1_789_530_153_225)
       // The rule stays falsifiable: a member that was HANDED a task and never stamped is
       // still reported, once per task, with no hold and no escalation.
       expect(observed.incidents.length).toBe(STAGED_TASK_IDS.length)
       expect(observed.incidents.every((record) => record.kind === "never-started")).toBe(true)
       expect(observed.incidents.map((record) => record.taskId)).toEqual(STAGED_TASK_IDS)
-      expect(observed.incidents.every((record) => record.attemptId !== "")).toBe(true)
+      // The generation token is the projected official board revision, never empty.
+      expect(observed.incidents.every((record) => record.attemptId === "1")).toBe(true)
       expect(observed.incidents.every((record) => record.hold === "not-requested")).toBe(true)
       expect(observed.lines.length).toBe(STAGED_TASK_IDS.length)
       expect(observed.holds).toEqual([])
@@ -121,19 +125,19 @@ describe("a staged plan is never a dispatch problem", () => {
     }
   })
 
-  test("a REVOKED generation (attempt cleared, one old stamp) stays observable — and only that task does", async () => {
+  test("a task whose work came from an EARLIER revision stays observable — and only that task does", async () => {
     const box = sandbox()
     try {
-      // The adopted scheduler clears the attempt id when a first delivery fails
-      // (lib/scheduler.js:669-687), and an amend can hand a task back to the pool. The task was
-      // worked on, so it must not fall into the staged bucket: the stamp names an EARLIER attempt,
-      // which the W11-2 filter (correctly) refuses to count as this generation's silence.
-      const observed = await tick(box, planFixture(false), 1_789_530_153_225, [
-        { memberKey: "Planner", taskId: "t1", attemptId: "att-t1-1", teamId: "mpd-default", at: 1_789_530_000_000 },
+      // t1 is CLAIMED at board revision 2, i.e. its generation token is "2"; the hand-written
+      // stamp names revision 1, an earlier generation. The stamp proves the task WAS worked on
+      // (so it is not a never-dispatched row), and the W11-2 filter refuses to count it as THIS
+      // generation's silence — so it is reported `never-started`, not warned about.
+      const observed = await tick(box, planFixture(["t1"], { t1: 2 }), 1_789_530_153_225, [
+        { memberKey: "Planner", taskId: "t1", attemptId: "1", teamId: "mpd-default", at: 1_789_530_000_000 },
       ])
       expect(observed.incidents.map((record) => record.taskId)).toEqual(["t1"])
       expect(observed.incidents[0].kind).toBe("never-started")
-      expect(observed.incidents[0].attemptId).toBe("")
+      expect(observed.incidents[0].attemptId).toBe("2")
       expect(observed.lines.length).toBe(1)
       expect(observed.holds).toEqual([])
     } finally {
@@ -146,19 +150,23 @@ describe("candidateFor applies the precondition", () => {
   const tasks = [
     { id: "t1", status: "pending", assignee: "Planner" },
     { id: "t2", status: "pending", assignee: "Planner", attemptId: "att-t2" },
+    { id: "t3", status: "pending", assignee: "Planner", dispatched: true },
   ]
 
   test("an un-dispatched task is not a candidate; a dispatched one is", () => {
     const candidates = candidateFor({ id: "mpd-default", tasks }, () => [], (assignee) => assignee)
-    expect(candidates.map((candidate) => candidate.taskId)).toEqual(["t2"])
+    expect(candidates.map((candidate) => candidate.taskId)).toEqual(["t2", "t3"])
     expect(candidates[0].attemptId).toBe("att-t2")
+    // The projection's own dispatch flag (ownership on the official board) is a sufficient signal
+    // on its own, with no attempt information at all.
+    expect(candidates[1].attemptId).toBe("")
   })
 
   test("a stamp for the task keeps it observable even without a live attempt", () => {
     const candidates = candidateFor({ id: "mpd-default", tasks }, (key) =>
       key === "Planner" ? [{ kind: "turn-start", at: 5, member: "Planner", memberKey: "Planner", teamId: "mpd-default", taskId: "t1", attemptId: null, turnId: "Planner#1", workspace: "/w" }] : [],
     (assignee) => assignee)
-    expect(candidates.map((candidate) => candidate.taskId)).toEqual(["t1", "t2"])
+    expect(candidates.map((candidate) => candidate.taskId)).toEqual(["t1", "t2", "t3"])
     expect(candidates[0].everStampedForTask).toBe(true)
   })
 
@@ -168,7 +176,7 @@ describe("candidateFor applies the precondition", () => {
     (assignee) => assignee)
     // Observable — and the W11-2 filter keeps it OUT of this generation's silence, so it is a
     // `never-started` observation, exactly as before the gate existed.
-    expect(ownGeneration.map((candidate) => candidate.taskId)).toEqual(["t1", "t2"])
+    expect(ownGeneration.map((candidate) => candidate.taskId)).toEqual(["t1", "t2", "t3"])
     expect(ownGeneration[0].everStampedForTask).toBe(false)
 
     const foreignTeam = candidateFor({ id: "mpd-default", tasks }, (key) =>
@@ -176,6 +184,6 @@ describe("candidateFor applies the precondition", () => {
     (assignee) => assignee)
     // A stamp from another team says nothing about THIS task: it cannot make an un-dispatched
     // task observable (that would re-open the flood through a same-named member of another team).
-    expect(foreignTeam.map((candidate) => candidate.taskId)).toEqual(["t2"])
+    expect(foreignTeam.map((candidate) => candidate.taskId)).toEqual(["t2", "t3"])
   })
 })

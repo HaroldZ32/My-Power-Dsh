@@ -11,6 +11,21 @@
 > the Web side is `packages/mpd-agent-teams-plugin/lib/**` (the adopted MIT plugin, read-only for
 > this wave) and `packages/mpd-bundle-plugin/src/**` (our own Web pages).
 
+> **BASELINE STATUS — read this before quoting any team row (0.1.7-rc.2).** The Web side this ledger
+> scores against is the **vendored `agent-teams` plugin, which is now RETIRED from the composition**:
+> no loader row mounts it, so its routes (`/plugins/dsh-agent-teams/**`), its `.mpd/team` records and
+> its sidebar panel do not exist in a shipped session. Every row and section below is that wave's
+> MEASUREMENT of that baseline — history, not current capability.
+>
+> Two consequences, stated rather than left to be inferred when a team row is cited:
+> **the whole plan-approval family does not exist any more** (a staged plan, `approve <teamId>` +
+> `Ctrl+X`, `Ctrl+D` discard, the plan member/task editors, `plan-continue`), because the OFFICIAL
+> Agent Teams plugin this bundle mounts has **no staged plan and no approval step** — the Lead spawns
+> a teammate with `spawn_teammate`, opens its lane with `team_task_create`, and the shared board IS
+> the plan; and **the team state a TUI scene could read** is the Lead's session log, not
+> `.mpd/team/team.json`. For the current team capability read `docs/user-guide.md` §6,
+> `docs/tui.md` §3.2 and `docs/plan-0.1.7-adaptation.md`.
+
 This is the persistent, human-facing ledger for one question: **for every surface the Web edition
 of this bundle offers, what does the DSH-TUI edition offer instead, and if the answer is
 "nothing", why is that acceptable?** "Equal" here never means equal layout, styling, animation,
@@ -74,7 +89,7 @@ a measured Web artifact). `—` means there is no TUI surface to name.
 | `plan-task-editor` (subject/assignee/dependencies) | `lib/index.js:426` (`update_task`) | absent | — | — | NOT-CLAIMED #2 |
 | `plan-add-task` | `lib/index.js:443` (`add_task`) | absent | — | — | NOT-CLAIMED #2 |
 | `plan-remove-task` | `lib/index.js:458` (`remove_task`) | absent | — | — | NOT-CLAIMED #2 |
-| `plan-pre-approval editing / merge` | `lib/index.js:405-475` (the editor action block); `lib/tools.js:759` (`agent_teams_edit_plan`) | absent | — | — | NOT-CLAIMED #2; the contract's row label `merge-autonomous-plan` has no locatable anchor in the adopted client bytes — see deviation D2 |
+| `plan-pre-approval editing / merge` | `lib/index.js:405-475` (the editor action block); `lib/tools.js:759` (the plugin's edit-plan tool) | absent | — | — | NOT-CLAIMED #2; the contract's row label `merge-autonomous-plan` has no locatable anchor in the adopted client bytes — see deviation D2. (The whole plan-approval family is retired — see the banner.) |
 | `activity-panel/archived-teams view (?archived=1)` | `lib/index.js:255-272`; `lib/client.js:360-367` | absent | — | — | measured: the TUI reads the live state root only and selects one newest record (`packages/mpd-tui-plugin/src/state.ts:107-109`); archived teams are not projected |
 | `activity-panel/panel-geometry + drag/resize` | `lib/client/panel-geometry.js:121` | not-applicable | — | — | a terminal scene has no floating geometry (§7.1) |
 | `activity-panel/localization (t())` | `lib/client/locales.js` | not-applicable | the injected `tuiCommandTrees` carries `descriptions.zh` (`src/command-trees.ts:18-25`); scene text stays English | E4 (`16-command-completion.pane.txt`) | §5.1 plus §7.1 — no scene-text localization is claimed |
@@ -160,7 +175,7 @@ The mandatory row `activity-panel/merge-autonomous-plan` is kept (an omitted row
 the label itself could not be located in the adopted client bytes: a case-insensitive search for
 `autonomous|merge` over `packages/mpd-agent-teams-plugin/lib/client.js` and `lib/client/**` returns
 zero hits. The row is therefore anchored to the nearest MEASURED Web surface — the pre-approval plan
-editor action block (`lib/index.js:405-475`) and `agent_teams_edit_plan` (`lib/tools.js:759`). This
+editor action block (`lib/index.js:405-475`) and the plugin's edit-plan tool (`lib/tools.js:759`). This
 is recorded rather than silently re-labelled: a reader comparing this page with the contract sees
 the discrepancy and its cause.
 
@@ -224,11 +239,17 @@ Web column cites source, exactly as the contract's §2 does).
 
 ## 6. How to open each TUI surface
 
+**The team rows in this table describe the RETIRED baseline (see the banner at the top): a staged
+plan, `approve <teamId>` + `Ctrl+X` and the `team-plan …` board row do not exist in a shipped
+session any more.** What a current session can open is `/mpd team`, `/mpd board`, `/mpd status`,
+`/mpd workmates`, `/settings` and the `/mpd` grammar — the TUI action list is
+`packages/mpd-tui-plugin/src/command-trees.ts`.
+
 | Surface | How to open it | Then |
 |---|---|---|
-| The team workflow | `/mpd team` (or `/mpd` → picker, or `a` while `mpd-tui-board` is open) | `p` jumps to the board; `a` jumps to the plan surface for the same team; `r` re-reads |
-| The plan approval | `/mpd plan` (or `a` inside `mpd-tui-team`) | type `approve <teamId>` exactly, then `Ctrl+X`; `Ctrl+R` re-reads unconditionally; `Ctrl+D` twice inside 10 s discards |
-| The board with the two new rows | `/mpd board`, the configured shortcut, or picking the board | the `team-plan …` row (only for a staged team) and the `team-hold held (…)` row (only while a watchdog hold lasts) |
+| The team workflow | `/mpd team` (or `/mpd` → picker, or `a` while `mpd-tui-board` is open) | `p` jumps to the board; `r` re-reads |
+| ~~The plan approval~~ (RETIRED — no staged plan exists; use the official `team_task_*` tools) | — | — |
+| The board | `/mpd board`, the configured shortcut, or picking the board | the `team-hold held (…)` row (only while a watchdog hold lasts) |
 | The workmate library (listing) | `/mpd workmates` | prints the count and names; mutations are Web-only (row 24) |
 | The status line | `/mpd status` (or the configured status seam) | the one-line team summary, including the hold when one lasts |
 | The settings section | `/settings`, then the `mpd` section | edit a knob; the section states the bridge and the restart caveat |

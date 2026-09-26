@@ -1,10 +1,25 @@
 #!/usr/bin/env node
 // B9 row-parity guard: the legacy installer (scripts/install-profile.mjs) must
-// declare the SAME row-id set as the bundle patch's `- insert:` lists
-// (packages/mpd-bundle/cordis.patch.yml). The measured defect this locks out:
-// the installer and the patch once declared DIFFERENT row-id sets, so an
-// install-profile install silently mounted none of the rows only the patch
-// carried while `--dump-config` still looked healthy.
+// declare the SAME row-id set as the bundle's patch layer. The measured defect
+// this locks out: the installer and the patch once declared DIFFERENT row-id
+// sets, so an install-profile install silently mounted none of the rows only the
+// patch carried while `--dump-config` still looked healthy.
+//
+// 0.1.7-rc.2 SOURCE CHANGE: the patch layer is no longer ONE file. The root
+// manifest declares `dsh.bundle.patch` as an ARRAY (the shipped-preset shape):
+// the main bundle patch plus `presets/mpd.patch.yml`, which carries the whole
+// mpd preset as a `@deepseek-ai/dsh-agent-preset` ROW. This guard therefore
+// DISCOVERS the patch files from that one declaration — the same declaration the
+// loader reads — and compares the UNION of their row ids, so a row that lives
+// only in the second file is as binding as one in the first.
+//
+// Both row KINDS count now: an `- insert:` entry (a row this bundle adds) and a
+// COLUMN-0 `- id:` id-target (a row this bundle overrides, e.g.
+// `agent-preset-registry`, which the web-app layer declares). An id-target IS a
+// row the legacy install must write, and leaving it out of the comparison is
+// exactly how the two flows drift. Rows nested inside a preset row's inline
+// `config.plugins` list are NOT home-patch rows — they travel INSIDE the
+// `preset-mpd` row — and the extraction's indentation rule keeps them out.
 //
 // Gate story: run it exactly like the other repo-level guard,
 // `node ./scripts/verify-rows-parity.mjs` (cf. `node ./scripts/verify-vendor.mjs`).
@@ -13,9 +28,7 @@
 // The installer's set is MEASURED by running it in --dry-run against a throwaway
 // --dsh-home (every row then renders as an insert and nothing is written), never
 // by scraping its source: the printed patch is exactly what a legacy install
-// would write. The patch's set comes from its `- insert:` blocks only — the
-// file's one column-0 id-target (`agent-presets`) is not an installer row, and
-// commented-out rows (`# - id: …`) are skipped by construction.
+// would write. Commented-out rows (`# - id: …`) are skipped by construction.
 //
 // Lives under scripts/ (NOT skills/**) on purpose: skills/** is VENDOR_LOCK
 // fingerprinted, and editing it would force a treeSha re-pin in the same commit.
@@ -23,9 +36,9 @@
 // T-68 (wave 2b, lane B) adds `--self-test`. Before it this guard shipped NO
 // self-test arm, so a parity guard that cannot be shown to redden was an
 // assertion about its own source rather than an instrument. The arms are
-// HERMETIC by construction: every one drives the SAME comparison over a TEMP
-// fixture patch and a TEMP fixture installer, and the run asserts that the LIVE
-// patch's bytes and mtime are untouched (the NEG CONTROL the acceptance names) —
+// HERMETIC by construction: every one drives the SAME comparison over TEMP
+// fixture patches and a TEMP fixture installer, and the run asserts that the LIVE
+// patches' bytes and mtimes are untouched (the NEG CONTROL the acceptance names) —
 // so another lane's patch edit can never redden the self-test, and the
 // self-test can never touch the live tree.
 import { spawnSync } from "node:child_process"
@@ -36,17 +49,32 @@ import { fileURLToPath } from "node:url"
 
 const SELF = fileURLToPath(import.meta.url)
 const repoRoot = dirname(dirname(SELF))
-const PATCH_PATH = join(repoRoot, "packages", "mpd-bundle", "cordis.patch.yml")
+const MANIFEST_PATH = join(repoRoot, "package.json")
 const INSTALLER_PATH = join(repoRoot, "scripts", "install-profile.mjs")
 const PREFIX = "[verify-rows-parity]"
 
-// Row ids declared by the bundle patch's `- insert:` blocks: entries are
-// 4-space indented (`    - id: X`) under a column-0 `- insert:`. Commented-out
-// rows (4 spaces + `#`) and deeper nested config keys never match.
-function bundleInsertIds(patchText) {
+/** The bundle's patch files, from the ONE declaration the loader itself reads (string OR array). */
+function declaredPatchPaths(manifestPath = MANIFEST_PATH) {
+  const raw = JSON.parse(readFileSync(manifestPath, "utf8"))?.dsh?.bundle?.patch
+  const list = Array.isArray(raw) ? raw : typeof raw === "string" ? [raw] : []
+  return list.filter((value) => typeof value === "string" && value.trim() !== "").map((value) => resolve(repoRoot, value))
+}
+
+// Row ids declared by ONE patch file:
+//   * entries of an `- insert:` list — 4-space indented (`    - id: X`), the
+//     indentation the shipped patches and this bundle both use; deeper lines are
+//     config (and a preset row's `config.plugins` children are deeper still), so
+//     the rule keeps them out;
+//   * a COLUMN-0 id-target (`- id: X`), i.e. a row the patch overrides in place.
+// Commented-out rows (`# - id: …`) never match.
+function patchRowIds(patchText) {
   const ids = []
   let inInsert = false
   for (const raw of patchText.split(/\r?\n/)) {
+    if (/^- id: ['"]?([A-Za-z0-9_.-]+)['"]?\s*$/.test(raw)) {
+      ids.push(raw.match(/^- id: ['"]?([A-Za-z0-9_.-]+)['"]?\s*$/)[1])
+      continue
+    }
     if (/^- insert:\s*$/.test(raw)) { inInsert = true; continue }
     if (!inInsert) continue
     if (raw.trim() === "") continue
@@ -81,11 +109,11 @@ function duplicates(ids) {
 }
 
 /** The pure comparison over explicit inputs, so the live run and every fixture drive ONE rule. */
-function compareRowSets({ patchText, installerIds }) {
-  const patchIds = bundleInsertIds(patchText)
+function compareRowSets({ patchTexts, installerIds }) {
+  const patchIds = patchTexts.flatMap((text) => patchRowIds(text))
   const patchSet = new Set(patchIds)
   const installerSet = new Set(installerIds)
-  // Directional sets: `missing` is declared by the patch but absent from the
+  // Directional sets: `missing` is declared by the patch layer but absent from the
   // installer (the B9 shape); `extra` is the reverse.
   const missing = [...patchSet].filter((id) => !installerSet.has(id))
   const extra = [...installerSet].filter((id) => !patchSet.has(id))
@@ -100,27 +128,29 @@ function liveRun(opts) {
     if (installerRun.stderr) console.error(String(installerRun.stderr).trim())
     process.exit(1)
   }
-  const cmp = compareRowSets({ patchText: readFileSync(opts.patchPath, "utf8"), installerIds: installerRun.ids })
+  const patchTexts = opts.patchPaths.map((path) => readFileSync(path, "utf8"))
+  const cmp = compareRowSets({ patchTexts, installerIds: installerRun.ids })
 
   // Guard-1 (t8 / R7.15): a run with ZERO subjects is a degraded run, not a pass. Without this,
-  // a patch that declares no `- insert:` block (or an installer that prints nothing) made the
+  // a patch layer that declares no row (or an installer that prints nothing) made the
   // comparison below trivially true and the gate exited 0 while checking nothing.
   if (cmp.patchSet.size === 0 || cmp.installerSet.size === 0) {
-    const empty = [cmp.patchSet.size === 0 ? "the bundle patch declares no '- insert:' row ids" : "", cmp.installerSet.size === 0 ? "the installer declares no row ids" : ""].filter(Boolean)
+    const empty = [cmp.patchSet.size === 0 ? "the bundle patch layer declares no row ids" : "", cmp.installerSet.size === 0 ? "the installer declares no row ids" : ""].filter(Boolean)
     console.error(PREFIX + " FAIL - zero-subject run: " + empty.join(" and ") + " - refusing to report PASS with nothing to compare")
     process.exit(1)
   }
   if (cmp.missing.length || cmp.extra.length || cmp.patchDup.length || cmp.installerDup.length) {
     console.error(PREFIX + " FAIL - installer vs bundle patch row ids differ")
-    console.error("  bundle patch inserts (" + cmp.patchSet.size + "): " + [...cmp.patchSet].join(", "))
-    console.error("  installer rows       (" + cmp.installerSet.size + "): " + [...cmp.installerSet].join(", "))
+    console.error("  bundle patch files (" + opts.patchPaths.length + "): " + opts.patchPaths.join(", "))
+    console.error("  bundle patch rows  (" + cmp.patchSet.size + "): " + [...cmp.patchSet].join(", "))
+    console.error("  installer rows     (" + cmp.installerSet.size + "): " + [...cmp.installerSet].join(", "))
     if (cmp.missing.length) console.error("  MISSING from scripts/install-profile.mjs: " + cmp.missing.join(", "))
-    if (cmp.extra.length) console.error("  EXTRA in scripts/install-profile.mjs (not in the patch): " + cmp.extra.join(", "))
-    if (cmp.patchDup.length) console.error("  DUPLICATE ids in the bundle patch: " + cmp.patchDup.join(", "))
+    if (cmp.extra.length) console.error("  EXTRA in scripts/install-profile.mjs (not in the patch layer): " + cmp.extra.join(", "))
+    if (cmp.patchDup.length) console.error("  DUPLICATE ids in the bundle patch layer: " + cmp.patchDup.join(", "))
     if (cmp.installerDup.length) console.error("  DUPLICATE ids in the installer: " + cmp.installerDup.join(", "))
     process.exit(1)
   }
-  if (!opts.quiet) console.log(PREFIX + " ok: " + cmp.installerSet.size + " row ids match the bundle patch insert list (" + [...cmp.installerSet].sort().join(", ") + ")")
+  if (!opts.quiet) console.log(PREFIX + " ok: " + cmp.installerSet.size + " row ids match the " + opts.patchPaths.length + "-file bundle patch layer (" + [...cmp.installerSet].sort().join(", ") + ")")
 }
 
 // ---------------------------------------------------------------------------
@@ -146,8 +176,9 @@ function selfTest() {
   const arms = []
   const arm = (name, ok, detail) => arms.push({ name, ok: Boolean(ok), detail })
   const startedAt = Date.now()
-  const livePatchText = readFileSync(PATCH_PATH, "utf8")
-  const livePatchMtime = statSync(PATCH_PATH).mtimeMs
+  const livePaths = declaredPatchPaths()
+  const liveTexts = livePaths.map((path) => readFileSync(path, "utf8"))
+  const liveMtimes = livePaths.map((path) => statSync(path).mtimeMs)
   const liveInstallerMtime = statSync(INSTALLER_PATH).mtimeMs
   const scratch = mkdtempSync(join(tmpdir(), "mpd-rows-parity-selftest-"))
   try {
@@ -162,6 +193,9 @@ function selfTest() {
     writeFileSync(driftPatch, fixturePatch(["row-a", "row-b", "row-c", "row-d"]))
     const emptyPatch = join(scratch, "empty.patch.yml")
     writeFileSync(emptyPatch, "# no insert block at all\n")
+    // The 0.1.7 shape: a SECOND patch file carrying an id-target AND an insert row.
+    const secondPatch = join(scratch, "preset.patch.yml")
+    writeFileSync(secondPatch, ["- id: registry-row", "  name: x", "", "- insert:", "    - id: preset-row", ""].join("\n"))
 
     // (a) fixture parity -> exit 0, the ids are named
     const a = childRun(["--patch", goodPatch, "--installer", installerFor("fx-parity.mjs", ["row-a", "row-b", "row-c"])])
@@ -183,12 +217,26 @@ function selfTest() {
     const e = childRun(["--patch", emptyPatch, "--installer", installerFor("fx-empty.mjs", ["row-a"])])
     arm("(e) zero-subject patch -> exit 1 (degraded, never a pass)", e.status === 1 && e.err.includes("zero-subject"), "exit " + e.status)
 
+    // (g) MULTI-FILE layer: an id-target and an insert living in the SECOND file
+    // both bind the installer. One file alone is not the contract any more.
+    const gBoth = childRun(["--patch", goodPatch, "--patch", secondPatch, "--installer", installerFor("fx-multi.mjs", ["row-a", "row-b", "row-c", "registry-row", "preset-row"])])
+    arm("(g) two patch files -> id-target + insert from the second both count", gBoth.status === 0 && gBoth.out.includes("5 row ids match") && gBoth.out.includes("2-file"), "exit " + gBoth.status + "; " + gBoth.out.trim())
+    const gOne = childRun(["--patch", goodPatch, "--installer", installerFor("fx-multi.mjs", ["row-a", "row-b", "row-c", "registry-row", "preset-row"])])
+    arm("(g2) dropping the second file -> exit 1 with BOTH of its rows named MISSING", gOne.status === 1 && gOne.err.includes("registry-row") && gOne.err.includes("preset-row"), "exit " + gOne.status + "; " + (gOne.err.split("\n").find((l) => l.includes("MISSING")) ?? "(no MISSING line)"))
+
+    // (h) the LIVE discovery must really read the manifest's array (>= 2 files).
+    // A discovery that silently returned one file would compare a subset and pass.
+    arm("(h) live manifest declares >= 2 patch files and discovery finds them all", livePaths.length >= 2 && liveTexts.every((text) => text.length > 0), livePaths.map((p) => p.replace(repoRoot + "/", "")).join(", ") || "(none)")
+
     // (f) hermeticity: fixtures live in a temp dir, and the LIVE inputs are untouched by the run
-    const livePatchMtimeAfter = statSync(PATCH_PATH).mtimeMs
+    const liveMtimesAfter = livePaths.map((path) => statSync(path).mtimeMs)
     arm(
-      "(f) hermetic: temp fixtures only; the live patch's bytes + mtime are unchanged",
-      scratch.startsWith(tmpdir()) && readFileSync(PATCH_PATH, "utf8") === livePatchText && livePatchMtimeAfter === livePatchMtime && statSync(INSTALLER_PATH).mtimeMs === liveInstallerMtime,
-      "fixture root " + scratch + " (temp); live patch bytes unchanged, mtime " + livePatchMtime + " -> " + livePatchMtimeAfter + "; elapsed " + (Date.now() - startedAt) + "ms",
+      "(f) hermetic: temp fixtures only; the live patches' bytes + mtimes are unchanged",
+      scratch.startsWith(tmpdir())
+        && livePaths.every((path, i) => readFileSync(path, "utf8") === liveTexts[i])
+        && liveMtimesAfter.every((mtime, i) => mtime === liveMtimes[i])
+        && statSync(INSTALLER_PATH).mtimeMs === liveInstallerMtime,
+      "fixture root " + scratch + " (temp); live patches unchanged; elapsed " + (Date.now() - startedAt) + "ms",
     )
   } catch (error) {
     arm("self-test harness", false, String(error?.stack ?? error))
@@ -203,16 +251,21 @@ function selfTest() {
 }
 
 function parseArgs(argv) {
-  const opts = { patchPath: PATCH_PATH, installerPath: INSTALLER_PATH, selfTest: false, quiet: false }
+  const opts = { patchPaths: declaredPatchPaths(), installerPath: INSTALLER_PATH, selfTest: false, quiet: false }
+  let patchOverride = false
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === "--self-test") opts.selfTest = true
     else if (a === "--quiet") opts.quiet = true
-    else if (a === "--patch") opts.patchPath = resolve(argv[++i] ?? "")
-    else if (a === "--installer") opts.installerPath = resolve(argv[++i] ?? "")
+    else if (a === "--patch") {
+      // Repeatable: the bundle's patch layer is an ARRAY, and a caller that names
+      // one file means exactly that one file.
+      if (!patchOverride) { opts.patchPaths = []; patchOverride = true }
+      opts.patchPaths.push(resolve(argv[++i] ?? ""))
+    } else if (a === "--installer") opts.installerPath = resolve(argv[++i] ?? "")
     else {
       console.error(PREFIX + " FAIL - unknown argument: " + a)
-      console.error("usage: node ./scripts/verify-rows-parity.mjs [--patch <path>] [--installer <path>] [--quiet] [--self-test]")
+      console.error("usage: node ./scripts/verify-rows-parity.mjs [--patch <path>]... [--installer <path>] [--quiet] [--self-test]")
       process.exit(2)
     }
   }

@@ -22,7 +22,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 | 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个加上十二个 `teamModels` 槽位叶子（共 25 个），其中槽位叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**已与 `<workspace>/.mpd/mpd.jsonc` 打通**（保存会写入文件；插件行为需重启后生效）；每个字段的提示在界面上直接写明（见"明确不声明"第 2 条） |
 | 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库；已路由团队在面板上多两行：`team-plan …`（仅 staged 时）与 `team-hold held (…)`（仅看门狗 hold 持续期间） |
 | 团队工作流场景 | `ctx.tuiScenes` | `mpd-tui-team` —— 用 `/mpd team` 打开，或在面板中按 `a`：团队 id/名称/阶段、计划审阅状态、看门狗 hold、成员表（角色/模型/状态/进度/当前任务）以及任务 DAG（kind/状态/负责人/尝试/轮次/判定/依赖，按深度缩进，标 `failed-dep=`）与邮箱尾部 |
-| 计划批准场景 | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开，或在团队工作流中按 `a`：逐字输入 `approve <teamId>`（界面上显示的 id），然后按 `Ctrl+X`；10 秒窗口内按两次 `Ctrl+D` 丢弃；`Esc` 永不产生变更；`Ctrl+R` 重新读取 |
+| 计划场景（0.1.7 起**只读**） | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开。它渲染实时任务板，并说明官方 Agent Teams 平面上不存在批准流程；原先“逐字输入短语 + `Ctrl+X` 批准 / `Ctrl+D` 丢弃”的交互已随其工具（`agent_teams_approve`、`agent_teams_delete`，现已无任何行注册）一同移除 |
 | 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd workmates` 补全 |
 | 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
 | 对话框 | `ctx.tuiDialogs` | 托管式 workmate 选择器（`select`） |
@@ -54,7 +54,8 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 面板是 web 专有界面（agent-teams 侧边栏、workmate 标签页）的
 TUI 原生等价物。它**只读**状态：
 
-- `<workspace>/.mpd/team/<teamId>/team.json`（取最新记录）
+- 官方 Agent Teams 实时读数（`dsh.teamLiveTeams()`，经适配器；0.1.7 起旧的
+  `.mpd/team/<teamId>/team.json` 已消失，且**单人会话**不再被当作团队展示）
 - `<workspace>/.mpd/boulder.json`
 - `<workspace>/.mpd/plans/*.md`
 - `$HOME/.mpd/workmate/<key>/meta.json`（用户级 workmate 库）
@@ -63,10 +64,10 @@ TUI 原生等价物。它**只读**状态：
 `packages/mpd-dsh-adapter-plugin` 的 `workspaceRoot` / `workspaceRootsAll`），
 绝不使用 dsh 进程的 cwd。
 
-这里的只读规则不是一句政策声明，而是构建产物自身的属性：包内不含任何写原语，
-两个计划动作都是经由适配器发起的工具调用（`agent_teams_approve`、
-`agent_teams_delete`）——适配器会透传发起调用的 agent，因此采用的运行时自身的
-captain 校验依然生效。
+这里的只读规则不是一句政策声明，而是构建产物自身的属性：包内不含任何写原语。
+0.1.7 让这条规则**更强**了：原先两个计划动作是经适配器发起的工具调用
+（`agent_teams_approve`、`agent_teams_delete`），而这两个工具已随所属插件退役、官方平面没有替代品，
+因此计划场景如今完全无法产生变更——每一次拒绝都会如实说明这一点。
 
 **Web 版每一个界面与 TUI 对应物的关系**，在 `docs/tui-parity.md`
 （+ `docs/tui-parity.zh-CN.md`）中逐行回答：每个界面的状态、原因与证据层级，

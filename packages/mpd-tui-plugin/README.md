@@ -23,7 +23,7 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 | Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13 plus the twelve `teamModels` slot leaves (25 in all), the slot leaves rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin behaviour needs a restart); every field hint says so on screen (see NOT CLAIMED #2) |
 | Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library; two extra rows for a routed team: `team-plan …` (staged only) and `team-hold held (…)` (only while a watchdog hold lasts) |
 | Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
-| Plan-approval scene | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`, or `a` inside the team workflow: type `approve <teamId>` EXACTLY (the id shown on the surface), then `Ctrl+X`; `Ctrl+D` twice inside the 10-second window discards; `Esc` never mutates; `Ctrl+R` re-reads |
+| Plan scene (READ-ONLY, 0.1.7) | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`. It renders the live board and states that no approval flow exists on the official Agent Teams plane; the retired type-the-phrase / `Ctrl+X` approval and the `Ctrl+D` discard are gone with the tools that served them (`agent_teams_approve`, `agent_teams_delete` are registered by no row) |
 | Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd workmates` completion |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+w` workmate picker · `alt+r` refresh the status line |
 | Dialogs | `ctx.tuiDialogs` | the mediated workmate picker (`select`) |
@@ -60,7 +60,8 @@ declared lists. The branch that produced the options is logged on every registra
 
 The board is the TUI-native equivalent of the web-only surfaces (agent-teams
 sidebar, workmate tab). It reads state — it never writes:
-- `<workspace>/.mpd/team/<teamId>/team.json` (newest record wins)
+- the OFFICIAL Agent Teams readout (`dsh.teamLiveTeams()`, through the adapter — 0.1.7:
+  the retired `.mpd/team/<teamId>/team.json` is gone, and a SOLO session is not shown as a team)
 - `<workspace>/.mpd/boulder.json`
 - `<workspace>/.mpd/plans/*.md`
 - `$HOME/.mpd/workmate/<key>/meta.json` (the durable workmate library)
@@ -70,10 +71,10 @@ Every path is resolved per call under the **calling session's workspace**
 never the dsh process cwd.
 
 The read-only rule is not a policy statement here, it is a property of the built
-bytes: the package contains no write primitive, and the two plan actions are tool
-calls made through the adapter (`agent_teams_approve`, `agent_teams_delete`) — the
-adapter forwards the calling agent, so the adopted runtime's own captain check
-still runs.
+bytes: the package contains no write primitive. 0.1.7 made it STRONGER: the two plan
+actions used to be tool calls through the adapter (`agent_teams_approve`,
+`agent_teams_delete`), and both tools are RETIRED with no official replacement, so the
+plan scene can no longer mutate anything at all — every refusal says exactly that.
 
 **Where each Web-edition surface stands against its TUI counterpart** is answered
 row by row in `docs/tui-parity.md` (+ `docs/tui-parity.zh-CN.md`): status, reason

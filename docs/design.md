@@ -23,10 +23,12 @@ shells and the base row set. `@mpd-dsh/mpd` designs what is added ON TOP of that
 is added:
 
 - a **patch layer** that inserts the bundle's rows into any profile the bundle is installed into,
-  and two id-targets that make the bundle's own `mpd` preset the default there,
-- **26 plugin rows** (6 MCP client rows, 17 `mpd-*` plugin rows, the `mpd-web-compat` self-row, the
-  adopted `agent-teams` row and the `mpd-better-sidebar` host row that mounts the bundle's declared
-  sidebar dependency), and the services, tools, commands, routes and state each one owns (§4),
+  and one id-target plus a second patch file that make the bundle's own `mpd` preset the default
+  there,
+- **28 inserted plugin rows** (6 MCP client rows, 18 `mpd-*` plugin rows including the
+  `mpd-web-compat` self-row, the 3 official Agent Teams rows, and the `mpd-better-sidebar` host row
+  that mounts the bundle's declared sidebar dependency), and the services, tools, commands, routes
+  and state each one owns (§4),
 - a **web client** and a **TUI surface** that render the bundle's surfaces inside the host's own
   shells (§7, §7b),
 - the **state layout** the bundle writes under the session workspace and under the user home (§6),
@@ -47,10 +49,10 @@ even when it works on the happy path.
    limits (§8b) instead of leaving them to be discovered.
 2. **One seam contact surface.** Exactly one package (`mpd-dsh-adapter`) touches the host's
    tool/agent/skill/preset seams; every other row calls through the `mpdDsh` service. A host
-   release that reshapes a seam is absorbed there instead of across the tree (§6b). Adopted
-   upstream main code is not an exception any more: the adopted `agent-teams` plugin reaches
-   those seams through the adapter as well, behind the mpd-owned bridge
-   `lib/mpd-adapter-ctx.js` (§6b).
+   release that reshapes a seam is absorbed there instead of across the tree (§6b). The RETAINED
+   (retired-from-composition) upstream `agent-teams` body is not an exception either: its `lib/`
+   still reaches those seams through the adapter, behind the mpd-owned bridge
+   `lib/mpd-adapter-ctx.js` (§6b) — which is why that code is kept rather than deleted.
 3. **Plugin form, config by reference.** Every capability is a Cordis plugin row or a configured
    host plugin instance; no logic lives in profiles or scripts. Assets (the skill corpus, the
    `mpd` preset) are SERVED by the bundle rather than copied into `$DSH_HOME`, so uninstall leaves
@@ -72,30 +74,32 @@ even when it works on the happy path.
 DSH is a Cordis host: plugins are rows in a composition (`cordis.yml` + patch layers),
 services are provided/consumed per scope, and the model route is resolved from the
 session's request header. my-power-dsh ships as an **npm bundle** (`@mpd-dsh/mpd`) whose
-`dsh.bundle.patch` (`packages/mpd-bundle/cordis.patch.yml`) adds rows to any profile it
-is installed into. It contributes:
+`dsh.bundle.patch` array (`packages/mpd-bundle/cordis.patch.yml` then `presets/mpd.patch.yml`)
+adds rows to any profile it is installed into. It contributes:
 
-- **26 inserted rows** in ONE additive patch layer: 6 MCP client rows (local ast-grep,
-  git-bash [disabled by default], LSP, codegraph; remote context7, grep.app), 17 `mpd-*`
-  plugin rows, the `mpd-web-compat` self-row that makes the bundle a loader entry, the
-  adopted `agent-teams` plugin row, and the `mpd-better-sidebar` row that mounts the
-  bundle's one external runtime dependency (the community sidebar host) — §4 lists every
-  one of them,
-- **2 id-targets** (not inserts) that make the bundle's own preset the default in each
-  composition: the `agent-presets` row on the web/base plane and `dsh-tui-agent-presets` on
-  the dsh-tui plane (§2, §6c),
+- **28 inserted rows** in TWO additive patch layers: 6 MCP client rows (local ast-grep,
+  git-bash [disabled by default], LSP, codegraph; remote context7, grep.app), 18 `mpd-*`
+  plugin rows (including the `mpd-web-compat` self-row that makes the bundle a loader entry),
+  the 3 OFFICIAL Agent Teams rows, and the `mpd-better-sidebar` row that mounts the
+  bundle's declared sidebar dependency (the community sidebar host) — §4 lists every
+  one of them. The second patch file contributes the `preset-mpd` row,
+- **1 id-target** (not an insert) that makes the bundle's own preset the default:
+  `agent-preset-registry` → `{ default: mpd }` (§2, §6c),
 - the harness adapter (`mpd-dsh-adapter`) every other row calls through,
-- one agent preset (`mpd`) and a skill corpus, served from the bundle (no home copy),
-- a combined web client (the AgentTeams sidebar page + the workmate library).
+- one agent preset (`mpd`) declared as a ROW, and a skill corpus served by reference
+  (no home copy),
+- a combined web client (the workmate library page; the team surface is the official
+  client plugin's own panel, §7).
 
 The specialist roster's 11 specialists are **not presets**: they live as a specialist roster
-(`mpd-roles-plugin`) and as teammate instantiation templates in the adopted
-`agent-teams` `mpd` profile.
+(`mpd-roles-plugin`) and as teammate instantiation templates the Lead spawns by name with the
+official `spawn_teammate` tool, taking each member's persona text from `mpd_role_persona`.
 
 ## 2. Bundle and package structure
 
 **The repo root IS the bundle package.** `package.json` is named `@mpd-dsh/mpd` and
-declares `dsh.bundle.patch` (`./packages/mpd-bundle/cordis.patch.yml`), `dsh.client`,
+declares `dsh.bundle.patch` (the ARRAY `["./packages/mpd-bundle/cordis.patch.yml",
+"./presets/mpd.patch.yml"]`), `dsh.client`,
 the `exports` map the rows resolve through and the toolchain `optionalDependencies`, so
 `dsh plugin add .` in the repo root installs the whole unit in ONE command (no pack
 step). `scripts/pack-mpd.mjs` is the RELEASE step: it assembles the relocatable
@@ -105,10 +109,11 @@ step). `scripts/pack-mpd.mjs` is the RELEASE step: it assembles the relocatable
 | Piece | Where it goes | Why |
 |---|---|---|
 | plugin dists | `packages/<pkg>/dist/index.js` | host rows reference them via `@mpd-dsh/mpd/packages/...` (the exports map) |
-| adopted agent-teams | `packages/mpd-agent-teams-plugin/` (lib + `_deps/` + assets) | copied wholesale so the bundle is self-contained under any install layout |
+| retired agent-teams body | `packages/mpd-agent-teams-plugin/` (lib + `_deps/` + assets) | kept as provenance and copied wholesale so the packed artifact stays self-contained; NO row mounts it (§4) |
 | combined web client | `packages/mpd-bundle-plugin/client.js` | served as `@mpd-dsh/mpd`'s `./client` export |
-| presets + skills | `presets/`, `skills/` | SERVED from the package: the patch roots the preset roster at `presets/`, `mpd-bootstrap` registers `skills/` as a skill provider — nothing is copied into `$DSH_HOME` |
-| `cordis.patch.yml` | package root | the `dsh.bundle.patch` layer |
+| skills | `skills/` | SERVED from the package: `mpd-bootstrap` registers `skills/` as a skill provider — nothing is copied into `$DSH_HOME` |
+| preset | `presets/mpd.patch.yml` | the `preset-mpd` ROW (`@deepseek-ai/dsh-agent-preset`, `config.id: mpd`, the child entry list inline) and the manifest's second `dsh.bundle.patch` entry |
+| `cordis.patch.yml` | package root | the first `dsh.bundle.patch` layer (the row inserts and the one id-target) |
 
 Manifest invariants (why they exist):
 
@@ -117,16 +122,21 @@ Manifest invariants (why they exist):
   as an entry (`ERR_PACKAGE_PATH_NOT_EXPORTED`).
 - `exports["./client"]` → combined client; `dsh.client.platform: "web"` — marks the
   bundle as a web client contributor.
-- **No `dependencies` on `@nanmicoder/dsh-agent-teams`** — pnpm (the engine behind
-  `dsh plugin add`) never links a bundle's transitive deps into the profile root, so a
-  plain package-name row would silently self-disable (the E4 defect, see
-  `docs/plan-e.md`). The adopted plugin is main code + its own vendored closure.
-- **Exactly one external `dependencies` entry: `dsh-better-sidebar`** — the community
-  sidebar bundle that hosts the two mpd tabs. It is DECLARED so a plain install is
-  enough, and it is resolvable because `@deepseek-ai/dsh-app-boot#healProfileModuleFallback`
+- **The retained `agent-teams` body is NOT a declared dependency.** pnpm (the engine behind
+  `dsh plugin add`) never links a bundle's transitive deps into the profile root, and a
+  package-name row would self-disable on an unresolvable module (the E4 defect, see
+  `docs/plan-e.md`). That body is main code plus its own vendored closure
+  (`packages/mpd-agent-teams-plugin/_deps/`), and since 0.1.7-rc.2 no row mounts it at all.
+- **Four `dependencies` entries: `dsh-better-sidebar` and the three official Agent Teams
+  packages** (`@deepseek-ai/dsh-experimental-agent-team`, `-tool-agent-team`,
+  `-client-ui-agent-team`). Declaring a dependency mounts nothing on its own, and a row
+  alone would be boot-fatal when the module cannot be resolved, so BOTH halves are
+  required: the packages are resolvable because
+  `@deepseek-ai/dsh-app-boot#healProfileModuleFallback`
   materializes the dependency closure of non-installation bundle layers into
-  `<profile>/node_modules` before the loader runs; a checkout install materializes it in
-  the repository (`bun install`). The row that mounts it (`mpd-better-sidebar`) is guarded
+  `<profile>/node_modules` before the loader runs, and this bundle mounts them with its own
+  `mpd-*-agent-team` rows (§4). A checkout install also materializes them in
+  the repository (`bun install`). The row that mounts the sidebar (`mpd-better-sidebar`) is guarded
   and order-independent (§4), so a composition that mounts the package itself keeps
   working and an unresolvable package degrades to "no sidebar", never a dead boot.
 
@@ -172,14 +182,15 @@ to bare package names.
 ## 4. Plugin inventory
 
 **Every row of `packages/mpd-bundle/cordis.patch.yml`, by composition.** The patch layer is
-additive and carries **26 `insert` rows**; `node scripts/verify-rows-parity.mjs` asserts that this
-list and the repository's own row bookkeeping agree (exit 0, all 26 ids named). Two further entries
-are **id-targets**, not inserts — they REPLACE a row that exactly one composition already owns — so
-they are listed in their own table below.
+additive and carries **28 `insert` rows**; the bundle's SECOND patch file
+(`presets/mpd.patch.yml`) carries one more insert, the `preset-mpd` row, and both files are listed
+in the manifest's `dsh.bundle.patch` ARRAY. `node scripts/verify-rows-parity.mjs` asserts that this
+list and the repository's own row bookkeeping agree. One further entry is an **id-target**, not an
+insert — it REPLACES a row the host itself owns — so it is listed in its own table below.
 
 The `Composition` column answers "which composition does this row reach": an `insert` row reaches
-every profile the bundle is installed into (`web + dsh-tui`). The two id-targets reach exactly one
-composition each, because the roster rows they replace are minted by exactly one composition each.
+every profile the bundle is installed into (`web + dsh-tui`). The id-target reaches the composition
+that mints the registry row.
 **Composition-only evidence**: `evidence/tui/composition/20260915T053445Z/raw/web-dump-config-final.txt`
 and `…/raw/dsh-tui-dump-config.txt` list the same bundle rows in both compositions; that snapshot
 predates `mpd-team-watchdog`, which the patch adds as an `insert` in the same band. A dump proves
@@ -196,11 +207,11 @@ COMPOSITION ONLY — it never executes plugin code, so it is never load evidence
 | `mpd-web-compat` | mpd-bundle-plugin | web + dsh-tui | web-compat self-row: makes `@mpd-dsh/mpd` a loader entry (the web client loads only for an entry of that exact name); hosts the combined web client | no-op apply; `./client` | — |
 | `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | web + dsh-tui | THE single contact surface with harness seams: tool registration/guard/post-execute/execute, subagent spawn, skill provider + catalog, preset resolve, capability probing | service `mpdDsh` | `defaultTimeoutMs`, `quiet` |
 | `mpd-config` | mpd-config-plugin | web + dsh-tui | minimal `mpd.jsonc` runtime config layer (project `.mpd/mpd.jsonc` merged over user `$DSH_HOME/mpd.jsonc`); owns the settings write-back (§7b) | `mpd_config_get`, `mpd_config_reload`; service `mpdConfig` | `projectFile`, `userFile` |
-| `mpd-team-watchdog` | mpd-team-watchdog-plugin | web + dsh-tui | per-step/per-tool heartbeat store for members AND the captain, the WARN→ESCALATE machine over the `watchdog.*` knobs, the atomic restorable scene snapshot, and the durable hold/incident sidecars written BESIDE the adopted `team.json` (which keeps its single writer); mounted on the HOST plane on purpose, so a preset-scoped tick cannot fail to witness a wedged captain | `session-watchdog-status`, `session-watchdog-hold`, `session-watchdog-resume` | `stateDir`, `warnSilenceMs`, `tickIntervalMs`, `warnStreakToEscalate`, `actionOnEscalate`, `toolInFlightMaxMs`, `holdTtlMs` |
+| `mpd-team-watchdog` | mpd-team-watchdog-plugin | web + dsh-tui | per-step/per-tool heartbeat store for members AND the captain, the WARN→ESCALATE machine over the `watchdog.*` knobs, the atomic restorable scene snapshot, and the durable hold/incident sidecars under `<workspace>/.mpd/team/watchdog/` (its OWN namespace: the official Team service keeps team state in the Lead session log, and the watchdog reads the roster through the adapter); mounted on the HOST plane on purpose, so a preset-scoped tick cannot fail to witness a wedged captain | `session-watchdog-status`, `session-watchdog-hold`, `session-watchdog-resume` | `stateDir`, `warnSilenceMs`, `tickIntervalMs`, `warnStreakToEscalate`, `actionOnEscalate`, `toolInFlightMaxMs`, `holdTtlMs` |
 | `mpd-tools` | mpd-tools-plugin | web + dsh-tui | write guard (no silent clobber), tool-output truncation (token budget), edit-error recovery guidance | waterfalls only | `writeGuard`, `truncateMaxBytes`, `recoveryHint` |
 | `mpd-modelchain` | mpd-modelchain-plugin | web + dsh-tui | DeepSeek route resolution for roster roles + key/value memory notes | `mpd_modelchain_resolve`, `mpd_memory_save`, `mpd_memory_recall` | — |
 | `mpd-ext` | mpd-ext-plugin | web + dsh-tui | the extension interface: one frozen descriptor contract, two planes (code `register()` + data-plane `mpd-ext.json`), lifecycle-split discovery, skills/flows providers, the runtime stdio MCP bridge, extension roles | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show`; service `mpdExtensions` | `quiet` + the lazy `mpd.jsonc` layer (`extensions.enable`, `extensions.disable`, `extensions.mcp.*`) |
-| `mpd-roles` | mpd-roles-plugin | web + dsh-tui | the specialist roster's 11 specialists as a roster (normal names/personas/model chains/read-only), merged per call with extension-contributed roles | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona`; service `mpdRoles` | `personasDir` |
+| `mpd-roles` | mpd-roles-plugin | web + dsh-tui | the specialist roster's 11 specialists as a roster (normal names/personas/model chains/read-only), merged per call with extension-contributed roles; registers the roster prompt section for the Lead (persona text via `mpd_role_persona`, and the measured model-route bound) and the READ-ONLY tool guard for a live Team teammate whose name normalises to a read-only roster member | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona`; service `mpdRoles` | `personasDir` |
 | `mpd-ulw` | mpd-ulw-plugin | web + dsh-tui | fixed plan→execute→verify loop discipline (C2 ultrawork v2) | `mpd_ultrawork`, `mpd_ulw` (light alias); commands `/ulw`, `/ultrawork` | `maxRounds`, `maxReReviews`, `provider/model/reviewerModel`, `planDir`, `stateDir` |
 | `mpd-hashline` | mpd-hashline-plugin | web + dsh-tui | hash-anchored edit discipline (`LINE#HASH` anchors) | `mpd_hashline_read`, `mpd_hashline_edit`, `mpd_hashline_format`, `mpd_hashline_restore` | `guardEditTools`, `maxDiffChars`, `registryFile` |
 | `mpd-boulder` | mpd-boulder-plugin | web + dsh-tui | durable work ledger bound to plan markdown files | `mpd_boulder_status`, `mpd_boulder_start`, `mpd_boulder_complete`, `mpd_boulder_task_timer`, `mpd_boulder_plan_progress`, `mpd_boulder_plans` | `boulderDir` |
@@ -211,17 +222,18 @@ COMPOSITION ONLY — it never executes plugin code, so it is never load evidence
 | `mpd-team-compact` | mpd-team-compact-plugin | web + dsh-tui | compacts a FINISHED team's members (every task terminal AND every member idle) through each member's OWN scoped context; the captain is left to the human `/compact`; audit lands under `<workspace>/.mpd/team-compact/` and this row never writes `.mpd/team` | `mpd_team_compact_run`, `mpd_team_compact_status` | — |
 | `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | asset provisioning BY REFERENCE: registers `<bundle>/skills` as a skill provider through the adapter (rank 600 `bundled`) and removes the version-stamped home copies written by bundle <= 0.2.6 | effect only | `skillsDir`, `skipSkills`, `skipPresets`, `skipLegacyCleanup` |
 | `mpd-tui` | mpd-tui-plugin | web + dsh-tui (active in dsh-tui, degrades elsewhere) | the dsh-tui edition's native surface: binds the host's activation-gated TUI seams and probes each one with `ctx.get(id, false)` + warn-once degrade, so a web/headless composition loses the TUI surfaces and not the boot (§7b) | no model-facing tools; TUI status / settings section / board / command tree / shortcuts / dialogs / transcript renderer | — |
-| `agent-teams` | mpd-agent-teams-plugin (adopted, MIT) | web + dsh-tui | multi-agent team collaboration (captain, members, tasks, scheduler; its views back the AgentTeams sidebar tab) | `agent_teams_*` | `stateDir`, `memberProvider`, `memberMaxDepth`, `maxMembers`, `profiles` |
-| `mpd-better-sidebar` | dsh-better-sidebar (the bundle's declared dependency; entry id is `mpd-`-prefixed on purpose, never the package's own `better-sidebar` or an aggregate's id) | web (the guard disables it when no enabled `@deepseek-ai/dsh-host-webserver` entry exists, `dsh-tui` included) | mounts the community sidebar bundle that HOSTS the AgentTeams and Workmates tabs, so the tabs exist without a second manual plugin install; the guard is order-independent and disables the row where ANY composed patch layer already names the package — every declared bundle layer's `dsh.bundle.patch` (e.g. the `@linxin666/dsh-web-all` aggregate), `<profileDir>/cordis.patch.yml`, `$DSH_HOME/cordis.patch.yml`, and every `--patch` overlay path read from `process.argv` (both spellings, repeatable) — where `dsh-better-sidebar` is itself a bundle layer, where the package is unresolvable, or where no enabled `@deepseek-ai/dsh-host-webserver` ENTRY exists (a webserver row disabled by an expression does not count). A foreign layer suppresses the row only when its patch contains a ROW that mounts the package — a row naming `dsh-better-sidebar` whose `disabled` is not literally `true` (YAML comments are stripped first); a mention inside a comment, or a row that is literally `disabled: true`, mounts nothing and does not suppress our mount, and any form the row scanner cannot parse falls back to the conservative behaviour (treated as a mount), because a false disable costs the sidebar while a false enable kills the boot with `duplicate prefix route`. Every path degrades to "no sidebar" with one log line, never a dead boot | sidebar host + its tab registry (`ctx.betterSidebar`) | `disabled: !!js` mount guard |
+| `mpd-agent-team` | @deepseek-ai/dsh-experimental-agent-team | web + dsh-tui | the OFFICIAL Agent Teams domain service (`ctx.agentTeams`): the implicit-root roster, the durable peer mailbox and the shared task board; roster, mailbox and task state are persisted in the LEAD's session log | service `agentTeams` | `maxMembers: 16`, `maxTasks: 256`, `maxPendingMessagesPerMember: 64`, `maxMessageBytes: 32768`, `disposalTimeoutMs: 5000` |
+| `mpd-tool-agent-team` | @deepseek-ai/dsh-experimental-tool-agent-team | web + dsh-tui | the nine scoped model-facing tools every member receives — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, `team_task_create/list/get/update` — plus the `team:policy` prompt section | those nine tools | `freshProvider: spawn`, `forkProvider: fork` |
+| `mpd-ui-agent-team` | @deepseek-ai/dsh-experimental-client-ui-agent-team | web (inert host export elsewhere) | the official Web roster, shared task board and teammate-navigation panel in the conversation header; read-only (no spawn/rename/delete/interrupt and no task-mutation control) | `/client` browser half | — |
+| `mpd-better-sidebar` | dsh-better-sidebar (the bundle's declared dependency; entry id is `mpd-`-prefixed on purpose, never the package's own `better-sidebar` or an aggregate's id) | web (the guard disables it when no enabled `@deepseek-ai/dsh-host-webserver` entry exists, `dsh-tui` included) | mounts the community sidebar bundle that HOSTS the Workmates tab, so the tab exists without a second manual plugin install; the guard is order-independent and disables the row where ANY composed patch layer already names the package — every declared bundle layer's `dsh.bundle.patch` (e.g. the `@linxin666/dsh-web-all` aggregate), `<profileDir>/cordis.patch.yml`, `$DSH_HOME/cordis.patch.yml`, and every `--patch` overlay path read from `process.argv` (both spellings, repeatable) — where `dsh-better-sidebar` is itself a bundle layer, where the package is unresolvable, or where no enabled `@deepseek-ai/dsh-host-webserver` ENTRY exists (a webserver row disabled by an expression does not count). A foreign layer suppresses the row only when its patch contains a ROW that mounts the package — a row naming `dsh-better-sidebar` whose `disabled` is not literally `true` (YAML comments are stripped first); a mention inside a comment, or a row that is literally `disabled: true`, mounts nothing and does not suppress our mount, and any form the row scanner cannot parse falls back to the conservative behaviour (treated as a mount), because a false disable costs the sidebar while a false enable kills the boot with `duplicate prefix route`. Every path degrades to "no sidebar" with one log line, never a dead boot | sidebar host + its tab registry (`ctx.betterSidebar`) | `disabled: !!js` mount guard |
 
-**The two id-targets** (each replaces one composition's own preset-roster row; an id-target is a
+**The id-target** (it replaces the composition's own preset-selection row; an id-target is a
 per-key shallow override, so the host row's other keys survive, and a composition that does not
 have the row logs `patch: entry … not found` and skips it):
 
 | Entry id | Target | Composition | What it carries here |
 |---|---|---|---|
-| `agent-presets` | the roster row `dsh-web-app` inserts | web / base plane | `default: mpd` + the bundle's own `presets/` root at `trust: system`, so ONE `dsh plugin add` makes the `mpd` preset selectable; a headless profile without the row skips it (headless never had a roster) |
-| `dsh-tui-agent-presets` | the roster row dsh-tui mints | dsh-tui plane | the same two keys for the TUI composition, whose roster row is a different loader entry; the stock row's legacy fallback-root branch is deliberately NOT restated (the pinned package already ships its presets, so that branch is dead) |
+| `agent-preset-registry` | the registry row `dsh-web-app` inserts | web / base plane | `default: mpd`, so ONE `dsh plugin add` selects the bundle's preset. The registry declares exactly ONE config key (`default`), so restating it is complete; a composition that carries no such row logs `patch: entry … not found` and keeps its own default (a warning, never an error) |
 
 Two rows behave differently per composition ON PURPOSE and neither is a defect: `mpd-tui` binds TUI
 seams and degrades warn-once where none exist (web / headless), and `mpd-web-compat` is what puts the
@@ -267,17 +279,24 @@ mechanism — the plugin never touches API keys**.
   A failed delete restores the index key, so it never leaves a partially removed instance.
 - **In-use gate (one synchronous block)**: `assertNotBusy` checks an in-process
   `Map<key, count>` incremented around `dsh.spawnAgent` in `mpd_workmate_spawn` (released in
-  `finally`) plus a READ-ONLY scan of direct children of `<cwd>/.mpd/team/<teamId>/team.json`
-  (archived teams live under `.mpd/team/archive/**` and are excluded by construction);
+  `finally`) plus a READ-ONLY scan of direct children of `<cwd>/.mpd/team/<teamId>/team.json` —
+  LEGACY records only, because the official Team service keeps no such file (archived teams live
+  under `.mpd/team/archive/**` and are excluded by construction);
   rename gates the target key too. The gate, the collision guard and the mutation run with no
   `await` between them, so no spawn or reflect can interleave — no lock file. Writing
-  `.mpd/team` state is never done here (that is the agent-teams plugin's state), and a read
+  `.mpd/team` state is never done here (that was the retired plugin's state; the official service
+  keeps roster, mailbox and board in the Lead's session log), and a read
   error fails OPEN.
-- Team mode: `agent_teams_create(profile="mpd")` stages the normal-named roster as
-  teammate templates. The patched `memberPersona()` in the adopted plugin checks
-  `~/.mpd/workmate/<member-name>`: if an instance exists, the member's system prompt
-  gets the workmate's persona + memory + note plus a `mpd_workmate_reflect` instruction
-  ("captain checks the note, delegates to the workmate-named member").
+- Team mode: the session agent is the Lead. It calls `spawn_teammate` once per member (name,
+  description, and a prompt built from `mpd_role_persona` text plus the task), opens each lane with
+  `team_task_create`, and drives the board with `team_task_list` / `team_task_get` /
+  `team_task_update` (compare-and-set on the task `revision`) and the mailbox tools. Two measured
+  bounds are part of the design, not an omission: a teammate **inherits the Lead's model route**
+  (`TeamService` forwards only the prompt and the parent to the subagent registry), so the
+  `teamModels` slots apply to the one-shot consult paths only; and a read-only roster member's write
+  tools are denied by the `mpd-roles` guard keyed on team membership, because
+  `spawn_teammate` cannot take a per-teammate tool filter. Persona and workmate memory are NOT
+  injected automatically — they travel in the prompt text.
 
 ### Extension → skills, flows, MCP tools and roles
 
@@ -308,7 +327,8 @@ so a data-plane directory and a code-plane plugin row produce identical registry
 - **Roles** are resolved per call by `mpd-roles` (a lazy merge of the base roster with
   extension-contributed roles at lookup time, never an apply-time merge), so an extension role is
   usable through `mpd_role_spawn` / `mpd_role_persona` and as a workmate base template. It never
-  enters the agent-teams member list, which is static patch configuration.
+  becomes a teammate on its own: a teammate exists only when the Lead spawns it by name with
+  `spawn_teammate`.
 - Four tools inspect all of it — `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` —
   and `scripts/mpd-ext.mjs` (`validate` / `scaffold` / `list`) shares the same runtime validator.
 
@@ -322,7 +342,8 @@ yet.
 
 | Path | Owner | Notes |
 |---|---|---|
-| `<workspace>/.mpd/team/` | agent-teams | team stateDir override (teams + mailboxes) |
+| `<workspace>/.mpd/team/` | legacy team records + the watchdog's OWN namespace | the official Team service keeps the roster, the mailbox and the board in the Lead's session log, so no shipped row writes a team record here; the watchdog keeps `<stateDir>/watchdog/{heartbeat,scene,hold,incidents.jsonl}` under it, and the workmate in-use check still reads legacy `team.json` files when present |
+| `<workspace>/.mpd/team-compact/` | mpd-team-compact | the compaction audit for a finished team's member contexts |
 | `<workspace>/.mpd/plans/` | mpd-boulder / mpd-ulw | plan markdown files |
 | `<workspace>/.mpd/memory.json` | mpd-modelchain | key/value notes |
 | `<workspace>/.mpd/` (VCS-backed memory dir) | mpd-memory | git/svn-backed memory + reflection |
@@ -331,7 +352,7 @@ yet.
 | **`~/.mpd/extensions/*/mpd-ext.json`** (user HOME) | mpd-ext | the host-wide user extension plane, discovered at apply (skills, flows, mcp, roles) — a deliberate HOME-scoped exception like the workmate library |
 | **`<bundle>/extensions/*/mpd-ext.json`** | mpd-ext | the bundle-shipped host-wide extension plane (skills, flows, mcp, roles); it ships the disabled reference extension and disappears with an uninstall |
 | **`~/.mpd/workmate/`** (user HOME) | mpd-workmate | the cross-project workmate library (`<key>/` instances + `.archive/` — deleted instances moved out of the library, restorable by a manual `mv` back) — deliberate user-approved exception to workspace-scoped state (§ AGENTS.md §6); QA boots with `HOME=<sandbox>` |
-| `$DSH_HOME/.agent-presets/mpd*`, `$DSH_HOME/skills/*` | mpd-bootstrap | LEGACY only (bundle <= 0.2.6 stamped copies); removed on the first 0.3.0 boot — the bundle writes nothing to the home |
+| `$DSH_HOME/.agent-presets/mpd*`, `$DSH_HOME/skills/*` | mpd-bootstrap | LEGACY only (bundle <= 0.2.6 stamped copies); removed on the first 0.3.0 boot — the bundle writes nothing to the home, and the preset is a ROW served from the bundle (§6c) |
 
 ## 6b. Harness adapter (the only seam contact)
 
@@ -357,8 +378,10 @@ that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
 - QA proof: `bundle-lifecycle` asserts the composed row, the boot log line, the probe's
   `ADAPTER_SEAMS=…` snapshot and `ADAPTER_TOOL_CALL=ok` (a real `mpd_config_get` call
   through the normalized path).
-- **Adopted-plugin seam routing (the former boundary — CLOSED 2026-09-19):** the adopted
-  `agent-teams` plugin (`packages/mpd-agent-teams-plugin`, MIT) reaches every harness seam
+- **Retained-code seam routing (the former boundary — CLOSED 2026-09-19; the code since RETIRED
+  from the composition 2026-09-27):** the `agent-teams` body at
+  `packages/mpd-agent-teams-plugin` (MIT) is kept as provenance and no loader row mounts it, but it
+  still reaches every harness seam
   through this adapter — except the counted `setup(childCtx, child)` residual that AGENTS.md §6
   names (five lines in `lib/members.js`, asserted line-by-line, because that host-handed scoped
   ctx is passed to a vendored `_deps/dsh-agent` helper and a legacy Alpha.2 `childCtx` is not
@@ -366,7 +389,9 @@ that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
   `lib/mpd-*.js`, restorable byte-faithfully from the delta registry) — builds the facade once
   at the top of `apply`, so the SIX bridged adopted files (`lib/index.js`, `lib/capabilities.js`,
   `lib/harness-compat.js`, `lib/members.js`, `lib/command.js`, `lib/tools.js`) consume the facade
-  and the remaining adopted server files receive it unchanged. The facade resolves the mounted
+  and the remaining adopted server files receive it unchanged. Keeping it adapter-routed is exactly
+  why the code is retained rather than deleted: a later wave can delete it without re-deriving the
+  D6 analysis. The facade resolves the mounted
   `mpdDsh` service lazily and falls back warn-once (exactly one absent line per plugin instance),
   so the plugin still applies with the adapter absent. FOURTEEN adapter methods carry the
   traffic, each behind a `capabilities()` flag (one flag may cover two methods; `subagentRuntime`
@@ -380,10 +405,24 @@ that renames or reshapes a seam is absorbed in one file (AGENTS.md §6).
   `mpd-delta` regions. The closure is stated WITH its residual set in AGENTS.md §6 (R1–R5 plus
   the counted `members.js` bypass), and the bridged region ids live in
   `agent-references/agent-teams-deltas.md`.
+- The ADAPTER's own team surface is what the shipped consumers use: `teamMembership`,
+  `teamListMembers`, `teamListTasks`, `teamCreateTask`, `teamGetTask`, `teamUpdateTask`,
+  `teamSendMessage`, `teamSpawnTeammate`, `teamInterrupt`, `teamWaitForChange` and
+  `teamLiveTeams` — each a thin,
+  never-throwing projection over the mounted `agentTeams` service, so no mpd plugin (the watchdog,
+  the roster guard, the ULW engine, the TUI or the web routes) references `ctx.agentTeams`
+  directly.
 
 ## 6c. Agent preset plane (the `mpd` preset)
 
-`presets/mpd/agent.cordis.yml` is the agent-plane composition every `mpd` session joins.
+`presets/mpd.patch.yml` declares the `mpd` preset as an ordinary **ROW**: an insert of `preset-mpd`
+(`name: '@deepseek-ai/dsh-agent-preset'`, `config.id: mpd`, the child entry list inline under
+`config.plugins`). That child list IS the agent-plane composition every `mpd` session joins, and the
+file is the manifest's SECOND `dsh.bundle.patch` entry; `packages/mpd-bundle/cordis.patch.yml`
+id-targets `agent-preset-registry` to `{ default: mpd }`. Harness **0.1.7-rc.2 replaced the
+directory form**: `@deepseek-ai/dsh-agent-presets` (which served `preset.yml` + `agent.cordis.yml`
+from a preset root) no longer exists, so there is no `<bundle>/presets` preset root and no
+`$DSH_HOME/.agent-presets` copy.
 It is a **row-for-row mirror of the shipped `standard` preset** of the harness that is
 actually installed, and that mirroring is load-bearing:
 
@@ -395,7 +434,7 @@ actually installed, and that mirroring is load-bearing:
   it produces no error at all.
 - A row's `config` is validated against the installed plugin's own schemastery schema when
   the row is applied. The two failure modes differ in visibility: a **missing required key**
-  fails the row, and `dsh-agent-presets.mountPreset` then refuses the WHOLE preset
+  fails the row, and the preset registry then refuses the WHOLE preset
   (`agent-preset/invalid: … row(s) did not activate`), so every session on that preset fails
   to start; an **unknown key** is silently KEPT by schemastery, so the row applies and the
   setting it was supposed to carry never takes effect.
@@ -420,37 +459,19 @@ actually installed, and that mirroring is load-bearing:
 `packages/mpd-bundle-plugin/client.js` (generated by `scripts/build-mpd-client.mjs`) is
 one script:
 
-1. the adopted agent-teams `lib/client.js` **verbatim** — it self-registers
-   `@nanmicoder/dsh-agent-teams`. It is now used strictly as a **view library**:
+1. the retained agent-teams `lib/client.js` **verbatim** — it self-registers
+   `@nanmicoder/dsh-agent-teams`. It is used strictly as a **view library**:
    `scripts/patch-agent-teams-client.mjs` additively exports its views (`TeamSection`,
    historic cards), monitor store, zh/en dictionaries and CSS through a pinned export
    bridge that `scripts/vendor-agent-teams.mjs` re-applies after every refresh, and the
    adopted `apply(ctx)` is **never called** — that is what registered the removed surfaces;
-2. a `__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory })` — the mpd-owned
-   AgentTeams page (`src/team-page.js`): it composes those adopted views into one
-   DSH-better-sidebar tab (id `mpd-agent-teams`, order 85, `single: true`) listing the
-   conversation's live + archived teams with the staged-plan approval editor, the
-   live-team-count badge and the `autoOpenOnTeamActivity` switch. Its auto-open is
-   **seedless** (`openTab({ type })`): from dsh-better-sidebar 0.19 a seed carrying
-   `path`/`url` is routed to DSH's NATIVE right column (`surface.openResource(
-   fileAddress(sessionId, cwd, path))`) instead of this registered tab type, so the
-   throwaway marker path it used to carry made the host resolve `<cwd>/team-activity`,
-   fail `realpath` and raise `cannot resolve target …` in the GUI without ever opening
-   the tab — a type-only open lands the tab in its own surface and expands it, which is
-   what auto-open means here (`seedlessAutoOpen` in `agent-teams-sidebar` pins the
-   shipped and the served bytes; `team-page.test.mjs` drives the real client). **Visual parity is a
-   requirement**: the page renders the floater's own interior — the same `aside` root
-   carrying the adopted `panel` class (which is where that stylesheet declares the
-   `--dsw-alias-*` custom properties every adopted rule reads, so dropping it renders the
-   sections unstyled), the same `panelHead` (title + busy dot + collapse control, using
-   the platform's own `IconChevronDownOutline14`), the same `teams` scroll body, the same
-   `emptyHint`/`archivedWrap`/`archiveLabel` markup. Only the window-manager half is
-   overridden inline (position/size pinned to the pane, no drag/resize handles, no
-   border/radius/shadow/backdrop blur) and the collapse control drives the sidebar's own
-   `store.reduce` panel flag;
+2. a `__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory })` entry retained from the same
+   vendored body (`src/team-page.js`). Its HOST half was the retired `agent-teams` plugin's routes
+   (`/plugins/dsh-agent-teams/{state,halt,plan,assets}`), and no mounted row serves those any more —
+   so **the shipped team surface is the official plugin's panel** (`mpd-ui-agent-team`, next
+   section), and this entry is NOT documented as providing one;
 3. a third `__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory })` whose factory
-   contributes the **workmate library** as its own sidebar tab and the null
-   `conversation.chat.commandview` row that hides the `/agent-teams` command result.
+   contributes the **workmate library** as its own sidebar tab.
 
 **Seam policy (the failure this file exists to prevent).** The web boot asserts, for
 every entry, that every declared `inject` service is registered; a declared-but-missing
@@ -475,15 +496,20 @@ fires the callback. `packages/mpd-bundle-plugin/test/client-harness.mjs` models 
 default (the sidebar service is published AFTER `apply()`), so the suite fails loudly if a
 probe ever comes back.
 
-**Both GUIs are sidebar-only — no fallback anywhere.** `WorkmateLibraryView` is contributed
+**Both mpd surfaces are sidebar-hosted; the team panel is the official plugin's.** `WorkmateLibraryView`
+is contributed
 by `registerSidebarTab` as a **DSH-better-sidebar** tab
-(`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`, `single: true`, order 90) and the
-AgentTeams page by `registerTeamSidebarTab`. Without DSH-better-sidebar each logs exactly one
+(`ctx.betterSidebar.registerTab({id: "mpd-workmate", …})`, `single: true`, order 90). Without
+DSH-better-sidebar it logs exactly one
 warning (`… has no host (no floating fallback by design)`) and registers nothing, so no
 surface exists outside the sidebar. The host itself is not an optional third-party extra:
 `dsh-better-sidebar` is a declared runtime dependency and the guarded `mpd-better-sidebar` row
 mounts it (§4), so that warning path is what a missing or broken dependency produces, not
-something a normal install sees. `scripts/build-mpd-client.mjs` enforces this at build
+something a normal install sees. The **Agent Teams panel** is separate and does not depend on that
+sidebar at all: it is the official `@deepseek-ai/dsh-experimental-client-ui-agent-team` client
+plugin, mounted by the bundle's own `mpd-ui-agent-team` row, and it registers a
+conversation-header action that renders the Lead session's `agentTeam` projection (roster + task
+board, read-only). `scripts/build-mpd-client.mjs` enforces the sidebar rule at build
 time: it fails if any mpd client source registers `agent-teams-activity`,
 `conversation.chat.node`, `shell.overlay` or `sidebar.footer.action` — the removed card, the
 removed activity floater and the removed workmate floater/footer toggle.
@@ -494,9 +520,8 @@ base picker, `GET /plugins/mpd-workmate/get?name=` — persona/memory/note detai
 /plugins/mpd-workmate/init`, and the two mutation routes `POST /plugins/mpd-workmate/rename`
 + `POST /plugins/mpd-workmate/delete`, which answer the same reason-coded refusals the
 tools raise — `400 invalid-name` / `400 confirm-required` / `404 unknown` / `409 collision` /
-`409 in-use` with the `blocking` team list, plus `405` + `allow: POST` on a wrong verb);
-the AgentTeams page drives the adopted monitor store, which
-polls `/plugins/dsh-agent-teams/{state,halt,plan,assets}`. All register via
+`409 in-use` with the `blocking` team list, plus `405` + `allow: POST` on a wrong verb).
+All register via
 `webServer.register` and retry on `internal/service` binding (a webless profile stays
 tool-only).
 
@@ -559,7 +584,7 @@ document should carry, stated rather than left to be discovered:
   executes plugin code, so it can never witness a plugin load, a schema abort or a missing seam.
   Every behavioural claim in this document rests on a gate or a real tool call instead (§4).
 - **The preset plane is validated only by a mounting boot.** A row whose `config` misses a REQUIRED
-  key fails the row and `dsh-agent-presets` then refuses the WHOLE preset (`agent-preset/invalid: …
+  key fails the row and the preset registry then refuses the WHOLE preset (`agent-preset/invalid: …
   row(s) did not activate`) — while an UNKNOWN key is silently kept by schemastery, so the row
   applies and quietly loses that setting. `agentPresets.list` / `resolve` see neither class; only
   `skills/dsh-qa/scripts/preset-conformance.mjs` (with its negative control) does (§6c).
@@ -570,19 +595,22 @@ document should carry, stated rather than left to be discovered:
   at the next boot; the settings document path (the TUI `/settings` screen, the write-back and the
   `settings/document-updated` re-read) is the live path (§6c, §7b).
 - **The watchdog hold is a contract, not yet an interlock.** The row owns
-  `session-watchdog-hold` / `-resume` and the durable hold record; wiring the adopted dispatch
-  gates that honour a hold is a later task. Until then a hold is recorded and reported, and it is
-  the platform pause (`agent_teams_halt`) that actually stops dispatch (§4).
-- **The adopted team plugin is the one row not routed through the adapter.** Its `lib/` is upstream
-  main code that a vendor refresh would overwrite, plus exactly one local boot-safety adaptation
-  (§6b); its client half is used strictly as a view library and its own `apply` is never called
-  (§7).
-- **The web client is sidebar-only.** There is no in-conversation fallback: both mpd pages live as
-  sidebar tabs, and an optional seam must be mounted with `ctx.inject([...])` rather than probed
+  `session-watchdog-hold` / `-resume` and the durable hold record; wiring the OFFICIAL dispatch
+  gates that honour a hold is a later task. Until then a hold is recorded and reported, and a
+  teammate's current turn is stopped by the official `interrupt_agent` (Lead-only) (§4).
+- **The retained team body is NOT mounted.** `packages/mpd-agent-teams-plugin` is kept as
+  provenance: no loader row mounts it, so none of its tools, its `.mpd/team` records or its
+  sidebar panel is part of a shipped session. Its `lib/` stays adapter-routed (§6b) and its
+  client half is retained as a view library (§7); deleting it is a declared follow-up, not an
+  oversight.
+- **The web client's mpd page is sidebar-only.** There is no in-conversation fallback: the mpd page
+  lives as a sidebar tab, and an optional seam must be mounted with `ctx.inject([...])` rather than probed
   with a one-shot `ctx.get` — a probe cannot see a service another plugin owns and cannot recover
   when that provider mounts late (§7). The sidebar host is installed with the bundle (the declared
   `dsh-better-sidebar` dependency plus the guarded `mpd-better-sidebar` row, §4), so this limit
-  describes the code path, not an extra install step the user owes.
+  describes the code path, not an extra install step the user owes. The Agent Teams panel is the
+  exception by construction: the official client plugin renders it in the CONVERSATION HEADER, not
+  in the sidebar.
 - **Two rows are inert or degraded by design.** `mcp-gitbash` ships disabled (Windows-only upstream)
   and `mpd-tui` degrades warn-once in a composition with no TUI seams, so "the row is composed" and
   "the capability is present" are different statements (§4).

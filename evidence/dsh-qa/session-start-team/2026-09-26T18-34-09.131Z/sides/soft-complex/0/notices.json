@@ -1,0 +1,23 @@
+{
+  "notice": {
+    "any": 0,
+    "advisory": 0,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "retiredVocabulary": 0,
+    "signals": []
+  },
+  "teams": {
+    "active": 0,
+    "archived": 0,
+    "ids": []
+  },
+  "goal": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+  "problems": [
+    "a triggered prompt must record EXACTLY ONE advisory notice, got 0",
+    "the notice must state \"NO team was staged\", got 0",
+    "the notice must name BOTH official tools (spawn_teammate, team_task_create), got 0",
+    "the advisory notice must name the fired complexity signals",
+    "workspace isolation violated: workspace isolation violated: --tmp-mpd-sst-EeYTqB-side-simple-0-ws--, --tmp-mpd-sst-EeYTqB-side-simple-1-ws--, --tmp-mpd-sst-EeYTqB-side-simple-2-ws--"
+  ]
+}

@@ -16,7 +16,7 @@
 //   §7.2/§7.3  per knob: LIVE value, FILE value when it differs, `restartRequired`; ONE warning
 //              per process naming both values.
 import { describe, expect, test } from "bun:test"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { HOLD_TOOL, STATUS_TOOL, applyHold, applyResume } from "../src/actions"
 import { WatchdogEngine, type EngineContext } from "../src/engine"
@@ -26,7 +26,7 @@ import { readIncidents, readHold } from "../src/sidecars"
 import { heartbeatPath } from "../src/paths"
 import { readHeartbeats, type HeartbeatStamp } from "../src/store"
 import { dependencyBlocked } from "../src/team"
-import { agent, openOutstandingChannel, pluginCtx, sandbox, stubAdapter, testConfig, writeTeam, type Sandbox, type StubAdapter } from "./support"
+import { agent, openOutstandingChannel, pluginCtx, sandbox, stubAdapter, teamViews, testConfig, writeTeam, type Sandbox, type StubAdapter } from "./support"
 
 /** The engine context a direct construction needs. */
 function stubCtx(): EngineContext {
@@ -71,7 +71,6 @@ function writeStamps(box: Sandbox, memberKey: string, stamps: HeartbeatStamp[]):
   mkdirSync(join(path, ".."), { recursive: true })
   writeFileSync(path, stamps.map((entry) => JSON.stringify(entry)).join("\n") + "\n")
 }
-const readText = (path: string): string => readFileSync(path, "utf8")
 
 describe("T-16 (§6) — generation scoping: a previous generation can never be SILENT", () => {
   const tasks = [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }]
@@ -117,7 +116,7 @@ describe("T-16 (§6) — generation scoping: a previous generation can never be 
     expect(candidates[0].everStampedForTask).toBe(false)
   })
 
-  test("ENGINE: the measured leak shape (a day-old stamp, record created now) holds nothing", async () => {
+  test("ENGINE: the measured leak shape (a day-old stamp of an EARLIER revision) holds nothing", async () => {
     const box = sandbox()
     try {
       const now = Date.now()
@@ -127,9 +126,13 @@ describe("T-16 (§6) — generation scoping: a previous generation can never be 
         members: [{ id: "a1", name: "Architect" }],
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attempt: 1, attemptId: "att-1" }],
       })
-      // A previous generation's stamp: written by hand, a day old, EMPTY attemptId — the exact
-      // shape that leaked through the permissive rule and held a healthy team (T-16's cause).
-      writeStamps(box, "Architect", [stamp(now - 86_400_000)])
+      // A previous generation's stamp: written by hand, a day old, and naming revision `0` — the
+      // task's CURRENT generation token is `1` (the projected official revision), so the stamp
+      // belongs to an earlier generation. 0.1.7 REPLACED the retired record's createdAt/approvedAt
+      // floor with this token: the official board carries no record timestamps at all, so a stamp
+      // that carries NO attempt information can no longer be dated and is kept (permissive, §0/A3)
+      // — the revision is what scopes a stamp to a generation now.
+      writeStamps(box, "Architect", [stamp(now - 86_400_000, { attemptId: "0" })])
       const { engine, dispose } = mount(box)
       try {
         // `never-started` is a REPORT, not an action: it is written to the incident log (and
@@ -186,12 +189,11 @@ describe("T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING", 
   test("TTL path: the hold releases itself, writes the incident, and touches no team byte", async () => {
     const box = sandbox()
     try {
-      const teamPath = writeTeam(box, {
+      const teamView = writeTeam(box, {
         id: "team-a",
         members: [{ id: "a1", name: "Architect" }],
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
-      const before = readText(teamPath)
       const applied = applyHold(box.workspace, box.stateDir, { team_id: "team-a", ttl_ms: 1_000 })
       expect(applied.applied).toBe(true)
       expect(applied.hold?.ttlMs).toBe(1_000)
@@ -212,7 +214,7 @@ describe("T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING", 
         expect(releases[0].scene).toBeNull()
         expect(engine.getStats().holdsAutoReleased).toBe(1)
         // PRESERVING: not one byte of the adopted record moved.
-        expect(readText(teamPath)).toBe(before)
+        expect(teamViews(box)).toEqual([teamView])
         // A second tick changes nothing (the release is not repeated).
         await engine.tickOnce(since + 2_000)
         expect(readIncidents(box.workspace, box.stateDir).filter((record) => record.kind === "hold-auto-released").length).toBe(1)
@@ -227,12 +229,11 @@ describe("T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING", 
   test("ACTIVITY path: a stamp earned AFTER the hold disproves the wedge", async () => {
     const box = sandbox()
     try {
-      const teamPath = writeTeam(box, {
+      const teamView = writeTeam(box, {
         id: "team-a",
         members: [{ id: "a1", name: "Architect" }],
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
-      const before = readText(teamPath)
       // ttl_ms 0 = no TTL, so ONLY the activity path can release this one.
       const applied = applyHold(box.workspace, box.stateDir, { team_id: "team-a", ttl_ms: 0 })
       const since = applied.hold?.since ?? 0
@@ -249,7 +250,7 @@ describe("T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING", 
         const releases = readIncidents(box.workspace, box.stateDir).filter((record) => record.kind === "hold-auto-released")
         expect(releases.length).toBe(1)
         expect(releases[0].cause).toMatchObject({ kind: "hold-auto-released", release: "activity" })
-        expect(readText(teamPath)).toBe(before)
+        expect(teamViews(box)).toEqual([teamView])
       } finally {
         dispose()
       }
@@ -312,7 +313,7 @@ describe("T-17 (§6) — the hold's TTL and activity auto-release, PRESERVING", 
   })
 })
 
-describe("T-19 (§8) — ONE pause state, ONE external mechanism, the hold as its implementation", () => {
+describe("the pause surface — the watchdog's preserving hold IS the only pause (0.1.7: no halt exists)", () => {
   /** Drive the real registered status tool and return both the payload and its rendered text. */
   async function statusOf(box: Sandbox, ctx: ReturnType<typeof pluginCtx>) {
     const definition = ctx.__stub.tools.get(STATUS_TOOL)
@@ -322,13 +323,11 @@ describe("T-19 (§8) — ONE pause state, ONE external mechanism, the hold as it
     return { payload, text: blocks.map((block) => block.text).join("\n"), teams: payload.teams as Array<{ teamId: string; pause: { paused: boolean; mechanism: string; implementation: string; halted: boolean; held: boolean } }> }
   }
 
-  test("halted and held render as ONE pause mechanism with the hold as its implementation (T-19 ruling)", async () => {
+  test("the hold is the ONE pause reported; a halt that does not exist is never named", async () => {
     const box = sandbox()
     try {
       writeTeam(box, {
         id: "team-a",
-        halted: true,
-        haltedAt: 1_700_000_000_000,
         members: [{ id: "a1", name: "Architect" }],
         tasks: [{ id: "t1", status: "in_progress", assignee: "Architect", attemptId: "att-1" }],
       })
@@ -338,19 +337,18 @@ describe("T-19 (§8) — ONE pause state, ONE external mechanism, the hold as it
       try {
         applyHold(box.workspace, box.stateDir, { team_id: "team-b" })
         const { payload, text, teams } = await statusOf(box, ctx)
-        // ONE mechanism on both teams; the hold is never a second mechanism name.
-        expect(teams.find((team) => team.teamId === "team-a")?.pause).toMatchObject({ paused: true, mechanism: "agent_teams_halt", implementation: "none", halted: true, held: false })
-        expect(teams.find((team) => team.teamId === "team-b")?.pause).toMatchObject({ paused: true, mechanism: "agent_teams_halt", implementation: "watchdog-hold", halted: false, held: true })
-        expect(text).toContain("team-a: PAUSED — mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation none")
-        expect(text).toContain("team-b: PAUSED — mechanism: agent_teams_halt (external) · watchdog preserving hold: internal implementation active")
-        expect(text).toContain("halted since 1700000000000")
-        // FALSIFIABLE: the OLD two-mechanism wording must be gone from the surface.
-        for (const old of ["PAUSED — halted (agent_teams_halt)", "PAUSED — held (watchdog hold)", "both (agent_teams_halt + watchdog hold)"]) {
-          expect(text).not.toContain(old)
-        }
-        const haltedTeam = (payload.teams as Array<{ teamId: string; halted: boolean | null; held: boolean }>).find((team) => team.teamId === "team-a")
-        expect(haltedTeam?.halted).toBe(true)
-        expect(haltedTeam?.held).toBe(false)
+        // ONE mechanism: the watchdog's own hold. `halted` stays `false` on BOTH rows because the
+        // official team service exposes no halt to read it from.
+        expect(teams.find((team) => team.teamId === "team-a")?.pause).toMatchObject({ paused: false, mechanism: "watchdog-hold", implementation: "none", halted: false, held: false })
+        expect(teams.find((team) => team.teamId === "team-b")?.pause).toMatchObject({ paused: true, mechanism: "watchdog-hold", implementation: "watchdog-hold", halted: false, held: true })
+        expect(text).toContain("team-a: not paused")
+        expect(text).toContain("team-b: PAUSED — the watchdog's preserving hold")
+        // FALSIFIABLE: the surface must not name a mechanism the official plane does not have.
+        expect(text).not.toContain("agent_teams_halt")
+        expect(text).not.toContain("halted since")
+        const held = (payload.teams as Array<{ teamId: string; halted: boolean | null; held: boolean }>).find((team) => team.teamId === "team-b")
+        expect(held?.halted).toBe(false)
+        expect(held?.held).toBe(true)
         expect((payload.teams as Array<{ teamId: string }>).length).toBe(2)
       } finally {
         report.engine?.stop()

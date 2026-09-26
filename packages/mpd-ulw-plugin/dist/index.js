@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
+var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -92,6 +93,75 @@ function scopeOfAgentContext(agent) {
     on: (event, handler) => on.call(context, event, handler),
     effect: (fn, label) => effect.call(context, fn, label)
   };
+}
+function teamContextOf(raw) {
+  return raw === "fresh" || raw === "fork" ? raw : undefined;
+}
+function teamStatusOf(raw) {
+  return raw === "running" || raw === "provisioning" || raw === "failed" ? raw : "inactive";
+}
+function teamTaskStatusOf(raw) {
+  return raw === "in_progress" || raw === "completed" || raw === "deleted" ? raw : "pending";
+}
+function teamStrings(raw) {
+  return Array.isArray(raw) ? raw.filter((entry) => typeof entry === "string") : [];
+}
+function teamMemberView(raw) {
+  const row = raw ?? {};
+  const context = teamContextOf(row.context);
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    role: row.role === "lead" ? "lead" : "teammate",
+    status: teamStatusOf(row.status),
+    ...typeof row.description === "string" ? { description: row.description } : {},
+    ...typeof row.provider === "string" ? { provider: row.provider } : {},
+    ...context === undefined ? {} : { context },
+    ...typeof row.model === "string" ? { model: row.model } : {},
+    diagnostics: teamStrings(row.diagnostics)
+  };
+}
+function teamTaskView(raw) {
+  const row = raw ?? {};
+  return {
+    id: String(row.id ?? ""),
+    revision: typeof row.revision === "number" ? row.revision : 0,
+    subject: String(row.subject ?? ""),
+    description: String(row.description ?? ""),
+    status: teamTaskStatusOf(row.status),
+    blockedBy: teamStrings(row.blockedBy),
+    writeScopes: teamStrings(row.writeScopes),
+    ...typeof row.ownerName === "string" ? { ownerName: row.ownerName } : {},
+    ready: row.ready === true,
+    writeScopeWarnings: teamStrings(row.writeScopeWarnings)
+  };
+}
+function teamRows(teams, method, agent, project) {
+  const reader = teams?.[method];
+  if (typeof reader !== "function")
+    return [];
+  try {
+    const rows = reader.call(teams, agent);
+    return Array.isArray(rows) ? rows.map(project) : [];
+  } catch {
+    return [];
+  }
+}
+function agentSystemPromptOf(agent) {
+  let context;
+  try {
+    context = agent?.ctx;
+  } catch {
+    return;
+  }
+  if (context === undefined || context === null)
+    return;
+  try {
+    const systemPrompt = context.systemPrompt;
+    return typeof systemPrompt?.section === "function" ? systemPrompt : undefined;
+  } catch {
+    return;
+  }
 }
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
@@ -285,6 +355,7 @@ function createDshAdapter(ctx, config = {}) {
       const compaction = service("compaction");
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
+      const agentTeams = service("agentTeams");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -325,7 +396,13 @@ function createDshAdapter(ctx, config = {}) {
         agentTurnStart: liveAgents().some((candidate) => typeof candidate?.followup === "function"),
         agentTurnCancel: liveAgents().some((candidate) => typeof candidate?.cancel === "function"),
         agentTurnSteer: liveAgents().some((candidate) => typeof candidate?.steer === "function"),
-        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function")
+        agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function"),
+        agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
+        agentPreStep: typeof ctx?.on === "function",
+        team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
+        teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
+        teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
+        subagentsProviderRegister: typeof subagents?.registerProvider === "function"
       };
     },
     workspaceRoot,
@@ -341,11 +418,11 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no listModels()");
       return llm.listModels.call(llm, provider);
     },
-    llmResolveCallConfig(config, signal) {
+    llmResolveCallConfig(config2, signal) {
       const llm = requireService("llm", "cannot resolve a call config");
       if (typeof llm.resolveCallConfig !== "function")
         throw new Error("mpd-dsh-adapter: the harness llm service exposes no resolveCallConfig()");
-      return llm.resolveCallConfig.call(llm, config, signal);
+      return llm.resolveCallConfig.call(llm, config2, signal);
     },
     registerHostTool(definition) {
       const tools = requireService("tools", 'cannot register host tool "' + String(definition?.name) + '"');
@@ -389,7 +466,7 @@ function createDshAdapter(ctx, config = {}) {
           const host = invocation ?? { rawInput: "" };
           return definition.handler({
             ...host,
-            submit: (message) => adapter.submitUserTurn(host.agent, message)
+            submit: (message2) => adapter.submitUserTurn(host.agent, message2)
           });
         }
       });
@@ -426,6 +503,20 @@ function createDshAdapter(ctx, config = {}) {
         const downstream = typeof next === "function" ? await next() ?? { kind: "accept" } : { kind: "accept" };
         const decided = await listener(exec ?? {}, result ?? {}, downstream);
         return decided ?? downstream;
+      });
+    },
+    onAgentPreStep(listener) {
+      if (typeof ctx?.on !== "function")
+        return noop;
+      return ctx.on("agent/pre-step", async (payload, next) => {
+        const fallback = { kind: "enter", messages: payload?.messages ?? [] };
+        const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
+        try {
+          const decided = await listener(payload ?? {}, downstream);
+          return decided ?? downstream;
+        } catch {
+          return downstream;
+        }
       });
     },
     hasTool(toolName) {
@@ -521,11 +612,129 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()");
       return subagents.startContinuable.call(subagents, spec);
     },
+    registerSubagentProvider(provider) {
+      const subagents = requireService("subagents", "cannot register a subagent provider");
+      if (typeof subagents.registerProvider !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no registerProvider()");
+      const registered = subagents.registerProvider(provider);
+      return typeof registered === "function" ? registered : noop;
+    },
     interruptAgent(targetSessionId, authority) {
       const subagents = requireService("subagents", 'cannot interrupt subagent session "' + String(targetSessionId) + '"');
       if (typeof subagents.interrupt !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagents service exposes no interrupt()");
       subagents.interrupt.call(subagents, targetSessionId, authority);
+    },
+    teamService() {
+      const teams = service("agentTeams");
+      return teams === undefined || teams === null ? undefined : teams;
+    },
+    teamMembership(agent) {
+      const teams = service("agentTeams");
+      const tryMembership = teams?.tryMembership;
+      if (typeof tryMembership !== "function")
+        return;
+      let membership;
+      try {
+        membership = tryMembership.call(teams, agent);
+      } catch {
+        return;
+      }
+      if (membership === undefined || membership === null)
+        return;
+      const role = membership.role;
+      if (role !== "lead" && role !== "teammate")
+        return;
+      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+    },
+    teamListMembers(agent) {
+      const teams = requireService("agentTeams", "cannot list the team roster of an agent");
+      if (typeof teams.listMembers !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listMembers()");
+      const rows = teams.listMembers.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamMemberView) : [];
+    },
+    teamListTasks(agent) {
+      const teams = requireService("agentTeams", "cannot list the shared task board of an agent");
+      if (typeof teams.listTasks !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()");
+      const rows = teams.listTasks.call(teams, agent);
+      return Array.isArray(rows) ? rows.map(teamTaskView) : [];
+    },
+    async teamCreateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot create team task "' + String(request?.subject) + '"');
+      if (typeof teams.createTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()");
+      return teamTaskView(await teams.createTask.call(teams, caller, request));
+    },
+    teamGetTask(caller, id) {
+      const teams = requireService("agentTeams", 'cannot read team task "' + String(id) + '"');
+      if (typeof teams.getTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()");
+      return teamTaskView(teams.getTask.call(teams, caller, id));
+    },
+    async teamUpdateTask(caller, request) {
+      const teams = requireService("agentTeams", 'cannot update team task "' + String(request?.taskId) + '"');
+      if (typeof teams.updateTask !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()");
+      return teamTaskView(await teams.updateTask.call(teams, caller, request));
+    },
+    async teamSendMessage(caller, request) {
+      const teams = requireService("agentTeams", 'cannot send a team message to "' + String(request?.target) + '"');
+      if (typeof teams.sendMessage !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no sendMessage()");
+      const result = await teams.sendMessage.call(teams, caller, request);
+      return {
+        messageId: String(result?.messageId ?? ""),
+        status: result?.status === "queued" ? "queued" : "accepted"
+      };
+    },
+    async teamSpawnTeammate(caller, request) {
+      const teams = requireService("agentTeams", 'cannot spawn team member "' + String(request?.name) + '"');
+      if (typeof teams.spawnTeammate !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no spawnTeammate()");
+      const result = await teams.spawnTeammate.call(teams, caller, request);
+      return { member: teamMemberView(result?.member) };
+    },
+    teamInterrupt(caller, targetName) {
+      const teams = requireService("agentTeams", 'cannot interrupt team member "' + String(targetName) + '"');
+      if (typeof teams.interrupt !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no interrupt()");
+      const result = teams.interrupt.call(teams, caller, targetName);
+      return { previousStatus: result?.previousStatus === "running" ? "running" : "inactive" };
+    },
+    async teamWaitForChange(caller, timeoutMs, signal) {
+      const teams = requireService("agentTeams", "cannot wait for team activity");
+      if (typeof teams.waitForChange !== "function")
+        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no waitForChange()");
+      const result = await teams.waitForChange.call(teams, caller, timeoutMs, signal);
+      return { timedOut: result?.timedOut === true };
+    },
+    teamLiveTeams() {
+      const teams = service("agentTeams");
+      if (teams === undefined || teams === null || typeof teams.tryMembership !== "function")
+        return [];
+      if (typeof service("agents")?.list !== "function")
+        return [];
+      const views = [];
+      for (const agent of liveAgents()) {
+        let membership;
+        try {
+          membership = teams.tryMembership.call(teams, agent);
+        } catch {
+          continue;
+        }
+        if (membership?.role !== "lead")
+          continue;
+        views.push({
+          teamId: String(membership.id ?? ""),
+          leadName: String(membership.name ?? ""),
+          leadSessionId: String(agent?.id ?? ""),
+          members: teamRows(teams, "listMembers", agent, teamMemberView),
+          tasks: teamRows(teams, "listTasks", agent, teamTaskView)
+        });
+      }
+      return views;
     },
     registerSkillProvider(provider) {
       const skills = requireService("skills", "cannot register a skill provider");
@@ -548,7 +757,7 @@ function createDshAdapter(ctx, config = {}) {
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agent-presets service exposes no resolve()");
+        throw new Error("mpd-dsh-adapter: the harness agentPresets service exposes no resolve()");
       const preset = await presets.resolve(presetId);
       return {
         id: String(preset?.id ?? presetId),
@@ -682,11 +891,19 @@ function createDshAdapter(ctx, config = {}) {
     agentScope(agent) {
       return scopeOfAgentContext(agent);
     },
-    startAgentTurn(agent, message) {
+    agentPromptSection(agent, section) {
+      const systemPrompt = agentSystemPromptOf(agent);
+      if (systemPrompt === undefined) {
+        throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
+      }
+      const registered = systemPrompt.section(section);
+      return typeof registered === "function" ? registered : noop;
+    },
+    startAgentTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no followup() — cannot start its next turn");
-      followup.call(agent, message);
+      followup.call(agent, message2);
     },
     cancelAgentTurn(agent, cause, options) {
       const cancel = agent?.cancel;
@@ -694,24 +911,24 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the agent exposes no cancel() — cannot cancel its turn");
       cancel.call(agent, cause, options);
     },
-    steerAgentTurn(agent, message) {
+    steerAgentTurn(agent, message2) {
       const steer = agent?.steer;
       if (typeof steer !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no steer() — cannot steer its turn");
-      steer.call(agent, message);
+      steer.call(agent, message2);
     },
-    injectAgentMessage(agent, message) {
+    injectAgentMessage(agent, message2) {
       const inject = agent?.inject;
       if (typeof inject !== "function")
         throw new Error("mpd-dsh-adapter: the agent exposes no inject() — cannot queue a message for it");
-      inject.call(agent, message);
+      inject.call(agent, message2);
     },
-    submitUserTurn(agent, message) {
+    submitUserTurn(agent, message2) {
       const followup = agent?.followup;
       if (typeof followup !== "function")
         return false;
       try {
-        followup.call(agent, message);
+        followup.call(agent, message2);
         return true;
       } catch {
         return false;
@@ -781,7 +998,7 @@ var ULW_ACTIVATION_DIRECTIVE = [
   "ULTRAWORK ACTIVATION (user-invoked; execute autonomously and ask the user nothing)",
   "1. TRIAGE FIRST: when the objective is unclear, or the task is investigate-first-then-execute, run one normal-MPD investigation round BEFORE the gate, a team or the loop; never open a team on a guess.",
   "2. GATE: then evaluate the SAME complexity predicate the session-start gate uses — an explicit `team:`/`!team` flag OR any matched signal A-D (A explicit flag; B deliverable verbs; C enumerated steps; D an existing .mpd/plans artifact). Never invent a second predicate.",
-  '3. TEAM WHEN WARRANTED: when the gate fires, or the work is complex, call agent_teams_create(approval="automatic", profile="mpd"), design the roster and the task DAG yourself, and run it — no user confirmation and no plan review.',
+  "3. TEAM WHEN WARRANTED: when the gate fires, or the work is complex, stage the team YOURSELF with the OFFICIAL team tools — spawn_teammate({name, description, prompt}) for each roster member, then team_task_create({subject, description, blocked_by?, write_scopes?}) for the DAG — and run it: no user confirmation and no plan review. The retired `agent_teams_*` tools do not exist on this harness; the team's state is the Lead session's own.",
   "4. LOOP TO COMPLETION: never stop early to ask the user; keep rounds until every success criterion is clean.",
   "5. FIX ON SIGHT: a defect the run finds is fixed in the same turn — never report-and-wait and never ask the user for approval.",
   "6. CLOSE OUT ON PROOF: report done only after the verification gate and the quality-gate ledger both approve; otherwise keep working, or report the concrete blocker."
@@ -801,34 +1018,34 @@ function stateRoot(cfg, dsh, exec) {
 function writeJson(p, v) {
   writeFileSync(p, JSON.stringify(v, null, 2));
 }
-function messageText(message) {
-  if (!Array.isArray(message?.content))
+function messageText(message2) {
+  if (!Array.isArray(message2?.content))
     return;
-  const parts = message.content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text);
+  const parts = message2.content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text);
   return parts.length === 0 ? undefined : parts.join(String.fromCharCode(10));
 }
 var GESTURE_PATTERN = /^(?:\/ulw|\/ultrawork)(?:[\t\n\r ]+|$)/u;
 function claimGesture(messages) {
   if (!Array.isArray(messages))
     return;
-  for (const message of messages) {
-    if (message?.role !== "user")
+  for (const message2 of messages) {
+    if (message2?.role !== "user")
       continue;
-    const text = messageText(message);
+    const text = messageText(message2);
     if (text === undefined)
       continue;
     const match = GESTURE_PATTERN.exec(text.trim());
     if (match !== null)
-      return { message, text, match };
+      return { message: message2, text, match };
   }
   return;
 }
-function rewriteMessageText(message, text) {
-  const content = Array.isArray(message?.content) ? message.content : [];
+function rewriteMessageText(message2, text) {
+  const content = Array.isArray(message2?.content) ? message2.content : [];
   const at = content.findIndex((block) => block?.type === "text");
   if (at < 0)
-    return message;
-  return { ...message, content: content.map((block, index) => index === at ? { ...block, text } : block) };
+    return message2;
+  return { ...message2, content: content.map((block, index) => index === at ? { ...block, text } : block) };
 }
 function apply(ctx, config = {}) {
   const dsh = (typeof ctx.get === "function" ? ctx.get("mpdDsh") : undefined) ?? createDshAdapter(ctx);
@@ -904,8 +1121,8 @@ function apply(ctx, config = {}) {
       mkdirSync(planDir, { recursive: true });
       const stateFile = join(dir, "state.json");
       const ledgerFile = join(dir, "ledger.jsonl");
-      function stamp(lane, verdict, detail) {
-        appendFileSync(ledgerFile, JSON.stringify({ lane, verdict, detail, at: new Date().toISOString() }) + String.fromCharCode(10));
+      function stamp(lane, verdict2, detail) {
+        appendFileSync(ledgerFile, JSON.stringify({ lane, verdict: verdict2, detail, at: new Date().toISOString() }) + String.fromCharCode(10));
       }
       const state = { id, objective, tier, plan, hyperplan, strictReview, rounds, planFile: null, verdict: null, criteria: [], wave: 0, fruitlessWaves: 0 };
       writeJson(stateFile, state);
@@ -1090,7 +1307,7 @@ function apply(ctx, config = {}) {
       return { kind: "error", text: "ULW could not start: no live agent turn surface to submit the activation directive for " + JSON.stringify(objective) };
     return { kind: "success", text: "ULW activated: " + objective };
   };
-  const commandDisposers = ["ulw", "ultrawork"].map((name) => dsh.registerCommand({ name, description: ULW_COMMAND_DESCRIPTION(name === "ulw" ? "/ultrawork" : "/ulw"), input: { hint: "objective" }, handler: runUlwCommand }));
+  const commandDisposers = ["ulw", "ultrawork"].map((name2) => dsh.registerCommand({ name: name2, description: ULW_COMMAND_DESCRIPTION(name2 === "ulw" ? "/ultrawork" : "/ulw"), input: { hint: "objective" }, handler: runUlwCommand }));
   const gestureDispose = dsh.onEvent("agent/pre-step", async (payload, next) => {
     const decision = typeof next === "function" ? await next() : undefined;
     try {
@@ -1105,7 +1322,7 @@ function apply(ctx, config = {}) {
       const objective = claimed.text.trim().slice(claimed.match[0].length).trim();
       if (objective === "")
         return decision;
-      return { ...decision, messages: messages.map((message) => message === claimed.message ? rewriteMessageText(message, activationDirective(objective)) : message) };
+      return { ...decision, messages: messages.map((message2) => message2 === claimed.message ? rewriteMessageText(message2, activationDirective(objective)) : message2) };
     } catch {
       return decision;
     }
