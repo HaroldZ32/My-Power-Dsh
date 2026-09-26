@@ -407,7 +407,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   const runUlwCommand = (invocation: DshCommandInvocation) => {
     const objective = String(invocation?.rawInput ?? "").trim()
     if (objective === "") return { kind: "error", text: ULW_USAGE }
-    const submitted = invocation.submit?.(dsh.userMessage({ text: activationDirective(objective), source: { kind: "plugin", plugin: "mpd-ulw" } })) === true
+    const submitted = invocation.submit?.(dsh.userMessage({ text: activationDirective(objective), source: { kind: "mpd-ulw", reason: "activation-directive" } })) === true
     if (!submitted) return { kind: "error", text: "ULW could not start: no live agent turn surface to submit the activation directive for " + JSON.stringify(objective) }
     return { kind: "success", text: "ULW activated: " + objective }
   }

@@ -1,0 +1,186 @@
+{
+  "ok": false,
+  "sandbox": "/tmp/mpd-sst-IMWiGH",
+  "steps": {
+    "settled": {
+      "ok": true,
+      "rev": "e6f91e188dc05b6af0cb2352eb8bf696d62af10e",
+      "gateHash": "b867ee9fc107df500ff0a3d99e66e96ec104edc83ac9141e8a1c6289f4ebd4b2"
+    },
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "patchRow": {
+      "ok": true,
+      "mountsRoles": true,
+      "retiredAgentTeamsRow": false
+    },
+    "simpleSide": [
+      {
+        "prompt": "Reply with exactly: hello-ok",
+        "expect": "none",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "officialTools": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "teams": 0,
+        "sessionRecords": 22,
+        "sessionFrames": 8,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "What does the git-master skill do? Answer in one sentence.",
+        "expect": "none",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "officialTools": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "teams": 0,
+        "sessionRecords": 28,
+        "sessionFrames": 13,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+        "expect": "none",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "officialTools": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "teams": 0,
+        "sessionRecords": 56,
+        "sessionFrames": 30,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "softComplexSide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "advise",
+        "exited": 1,
+        "notices": 0,
+        "advisory": 0,
+        "officialTools": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "teams": 0,
+        "sessionRecords": 7,
+        "sessionFrames": 3,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [
+          "a triggered prompt must record EXACTLY ONE advisory notice, got 0",
+          "the notice must state \"NO team was staged\", got 0",
+          "the notice must name BOTH official tools (spawn_teammate, team_task_create), got 0",
+          "the advisory notice must name the fired complexity signals"
+        ],
+        "ok": false
+      },
+      {
+        "prompt": "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+        "expect": "advise",
+        "exited": 1,
+        "notices": 0,
+        "advisory": 0,
+        "officialTools": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "teams": 0,
+        "sessionRecords": 7,
+        "sessionFrames": 3,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [
+          "a triggered prompt must record EXACTLY ONE advisory notice, got 0",
+          "the notice must state \"NO team was staged\", got 0",
+          "the notice must name BOTH official tools (spawn_teammate, team_task_create), got 0",
+          "the advisory notice must name the fired complexity signals"
+        ],
+        "ok": false
+      }
+    ],
+    "explicitSide": [
+      {
+        "prompt": "team: fix the flaky test",
+        "expect": "explicit",
+        "exited": 1,
+        "notices": 0,
+        "advisory": 0,
+        "officialTools": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "teams": 0,
+        "markerConsumed": true,
+        "sessionRecords": 7,
+        "sessionFrames": 3,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "problems": [
+          "a triggered prompt must record EXACTLY ONE advisory notice, got 0",
+          "the notice must state \"NO team was staged\", got 0",
+          "the notice must name BOTH official tools (spawn_teammate, team_task_create), got 0",
+          "the advisory notice must name the fired complexity signals"
+        ],
+        "ok": false
+      }
+    ],
+    "threeWay": {
+      "ok": false,
+      "simpleNotices": [
+        0,
+        0,
+        0
+      ],
+      "softNotices": [
+        0,
+        0
+      ],
+      "softSignals": [
+        [],
+        []
+      ],
+      "softStaged": [
+        0,
+        0
+      ],
+      "explicitNotices": [
+        0
+      ],
+      "explicitStaged": [
+        0
+      ],
+      "explicitMarkerConsumed": [
+        true
+      ]
+    }
+  },
+  "totalSteps": 7
+}

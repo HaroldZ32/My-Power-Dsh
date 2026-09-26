@@ -1,0 +1,26 @@
+{
+  "notice": {
+    "any": 0,
+    "advisory": 0,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "retiredVocabulary": 0,
+    "signals": []
+  },
+  "teams": {
+    "active": 0,
+    "archived": 0,
+    "ids": []
+  },
+  "goal": "team: fix the flaky test",
+  "gateInstalled": false,
+  "ownKeyWritten": true,
+  "problems": [
+    "a triggered prompt must record EXACTLY ONE advisory notice, got 0",
+    "the notice must state \"NO team was staged\", got 0",
+    "the notice must name BOTH official tools (spawn_teammate, team_task_create), got 0",
+    "the advisory notice must name the fired complexity signals",
+    "the explicit `team:` marker must be CONSUMED from the recorded goal text",
+    "the row did not report `sessionGate=advisory` — the gate was NOT mounted on this boot (a different defect from a mounted-but-silent gate)"
+  ]
+}

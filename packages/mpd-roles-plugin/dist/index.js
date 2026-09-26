@@ -279,15 +279,20 @@ function messageText(message) {
 `);
 }
 function latestUserMessage(candidates) {
+  let fallback;
   for (let index = candidates.length - 1;index >= 0; index -= 1) {
     const message = candidates[index];
     if (message?.role !== "user")
       continue;
     const text = messageText(message);
-    if (text !== undefined)
+    if (text === undefined)
+      continue;
+    const source = String(message?.source?.kind ?? "");
+    if (source === "user")
       return { message, text };
+    fallback ??= { message, text };
   }
-  return;
+  return fallback;
 }
 function consumeFlagFromMessage(message, source) {
   if (!consumeExplicitFlag(source).flagged)
@@ -322,41 +327,63 @@ function advisoryNoticeText(signals, explicit) {
 - If the work does not warrant a team (a short or single-threaded task), continue solo — and say so in one line.` + `
 - A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
 }
+function gateTrace(line) {
+  try {
+    if (process.env.MPD_ROLES_GATE_TRACE === "1")
+      console.log("[mpd-roles] gate trace: " + line);
+  } catch {}
+}
 function installSessionGate(dsh, options) {
   const presets = options.presets ?? DEFAULT_GATE_PRESETS;
   const settled = new Set;
-  const dispose = dsh.onAgentPreStep(async (payload, decision) => {
+  const disposers = new Map;
+  const report = (line) => {
     try {
+      options.log?.(line);
+    } catch {}
+  };
+  const stepHandler = (bound) => async (payload, decision) => {
+    try {
+      gateTrace("step entered bound=" + String(bound?.id ?? "none") + " payloadAgent=" + String(payload?.agent?.id ?? "none") + " kind=" + String(decision?.kind) + " payloadMessages=" + String(Array.isArray(payload?.messages) ? payload.messages.length : -1) + " decisionMessages=" + String(Array.isArray(decision?.messages) ? decision.messages.length : -1));
       if (decision?.kind === "reject")
         return;
-      const agent = payload?.agent;
+      const agent = bound ?? payload?.agent;
       if (agent === undefined || agent === null)
         return;
-      if (!sessionQualifies(agent, presets))
+      if (!sessionQualifies(agent, presets)) {
+        gateTrace("not qualified agent=" + String(agent.id ?? "?"));
         return;
+      }
       const agentId = String(agent.id ?? "");
       if (agentId !== "" && settled.has(agentId))
         return;
-      const claimed = Array.isArray(decision?.messages) ? decision.messages : payload?.messages ?? [];
-      const user = latestUserMessage(claimed);
-      if (user === undefined)
+      const decisionMessages = Array.isArray(decision?.messages) ? decision.messages : [];
+      const rawClaimed = Array.isArray(payload?.messages) && payload.messages.length > 0 ? payload.messages : decisionMessages;
+      const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages);
+      if (user === undefined) {
+        gateTrace("no user text yet agent=" + agentId);
         return;
+      }
       if (agentId !== "")
         settled.add(agentId);
       const workspace = dsh.workspaceRoot({ agent });
       const consumed = consumeExplicitFlag(user.text);
       const planArtifact = await hasPlanArtifact(workspace, options.readdir);
       const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, planArtifact });
-      if (verdict.trigger !== true)
+      if (verdict.trigger !== true) {
+        gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60)));
         return;
+      }
+      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " advisory=1 staged=0");
+      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/"));
       const notice = dsh.userMessage({
         text: advisoryNoticeText(verdict.signals, consumed.flagged),
-        source: { kind: "plugin", plugin: "mpd-roles", reason: "session-start-advisory" }
+        source: { kind: "mpd-roles", reason: "session-start-advisory" }
       });
-      const messages = (Array.isArray(decision?.messages) ? [...decision.messages] : [...payload?.messages ?? []]).map((message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);
+      const messages = [...decisionMessages.length > 0 ? decisionMessages : rawClaimed].map((message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);
       let lastClaimed = -1;
       for (let at2 = 0;at2 < messages.length; at2 += 1)
-        if (claimed.includes(messages[at2]))
+        if (rawClaimed.includes(messages[at2]))
           lastClaimed = at2;
       const at = lastClaimed < 0 ? messages.length : lastClaimed + 1;
       const amended = [...messages.slice(0, at), notice, ...messages.slice(at)];
@@ -365,8 +392,41 @@ function installSessionGate(dsh, options) {
       options.warn("session-start gate failed (" + (error instanceof Error ? error.message : String(error)) + ") — the step runs unchanged");
       return;
     }
-  });
-  return { installed: typeof dispose === "function", settled };
+  };
+  const release = (agent) => {
+    const dispose = disposers.get(agent);
+    if (dispose === undefined)
+      return;
+    disposers.delete(agent);
+    try {
+      dispose();
+    } catch {}
+  };
+  const register = (agent) => {
+    try {
+      if (agent === undefined || agent === null || disposers.has(agent))
+        return;
+      if (!sessionQualifies(agent, presets))
+        return;
+      const dispose = dsh.registerAgentPreStep(agent, stepHandler(agent));
+      disposers.set(agent, typeof dispose === "function" ? dispose : () => {});
+      const preset = agent?.session?.header?.agentPreset;
+      report('session gate listener registered for agent "' + String(agent.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)));
+      gateTrace("registered agent=" + String(agent.id ?? "?"));
+    } catch (error) {
+      options.warn('session-start gate not registered for agent "' + String(agent?.id ?? "?") + '" (' + (error instanceof Error ? error.message : String(error)) + ")");
+    }
+  };
+  for (const agent of dsh.liveAgents())
+    register(agent);
+  const subscribe = (event, handler) => {
+    try {
+      dsh.onEvent(event, handler);
+    } catch {}
+  };
+  subscribe("agent/created", (payload) => register(payload?.agent ?? payload));
+  subscribe("agent/disposed", (payload) => release(payload?.agent ?? payload));
+  return { installed: true, settled, disposers };
 }
 
 // packages/mpd-roles-plugin/src/roster-section.ts
@@ -586,13 +646,27 @@ function teamRows(teams, method, agent, project) {
     return [];
   }
 }
-function agentSystemPromptOf(agent) {
-  let context;
+function scopeContextOf(agent) {
   try {
-    context = agent?.ctx;
+    return agent?.ctx;
   } catch {
     return;
   }
+}
+function preStepWrapper(listener) {
+  return async (payload, next) => {
+    const fallback = { kind: "enter", messages: payload?.messages ?? [] };
+    const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
+    try {
+      const decided = await listener(payload ?? {}, downstream);
+      return decided ?? downstream;
+    } catch {
+      return downstream;
+    }
+  };
+}
+function agentSystemPromptOf(agent) {
+  const context = scopeContextOf(agent);
   if (context === undefined || context === null)
     return;
   try {
@@ -838,6 +912,7 @@ function createDshAdapter(ctx, config = {}) {
         agentTurnInject: liveAgents().some((candidate) => typeof candidate?.inject === "function"),
         agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
         agentPreStep: typeof ctx?.on === "function",
+        agentPreStepScope: liveAgents().some((candidate) => typeof scopeContextOf(candidate)?.on === "function"),
         team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
         teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
@@ -947,16 +1022,14 @@ function createDshAdapter(ctx, config = {}) {
     onAgentPreStep(listener) {
       if (typeof ctx?.on !== "function")
         return noop;
-      return ctx.on("agent/pre-step", async (payload, next) => {
-        const fallback = { kind: "enter", messages: payload?.messages ?? [] };
-        const downstream = typeof next === "function" ? await next() ?? fallback : fallback;
-        try {
-          const decided = await listener(payload ?? {}, downstream);
-          return decided ?? downstream;
-        } catch {
-          return downstream;
-        }
-      });
+      return ctx.on("agent/pre-step", preStepWrapper(listener));
+    },
+    registerAgentPreStep(agent, listener) {
+      const context = scopeContextOf(agent);
+      if (typeof context?.on !== "function") {
+        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no on() — cannot register its agent/pre-step listener");
+      }
+      return context.on("agent/pre-step", preStepWrapper(listener));
     },
     hasTool(toolName) {
       const tools = service("tools");
@@ -1792,7 +1865,11 @@ Work with the tools your role requires (read-only roles must never modify anythi
     warnOnce("team-section:threw", "the roster prompt section could not be registered (" + errText(error) + ")");
   }
   try {
-    installSessionGate(dsh, { presets: ["mpd"], warn: (line) => warn(line) });
+    installSessionGate(dsh, {
+      presets: ["mpd"],
+      warn: (line) => warn(line),
+      log: (line) => console.log("[mpd-roles] " + line)
+    });
     guardOutcome.push("sessionGate=advisory");
   } catch (error) {
     guardOutcome.push("sessionGate=absent");

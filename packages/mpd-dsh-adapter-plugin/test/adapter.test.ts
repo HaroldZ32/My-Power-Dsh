@@ -674,8 +674,8 @@ describe("message plane (user-role session injection)", () => {
   })
 
   test("a producer tag wins over the default kind, and every call mints a fresh id", () => {
-    const injected = userMessage({ text: "directive", source: { kind: "plugin", plugin: "mpd-ulw" } })
-    expect(injected.source).toEqual({ kind: "plugin", plugin: "mpd-ulw" })
+    const injected = userMessage({ text: "directive", source: { kind: "mpd-ulw", reason: "activation-directive" } })
+    expect(injected.source).toEqual({ kind: "mpd-ulw", reason: "activation-directive" })
     expect(userMessage({ text: "a" }).id).not.toBe(userMessage({ text: "a" }).id)
   })
 

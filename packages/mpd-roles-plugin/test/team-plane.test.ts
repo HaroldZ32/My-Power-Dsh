@@ -7,6 +7,7 @@
 // proven by the test failing loudly if the gate ever reached for one.
 import { describe, expect, test } from "bun:test"
 
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { READONLY_DENY } from "../src/index.ts"
 import { ROLES } from "../src/roles.data.ts"
 import {
@@ -22,6 +23,7 @@ import {
   consumeFlagFromMessage,
   evaluateComplexityGate,
   installSessionGate,
+  latestUserMessage,
   sessionQualifies,
   STARTUP_NOTICE_MARKER,
 } from "../src/session-gate.ts"
@@ -45,20 +47,28 @@ function planeHarness(options: { membership?: unknown; agents?: unknown[]; planF
   const guards: Array<(exec: unknown) => string | undefined> = []
   const sections: Array<{ agent: unknown; section: { name: string; order: number; text: unknown } }> = []
   const released: string[] = []
-  const steps: Array<(payload: any, decision: any) => unknown> = []
+  // ONE entry per AGENT-SCOPED registration: `{agent, listener}` — the gate registers per
+  // agent now, so a test asserting a single host listener would prove the wrong wiring.
+  const steps: Array<{ agent: unknown; listener: (payload: any, decision: any) => unknown }> = []
   const listeners = new Map<string, Array<(...args: unknown[]) => unknown>>()
   const agents = options.agents ?? [mpdAgent()]
   let messageSeq = 0
 
   const dsh = {
-    capabilities: () => ({ toolsGuard: true, team: true, agentPromptSection: true, agentPreStep: true }),
+    capabilities: () => ({ toolsGuard: true, team: true, agentPromptSection: true, agentPreStep: true, agentPreStepScope: true }),
     guardTool: (guard: (exec: unknown) => string | undefined) => { guards.push(guard); return () => { /* unregistered */ } },
     teamMembership: (agent: unknown) => {
       record("teamMembership", agent)
       if (options.membership !== undefined) return options.membership
       return agent === agents[0] ? { teamId: "team-1", role: "lead", name: "Lead" } : undefined
     },
-    onAgentPreStep: (listener: (payload: any, decision: any) => unknown) => { steps.push(listener); return () => { /* unregistered */ } },
+    // The AGENT-SCOPED registration the gate must use. The host-plane seam is deliberately
+    // ABSENT from this double, so a gate that still reached for it would throw here.
+    registerAgentPreStep: (agent: unknown, listener: (payload: any, decision: any) => unknown) => {
+      record("registerAgentPreStep", agent)
+      steps.push({ agent, listener })
+      return () => { released.push("agent-pre-step:" + String((agent as { id?: unknown } | undefined)?.id ?? "?")) }
+    },
     userMessage: (input: { text: string; source?: unknown }) => {
       messageSeq += 1
       record("userMessage", input.text)
@@ -238,7 +248,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const gate = installSessionGate(harness.dsh as never, { warn: () => {}, readdir: async () => [] })
     expect(gate.installed).toBe(true)
     const claimed = userMessage("Check the tests, build the package, verify the output.")
-    const decided: any = await harness.steps[0]({ agent: mpdAgent(), messages: [claimed] }, { kind: "enter", messages: [claimed] })
+    const decided: any = await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })
 
     expect(decided.kind).toBe("enter")
     expect(decided.messages).toHaveLength(2)
@@ -251,14 +261,14 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     // Nothing was staged: the mutation seams were never reached…
     expect(harness.calls.filter((call) => call.seam.startsWith("team"))).toEqual([])
     // …and the session is settled, so a second step injects nothing.
-    expect(await harness.steps[0]({ agent: mpdAgent(), messages: [claimed] }, { kind: "enter", messages: [claimed] })).toBeUndefined()
+    expect(await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })).toBeUndefined()
   })
 
   test("an explicit team: flag is ADVISED (never provisioned) and CONSUMED from the goal text", async () => {
     const harness = planeHarness()
     installSessionGate(harness.dsh as never, { warn: () => {}, readdir: async () => [] })
     const claimed = userMessage("team: redesign the loader")
-    const decided: any = await harness.steps[0]({ agent: mpdAgent(), messages: [claimed] }, { kind: "enter", messages: [claimed] })
+    const decided: any = await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })
     expect(decided.messages).toHaveLength(2)
     expect(decided.messages[0].content[0].text).toBe("redesign the loader")
     expect(decided.messages[1].content[0].text).toContain("CONSUMED")
@@ -270,13 +280,13 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const seen: string[] = []
     installSessionGate(withPlan.dsh as never, { warn: () => {}, readdir: async (path) => { seen.push(path); return ["lane.md"] } })
     const claimed = userMessage("fix the typo")
-    const decided: any = await withPlan.steps[0]({ agent: mpdAgent(), messages: [claimed] }, { kind: "enter", messages: [claimed] })
+    const decided: any = await withPlan.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })
     expect(seen[0]).toBe(WORKSPACE + "/.mpd/plans")
     expect(decided.messages[1].content[0].text).toContain("complexity signals D")
 
     const withoutPlan = planeHarness()
     installSessionGate(withoutPlan.dsh as never, { warn: () => {}, readdir: async () => { throw new Error("ENOENT") } })
-    expect(await withoutPlan.steps[0]({ agent: mpdAgent(), messages: [claimed] }, { kind: "enter", messages: [claimed] })).toBeUndefined()
+    expect(await withoutPlan.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })).toBeUndefined()
   })
 
   test("scope: child sessions and other presets never get the gate; mpd and preset-less sessions do", async () => {
@@ -286,23 +296,33 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     expect(sessionQualifies({ id: "x", session: { header: { cwd: WORKSPACE, agentPreset: "standard" } } })).toBe(false)
     expect(sessionQualifies({ id: "x" })).toBe(false)
 
-    const harness = planeHarness()
-    installSessionGate(harness.dsh as never, { warn: () => {}, readdir: async () => [] })
-    const claimed = userMessage("Check the tests, build the package, verify the output.")
+    const lead = mpdAgent()
     const child = mpdAgent("child-1", { parentSession: "lead-1" })
-    expect(await harness.steps[0]({ agent: child, messages: [claimed] }, { kind: "enter", messages: [claimed] })).toBeUndefined()
     const other = { id: "other-1", session: { header: { cwd: WORKSPACE, agentPreset: "standard" } } }
-    expect(await harness.steps[0]({ agent: other, messages: [claimed] }, { kind: "enter", messages: [claimed] })).toBeUndefined()
+    const harness = planeHarness({ agents: [lead, child, other] })
+    installSessionGate(harness.dsh as never, { warn: () => {}, readdir: async () => [] })
+    // REGISTRATION is the filter now: ONLY the qualifying agent's scope got a listener, so a
+    // child or another preset's session cannot fire the gate even in principle.
+    expect(harness.steps.map((step) => step.agent)).toEqual([lead])
+    expect(harness.steps).toHaveLength(1)
+    // A later qualifying agent is picked up through agent/created; a child is not.
+    const late = mpdAgent("late-1")
+    harness.emit("agent/created", { agent: late })
+    harness.emit("agent/created", { agent: mpdAgent("child-2", { parentSession: "lead-1" }) })
+    expect(harness.steps.map((step) => step.agent)).toEqual([lead, late])
+    // Disposal releases the registration (never a leak across agent lifetimes).
+    harness.emit("agent/disposed", { agent: late })
+    expect(harness.released).toContain("agent-pre-step:late-1")
   })
 
   test("a step with no user text does NOT spend the settlement, and a reject decision is left alone", async () => {
     const harness = planeHarness()
     const gate = installSessionGate(harness.dsh as never, { warn: () => {}, readdir: async () => [] })
-    expect(await harness.steps[0]({ agent: mpdAgent(), messages: [] }, { kind: "enter", messages: [] })).toBeUndefined()
+    expect(await harness.steps[0].listener({ messages: [], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [] })).toBeUndefined()
     expect(gate.settled.size).toBe(0)
-    expect(await harness.steps[0]({ agent: mpdAgent(), messages: [] }, { kind: "reject" })).toBeUndefined()
+    expect(await harness.steps[0].listener({ messages: [], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "reject" })).toBeUndefined()
     const claimed = userMessage("Check the tests, build the package, verify the output.")
-    const decided: any = await harness.steps[0]({ agent: mpdAgent(), messages: [claimed] }, { kind: "enter", messages: [claimed] })
+    const decided: any = await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })
     expect(decided.messages).toHaveLength(2)
   })
 
@@ -314,7 +334,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const broken = harness.dsh as any
     broken.workspaceRoot = () => { throw new Error("no workspace") }
     const claimed = userMessage("Check the tests, build the package, verify the output.")
-    expect(await harness.steps[0]({ agent: mpdAgent(), messages: [claimed] }, { kind: "enter", messages: [claimed] })).toBeUndefined()
+    expect(await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })).toBeUndefined()
     expect(warnings.join(" ")).toContain("session-start gate failed")
   })
 
@@ -386,5 +406,122 @@ describe("roster section: agent-scoped teammate templates for the mpd Lead", () 
     expect(install.registered).toBe(0)
     expect(warnings).toHaveLength(1)
     expect(warnings[0]).toContain("roster section not registered")
+  })
+})
+
+/**
+ * THE REGRESSION TEST FOR THE MOUNTED-BUT-SILENT DEFECT (2026-09-27).
+ *
+ * The first version of the gate registered through the ADAPTER's row context and read the
+ * calling agent off the payload. On a real boot the listener was installed, the boot log said
+ * `sessionGate=advisory`, and NOTHING was ever injected: `agent/pre-step` is dispatched through
+ * the agent's SCOPE CARRIER, and a scope-filtered dispatch does not reach a listener whose own
+ * scope is not the dispatch scope or an ancestor of it. A unit test that handed the listener a
+ * hand-made payload WITH `agent` could not see any of that.
+ *
+ * This test drives the REAL adapter with the REAL payload shape (`{messages, turn, step,
+ * signal}` — no `agent`) and asserts the notice still lands.
+ */
+describe("gate registration through the REAL adapter (the mounted-but-silent regression)", () => {
+  test("a payload WITHOUT `agent` still injects: the registration site is the authority", async () => {
+    const captured: Array<{ event: string; listener: (payload: any, next: any) => any }> = []
+    const hostEvents: string[] = []
+    const lead = {
+      id: "lead-1",
+      session: { header: { cwd: WORKSPACE, agentPreset: "mpd" } },
+      // The agent's OWN scope — the only site whose delivery the scope filter admits.
+      ctx: { on: (event: string, listener: any) => { captured.push({ event, listener }); return () => { /* unregistered */ } } },
+    }
+    const ctx = {
+      get: (name: string) => (name === "agents" ? { list: () => [lead] } : undefined),
+      on: (event: string) => { hostEvents.push(event); return () => { /* unregistered */ } },
+    }
+    const adapter = createDshAdapter(ctx)
+    installSessionGate(adapter as never, { warn: () => {}, readdir: async () => [] })
+
+    // Registered on the AGENT's scope, never on the row's event bus.
+    expect(captured.map((entry) => entry.event)).toEqual(["agent/pre-step"])
+    expect(hostEvents).not.toContain("agent/pre-step")
+    expect(adapter.capabilities().agentPreStepScope).toBe(true)
+
+    const claimed = userMessage("Check the tests, build the package, verify the output.")
+    // EXACTLY the harness payload: {messages, ...position, signal} — NO `agent`.
+    const payload = { messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }
+    const out: any = await captured[0].listener(payload, async () => ({ kind: "enter", messages: [claimed] }))
+
+    expect(out.kind).toBe("enter")
+    expect(out.messages).toHaveLength(2)
+    expect(out.messages[1].content[0].text.startsWith(STARTUP_NOTICE_MARKER)).toBe(true)
+    expect(out.messages[1].content[0].text).toContain("NO team was staged")
+    // …and the same shape leaves a SIMPLE prompt alone: the adapter owns next(), so the step
+    // still receives the DOWNSTREAM decision — one message, no notice (the falsifiability arm
+    // a gate that fired on everything would redden).
+    const simple = { id: "u2", role: "user", content: [{ type: "text", text: "fix the typo" }] }
+    const simpleOut: any = await captured[0].listener(
+      { messages: [simple], turn: 1, step: 1, signal: new AbortController().signal },
+      async () => ({ kind: "enter", messages: [simple] }),
+    )
+    expect(simpleOut.messages).toHaveLength(1)
+    expect(String(simpleOut.messages[0]?.content?.[0]?.text ?? "")).toBe("fix the typo")
+  })
+})
+
+/**
+ * THE SECOND ROOT CAUSE, measured on one instrumented live boot: the step's DECISION carries
+ * the claimed turn PLUS the user-role notice the harness itself splices in
+ * (`{role:"user", source:{kind:"runtime-context"}, text:"Current runtime context. …"}`), so a
+ * backward scan of the decision judged that snapshot and the predicate was false on every
+ * triggered prompt. The goal must come from the payload's RAW claimed list (and, failing
+ * that, from a `source.kind === "user"` message).
+ */
+describe("goal selection: the injected runtime-context turn must not shadow the user turn", () => {
+  test("the gate judges the GOAL even when the decision carries an injected context turn", async () => {
+    const harness = planeHarness()
+    installSessionGate(harness.dsh as never, { warn: () => {}, readdir: async () => [] })
+    const goal = userMessage("Check the tests, build the package, verify the output.")
+    const injected = {
+      id: "ctx-1",
+      role: "user",
+      content: [{ type: "text", text: "Current runtime context. This snapshot supersedes earlier runtime facts." }],
+      source: { kind: "runtime-context" },
+    }
+    // The measured shape: the PAYLOAD claims the goal only; the DECISION also carries the
+    // harness-injected context turn, appended AFTER the goal.
+    // The double captures the RAW handler (the adapter owns `next()` in production), so the
+    // decision is passed directly — exactly the list the adapter would hand over.
+    const out: any = await harness.steps[0].listener(
+      { messages: [goal], turn: 1, step: 1, signal: new AbortController().signal },
+      { kind: "enter", messages: [goal, injected] },
+    )
+    const notice = out.messages.find((message: any) => String(message?.content?.[0]?.text ?? "").startsWith(STARTUP_NOTICE_MARKER))
+    expect(notice).toBeDefined()
+    expect(notice.content[0].text).toContain("complexity signals C")
+    // PLACEMENT (frozen from the retired implementation): the notice lands immediately after
+    // the last CLAIMED message, i.e. before the harness-injected context turn, which is
+    // preserved untouched.
+    expect(out.messages[1]).toBe(notice)
+    expect(out.messages[2]).toBe(injected)
+    // A SIMPLE goal through the same shape stays silent (the falsifiability arm).
+    const simpleHarness = planeHarness()
+    installSessionGate(simpleHarness.dsh as never, { warn: () => {}, readdir: async () => [] })
+    const simple = userMessage("fix the typo")
+    const simpleOut: any = await simpleHarness.steps[0].listener(
+      { messages: [simple], turn: 1, step: 1 },
+      { kind: "enter", messages: [simple, { id: "ctx-2", role: "user", content: [{ type: "text", text: "Current runtime context." }], source: { kind: "runtime-context" } }] },
+    )
+    // The RAW handler answers `undefined` when nothing fires (the adapter turns that into the
+    // downstream decision untouched); no notice is anywhere in the step.
+    expect(simpleOut).toBeUndefined()
+  })
+
+  test("latestUserMessage is source-aware, and still answers for a host that tags nothing", () => {
+    const goal = userMessage("do the thing")
+    const injected = { id: "c", role: "user", content: [{ type: "text", text: "Current runtime context." }], source: { kind: "runtime-context" } }
+    expect(latestUserMessage([goal, injected])?.text).toBe("do the thing")
+    expect(latestUserMessage([injected])?.text).toBe("Current runtime context.")
+    // Untagged messages keep the old "last user-role message with text" behaviour.
+    const untagged = { id: "u", role: "user", content: [{ type: "text", text: "legacy" }] }
+    expect(latestUserMessage([untagged])?.text).toBe("legacy")
+    expect(latestUserMessage([untagged, injected])?.text).toBe("Current runtime context.")
   })
 })

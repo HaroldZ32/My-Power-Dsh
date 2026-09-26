@@ -1,0 +1,21 @@
+{
+  "notice": {
+    "any": 1,
+    "advisory": 1,
+    "retiredProvisioned": 0,
+    "officialTools": 1,
+    "retiredVocabulary": 0,
+    "signals": [
+      "A"
+    ]
+  },
+  "teams": {
+    "active": 0,
+    "archived": 0,
+    "ids": []
+  },
+  "goal": "fix the flaky test",
+  "gateInstalled": true,
+  "ownKeyWritten": true,
+  "problems": []
+}

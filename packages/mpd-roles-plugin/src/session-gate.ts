@@ -133,15 +133,32 @@ function messageText(message: unknown): string | undefined {
   return parts.length === 0 ? undefined : parts.join("\n")
 }
 
-/** The LAST user-role message among the candidates that carries text. */
+/**
+ * The user's OWN turn among the candidates — the goal text the gate judges.
+ *
+ * MEASURED 2026-09-27 (one instrumented live boot, the defect that made the gate silent):
+ * the step's DECISION carries the claimed turn PLUS the user-role notice the harness itself
+ * splices in — `{role:"user", source:{kind:"runtime-context"}, text:"Current runtime context.
+ * This snapshot supersedes earlier ru…"}` — so "the last user-role message" is NOT the goal.
+ * The gate judged that snapshot on every triggered prompt and the predicate was always false.
+ *
+ * The rule is therefore SOURCE-AWARE: a message whose `source.kind` is `user` is the caller's
+ * own turn and wins (the LAST such message); only when a host tags no message that way does
+ * this fall back to the last user-role message with text. Callers pass the PAYLOAD's raw
+ * claimed list first (before the injected notices are spliced onto the decision).
+ */
 export function latestUserMessage(candidates: readonly unknown[]): { message: unknown; text: string } | undefined {
+  let fallback: { message: unknown; text: string } | undefined
   for (let index = candidates.length - 1; index >= 0; index -= 1) {
     const message = candidates[index]
     if ((message as { role?: unknown } | undefined)?.role !== "user") continue
     const text = messageText(message)
-    if (text !== undefined) return { message, text }
+    if (text === undefined) continue
+    const source = String((message as { source?: { kind?: unknown } } | undefined)?.source?.kind ?? "")
+    if (source === "user") return { message, text }
+    fallback ??= { message, text }
   }
-  return undefined
+  return fallback
 }
 
 /** Rewrite a claimed user message with the explicit marker CONSUMED (text blocks only). */
@@ -202,11 +219,31 @@ export function advisoryNoticeText(signals: readonly string[], explicit: boolean
     + "\n- A team is NOT a precondition of this session, and you may not create a second team while leading one."
 }
 
+/**
+ * One-line diagnostics for a live boot, enabled with `MPD_ROLES_GATE_TRACE=1`.
+ *
+ * WHY THIS EXISTS: the gate failed once as "mounted, silent, no error", and neither a unit
+ * test nor the install line could say WHERE it stopped (never dispatched? wrong agent?
+ * unqualified session? predicate false?). This hook answers that from the boot log itself.
+ */
+function gateTrace(line: string): void {
+  try {
+    if (process.env.MPD_ROLES_GATE_TRACE === "1") console.log("[mpd-roles] gate trace: " + line)
+  } catch { /* tracing must never take the gate down */ }
+}
+
 export interface SessionGateOptions {
   /** Presets whose top-level sessions are covered (default: `["mpd"]`). */
   presets?: readonly string[]
   /** One-line reporter for a contained failure. */
   warn: (line: string) => void
+  /**
+   * One line when a listener is REGISTERED and one when the gate FIRES — the boot signature a
+   * mount lane asserts. Both exist because "mounted but silent" is otherwise indistinguishable
+   * from "never registered": the trace hook alone is env-gated and therefore absent from a
+   * normal boot's evidence.
+   */
+  log?: (line: string) => void
   /** `readdir` injection for the plan-artifact probe (tests); defaults to `node:fs/promises`. */
   readdir?: (path: string) => Promise<string[]>
 }
@@ -215,56 +252,92 @@ export interface SessionGateInstall {
   installed: boolean
   /** Per-agent settlement registry (exposed for tests and for a future reset seam). */
   settled: Set<string>
+  /** One disposer per agent whose scope carries a gate listener. */
+  disposers: Map<unknown, () => void>
 }
 
 /**
- * Install the gate on the `agent/pre-step` waterfall through the adapter.
+ * Install the gate: ONE `agent/pre-step` listener PER QUALIFYING AGENT, registered in that
+ * agent's OWN scope through the adapter.
  *
- * The listener runs AFTER the inner chain (the adapter owns `next()`), so it sees the
- * decision the step would really run with and returns an amended copy — never the raw
- * harness objects from its own re-construction. It settles ONCE per agent, and only after
- * it actually judged a user text: a first step that claims no user message leaves the
- * session unsettled rather than silently skipping the gate forever.
+ * WHY PER AGENT AND NOT ONE HOST LISTENER — this is the defect the first version shipped,
+ * measured 2026-09-27: the harness dispatches `agent/pre-step` through the agent's SCOPE
+ * CARRIER (`dsh-agent` `agentEvents(…).waterfall` -> `ctx.waterfall(carrier, …)`), and a
+ * scope-filtered dispatch reaches a listener only when the listener's scope IS the dispatch
+ * scope or an ancestor of it. A listener registered on a row's ctx was therefore installed,
+ * visible in the boot log (`sessionGate=advisory`), and NEVER INVOKED on six live boots.
+ * Registering on `agent.ctx` makes the listener's scope the agent itself, which the filter
+ * admits by construction — the same site the harness's own pre-step subscribers use.
+ *
+ * The handler then reads the agent from the REGISTRATION rather than from the payload, so it
+ * cannot be misled by a payload that omits `agent`; the payload's own `agent` stays a
+ * fallback. Settlement is per agent id and the notice is injected ONCE: after it fires, that
+ * agent's later steps return the downstream decision untouched.
  */
 export function installSessionGate(
-  dsh: Pick<DshAdapter, "onAgentPreStep" | "userMessage" | "workspaceRoot">,
+  dsh: Pick<DshAdapter, "registerAgentPreStep" | "liveAgents" | "onEvent" | "userMessage" | "workspaceRoot">,
   options: SessionGateOptions,
 ): SessionGateInstall {
   const presets = options.presets ?? DEFAULT_GATE_PRESETS
   const settled = new Set<string>()
-  const dispose = dsh.onAgentPreStep(async (payload: DshAgentPreStep, decision: DshPreStepDecision) => {
+  const disposers = new Map<unknown, () => void>()
+  const report = (line: string): void => {
     try {
+      options.log?.(line)
+    } catch { /* logging must never take the gate down */ }
+  }
+
+  /** One step handler, bound to the agent whose scope registered it. */
+  const stepHandler = (bound: unknown) => async (payload: DshAgentPreStep, decision: DshPreStepDecision) => {
+    try {
+      gateTrace("step entered bound=" + String((bound as { id?: unknown } | undefined)?.id ?? "none")
+        + " payloadAgent=" + String((payload as { agent?: { id?: unknown } } | undefined)?.agent?.id ?? "none")
+        + " kind=" + String(decision?.kind)
+        + " payloadMessages=" + String(Array.isArray(payload?.messages) ? payload.messages.length : -1)
+        + " decisionMessages=" + String(Array.isArray(decision?.messages) ? decision.messages.length : -1))
       if (decision?.kind === "reject") return undefined
-      const agent = payload?.agent
+      // BOUND FIRST: the harness dispatch fuses `agent` into the payload, but the real
+      // payload shape is not guaranteed to carry it, and the registration IS the authority.
+      const agent = bound ?? payload?.agent
       if (agent === undefined || agent === null) return undefined
-      if (!sessionQualifies(agent, presets)) return undefined
+      if (!sessionQualifies(agent, presets)) { gateTrace("not qualified agent=" + String((agent as { id?: unknown }).id ?? "?")); return undefined }
       const agentId = String((agent as { id?: unknown }).id ?? "")
       if (agentId !== "" && settled.has(agentId)) return undefined
-      const claimed = Array.isArray(decision?.messages) ? decision.messages : (payload?.messages ?? [])
-      const user = latestUserMessage(claimed)
+      // THE GOAL COMES FROM THE RAW CLAIMED LIST (the payload), never from the decision:
+      // the decision also carries the harness's injected runtime-context turn (measured), and
+      // judging that snapshot made the predicate false on every triggered prompt.
+      const decisionMessages = Array.isArray(decision?.messages) ? decision.messages : []
+      const rawClaimed = Array.isArray(payload?.messages) && payload.messages.length > 0 ? payload.messages : decisionMessages
+      const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages)
       // Nothing to judge yet: leave the session unsettled so the first REAL user turn is
       // still evaluated, instead of spending the one evaluation on an empty step.
-      if (user === undefined) return undefined
+      if (user === undefined) { gateTrace("no user text yet agent=" + agentId); return undefined }
       if (agentId !== "") settled.add(agentId)
       const workspace = dsh.workspaceRoot({ agent } as never)
       const consumed = consumeExplicitFlag(user.text)
       const planArtifact = await hasPlanArtifact(workspace, options.readdir)
       const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, planArtifact })
-      if (verdict.trigger !== true) return undefined
+      if (verdict.trigger !== true) { gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60))); return undefined }
+      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " advisory=1 staged=0")
+      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/"))
       const notice = dsh.userMessage({
         text: advisoryNoticeText(verdict.signals, consumed.flagged),
-        source: { kind: "plugin", plugin: "mpd-roles", reason: "session-start-advisory" },
+        // A PRODUCER-OWNED source kind, never the retired `{kind:"plugin"}` wrapper: the
+        // 0.1.7 session format (v4) REJECTS that kind at append time —
+        // `dsh-session-format-v3-to-v4` `source()` throws "format v4 message requires a
+        // producer-owned source kind" — and MEASURED 2026-09-27 that took the whole boot down
+        // (exit 1, 7 session records) the moment the notice was injected. The vocabulary is a
+        // merge-extensible sum type with no shared `plugin` member: every producer names
+        // itself, exactly like `agent-instructions` and `goal` do.
+        source: { kind: "mpd-roles", reason: "session-start-advisory" },
       })
-      const messages = (Array.isArray(decision?.messages) ? [...decision.messages] : [...(payload?.messages ?? [])])
+      const messages = [...(decisionMessages.length > 0 ? decisionMessages : rawClaimed)]
         .map((message) => (message === user.message ? consumeFlagFromMessage(message, user.text) : message))
-      // `toSpliced`/`findLastIndex` semantics without the ES2023 lib: the notice lands
-      // right after the LAST claimed message, exactly where the retired implementation
-      // placed it (a step can claim more than one message).
+      // `toSpliced`/`findLastIndex` semantics without the ES2023 lib: the notice lands right
+      // after the LAST claimed message, exactly where the retired implementation placed it.
       let lastClaimed = -1
-      for (let at = 0; at < messages.length; at += 1) if (claimed.includes(messages[at])) lastClaimed = at
+      for (let at = 0; at < messages.length; at += 1) if (rawClaimed.includes(messages[at])) lastClaimed = at
       const at = lastClaimed < 0 ? messages.length : lastClaimed + 1
-      // `toSpliced` semantics: the notice lands right after the claimed user turn, exactly
-      // where the retired implementation placed it.
       const amended = [...messages.slice(0, at), notice, ...messages.slice(at)]
       return { ...decision, kind: decision?.kind ?? "enter", messages: amended }
     } catch (error) {
@@ -272,9 +345,48 @@ export function installSessionGate(
       options.warn("session-start gate failed (" + (error instanceof Error ? error.message : String(error)) + ") — the step runs unchanged")
       return undefined
     }
-  })
-  return { installed: typeof dispose === "function", settled }
+  }
+
+  const release = (agent: unknown): void => {
+    const dispose = disposers.get(agent)
+    if (dispose === undefined) return
+    disposers.delete(agent)
+    try {
+      dispose()
+    } catch { /* a failed teardown must not break agent disposal */ }
+  }
+
+  const register = (agent: unknown): void => {
+    try {
+      if (agent === undefined || agent === null || disposers.has(agent)) return
+      // Scope first: another preset's session and a subagent/member session never get a gate.
+      if (!sessionQualifies(agent, presets)) return
+      const dispose = dsh.registerAgentPreStep(agent, stepHandler(agent))
+      disposers.set(agent, typeof dispose === "function" ? dispose : () => { /* no-op */ })
+      const preset = (agent as { session?: { header?: { agentPreset?: unknown } } } | undefined)?.session?.header?.agentPreset
+      report('session gate listener registered for agent "' + String((agent as { id?: unknown }).id ?? "?")
+        + '" agentPreset=' + (preset === undefined ? "none" : String(preset)))
+      gateTrace("registered agent=" + String((agent as { id?: unknown }).id ?? "?"))
+    } catch (error) {
+      // A scope that refuses the listener degrades with ONE warning per agent; the boot and
+      // every other session stay untouched.
+      options.warn("session-start gate not registered for agent \""
+        + String((agent as { id?: unknown } | undefined)?.id ?? "?")
+        + "\" (" + (error instanceof Error ? error.message : String(error)) + ")")
+    }
+  }
+
+  for (const agent of dsh.liveAgents()) register(agent)
+  const subscribe = (event: string, handler: (payload: unknown) => void): void => {
+    try {
+      dsh.onEvent(event, handler)
+    } catch { /* a missing event bus leaves the LIVE registrations above in place */ }
+  }
+  subscribe("agent/created", (payload: unknown) => register((payload as { agent?: unknown } | undefined)?.agent ?? payload))
+  subscribe("agent/disposed", (payload: unknown) => release((payload as { agent?: unknown } | undefined)?.agent ?? payload))
+  return { installed: true, settled, disposers }
 }
+
 
 /** The cwd used for the plan-artifact probe (documented for callers that pass an agent). */
 export function gateWorkspaceOf(agent: unknown): string | undefined {

@@ -96,7 +96,10 @@ test("a non-empty invocation submits the activation directive as the invoking ag
   const message = submitted[0]
   expect(message.role).toBe("user")
   expect(typeof message.id).toBe("string")
-  expect(message.source.kind).toBe("plugin")
+  // The harness format-v4 gate REFUSES the retired shared `plugin` member ("format v4
+  // message requires a producer-owned source kind", measured on 0.1.7-rc.2 — it took the
+  // whole boot down), so the activation directive names its own producer.
+  expect(message.source.kind).toBe("mpd-ulw")
   const text = textOf(message)
   expect(text).toContain("ULTRAWORK ACTIVATION")
   expect(text).toContain("OBJECTIVE: ship the widget")
